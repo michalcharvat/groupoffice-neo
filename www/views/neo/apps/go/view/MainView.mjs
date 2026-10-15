@@ -68,6 +68,12 @@ class MainView extends Container {
      */
     routeModule = null
 
+    /**
+     * Open System settings dialog
+     * @member {GO.systemsettings.SystemSettingsDialog|null} systemSettings=null
+     */
+    systemSettings = null
+
     onConstructed() {
         super.onConstructed();
 
@@ -149,7 +155,11 @@ class MainView extends Container {
                 text   : t('My account'),
                 icon   : 'manage_accounts',
                 handler: () => me.openUserSettings()
-            }, {
+            }, ...client.isAdmin ? [{
+                text   : t('System settings'),
+                icon   : 'settings',
+                handler: () => me.openSystemSettings()
+            }] : [], {
                 text   : t('Logout'),
                 icon   : 'logout',
                 handler: () => client.logout().catch(e => notifyError(me, e))
@@ -211,6 +221,41 @@ class MainView extends Container {
         }
     }
 
+    /**
+     * Header user menu "System settings" (administrators), route "#systemsettings/<card>"
+     * @param {String|null} [activeItem] card to show
+     * @param {Boolean} [fromRoute] opened by the address: closing leaves it
+     */
+    async openSystemSettings(activeItem = null, fromRoute = false) {
+        let me = this;
+
+        if (!client.isAdmin) {
+            return
+        }
+
+        if (me.systemSettings && !me.systemSettings.isDestroyed) {
+            activeItem && me.systemSettings.showCard(activeItem);
+            return
+        }
+
+        try {
+            const {default: SystemSettingsDialog} = await import('../../../src/systemsettings/SystemSettingsDialog.mjs');
+
+            if (me.isDestroyed) {
+                return
+            }
+
+            me.systemSettings = Neo.create(SystemSettingsDialog, {appName: me.appName, windowId: me.windowId, activeItem});
+            me.systemSettings.on('close', () => {
+                me.systemSettings = null;
+                // "#systemsettings" would stay in the address bar: back to the module, so it can open again
+                fromRoute && !me.isDestroyed && Neo.Main.setRoute({value: me.routeModule || '', windowId: me.windowId})
+            })
+        } catch (e) {
+            notifyError(me, e)
+        }
+    }
+
     destroy(...args) {
         HashHistory.un('change', this.onHashChange);
         super.destroy(...args)
@@ -225,6 +270,11 @@ class MainView extends Container {
         let me              = this,
             [name, ...rest] = (hashString || '').split('/'),
             module          = ModuleRegistry.getAvailable().find(m => m.name === name);
+
+        if (name === 'systemsettings') {
+            me.openSystemSettings(rest[0] || null, true);
+            return
+        }
 
         me.routeModule = module?.name || null;
 

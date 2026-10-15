@@ -14,8 +14,12 @@ import client from './jmap/Client.mjs';
  *     routes    : {Note: id => 'note/' + id},             // header search result → "#notes/note/5"
  *     mainView  : () => import('./view/NotesMain.mjs'),  // lazy, default export = neo class
  *     // optional card in My account (src/usersettings/UserSettingsDialog.mjs)
- *     userSettings: {title: 'Notes', iconCls: 'fa fa-sticky-note', panel: () => import('./view/SettingsPanel.mjs')}
+ *     userSettings: {title: 'Notes', iconCls: 'fa fa-sticky-note', panel: () => import('./view/SettingsPanel.mjs')},
+ *     // optional card(s) in System settings (src/systemsettings/SystemSettingsDialog.mjs)
+ *     systemSettings: {title: 'Notes', iconCls: 'fa fa-sticky-note', panel: () => import('./view/SystemSettingsPanel.mjs')}
  * });
+ *
+ * A module without a mainView only adds settings cards: it is not an app in the header.
  */
 class ModuleRegistry {
     #modules = new Map()
@@ -29,10 +33,45 @@ class ModuleRegistry {
     }
 
     /**
-     * Modules the logged-in user has access to
+     * Modules (apps) the logged-in user has access to
      * @returns {Object[]}
      */
     getAvailable() {
+        return this.#accessible().filter(m => m.mainView)
+    }
+
+    /**
+     * The settings cards modules register under `key` ('userSettings' or 'systemSettings'),
+     * one config or an array of them: {title, iconCls, itemId, panel: () => import(...)}.
+     * The panels' code is loaded; a module whose panel fails to load is left out.
+     * @param {String} key
+     * @param {Function} [filter] (module) => Boolean, e.g. the user's rights
+     * @returns {Promise<Object[]>} {module, title, iconCls, itemId, panel: neo class}
+     */
+    async loadSettingsPanels(key, filter = () => true) {
+        const entries = this.#accessible().filter(m => m[key] && filter(m)).flatMap(m =>
+            [].concat(m[key]).map((settings, i) => ({
+                module : m,
+                title  : settings.title || m.title,
+                // Font Awesome (tab buttons)
+                iconCls: settings.iconCls || m.iconCls || null,
+                itemId : settings.itemId || `${m.package}-${m.name}` + (i ? '-' + i : ''),
+                load   : settings.panel
+            }))
+        );
+
+        const classes = await Promise.all(entries.map(entry => entry.load().then(mod => mod.default).catch(e => {
+            console.error(`${key} of ${entry.module.name}`, e);
+            return null
+        })));
+
+        return entries.map(({load, ...entry}, i) => ({...entry, panel: classes[i]})).filter(entry => entry.panel)
+    }
+
+    /**
+     * @returns {Object[]} registered modules the user has the capability of
+     */
+    #accessible() {
         return [...this.#modules.values()].filter(m => !m.capability || client.hasCapability(m.capability))
     }
 }

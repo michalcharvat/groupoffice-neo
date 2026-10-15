@@ -45,7 +45,7 @@ class UserSettingsDialog extends FormWindow {
         title        : t('My account'),
         closeOnSave  : false,
         generalHeader: {text: t('Account'), iconCls: 'fa fa-circle-user'},
-        cardsConfig  : {tabBarPosition: 'left'},
+        cardsConfig  : {tabBarPosition: 'left', cls: ['go-form-cards', 'go-settings-cards']},
         wrapperStyle : {
             height: '80vh',
             left  : 'max(0px, calc(50vw - 500px))',
@@ -120,22 +120,13 @@ class UserSettingsDialog extends FormWindow {
 
         await super.addCustomFields();
 
-        const modules = ModuleRegistry.getAvailable().filter(m => m.userSettings),
-              classes = await Promise.all(modules.map(m => m.userSettings.panel().then(mod => mod.default).catch(e => {
-                  console.error('User settings of', m.name, e);
-                  return null
-              })));
+        const panels = await ModuleRegistry.loadSettingsPanels('userSettings');
 
         if (me.isDestroyed) {
             return
         }
 
-        modules.forEach((m, i) => {
-            classes[i] && me.addCard({
-                module: classes[i],
-                header: {text: m.userSettings.title || m.title, iconCls: m.userSettings.iconCls || m.iconCls}
-            })
-        })
+        panels.forEach(({panel, title, iconCls}) => me.addCard({module: panel, header: {text: title, iconCls}}))
     }
 
     async submit() {

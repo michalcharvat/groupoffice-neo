@@ -1,0 +1,11 @@
+// GO.systemsettings.ModuleRightsDialog: group combo on top, the groups below
+.neo-theme-go .go-modulerights-dialog {
+    .go-modulerights-tbar {
+        padding: .8rem 1.6rem;
+    }
+
+    .go-modulerights-list {
+        min-height: 0;
+        overflow-y: auto;
+    }
+}
