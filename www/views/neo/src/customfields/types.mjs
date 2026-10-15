@@ -10,9 +10,9 @@ import TextList      from '../list/TextList.mjs';
 import client        from '../jmap/Client.mjs';
 import {escapeHtml, formatDate, formatUserDateTime, sanitizeHtml, userFormat} from '../Format.mjs';
 import {t}           from '../Translate.mjs';
-import BoolCheckBox     from './fields/BoolCheckBox.mjs';
+import BoolCheckBox     from '../form/field/BoolCheckBox.mjs';
 import DateTimeField    from './fields/DateTimeField.mjs';
-import LocalCombo       from './fields/LocalCombo.mjs';
+import LocalCombo       from '../form/field/LocalCombo.mjs';
 import MultiSelectField from './fields/MultiSelectField.mjs';
 
 /**

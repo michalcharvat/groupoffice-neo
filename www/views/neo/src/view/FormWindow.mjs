@@ -81,7 +81,17 @@ class FormWindow extends Dialog {
          * Linkable entity: shows the link button(s) in linkSlot (links, core item 4)
          * @member {Boolean} hasLinks=false
          */
-        hasLinks: false
+        hasLinks: false,
+        /**
+         * Tab of the first card (createFormItems()), null: "General"
+         * @member {Object|null} generalHeader=null
+         */
+        generalHeader: null,
+        /**
+         * Extra config of the cards' tab container, e.g. {tabBarPosition: 'left'}
+         * @member {Object} cardsConfig={}
+         */
+        cardsConfig: {}
     }
 
     /**
@@ -120,11 +130,12 @@ class FormWindow extends Dialog {
                 cls                : ['go-form-cards'],
                 flex               : 1,
                 removeInactiveCards: false,
+                ...me.cardsConfig,
                 items              : [{
                     module   : Container,
                     reference: 'generalTab',
                     cls      : ['go-form-card', 'go-form-general'],
-                    header   : {text: t('General')},
+                    header   : me.generalHeader || {text: t('General')},
                     layout   : {ntype: 'vbox', align: 'stretch'},
                     items    : me.createFormItems()
                 }]

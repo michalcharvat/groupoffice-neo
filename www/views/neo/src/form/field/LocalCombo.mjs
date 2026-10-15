@@ -6,7 +6,7 @@ import ComboBox from '../../../node_modules/neo.mjs/src/form/field/ComboBox.mjs'
  */
 class LocalCombo extends ComboBox {
     static config = {
-        className: 'GO.customfields.LocalCombo'
+        className: 'GO.form.field.LocalCombo'
     }
 
     beforeSetValue(value, oldValue) {
