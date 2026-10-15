@@ -5,9 +5,11 @@ import Splitter      from '../../../../../../../views/neo/src/component/Splitter
 import CheckBox      from '../../../../../../../views/neo/src/component/CheckBox.mjs';
 import client        from '../../../../../../../views/neo/src/jmap/Client.mjs';
 import MenuList      from '../../../../../../../views/neo/src/menu/List.mjs';
+import {escapeHtml} from '../../../../../../../views/neo/src/Format.mjs';
 import {notify, notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
 import {fmt, translator} from '../../../../../../../views/neo/src/Translate.mjs';
 import ConfirmDialog from '../../../../../../../views/neo/src/view/ConfirmDialog.mjs';
+import FilterPanel   from '../../../../../../../views/neo/src/view/FilterPanel.mjs';
 import MainThreeColumnPanel from '../../../../../../../views/neo/src/view/MainThreeColumnPanel.mjs';
 import CalendarAdapter from '../CalendarAdapter.mjs';
 import CalendarItem  from '../CalendarItem.mjs';
@@ -15,6 +17,7 @@ import calendarData  from '../data.mjs';
 import {addDays, addMonths, diffDays, format, parseDate, startOfDay, weekStart, ymd} from '../util/date.mjs';
 import CalendarView  from './CalendarView.mjs';
 import CheckRows     from './CheckRows.mjs';
+import MiniCalendar  from './MiniCalendar.mjs';
 import ChoiceDialog  from './ChoiceDialog.mjs';
 import ListView      from './ListView.mjs';
 import MonthView     from './MonthView.mjs';
@@ -118,6 +121,23 @@ class CalendarMain extends MainThreeColumnPanel {
             cls   : ['go-scroll', 'go-cal-west'],
             layout: {ntype: 'vbox', align: 'stretch'},
             items : [{
+                module   : MiniCalendar,
+                reference: 'picker',
+                flex     : 'none',
+                listeners: {
+                    select     : ({date}) => me.onPickerSelect(date),
+                    selectRange: ({start, end}) => me.onPickerRange(start, end)
+                }
+            }, {
+                module    : CheckRows,
+                reference : 'viewList',
+                flex      : 'none',
+                selectable: true,
+                listeners : {
+                    select : ({id}) => me.selectView(id),
+                    rowMenu: ({id, target}) => me.showViewMenu(id, target)
+                }
+            }, {
                 module: Toolbar,
                 flex  : 'none',
                 cls   : ['go-cal-dense'],
@@ -184,6 +204,17 @@ class CalendarMain extends MainThreeColumnPanel {
                     check  : ({id, checked}) => me.setCategoryFilter(id, checked),
                     rowMenu: ({id, target}) => me.showCategoryMenu(id, target)
                 }
+            }, {
+                module   : FilterPanel,
+                reference: 'filterPanel',
+                flex     : 'none',
+                entity   : 'CalendarEvent',
+                filters  : [
+                    {name: 'text', type: 'string', multiple: false, title: t('Query')},
+                    {name: 'title', type: 'string', multiple: true, title: t('Title')},
+                    {name: 'location', type: 'string', multiple: true, title: t('Location')}
+                ],
+                listeners: {filterChange: ({filter}) => me.onSavedFilterChange(filter)}
             }]
         }
     }
@@ -362,6 +393,7 @@ class CalendarMain extends MainThreeColumnPanel {
 
         me.renderProviders();
         me.renderCategories();
+        me.renderViews();
         me.onCalendarsLoaded();
 
         me.initialized = true;
@@ -383,6 +415,9 @@ class CalendarMain extends MainThreeColumnPanel {
         switch (type) {
             case 'calendars':
                 me.onCalendarsLoaded();
+                break;
+            case 'views':
+                me.renderViews();
                 break;
             case 'categories':
                 me.renderCategories();
@@ -482,6 +517,7 @@ class CalendarMain extends MainThreeColumnPanel {
         me.activeViewId       = null;
 
         me.renderCalendars();
+        me.renderViews();
         me.applyCalendarFilter(me.visibleIds());
         me.updateView();
         me.saveVisibleChanges()
@@ -501,6 +537,7 @@ class CalendarMain extends MainThreeColumnPanel {
 
         me.activeViewId = null;
         me.renderCalendars();
+        me.renderViews();
         me.applyCalendarFilter(me.visibleIds());
         me.updateView();
         me.saveVisibleChanges()
@@ -857,48 +894,49 @@ class CalendarMain extends MainThreeColumnPanel {
             b.pressed = i === button || (me.timeSpan === 'days' && me.spanAmount === 5 && i === 1)
         });
 
-        const monthTitle = d => ({html: `${format(d, 'F')} <em>${d.getFullYear()}</em>`});
+        const monthTitle = d => `${escapeHtml(format(d, 'F'))} <em>${d.getFullYear()}</em>`;
 
         switch (me.timeSpan) {
             case 'year':
                 me.spanAmount = undefined;
-                title.text = String(start.getFullYear());
+                title.html = escapeHtml(String(start.getFullYear()));
                 break;
             case 'month':
             case 'list':
                 me.spanAmount = undefined;
-                title.html = monthTitle(start).html;
+                title.html = monthTitle(start);
                 break;
             case 'week':
                 me.spanAmount = 7;
                 start = weekStart(start);
-                title.html = monthTitle(start).html;
+                title.html = monthTitle(start);
                 break;
             case 'split':
                 start = weekStart(start);
-                title.html = monthTitle(start).html;
+                title.html = monthTitle(start);
                 break;
             case 'weeks':
                 start = weekStart(start);
                 me.spanAmount = Math.ceil((me.spanAmount || 14) / 7) * 7;
                 end = addDays(start, me.spanAmount - 1);
-                title.text = 'W' + format(start, 'W') + ' - W' + format(end, 'W');
+                title.html = escapeHtml('W' + format(start, 'W') + ' - W' + format(end, 'W'));
                 break;
             case 'days':
                 me.spanAmount ||= 5;
                 // the work week starts on the first weekday
                 me.spanAmount === 5 && (start = weekStart(start));
                 end = addDays(start, me.spanAmount - 1);
-                title.text = format(start, 'j M') + ' - ' + format(end, 'j M');
+                title.html = escapeHtml(format(start, 'j M') + ' - ' + format(end, 'j M'));
                 break;
             case 'day':
                 me.spanAmount = 1;
-                title.text = format(start, 'j F');
+                title.html = escapeHtml(format(start, 'j F'));
                 break
         }
 
         me.viewStart = start;
         me.viewEnd   = end || null;
+        me.getReference('picker').setValue(start, end || null);
         me.fire('periodChange', {start, end: end || start});
 
         me.view.goto(start, me.spanAmount)
@@ -928,6 +966,90 @@ class CalendarMain extends MainThreeColumnPanel {
         } catch (e) {
             me.showError(e)
         }
+    }
+
+    /**
+     * Sidebar picker: a day in the current view type (GOUI datepicker 'select')
+     * @param {Date} date
+     */
+    onPickerSelect(date) {
+        this.routeTo(this.currentRouteSpan(), date)
+    }
+
+    /**
+     * Sidebar picker range: up to 7 days as days (or split), else weeks
+     */
+    onPickerRange(start, end) {
+        const days = diffDays(start, end) + 1;
+
+        if (days < 8) {
+            this.routeTo((this.timeSpan === 'split' ? 'split' : 'days') + '-' + days, start)
+        } else {
+            this.routeTo('weeks-' + days, start)
+        }
+    }
+
+    renderViews() {
+        let me = this;
+
+        me.getReference('viewList').rows = calendarData.views.map(v => ({
+            id      : v.id,
+            text    : v.name,
+            leadIcon: 'group',
+            selected: v.id === me.activeViewId,
+            menu    : true
+        }))
+    }
+
+    /**
+     * A saved view: shows its calendars (and makes them visible) in its view type (GOUI renderViews())
+     * @param {String} id
+     */
+    selectView(id) {
+        let me   = this,
+            view = calendarData.views.find(v => v.id === id);
+
+        if (!view) {
+            return
+        }
+
+        // a JSON array (GOUI ViewWindow), old views may have an id map
+        const ids = Array.isArray(view.calendarIds) ? view.calendarIds.map(String) : Object.keys(view.calendarIds || {});
+
+        me.activeViewId = id;
+        me.renderViews();
+
+        if (ids.length) {
+            const update = {};
+            ids.forEach(cid => {
+                const c = calendarData.getCalendar(cid);
+                c && !c.isVisible && (update[cid] = {isVisible: true})
+            });
+            Object.keys(update).length && client.set('Calendar', {update}).catch(e => me.showError(e));
+            me.applyCalendarFilter(ids.map(String))
+        }
+
+        if (view.defaultView) {
+            me.routeTo(view.defaultView, me.date)
+        } else {
+            me.updateView()
+        }
+    }
+
+    showViewMenu(id, target) {
+        let me   = this,
+            view = calendarData.views.find(v => v.id === id),
+            may  = !!view?.myRights?.mayAdmin || view?.permissionLevel >= 50;
+
+        me.showMenu([
+            {text: t('Edit'), icon: 'edit', disabled: !may, handler: () => me.openViewDialog(view)},
+            {text: t('Delete'), icon: 'delete', disabled: !may, handler: () => me.confirmDestroy('CalendarView', view.id, view.name)}
+        ], target)
+    }
+
+    onSavedFilterChange(filter) {
+        this.adapter.byType('event').filter.savedFilter = filter || undefined;
+        this.updateView()
     }
 
     onListSelect(item) {
