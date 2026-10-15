@@ -1,6 +1,9 @@
 // GO tokens (--fg-main, --bg-low, ...) exactly as classic GO / GOUI declares them,
 // on html (density, font) and body (colours; body.dark = GO dark mode)
 @use "../../../../goui/groupoffice-core/style/theme" as goTheme;
+// GO helper classes rendered by several GO.* classes
+@use "shared/common";
+@use "shared/links";
 
 @font-face {
     font-family: 'Lato';
@@ -42,4 +45,15 @@ html {
 
 .neo-theme-go {
     font: #{go.sp(16)}/#{go.dp(20)} var(--font-family); // GOUI $fontBase as configured by groupoffice-core/_base.scss
+}
+
+// every window: the main one, module and dialog popups
+html, body {
+    height: 100%;
+    margin: 0;
+}
+
+body.neo-theme-go {
+    background-color: var(--bg-mid);
+    color           : var(--fg-text);
 }

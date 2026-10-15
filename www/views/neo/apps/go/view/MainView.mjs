@@ -76,7 +76,7 @@ class MainView extends Container {
         const userName = client.user?.displayName || client.user?.username || '';
 
         me.getReference('topbar').add([{
-            // GO header logo (views/Extjs3/themes/Paper/img/logo-white.svg, see go.css)
+            // GO header logo (views/Extjs3/themes/Paper/img/logo-white.svg, see MainView.scss)
             ntype: 'component',
             cls  : ['go-brand'],
             role : 'img',

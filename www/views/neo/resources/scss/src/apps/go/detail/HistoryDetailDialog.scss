@@ -1,0 +1,30 @@
+// GO.detail.HistoryDetailDialog: GOUI table look for the changes table
+.neo-theme-go {
+    .go-table {
+        border-collapse: collapse;
+        width          : 100%;
+    }
+
+    .go-table th {
+        background-color: var(--bg-low);
+        border-bottom   : 1px solid var(--fg-line);
+        font-size       : .8em;
+        font-weight     : normal;
+        padding         : .8rem;
+        text-align      : left;
+    }
+
+    .go-table td {
+        border-bottom: 1px solid var(--fg-line);
+        padding      : .4rem .8rem;
+    }
+
+    .go-table .go-right {
+        text-align: right;
+    }
+
+    .go-history-detail-body {
+        overflow: auto;
+        padding : 1.6rem;
+    }
+}

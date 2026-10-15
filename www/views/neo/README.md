@@ -18,7 +18,7 @@ Alternative Group Office webclient built with [neo.mjs](https://github.com/neomj
 
 | Path | What |
 |---|---|
-| `apps/go/` | shell app: `app.mjs`, Viewport (loading / login / main), LoginView, MainView (module tabs with popout and close ×, right click: close / close others / close all; a closed tab returns when the module is opened again; hash routing) |
+| `apps/go/` | shell app: `app.mjs`, Viewport (loading / login / main), LoginView (GO login: "Login required" window, language menu, forgot credentials card), MainView (module tabs with popout and close ×, right click: close / close others / close all; a closed tab returns when the module is opened again; hash routing) |
 | `src/jmap/Client.mjs` | JMAP client in the App worker: cookie + `X-CSRF-Token`, batching, fetch-based SSE |
 | `src/data/JmapStore.mjs` | `Neo.data.Store` over `Entity/query`+`get`; reloads the page on push |
 | `src/ModuleRegistry.mjs` | modules register `{name, title, iconCls, capability, mainView}` |
@@ -28,7 +28,7 @@ Alternative Group Office webclient built with [neo.mjs](https://github.com/neomj
 | `src/list/CheckList.mjs`, `src/menu/List.mjs` | GOUI checkbox table with row menu (notebooks, filters); GO menu with Material `icon` per item, `List.showAt()` for row menus |
 | `src/view/FilterPanel.mjs`, `FilterDialog.mjs` | west "Filters": saved `EntityFilter`s (type fixed), checked ones ANDed into the grid filter |
 | `src/view/GlobalSearch.mjs` | header search over core `Search`; modules map entities to routes (`routes` in the registry) |
-| `src/detail/` | detail cards below an entity: `CommentsPanel`, `FilesPanel` (legacy files controllers), `HistoryPanel` (LogEntry grid like GOUI LogEntryGrid, loads on scroll, reloads on a push for the shown entity type; css `resources/css/history.css`) |
+| `src/detail/` | detail cards below an entity: `CommentsPanel`, `FilesPanel` (legacy files controllers), `HistoryPanel` (LogEntry grid like GOUI LogEntryGrid, loads on scroll, reloads on a push for the shown entity type) |
 | `src/grid/Grid.mjs`, `HeaderButton.mjs` | `GO.grid.Grid`: column chooser on ⋮ in the last column header, right click on a header: sort asc/desc + columns (GO 6.8) (`hidden`, `hideable: false`, `stateKey`), hidden columns and widths saved in `state-<stateId>` in the GOUI format; neo only gets the visible columns |
 | `src/State.mjs` | GOUI-compatible component state in localStorage (`state-<id>`) |
 | `src/Translate.mjs` | `t()`, `translator(pkg, module)`, `fmt()` over GO's language files (see [Translations](#translations)) |
@@ -36,14 +36,11 @@ Alternative Group Office webclient built with [neo.mjs](https://github.com/neomj
 | `src/form/field/HtmlField.mjs` + `src/main/addon/HtmlEditor.mjs` | rich text field; the editor and its commands live in the main-thread addon (`WS/HtmlEditor`, loaded with `Neo.Main.importAddon` on mount) |
 | `src/link/` | links: `LinkDetail` card, `LinkBrowser`, `AddLinkButton`, `LinkBrowseButton`, `SelectSearchDialog` (core `Search`), `linkTypes` (entity icons, `resolveRoute`) |
 | `src/permissions/SharePanel.mjs` | ACL editor as one form field (`name: 'acl'`, value `{groupId: level}`), GOUI layout: all groups/users with a level each, ACL members first |
-| `resources/css/fields.css` | GOUI look for neo fields: round Material triggers, picker like `menu.goui-dropdown`, centred light inline label on empty fields |
 | `src/form/DataSourceForm.mjs`, `src/view/FormWindow.mjs` | entity form (load/`set`, only modified properties on update, server validation errors on fields) and GOUI FormWindow (tabs via `addCard`, `addCustomFields`, `addSharePanel`, discard prompt). A class field must not share a name with a neo reactive config (`data`, `isLoading`) |
 | `src/customfields/` | custom fields: definitions (`customFields.mjs`), GO types → neo fields (`types.mjs`), `FormFieldset` + `addCustomFieldsTo()` (FormWindow), `DetailFieldsets` cards; fields are named `customFields.<databaseName>` |
 | `src/dev/` | prototype only: "Dev" module (`#dev/<id>`), menu like the GOUI docs (`goui-docs/script/MainMenu.ts`) in `menu.mjs` with a status per component (demo / available / to convert); converting a component = add `src/dev/demo/<Name>.mjs`, set `demo` and `status: 'done'` |
-| `resources/css/*.css` | per component plain CSS, all linked by `Neo.php` |
-| `resources/scss/go/` | GO values of the `theme-go` neo theme, per neo class |
-| `resources/scss/src/apps/go/` | styles of the `GO.*` components |
-| `resources/go.css` | shell: topbar, login, dialog chrome |
+| `resources/scss/go/` | GO values and GOUI look of neo classes in the `theme-go` neo theme, per neo class (e.g. `form/field/trigger/Base.scss`: round Material triggers, `Picker.scss`: picker like `menu.goui-dropdown`, `dialog/Base.scss`: GOUI window chrome); `shared/` partials (in `Global.scss`): classes several GO components render (`go-avatar`, `go-check`, `go-empty`, links) |
+| `resources/scss/src/apps/go/` | styles of the `GO.*` components and the shell (`Viewport`, `LoginView`, `MainView` topbar, `GlobalSearch`, …) |
 | `go/modules/<pkg>/<name>/views/neo/Index.mjs` | module entry, found by `Neo::moduleFiles()`; optional `style.css` |
 
 Module code imports neo and the shell with relative paths
@@ -70,6 +67,10 @@ The reference is GO 26's GOUI module UI (e.g. Notes), not the ExtJS Paper theme.
   `views/goui/goui/resources/iconfont`. Font Awesome stays for `iconCls`.
 - **Splitter state**: same keys as GOUI (`state-<module>-west-splitter`, width in dp), so
   on one origin GOUI and neo share the panel widths.
+- **Phone** (below 577px, GOUI `$breakpointSmall`, CSS only): `MainThreeColumnPanel` shows one
+  panel (`go-active`, set by `activatePanel('west'|'center'|'east')`; GOUI `mobile-cards`), the
+  sidebar buttons become "menu" / "close", `showCenterButton()` goes back from the east panel;
+  the topbar shows only the open module's tab (switch with the apps menu); dialogs fill the screen.
 - **Rebuild** after any SCSS change (`npm run build-themes`, ~4 s); the browser reads
   `dist/`, not the SCSS.
 
@@ -112,9 +113,11 @@ or context menu, no import/export menu, the grid selects one row (no multi-selec
 - **Two `text` filters**: GO joins search words as `w0` per `text` condition, two in one
   query fail (SQL 1066). `JmapStore.getJmapFilter()` merges ANDed `text` conditions; a `text` inside an OR/NOT group
   next to another one still fails (needs server-side alias handling).
-- **CSS order**: neo's theme CSS (`Base.css`, `Text.css`…) loads after `go.css` and
-  `resources/css/*.css`, so a plain CSS rule with the same specificity loses (e.g.
-  `.neo-container` background). Styles belong in the `theme-go` SCSS.
+- **No plain CSS files**: neo loads its CSS per class when the class is first used, after
+  any `<link>` in the page, so a plain stylesheet loses at equal specificity (e.g.
+  `.neo-container` background). All shell styles are `theme-go` SCSS; rules that override
+  neo components are nested in `.neo-theme-go` (body class) to outrank neo's own. Only
+  a module's optional `style.css` is still linked by `Neo.php`.
 - **Testing with Chrome MCP**: clicks sent right after a navigation, before a screenshot,
   never reach the page. Not an app bug.
 - **No `route` on buttons**: neo renders `route` as `<a href="#x">`, and `<base href>` turns

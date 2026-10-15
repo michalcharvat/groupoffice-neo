@@ -14,3 +14,60 @@
     background-color: var(--bg-low);
     border-radius   : #{go.dp(12)};
 }
+
+:root .neo-theme-go {
+    .neo-dialog {
+        border  : 1px solid var(--fg-line);
+        overflow: hidden;
+    }
+
+    // GOUI window: header on the window surface, no coloured bar
+    .neo-dialog .neo-header-toolbar {
+        background-color: transparent;
+        color           : var(--fg-text);
+        padding         : go.dp(12) go.dp(12) go.dp(12) go.dp(18);
+
+        .neo-panel-header-text {
+            color    : var(--fg-text);
+            font-size: go.sp(18);
+        }
+
+        .neo-button-glyph {
+            color: var(--fg-text);
+        }
+
+        // GOUI window tools (open in new window, maximize, close): small round flat buttons
+        .neo-button.neo-toolbar-action {
+            border-radius: 50%;
+            height       : go.dp(32);
+            margin-left  : go.dp(4);
+            min-width    : 0;
+            padding      : 0;
+            width        : go.dp(32);
+
+            .neo-button-glyph.go-icon {
+                color    : var(--fg-secondary-text, var(--fg-text));
+                font-size: go.dp(20);
+                margin   : 0;
+            }
+
+            &:hover {
+                background-color: var(--bg-hover, rgba(0, 0, 0, .06));
+            }
+        }
+    }
+
+    // GOUI Window on a phone: maximized (browser.isMobile()), neo's drag position is inline
+    @media (max-width: 576px) {
+        .neo-dialog:not(.go-dialog-popup) {
+            border-radius: 0;
+            height       : 100% !important;
+            left         : 0 !important;
+            max-height   : none !important;
+            max-width    : none !important;
+            top          : 0 !important;
+            transform    : none !important;
+            width        : 100% !important;
+        }
+    }
+}

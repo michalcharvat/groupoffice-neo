@@ -1,0 +1,10 @@
+// GO.view.FilterPanel: ExtJS menu button, an arrow after the icon (e.g. "Filters" +▾)
+.neo-theme-go {
+    .neo-button.go-menu-button::after {
+        content                : 'arrow_drop_down';
+        font-family            : 'Material Symbols Rounded';
+        font-feature-settings  : 'liga';
+        font-size              : 2rem;
+        -webkit-font-smoothing : antialiased;
+    }
+}

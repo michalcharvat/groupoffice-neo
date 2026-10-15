@@ -84,3 +84,49 @@
 .go-main-3-col .go-hidden {
     display: none !important;
 }
+
+// showWestButton(): only while the sidebar is closed (phone: always, see below)
+.go-main-3-col:not(.go-west-hidden) .neo-button.go-show-west {
+    display: none;
+}
+
+@media (min-width: 577px) {
+    .go-main-3-col .go-for-small-device {
+        display: none !important;
+    }
+}
+
+// Phone (GOUI .goui.hbox.mobile-cards below $breakpointSmall): only the active panel, full
+// size (the splitter widths are inline styles), "menu" and "close" instead of the panel icons
+@media (max-width: 576px) {
+    .go-main-3-col.go-mobile-cards {
+        > :not(.go-active) {
+            display: none !important;
+        }
+
+        > .go-active {
+            flex     : 1 1 auto !important;
+            height   : 100% !important;
+            min-width: 0 !important;
+            width    : 100% !important;
+        }
+
+        .neo-button.go-show-west {
+            display: inline-flex;
+        }
+
+        .go-show-west .neo-button-glyph.go-icon,
+        .go-hide-west .neo-button-glyph.go-icon {
+            font-size: 0;
+
+            &::before {
+                content  : 'menu';
+                font-size: go.dp(18);
+            }
+        }
+
+        .go-hide-west .neo-button-glyph.go-icon::before {
+            content: 'close';
+        }
+    }
+}

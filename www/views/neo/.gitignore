@@ -3,6 +3,3 @@ dist/
 resources/theme-map.json
 test/credentials.local
 resources/scss/theme-go/
-# GO ignores **/*.css (built files); these are sources
-!/resources/*.css
-!/resources/css/*.css

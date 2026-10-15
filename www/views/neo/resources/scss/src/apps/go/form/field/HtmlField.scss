@@ -1,0 +1,160 @@
+// GO.form.field.HtmlField: GOUI .goui-form-field.html-field look
+.neo-theme-go {
+    .go-htmlfield {
+        display       : flex;
+        flex-direction: column;
+        min-height    : 16rem;
+        border        : 1px solid var(--fg-line);
+        border-radius : .8rem;
+        background    : var(--bg-lowest);
+        overflow      : hidden;
+    }
+
+    .go-htmlfield:focus-within {
+        border-color: var(--fg-main);
+    }
+
+    .go-htmlfield.go-invalid {
+        border-color: var(--fg-error);
+    }
+
+    .go-htmlfield-label {
+        padding  : .6rem 1.2rem 0;
+        color    : var(--fg-secondary-text);
+        font-size: 1.2rem;
+    }
+
+    .go-htmlfield-toolbar {
+        display      : flex;
+        flex-wrap    : wrap;
+        align-items  : center;
+        gap          : .2rem;
+        padding      : .4rem .8rem;
+        border-bottom: 1px solid var(--fg-line);
+    }
+
+    .go-htmlfield-btn {
+        position       : relative;
+        display        : inline-flex;
+        align-items    : center;
+        justify-content: center;
+        width          : 3.2rem;
+        height         : 3.2rem;
+        padding        : 0;
+        border         : 0;
+        border-radius  : .4rem;
+        background     : none;
+        color          : var(--fg-text);
+        cursor         : pointer;
+    }
+
+    .go-htmlfield-btn .go-icon {
+        font-size: 2rem;
+    }
+
+    .go-htmlfield-btn:hover {
+        background: var(--bg-hover);
+    }
+
+    .go-htmlfield-btn[aria-pressed="true"] {
+        background: var(--bg-mid);
+        color     : var(--fg-main);
+    }
+
+    .go-htmlfield-color input[type="color"] {
+        position: absolute;
+        left    : .4rem;
+        right   : .4rem;
+        bottom  : .2rem;
+        width   : auto;
+        height  : .4rem;
+        padding : 0;
+        border  : 0;
+        cursor  : pointer;
+        /* swatch shows the colour; clicking the label opens the picker */
+        appearance: none;
+    }
+
+    .go-htmlfield-color input[type="color"]::-webkit-color-swatch-wrapper {
+        padding: 0;
+    }
+
+    .go-htmlfield-color input[type="color"]::-webkit-color-swatch {
+        border: 0;
+    }
+
+    .go-htmlfield-separator {
+        width     : 1px;
+        height    : 2rem;
+        margin    : 0 .4rem;
+        background: var(--fg-line);
+    }
+
+    .go-htmlfield-linkbar {
+        display      : flex;
+        gap          : .8rem;
+        align-items  : center;
+        padding      : .4rem .8rem;
+        border-bottom: 1px solid var(--fg-line);
+    }
+
+    .go-htmlfield-linkbar[hidden] {
+        display: none;
+    }
+
+    .go-htmlfield-linkinput {
+        flex         : 1;
+        min-width    : 0;
+        height       : 3.2rem;
+        padding      : 0 .8rem;
+        border       : 1px solid var(--fg-line);
+        border-radius: .4rem;
+        background   : var(--bg-lowest);
+        color        : var(--fg-text);
+        font         : inherit;
+    }
+
+    .go-htmlfield-linkbutton {
+        height       : 3.2rem;
+        padding      : 0 1.2rem;
+        border       : 0;
+        border-radius: .4rem;
+        background   : none;
+        color        : var(--fg-main);
+        font         : inherit;
+        cursor       : pointer;
+    }
+
+    .go-htmlfield-linkbutton:hover {
+        background: var(--bg-hover);
+    }
+
+    .go-htmlfield-editor {
+        flex      : 1;
+        min-height: 8rem;
+        padding   : .8rem 1.2rem;
+        overflow  : auto;
+        outline   : none;
+        color     : var(--fg-text);
+        line-height: 1.5;
+        cursor    : text;
+    }
+
+    .go-htmlfield-editor > :first-child {
+        margin-top: 0;
+    }
+
+    .go-htmlfield-editor:empty::before {
+        content: attr(data-placeholder);
+        color  : var(--fg-secondary-text);
+    }
+
+    .go-htmlfield.go-readonly {
+        border-color: transparent;
+    }
+
+    .go-htmlfield.go-readonly .go-htmlfield-toolbar,
+    .go-htmlfield.go-readonly .go-htmlfield-linkbar {
+        display: none;
+    }
+}

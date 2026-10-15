@@ -261,6 +261,19 @@ class NotesMain extends MainThreeColumnPanel {
         bookList.store.on('load', me.onNoteBooksLoad, me);
 
         grid.view.selectionModel.on('selectionChange', me.onNoteSelectionChange, me);
+        // neo toggles a clicked row, GOUI keeps it selected: tapping the open note again (a phone
+        // after "close") must show it, not deselect it
+        grid.on('rowClick', event => {
+            const sm     = grid.view.selectionModel,
+                  record = event.record || sm.getRecord(event.data?.path),
+                  id     = record && grid.view.getRecordId(record);
+
+            if (record && !sm.isSelectedRow(id)) {
+                selectRow(grid, id);
+                me.showInDetail(record);
+                me.activatePanel('east')
+            }
+        });
         // GO: double click edits (same rules as the detail's Edit button)
         grid.on('rowDoubleClick', ({record}) => {
             if (record && !record.password && record.permissionLevel >= LEVEL_WRITE) {
@@ -272,6 +285,9 @@ class NotesMain extends MainThreeColumnPanel {
         noteStore.on('load',     me.loadPrincipalNames, me);
         noteStore.on('loadMore', me.loadPrincipalNames, me);
         grid.body.on('scrollEdge', () => noteStore.loadMore().catch(() => {})); // loadError shows it
+
+        // GOUI createEast(): back to the grid on a phone
+        detail.getReference('toolbar').insert(0, me.showCenterButton());
 
         detail.on({
             edit  : ({note}) => me.openDialog(note),
@@ -340,6 +356,8 @@ class NotesMain extends MainThreeColumnPanel {
     async showNote(id) {
         let me     = this,
             record = me.getReference('grid').store.get(id);
+
+        me.activatePanel('east');
 
         if (record) {
             me.pendingNoteId = null;
@@ -515,6 +533,8 @@ class NotesMain extends MainThreeColumnPanel {
 
         // the user picked another note: forget an older deep link waiting for its page
         note && (me.pendingNoteId = null);
+        // GOUI showNote(): a phone shows the detail
+        note && me.activatePanel('east');
         me.showInDetail(note);
 
         // deep link; route() → showNote() selects without firing selectionChange again

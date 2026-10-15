@@ -1,0 +1,106 @@
+// GO.view.GlobalSearch: GO .search-field-wrap, the search field covers the header
+.neo-theme-go {
+    .go-global-search {
+        left    : 0;
+        position: absolute;
+        right   : 0;
+        top     : 0;
+        z-index : 20;
+    }
+
+    .go-global-search .go-global-search-bar {
+        background-color: var(--c-header-bg);
+        box-sizing      : border-box;
+        height          : 6.4rem;
+        padding         : .8rem 1.6rem;
+    }
+
+    /* GO .search-field-wrap: translucent box in the middle, white text, × inside */
+    .go-global-search .go-global-search-box {
+        background-color: rgba(255, 255, 255, .15);
+        border-radius   : .8rem;
+        max-width       : 100%;
+        padding-right   : .4rem;
+        width           : 49rem;
+    }
+
+    .go-global-search .go-global-search-box .neo-textfield,
+    .go-global-search .go-global-search-box .neo-input-wrapper {
+        background-color: transparent;
+        border          : 0;
+        box-shadow      : none;
+    }
+
+    .go-global-search .go-global-search-box .neo-textfield-input {
+        background-color: transparent;
+        color           : #fff;
+    }
+
+    .go-global-search .go-global-search-box .neo-textfield-input::placeholder {
+        color: rgba(255, 255, 255, .7);
+    }
+
+    .go-global-search .go-global-search-box .neo-button {
+        background-color: transparent;
+    }
+
+    .go-global-search .go-global-search-box .neo-button .go-icon {
+        color: #fff;
+    }
+
+    .go-global-search .go-global-search-results {
+        align-self      : center;
+        background-color: var(--bg-low);
+        border          : 1px solid var(--fg-line);
+        border-radius   : 0 0 .8rem .8rem;
+        box-shadow      : 0 4px 12px rgba(0, 0, 0, .16);
+        max-height      : 60vh;
+        max-width       : calc(100% - 3.2rem);
+        overflow-y      : auto;
+        width           : 49rem;
+    }
+
+    .go-search-result {
+        align-items: center;
+        cursor     : pointer;
+        display    : flex;
+        gap        : 1.6rem;
+        padding    : .8rem 1.6rem;
+    }
+
+    .go-search-result:hover {
+        background-color: var(--bg-hover);
+    }
+
+    .go-search-result.go-disabled {
+        cursor : default;
+        opacity: .6;
+    }
+
+    .go-search-entity {
+        color    : var(--fg-secondary-text);
+        flex     : none;
+        font-size: .85em;
+        width    : 10rem;
+    }
+
+    .go-search-text {
+        display  : flex;
+        flex     : 1;
+        flex-direction: column;
+        min-width: 0;
+    }
+
+    .go-search-text b {
+        font-weight  : normal;
+        overflow     : hidden;
+        text-overflow: ellipsis;
+        white-space  : nowrap;
+    }
+
+    .go-search-text small,
+    .go-search-date {
+        color    : var(--fg-secondary-text);
+        font-size: .85em;
+    }
+}

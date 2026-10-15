@@ -1,0 +1,42 @@
+// GO.customfields.FormFieldset: GOUI FormFieldset, its fields from src/customfields/types.mjs
+.neo-theme-go {
+    .go-cf-fieldset {
+        gap       : 1.6rem;
+        margin-top: .8rem;
+    }
+
+    .go-cf-legend {
+        color      : var(--fg-text);
+        font-size  : calc(1.4rem * var(--font-scale, 1));
+        font-weight: 600;
+        margin     : 0;
+    }
+
+    .go-cf-description {
+        color: var(--fg-secondary-text);
+    }
+
+    .go-cf-fields,
+    .go-cf-column {
+        gap: 1.6rem;
+    }
+
+    .go-cf-columns {
+        gap: 1.6rem;
+    }
+
+    .go-cf-column {
+        min-width: 0;
+    }
+
+    .go-cf-notes,
+    .go-cf-readonly {
+        color: var(--fg-text);
+    }
+
+    .go-cf-readonly label {
+        color    : var(--fg-secondary-text);
+        display  : block;
+        font-size: 1.2rem;
+    }
+}

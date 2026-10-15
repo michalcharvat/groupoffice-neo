@@ -1,0 +1,8 @@
+// GO.view.Dialog moved into its own window (popout)
+.neo-theme-go {
+    .go-dialog-popup.neo-dialog {
+        border       : none;
+        border-radius: 0;
+        box-shadow   : none;
+    }
+}
