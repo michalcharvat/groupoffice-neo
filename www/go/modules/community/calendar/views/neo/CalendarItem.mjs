@@ -55,6 +55,11 @@ export function applyPatch(target, patch) {
               last = keys.pop();
         let obj = target;
 
+        // a patch from the server must not reach Object.prototype
+        if ([...keys, last].some(key => key === '__proto__' || key === 'prototype' || key === 'constructor')) {
+            return
+        }
+
         for (const key of keys) {
             if (obj[key] === null || typeof obj[key] !== 'object') {
                 obj[key] = {}

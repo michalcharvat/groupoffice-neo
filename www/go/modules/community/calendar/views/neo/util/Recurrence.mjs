@@ -48,7 +48,7 @@ export default class Recurrence {
     *loop(from, to, iter) {
         let index = 0;
 
-        for (const date of this.all()) {
+        for (const date of this.all(to)) {
             if (date >= to) {
                 return
             }
@@ -68,9 +68,10 @@ export default class Recurrence {
 
     /**
      * All occurrences from dtstart on, in order
+     * @param {Date} [before] stop at periods starting after this date (default: 200 years on)
      * @returns {Generator<Date>}
      */
-    *all() {
+    *all(before) {
         let me     = this,
             rule   = me.rule,
             count  = 0,
@@ -84,7 +85,14 @@ export default class Recurrence {
             return
         }
 
+        const limit = before || new Date(start.getFullYear() + 200, 0, 1);
+
         for (let period = 0; period < MAX_PERIODS; period++) {
+            // a rule that never matches must not run through all periods
+            if (me.periodStart(freq, period * step) > limit) {
+                return
+            }
+
             const candidates = me.period(freq, period * step);
 
             if (candidates === null) {
@@ -107,6 +115,21 @@ export default class Recurrence {
                 count++;
                 yield date
             }
+        }
+    }
+
+    /**
+     * First day of the period `offset` periods after dtstart's
+     * @protected
+     */
+    periodStart(freq, offset) {
+        const s = this.dtstart;
+
+        switch (freq) {
+            case 'daily'  : return new Date(s.getFullYear(), s.getMonth(), s.getDate() + offset);
+            case 'weekly' : return new Date(s.getFullYear(), s.getMonth(), s.getDate() + offset * 7 - 6);
+            case 'monthly': return new Date(s.getFullYear(), s.getMonth() + offset, 1);
+            default       : return new Date(s.getFullYear() + offset - 1, 11, 25)
         }
     }
 
