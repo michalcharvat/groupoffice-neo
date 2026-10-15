@@ -43,6 +43,16 @@ class ModuleRegistry {
     }
 
     /**
+     * Configs that modules the user has access to register under `key`,
+     * e.g. 'onlineMeeting' (jitsimeet: online meeting services of the calendar's event dialog)
+     * @param {String} key
+     * @returns {Object[]}
+     */
+    getConfigs(key) {
+        return this.#accessible().filter(m => m[key]).map(m => m[key])
+    }
+
+    /**
      * Calls a function config (e.g. onMainView) of every module the user has access to
      * @param {String} name
      * @param {...*} args
