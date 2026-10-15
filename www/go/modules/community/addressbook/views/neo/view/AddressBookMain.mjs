@@ -854,7 +854,7 @@ class AddressBookMain extends MainThreeColumnPanel {
         };
 
         await Promise.all([
-            fetch('Contact', orgs, organizationNames, ['id', 'name']),
+            fetch('Contact', orgs, organizationNames, ['id', 'name', 'addressBookId']),
             fetch('Principal', people, principalNames, ['id', 'name']),
             fetch('AddressBook', books, addressBookNames, ['id', 'name'])
         ]);
