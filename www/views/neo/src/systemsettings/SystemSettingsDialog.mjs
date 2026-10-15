@@ -14,7 +14,9 @@ import {t}            from '../Translate.mjs';
  * @returns {Array[]}
  */
 const CORE_CARDS = () => [
-    ['general', t('General'), 'fa fa-file-lines', () => import('./GeneralPanel.mjs'), () => client.isAdmin]
+    ['general',       t('General'),       'fa fa-file-lines', () => import('./GeneralPanel.mjs'),       () => client.isAdmin],
+    ['appearance',    t('Appearance'),    'fa fa-palette',    () => import('./AppearancePanel.mjs'),    () => client.isAdmin],
+    ['notifications', t('Notifications'), 'fa fa-bell',       () => import('./NotificationsPanel.mjs'), () => client.isAdmin]
 ];
 
 /**

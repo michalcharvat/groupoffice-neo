@@ -42,3 +42,20 @@ export async function applyTheme({theme, colorScheme}, windowIds = Object.keys(N
 export async function clearState(windowId) {
     return (await load(windowId)).clearState({windowId})
 }
+
+/**
+ * Sets CSS variables on <body> (null removes one), e.g. a colour preview
+ * @param {Object} props CSS property → value
+ * @param {String|null} [scheme] 'light' or 'dark': only windows showing that colour scheme
+ * @param {String[]} [windowIds] default: every window
+ * @returns {Promise<void>}
+ */
+export async function setBodyStyle(props, scheme = null, windowIds = Object.keys(Neo.apps || {})) {
+    await Promise.all(windowIds.map(async windowId => {
+        try {
+            await (await load(windowId)).setBodyStyle({props, scheme, windowId})
+        } catch (e) {
+            console.warn('setBodyStyle', windowId, e)
+        }
+    }))
+}
