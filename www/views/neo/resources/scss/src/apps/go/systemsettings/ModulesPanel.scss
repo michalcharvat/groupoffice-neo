@@ -1,0 +1,29 @@
+// GO.systemsettings.ModulesPanel: toolbar with filter segments (ExtJS buttongroup) and search
+.neo-theme-go .go-systemsettings-modules {
+    min-height: 0;
+
+    .go-systemsettings-modules-tbar {
+        border-bottom: 1px solid var(--fg-outline);
+        flex-wrap    : wrap;
+        gap          : .8rem;
+        padding      : .8rem 1.6rem;
+    }
+
+    .go-segments {
+        border       : 1px solid var(--fg-outline);
+        border-radius: 1.8rem;
+        overflow     : hidden;
+
+        .go-segment {
+            border-radius: 0;
+
+            &.pressed {
+                background-color: var(--bg-selected);
+            }
+        }
+    }
+
+    .go-systemsettings-modules-search {
+        max-width: 100%;
+    }
+}

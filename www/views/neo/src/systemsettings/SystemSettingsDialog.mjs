@@ -14,10 +14,11 @@ import {t}            from '../Translate.mjs';
  * @returns {Array[]}
  */
 const CORE_CARDS = () => [
-    ['general',       t('General'),       'fa fa-file-lines', () => import('./GeneralPanel.mjs'),       () => client.isAdmin],
-    ['appearance',    t('Appearance'),    'fa fa-palette',    () => import('./AppearancePanel.mjs'),    () => client.isAdmin],
-    ['notifications', t('Notifications'), 'fa fa-bell',       () => import('./NotificationsPanel.mjs'), () => client.isAdmin],
-    ['authentication', t('Authentication'), 'fa fa-lock',     () => import('./AuthenticationPanel.mjs'), () => client.isAdmin]
+    ['general',        t('General'),         'fa fa-file-lines',   () => import('./GeneralPanel.mjs'),        () => client.isAdmin],
+    ['appearance',     t('Appearance'),      'fa fa-palette',      () => import('./AppearancePanel.mjs'),     () => client.isAdmin],
+    ['notifications',  t('Notifications'),   'fa fa-bell',         () => import('./NotificationsPanel.mjs'),  () => client.isAdmin],
+    ['authentication', t('Authentication'),  'fa fa-lock',         () => import('./AuthenticationPanel.mjs'), () => client.isAdmin],
+    ['modules',        t('Modules'),         'fa fa-puzzle-piece', () => import('./ModulesPanel.mjs'),        () => client.isAdmin]
 ];
 
 /**
@@ -158,12 +159,13 @@ class SystemSettingsDialog extends Dialog {
         [...core, ...modules].forEach(({itemId, title, iconCls, panel}) => {
             me.itemIds.push(itemId);
             const card = me.cards.add({
-                module: Container,
-                cls   : ['go-settings-card'],
-                header: {text: title, iconCls},
-                layout: {ntype: 'vbox', align: 'stretch'},
-                items : [{module: panel, flex: 1}]
-            }), cardPanel = card.items[0];
+                      module: Container,
+                      cls   : ['go-settings-card'],
+                      header: {text: title, iconCls},
+                      layout: {ntype: 'vbox', align: 'stretch'},
+                      items : [{module: panel, flex: 1}]
+                  }),
+                  cardPanel = card.items[0];
 
             cardPanel.on({
                 loaderror: ({error}) => me.showError(error.message || String(error)),
