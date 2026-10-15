@@ -11,12 +11,16 @@
 import {userFormat} from '../Format.mjs';
 import {t}          from '../Translate.mjs';
 
+/** User properties the shell keeps in client.user */
+export const USER_PROPERTIES = ['id', 'username', 'displayName', 'avatarId', 'dateFormat', 'timeFormat', 'language',
+    'start_module', 'theme', 'themeColorScheme'];
+
 class Client {
     /** Web root of Group Office, e.g. "/" */
     baseUrl = '/'
     /** JMAP session (api/jmap.php GET or api/auth.php login response) */
     session = null
-    /** Logged-in core User (id, username, displayName) */
+    /** Logged-in core User (USER_PROPERTIES) */
     user = null
 
     #csrfToken = null
@@ -112,6 +116,24 @@ class Client {
         this.user       = null;
         this.#csrfToken = null;
         this.fire('logout')
+    }
+
+    /**
+     * Takes the logged-in user's (changed) properties: date and time formats follow
+     * @param {Object|null} user User with USER_PROPERTIES
+     */
+    setUser(user) {
+        this.user = user && this.user?.id === user.id ? {...this.user, ...user} : user || null;
+
+        user?.dateFormat && (userFormat.dateFormat = user.dateFormat);
+        user?.timeFormat && (userFormat.timeFormat = user.timeFormat)
+    }
+
+    /**
+     * @returns {Boolean} the user may manage users (core capability, like go.User.capabilities)
+     */
+    get mayChangeUsers() {
+        return !!this.session?.capabilities?.['go:core:core']?.mayChangeUsers
     }
 
     hasCapability(name) {
@@ -463,11 +485,8 @@ class Client {
         this.session = session;
         this.#states = {};
 
-        const [user] = await this.get('User', [session.userId], ['id', 'username', 'displayName', 'avatarId', 'dateFormat', 'timeFormat', 'language']);
-        this.user = user;
-
-        user?.dateFormat && (userFormat.dateFormat = user.dateFormat);
-        user?.timeFormat && (userFormat.timeFormat = user.timeFormat);
+        const [user] = await this.get('User', [session.userId], USER_PROPERTIES);
+        this.setUser(user);
 
         // another tab of this browser logged in as someone else (shared worker)
         if (previousUserId && previousUserId !== session.userId) {

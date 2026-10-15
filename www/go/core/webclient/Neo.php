@@ -126,6 +126,26 @@ class Neo {
 		return array_map(fn($code, $name) => [$code, $name], array_keys($languages), $languages);
 	}
 
+	/**
+	 * The logged-in user's theme as page classes, like MainLayout.js / User.js do in Extjs3:
+	 * html.compact for "Compact", body light / dark / system (+ dark by the script for "system")
+	 *
+	 * @return array{compact: bool, scheme: string}
+	 */
+	private function theme(): array
+	{
+		$user = go()->getAuthState() && go()->getAuthState()->isAuthenticated()
+			? go()->getAuthState()->getUser(['theme', 'themeColorScheme'])
+			: null;
+
+		$scheme = $user && in_array($user->themeColorScheme, ['light', 'dark', 'system'], true) ? $user->themeColorScheme : 'light';
+
+		return [
+			'compact' => $user && $user->theme === 'Compact',
+			'scheme' => $scheme
+		];
+	}
+
 	public function render(): void
 	{
 		$iso = go()->getLanguage()->getIsoCode();
@@ -157,6 +177,8 @@ class Neo {
 			'goSecurityToken' => GO::session()->values['security_token'] ?? null,
 			// login screen (go.login.LoginPanel / UsernamePanel): language menu, forgot link, remember box
 			'goLanguages' => $this->languages(),
+			// My account, Look & feel (GO.lang.holidaySets in Extjs3::getLanguageScript())
+			'goHolidaySets' => \go\core\model\Holiday::getHolidaySets(),
 			'goLostPasswordUrl' => go()->getSettings()->lostPasswordURL ?: null,
 			'goLogoutWhenInactive' => intval(go()->getSettings()->logoutWhenInactive),
 			// set in a popup window opened by GO.view.Dialog: id of the dialog to adopt
@@ -166,8 +188,9 @@ class Neo {
 		];
 
 		$neo = $root . 'views/neo/';
+		$theme = $this->theme();
 		?><!DOCTYPE html>
-<html lang="<?= htmlspecialchars($iso) ?>">
+<html lang="<?= htmlspecialchars($iso) ?>"<?= $theme['compact'] ? ' class="compact"' : '' ?>>
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
@@ -179,7 +202,16 @@ class Neo {
 	<link rel="stylesheet" href="<?= $root . $css ?>">
 <?php endforeach; ?>
 </head>
-<body>
+<body class="<?= $theme['scheme'] ?>">
+<script>
+	// GO colour scheme "system" follows the OS (go/core/views/extjs3/User.js), src/main/addon/Preferences.mjs
+	(() => {
+		const query = matchMedia('(prefers-color-scheme: dark)'),
+			sync = () => document.body.classList.contains('system') && document.body.classList.toggle('dark', query.matches);
+		sync();
+		query.addEventListener('change', sync);
+	})();
+</script>
 <script type="module">
 	globalThis.Neo = {config: <?= json_encode($config, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>};
 	// see buildId(): neo names its shared workers "neomjs-<type>-worker"

@@ -15,5 +15,11 @@ ModuleRegistry.register({
     quickAdd  : {text: t('Note'), icon: 'sticky_note_2'},
     // header search results: entity → route below "#notes/"
     routes    : {Note: id => 'note/' + id},
-    mainView  : () => import('./view/NotesMain.mjs')
+    mainView  : () => import('./view/NotesMain.mjs'),
+    // card in My account
+    userSettings: {
+        title  : t('Notes'),
+        iconCls: 'fa fa-sticky-note',
+        panel  : () => import('./view/SettingsPanel.mjs')
+    }
 });

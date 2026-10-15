@@ -177,7 +177,10 @@ class DataSourceForm extends FormContainer {
                   ? Object.fromEntries(Object.entries(v).filter(([, x]) => x !== null && x !== undefined))
                   : v;
 
-        return (empty(a) && empty(b)) || Neo.isEqual(clean(a), clean(b))
+        // JMAP ids come as numbers or strings: a combo that resolved its record returns "65" for 65
+        const scalar = v => typeof v === 'number' || typeof v === 'string';
+
+        return (empty(a) && empty(b)) || (scalar(a) && scalar(b) && String(a) === String(b)) || Neo.isEqual(clean(a), clean(b))
     }
 
     /**

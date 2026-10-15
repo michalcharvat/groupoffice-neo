@@ -7,7 +7,7 @@ import CheckBox from '../../../node_modules/neo.mjs/src/form/field/CheckBox.mjs'
  */
 class BoolCheckBox extends CheckBox {
     static config = {
-        className     : 'GO.customfields.BoolCheckBox',
+        className     : 'GO.form.field.BoolCheckBox',
         hideLabel     : true,
         uncheckedValue: false,
         value         : true
