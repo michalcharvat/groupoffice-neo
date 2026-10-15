@@ -1,0 +1,50 @@
+// GO.form.field.ChipsField: GOUI .chips (goui/style/_form.scss .chip)
+.neo-theme-go .go-chipsfield {
+    .go-field-box {
+        flex-wrap: wrap;
+        gap      : .4rem;
+        padding  : .5rem .6rem .5rem 1rem;
+    }
+
+    .go-chip {
+        align-items     : center;
+        background-color: var(--bg-mid);
+        border-radius   : 1.6rem;
+        display         : inline-flex;
+        gap             : .2rem;
+        line-height     : 2.4rem;
+        max-width       : 100%;
+        padding         : .2rem .2rem .2rem 1.2rem;
+    }
+
+    .go-chip-text {
+        overflow     : hidden;
+        text-overflow: ellipsis;
+        white-space  : nowrap;
+    }
+
+    .go-chip-remove {
+        background   : transparent;
+        border       : 0;
+        border-radius: 50%;
+        color        : var(--fg-secondary-text);
+        cursor       : pointer;
+        display      : inline-flex;
+        padding      : .2rem;
+
+        .go-icon {
+            font-size: 1.8rem;
+            height   : 1.8rem;
+            width    : 1.8rem;
+        }
+
+        &:hover {
+            color: var(--fg-text);
+        }
+    }
+
+    .go-chips-input {
+        flex     : 1 1 8rem;
+        padding  : .6rem .4rem;
+    }
+}
