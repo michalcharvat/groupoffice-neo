@@ -11,7 +11,8 @@ import JmapStore     from '../../../../../../../views/neo/src/data/JmapStore.mjs
 import MenuList      from '../../../../../../../views/neo/src/menu/List.mjs';
 import {parseYmd}    from '../../../../../../../views/neo/src/DateUtil.mjs';
 import {escapeHtml, formatDate, formatUserDateTime, smartDateTime, userFormat} from '../../../../../../../views/neo/src/Format.mjs';
-import {notifyError}    from '../../../../../../../views/neo/src/Notify.mjs';
+import {alertLink, dismissAlert, lastAlertId, waitForFinishedAlert} from '../../../../../../../views/neo/src/data/backgroundJob.mjs';
+import {notify, notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
 import ConfirmDialog    from '../../../../../../../views/neo/src/view/ConfirmDialog.mjs';
 import FilterPanel      from '../../../../../../../views/neo/src/view/FilterPanel.mjs';
 import MainThreeColumnPanel from '../../../../../../../views/neo/src/view/MainThreeColumnPanel.mjs';
@@ -1113,10 +1114,110 @@ class AddressBookMain extends MainThreeColumnPanel {
     }
 
     /**
+     * Import, export, labels and duplicates (ExtJS MainPanel "more" menu). Import and
+     * export need create permission on the address book new contacts go to; export
+     * also the module right mayExportContacts.
      * @returns {Object[]}
      */
     getMoreMenuItems() {
-        return []
+        let me     = this,
+            node   = me.getReference('tree').getAddressBookNodes().find(n => String(n.data.id) === String(me.addAddressBookId)),
+            locked = node ? node.data.permissionLevel < LEVEL_CREATE : false,
+            mayExport = !!userRights().mayExportContacts && !locked,
+            exportItem = (text, extension) => ({text, icon: 'description', handler: () => me.exportContacts(extension)});
+
+        return [{
+            text    : t('Import'),
+            icon    : 'cloud_upload',
+            disabled: locked,
+            handler : () => me.openImportDialog()
+        }, {
+            text    : t('Export'),
+            icon    : 'cloud_download',
+            disabled: !mayExport,
+            items   : [
+                exportItem('vCard (Virtual Contact File)', 'vcf'),
+                exportItem('Microsoft Excel', 'xlsx'),
+                exportItem('Comma Separated Values', 'csv'),
+                exportItem(t('Web page') + ' (HTML)', 'html'),
+                exportItem('JSON', 'json'),
+                {separator: true},
+                {text: t('Labels'), icon: 'print', handler: () => me.openLabelsDialog()}
+            ]
+        }, {
+            text   : t('Look for duplicates'),
+            icon   : 'merge_type',
+            handler: () => me.openDuplicateDialog()
+        }]
+    }
+
+    /**
+     * Contact/query filter and sort of the grid (ExtJS store baseParams + lastOptions)
+     * @returns {Object} {filter, sort}
+     */
+    getGridQuery() {
+        const store = this.getReference('grid').store;
+        return {filter: store.getJmapFilter(), sort: store.getJmapSort()}
+    }
+
+    /**
+     * go.util.exportToFile(): exports run in the background; their alert links the file
+     * @param {String} extension
+     * @param {String[]|null} [ids] the contacts, null for the grid's query
+     */
+    async exportContacts(extension, ids = null) {
+        let me = this;
+
+        try {
+            ids ??= (await client.call('Contact/query', me.getGridQuery())).ids;
+
+            if (!ids.length) {
+                throw new Error(t("There's nothing to export"))
+            }
+
+            const since = await lastAlertId();
+
+            await client.call('Contact/export', {extension, ids});
+            notify(me, t('You will be notified when the export is complete. You can close this window now.'), {title: t('Export in progress')});
+
+            const alert = await waitForFinishedAlert(since),
+                  url   = alertLink(alert);
+
+            dismissAlert(alert);
+            url && !me.isDestroyed && Neo.Main.redirectTo({url, windowId: me.windowId})
+        } catch (e) {
+            me.isDestroyed || me.showError(e)
+        }
+    }
+
+    async openImportDialog() {
+        const {default: ImportDialog} = await import('./ImportDialog.mjs');
+
+        this.isDestroyed || this.trackDialog(Neo.create(ImportDialog, {
+            appName      : this.appName,
+            windowId     : this.windowId,
+            addressBookId: this.addAddressBookId
+        }))
+    }
+
+    async openLabelsDialog() {
+        const {default: LabelsDialog} = await import('./LabelsDialog.mjs');
+
+        this.isDestroyed || this.trackDialog(Neo.create(LabelsDialog, {
+            appName : this.appName,
+            windowId: this.windowId,
+            ...this.getGridQuery()
+        }))
+    }
+
+    async openDuplicateDialog() {
+        const {default: DuplicateDialog} = await import('./DuplicateDialog.mjs');
+
+        this.isDestroyed || this.trackDialog(Neo.create(DuplicateDialog, {
+            appName  : this.appName,
+            windowId : this.windowId,
+            listeners: {merged: () => this.isDestroyed || this.getReference('grid').store.load().catch(() => {})}
+        }))
     }
 
     async setStarred(records, starred) {
@@ -1185,18 +1286,14 @@ class AddressBookMain extends MainThreeColumnPanel {
      * One contact: its vCard (vcard route); more: Contact/export as .vcf
      * @param {Object[]} records
      */
-    async exportVCard(records) {
-        let me = this;
-
-        try {
-            const url = records.length === 1
-                ? client.baseUrl + 'api/download.php?blob=' + encodeURIComponent('community/addressbook/vcard/' + records[0].id)
-                : downloadUrl((await client.call('Contact/export', {extension: 'vcf', ids: records.map(r => r.id)})).blob.id);
-
-            Neo.Main.redirectTo({url, windowId: me.windowId})
-        } catch (e) {
-            me.showError(e)
+    exportVCard(records) {
+        if (records.length > 1) {
+            this.exportContacts('vcf', records.map(r => r.id));
+            return
         }
+
+        // the module's vcard download route (ExtJS go.Jmap.downloadUrl("community/addressbook/vcard/<id>"))
+        Neo.Main.redirectTo({url: downloadUrl('community/addressbook/vcard/' + records[0].id), windowId: this.windowId})
     }
 
     async mergeSelected() {
