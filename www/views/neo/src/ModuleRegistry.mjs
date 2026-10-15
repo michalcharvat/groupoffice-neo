@@ -12,7 +12,9 @@ import client from './jmap/Client.mjs';
  *     icon      : 'sticky_note_2',                        // Material icon, header main menu
  *     quickAdd  : {text: 'Note', icon: 'sticky_note_2'},  // header "+" menu → mainView.onQuickAdd()
  *     routes    : {Note: id => 'note/' + id},             // header search result → "#notes/note/5"
- *     mainView  : () => import('./view/NotesMain.mjs')   // lazy, default export = neo class
+ *     mainView  : () => import('./view/NotesMain.mjs'),  // lazy, default export = neo class
+ *     // optional card in My account (src/usersettings/UserSettingsDialog.mjs)
+ *     userSettings: {title: 'Notes', iconCls: 'fa fa-sticky-note', panel: () => import('./view/SettingsPanel.mjs')}
  * });
  */
 class ModuleRegistry {
