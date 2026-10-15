@@ -1,0 +1,88 @@
+// GO helper classes that several GO.* classes render (avatars, empty texts, dialog buttons,
+// checkboxes). Global.css loads in every window, popups included; .neo-theme-go puts them
+// above neo's own component rules, which load later.
+.neo-theme-go {
+    // GO .avatar in content (comments, history, principals)
+    .go-avatar {
+        border-radius: 50%;
+        color        : #fff;
+        display      : inline-block;
+        flex         : none;
+        font-size    : 1.6rem;
+        height       : 4rem;
+        line-height  : 4rem;
+        text-align   : center;
+        width        : 4rem;
+
+        &.go-avatar-small {
+            font-size  : 1.2rem;
+            height     : 3.2rem;
+            line-height: 3.2rem;
+            width      : 3.2rem;
+        }
+    }
+
+    .go-empty {
+        color     : var(--fg-secondary-text);
+        padding   : 2.4rem 0;
+        text-align: center;
+    }
+
+    .go-form-error {
+        color: var(--fg-error);
+    }
+
+    .go-dialog-buttons {
+        gap    : .8rem;
+        padding: .8rem 1.6rem 1.6rem;
+    }
+
+    // GOUI ".check.box input" (goui/style/_form.scss): dp(20) box, 1px outline, ticked in the
+    // main colour. GO.component.CheckBox and the rows of GO.list.CheckList
+    .go-check {
+        background-color: var(--bg-lowest);
+        border          : 1px solid var(--fg-line);
+        border-radius   : .4rem;
+        box-sizing      : border-box;
+        color           : var(--fg-main);
+        cursor          : pointer;
+        display         : inline-block;
+        flex            : none;
+        height          : 2rem;
+        position        : relative;
+        vertical-align  : middle;
+        width           : 2rem;
+
+        &::before { // tick
+            background-color: currentColor;
+            clip-path       : polygon(39.375% 74.375%, 16% 51%, 20.48% 46.52%, 39.33% 65.37%, 79.33% 25.37%, 83.81% 29.85%);
+            content         : '';
+            inset           : -1px;
+            position        : absolute;
+            transform       : scale(0);
+            transition      : 90ms transform ease-in-out;
+        }
+
+        &.go-checked::before {
+            transform: scale(1);
+        }
+
+        &.go-indeterminate::before {
+            clip-path: polygon(20% 45%, 80% 45%, 80% 55%, 20% 55%);
+            transform: scale(1);
+        }
+
+        &:focus-visible {
+            border-color: var(--fg-main);
+            outline     : none;
+        }
+    }
+
+    .neo-selected > .go-check::before {
+        transform: scale(1);
+    }
+
+    .neo-toolbar > .go-check {
+        margin-right: .8rem;
+    }
+}

@@ -6,7 +6,9 @@
     border          : 1px solid var(--fg-line);
     border-radius   : go.dp(8);
     box-shadow      : 0 4px 12px rgba(0, 0, 0, .16);
+    max-height      : calc(100vh - #{go.dp(16)}); // long menus (login languages) scroll
     min-width       : go.dp(200);
+    overflow-y      : auto;
     padding         : go.dp(4) 0;
 
     .neo-list-item {

@@ -113,6 +113,19 @@ class Neo {
 		return $cacheFile;
 	}
 
+	/**
+	 * Languages of the login screen's language menu, like GO.Languages in Extjs3::getLanguageScript()
+	 *
+	 * @return array [[iso, name], ...]
+	 */
+	private function languages(): array
+	{
+		require(\go\core\Environment::get()->getInstallFolder()->getFile('language/languages.php'));
+
+		/** @var array $languages */
+		return array_map(fn($code, $name) => [$code, $name], array_keys($languages), $languages);
+	}
+
 	public function render(): void
 	{
 		$iso = go()->getLanguage()->getIsoCode();
@@ -142,6 +155,10 @@ class Neo {
 			'goLanguageUrl' => $root . 'views/neo/lang.php?lang=' . rawurlencode($iso) . '&v=' . $this->getLanguageFile()->getModifiedAt()->format('U'),
 			// legacy controllers (index.php?r=..., e.g. files) check it like GO.securityToken in Extjs3.php
 			'goSecurityToken' => GO::session()->values['security_token'] ?? null,
+			// login screen (go.login.LoginPanel / UsernamePanel): language menu, forgot link, remember box
+			'goLanguages' => $this->languages(),
+			'goLostPasswordUrl' => go()->getSettings()->lostPasswordURL ?: null,
+			'goLogoutWhenInactive' => intval(go()->getSettings()->logoutWhenInactive),
 			// set in a popup window opened by GO.view.Dialog: id of the dialog to adopt
 			'goPopup' => $this->popupId(),
 			// shared worker name suffix, passed on to popups (src/Popup.mjs)
@@ -158,10 +175,6 @@ class Neo {
 	<base href="<?= $neo ?>apps/go/">
 	<link rel="icon" href="<?= $root ?>favicon.ico">
 	<link rel="stylesheet" href="<?= $neo ?>node_modules/@fortawesome/fontawesome-free/css/all.min.css">
-	<link rel="stylesheet" href="<?= $neo ?>resources/go.css?v=<?= filemtime(GO::config()->root_path . 'views/neo/resources/go.css') ?>">
-<?php foreach (glob(GO::config()->root_path . 'views/neo/resources/css/*.css') as $css): ?>
-	<link rel="stylesheet" href="<?= $neo ?>resources/css/<?= rawurlencode(basename($css)) ?>?v=<?= filemtime($css) ?>">
-<?php endforeach; ?>
 <?php foreach ($this->moduleFiles('style.css') as $css): ?>
 	<link rel="stylesheet" href="<?= $root . $css ?>">
 <?php endforeach; ?>

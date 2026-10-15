@@ -1,0 +1,127 @@
+@use "../../../go/go";
+
+// GO.view.LoginView: go.login.LoginPanel (Paper _go-style.scss #login, #go-select-language,
+// #go-powered-by) with go.login.LoginDialog, a dp(480) window "Login required"
+.neo-theme-go {
+    .go-login {
+        background-color: var(--c-header-bg);
+        box-sizing      : border-box;
+        color           : #fff;
+        height          : 100%;
+        overflow        : auto;
+        padding         : go.dp(72) go.dp(16);
+        position        : relative;
+    }
+
+    // .go-app-logo: logo-white.svg, dp(240) x dp(40), top left
+    .go-login-logo {
+        background: url(../../../../../../../Extjs3/themes/Paper/img/logo-white.svg) no-repeat left center / contain;
+        height    : go.dp(40);
+        left      : go.dp(16);
+        max-width : calc(100% - #{go.dp(88)});
+        position  : absolute;
+        top       : go.dp(16);
+        width     : go.dp(240);
+    }
+
+    // #go-select-language: a white icon button top right
+    .go-login .neo-button.go-login-language {
+        color   : #fff;
+        position: absolute;
+        right   : go.dp(16);
+        top     : go.dp(16);
+
+        .go-icon {
+            color: #fff;
+        }
+
+        &:hover {
+            background-color: rgba(255, 255, 255, .12);
+        }
+    }
+
+    // go.Window: surface low, radius dp(12), GOUI shadow
+    .go-login-window {
+        background-color: var(--bg-low);
+        border-radius   : go.dp(12);
+        box-shadow      : 0 go.dp(12) go.dp(17) 2px rgba(0, 0, 0, .14), 0 go.dp(5) go.dp(22) 4px rgba(0, 0, 0, .12), 0 go.dp(7) go.dp(8) -4px rgba(0, 0, 0, .2);
+        color           : var(--fg-text);
+        max-width       : 100%;
+        width           : go.dp(480);
+    }
+
+    // window header: title on the window surface
+    .go-login-title {
+        color      : var(--fg-text);
+        font-size  : go.sp(18);
+        font-weight: normal;
+        line-height: go.dp(24);
+        margin     : 0;
+        padding    : go.dp(18) go.dp(18) go.dp(8);
+    }
+
+    .go-login-fields {
+        gap    : go.dp(16);
+        padding: go.dp(16) go.dp(18) go.dp(8);
+    }
+
+    .go-login-remember {
+        color: var(--fg-text);
+    }
+
+    .go-login-error {
+        color: var(--fg-error);
+    }
+
+    .go-login-message {
+        color: var(--fg-secondary-text);
+
+        &.go-login-error {
+            color: var(--fg-error);
+        }
+    }
+
+    // bbar: "Forgot login credentials?" ... Next
+    .go-login-buttons {
+        gap    : go.dp(8);
+        padding: go.dp(8) go.dp(12) go.dp(16);
+    }
+
+    .go-login .neo-button.go-login-forgot {
+        color: var(--fg-main);
+
+        .neo-button-text {
+            color: inherit;
+        }
+    }
+
+    // #go-powered-by: white, centred at the bottom
+    .go-login-powered {
+        bottom    : go.dp(16);
+        color     : #fff;
+        font-size : go.sp(14);
+        left      : go.dp(16);
+        position  : absolute;
+        right     : go.dp(16);
+        text-align: center;
+
+        a {
+            color: inherit;
+        }
+    }
+}
+
+// Phone: the window fills the width, the footer flows below it
+@media (max-width: 576px) {
+    .neo-theme-go {
+        .go-login {
+            justify-content: flex-start !important;
+            padding        : go.dp(72) go.dp(8) go.dp(16);
+        }
+
+        .go-login-powered {
+            margin-top: go.dp(24);
+            position  : static;
+        }
+    }
+}

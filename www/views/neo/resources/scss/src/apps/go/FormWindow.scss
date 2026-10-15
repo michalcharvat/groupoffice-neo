@@ -1,0 +1,38 @@
+// GO.view.FormWindow (GOUI FormWindow)
+.neo-theme-go {
+    .go-form-window .go-form-card {
+        gap       : 2rem;
+        overflow-y: auto;
+        padding   : 1.6rem;
+    }
+
+    /* a window with auto height: cards take their content height */
+    .go-form-window .go-form-cards,
+    .go-form-window .go-form-cards > .neo-container {
+        min-height: 0;
+    }
+
+    .go-form-window .go-form-link-slot {
+        gap: .4rem;
+    }
+
+    .go-form-window .go-form-error {
+        overflow     : hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* GOUI: one dp(16) padding (the card's); neo's form container adds 20px and its
+       tab body a 1px border */
+    .neo-dialog.go-form-window .neo-form-container {
+        padding: 0;
+    }
+
+    .neo-dialog.go-form-window .go-form-cards > .neo-tab-body-container {
+        border: 0;
+    }
+
+    /* a tall form must not push the button bar out of the dialog */
+    .go-form-window .neo-form-container {
+        min-height: 0;
+    }
+}

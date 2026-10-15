@@ -1,0 +1,17 @@
+@use "../../../go/go";
+
+// GO.view.Viewport: cards loading | login | main view
+.neo-theme-go {
+    .go-viewport {
+        background-color: var(--bg-mid);
+        color           : var(--fg-text);
+    }
+
+    .go-loading {
+        align-items    : center;
+        color          : var(--fg-secondary-text);
+        display        : flex;
+        height         : 100%;
+        justify-content: center;
+    }
+}

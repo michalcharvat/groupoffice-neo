@@ -1,0 +1,56 @@
+// GOUI tool buttons as field triggers (goui/style/_form.scss): neo has 22px wide triggers with a
+// border and Font Awesome glyphs, GOUI round dp(32) buttons with Material icons, no separators
+.neo-theme-go {
+    .neo-input-wrapper .neo-field-trigger {
+        border       : 0 !important;
+        border-radius: 50%;
+        color        : var(--fg-secondary-text);
+        font-size    : 0;
+        height       : 3.2rem;
+        line-height  : 3.2rem;
+        margin       : auto .4rem auto 0;
+        width        : 3.2rem;
+    }
+
+    .neo-input-wrapper .neo-field-trigger:hover {
+        background-color: var(--bg-hover);
+        color           : var(--fg-text);
+    }
+
+    /* Material ligature instead of the Font Awesome glyph */
+    .neo-input-wrapper .neo-field-trigger::before {
+        -webkit-font-smoothing: antialiased;
+        content               : 'expand_more';
+        font-family           : 'Material Symbols Rounded';
+        font-feature-settings : 'liga';
+        font-size             : 2.4rem;
+        font-style            : normal;
+        font-weight           : normal;
+        letter-spacing        : normal;
+        line-height           : 3.2rem;
+        text-transform        : none;
+        white-space           : nowrap;
+    }
+
+    .neo-input-wrapper .neo-field-trigger.neo-trigger-clear::before {
+        content  : 'close';
+        font-size: 2rem;
+    }
+
+    .neo-input-wrapper .neo-field-trigger.fa-calendar::before,
+    .neo-input-wrapper .neo-field-trigger.fa-calendar-alt::before,
+    .neo-input-wrapper .neo-field-trigger.fa-calendar-days::before {
+        content  : 'calendar_today';
+        font-size: 2rem;
+    }
+
+    .neo-input-wrapper .neo-field-trigger.fa-clock::before {
+        content  : 'schedule';
+        font-size: 2rem;
+    }
+
+    .neo-input-wrapper .neo-field-trigger.fa-search::before,
+    .neo-input-wrapper .neo-field-trigger.fa-magnifying-glass::before {
+        content: 'search';
+    }
+}

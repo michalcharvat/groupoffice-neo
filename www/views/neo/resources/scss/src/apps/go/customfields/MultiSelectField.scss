@@ -1,0 +1,37 @@
+// GO.customfields.MultiSelectField: a box of checkboxes
+.neo-theme-go {
+    .go-cf-multiselect {
+        border       : 1px solid var(--fg-outline, var(--fg-line));
+        border-radius: .8rem;
+        margin       : 0;
+        padding      : .4rem 1.4rem 1rem;
+    }
+
+    .go-cf-multiselect-label {
+        color    : var(--fg-secondary-text);
+        font-size: 1.2rem;
+        padding  : 0 .4rem;
+    }
+
+    .go-cf-multiselect-options {
+        display  : flex;
+        flex-wrap: wrap;
+        gap      : .4rem 1.6rem;
+    }
+
+    .go-cf-multiselect-option {
+        align-items: center;
+        cursor     : pointer;
+        display    : flex;
+        gap        : .6rem;
+    }
+
+    .go-cf-multiselect-input {
+        accent-color: var(--fg-main);
+    }
+
+    .go-cf-multiselect-error {
+        color    : var(--fg-error);
+        font-size: 1.2rem;
+    }
+}

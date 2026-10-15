@@ -1,0 +1,40 @@
+// GO.detail.FilesPanel: file rows and GO .go-dropzone
+.neo-theme-go {
+    .go-file {
+        align-items    : center;
+        border-radius  : .8rem;
+        color          : var(--fg-text);
+        display        : flex;
+        gap            : 1.6rem;
+        padding        : .8rem;
+        text-decoration: none;
+    }
+
+    .go-file:hover {
+        background-color: var(--bg-hover);
+    }
+
+    .go-file .go-icon {
+        color: var(--fg-secondary-text);
+    }
+
+    .go-file-text {
+        display       : flex;
+        flex-direction: column;
+        min-width     : 0;
+    }
+
+    .go-file-text small {
+        color    : var(--fg-secondary-text);
+        font-size: .85em;
+    }
+
+    /* GO .go-dropzone */
+    .go-dropzone {
+        border       : 1px dashed var(--fg-line);
+        border-radius: .8rem;
+        color        : var(--fg-secondary-text);
+        padding      : 3.2rem 1.6rem;
+        text-align   : center;
+    }
+}

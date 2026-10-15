@@ -1,0 +1,27 @@
+// GO.detail.Card: go.detail.Panel's cards below an entity (comments, files, history)
+.neo-theme-go {
+    .go-detail-card {
+        flex: none;
+    }
+
+    .go-detail-card-header {
+        gap    : .8rem;
+        padding: .4rem .8rem .4rem 1.6rem;
+    }
+
+    .go-detail-card-header h3 {
+        color      : var(--fg-text);
+        font-size  : calc(1.8rem * var(--font-scale));
+        font-weight: normal;
+        margin     : 0;
+    }
+
+    .go-detail-card-body {
+        gap    : 1.2rem;
+        padding: 0 1.6rem 1.6rem;
+    }
+
+    .go-detail-card-buttons {
+        gap: .8rem;
+    }
+}

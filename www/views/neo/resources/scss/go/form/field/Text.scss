@@ -29,3 +29,21 @@
         flex: 1 1 auto;
     }
 }
+
+/* Empty text field: the inline label acts as placeholder. neo puts it 4px below the top
+   (sized for its 26px inputs); GO inputs are dp(46), so centre it, and lighten it so it
+   does not read as a value. Focus or content float it into the border as before. */
+:root body .neo-textfield.label-inline:not(.neo-textarea):not(.neo-focus):not(.neo-has-content) .neo-textfield-label {
+    color     : color-mix(in srgb, var(--fg-text) 45%, transparent);
+    margin-top: calc((var(--textfield-input-height) - 1.728rem) / 2);
+}
+
+:root body .neo-textfield.label-inline .neo-textfield-label {
+    transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1), color 150ms cubic-bezier(0.4, 0, 0.2, 1), margin-top 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* neo's own placeholder text (placeholderText) in the same lighter tone */
+:root body .neo-textfield-input::placeholder {
+    color  : color-mix(in srgb, var(--fg-text) 45%, transparent);
+    opacity: 1;
+}

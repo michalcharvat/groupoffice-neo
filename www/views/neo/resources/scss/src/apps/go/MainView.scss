@@ -1,0 +1,177 @@
+@use "../../../go/go";
+
+
+// GO.view.MainView: GO header (GOUI / ExtJS "main tabs") above one card per open module
+.neo-theme-go {
+    .go-main {
+        height  : 100%;
+        position: relative; /* .go-global-search */
+    }
+
+    /* GO: 64dp blue header, module tabs in bold sp(15), inactive at 50% white,
+       active white with a 3px --c-secondary (yellow) underline */
+    .go-topbar.neo-toolbar {
+        background-color: var(--c-header-bg);
+        color           : #fff;
+        gap             : 0;
+        height          : 6.4rem;
+        padding         : 0 .8rem 0 1.6rem;
+        position        : relative;
+        z-index         : 2;
+    }
+
+    .go-brand { /* GO #go-logo: dp(240) x dp(40), logo-white.svg */
+        background    : url(../../../../../../../Extjs3/themes/Paper/img/logo-white.svg) no-repeat left center / contain;
+        flex          : none;
+        height        : 4rem;
+        margin-right  : 2.4rem;
+        width         : 24rem;
+    }
+
+    .go-topbar .neo-button {
+        background-color: transparent;
+        border          : none;
+        border-bottom   : 3px solid transparent;
+        border-radius   : 0;
+        color           : rgba(255, 255, 255, .5);
+        height          : 6.4rem;
+        margin          : 0;
+        padding         : 0 1.2rem;
+    }
+
+    .go-topbar .neo-button .neo-button-glyph,
+    .go-topbar .neo-button .neo-button-text {
+        color         : inherit;
+        font-size     : calc(1.5rem * var(--font-scale));
+        font-weight   : bold;
+        letter-spacing: .022em;
+    }
+
+    /* GO's module tabs are text only */
+    .go-topbar .go-module-button .neo-button-glyph {
+        display: none;
+    }
+
+    /* "open in new window" icon right after its module tab */
+    .go-topbar .neo-button.go-module-popout,
+    .go-topbar .neo-button.go-module-close {
+        margin-left : -.8rem;
+        padding     : 0 .6rem;
+    }
+
+    .go-topbar .go-module-popout .neo-button-glyph,
+    .go-topbar .go-module-close .neo-button-glyph {
+        font-size: calc(1.1rem * var(--font-scale));
+    }
+
+    /* a gap to the popout icon: no closing by a near miss */
+    .go-topbar .neo-button.go-module-close {
+        margin-left: .4rem;
+    }
+
+    .go-topbar.neo-toolbar .neo-button:hover,
+    .go-topbar.neo-toolbar .neo-button:focus-visible {
+        /* neo's .neo-button:hover border (a teal frame) loads after this file */
+        background-color: transparent;
+        border          : none;
+        border-bottom   : 3px solid transparent;
+        color           : #fff;
+        outline         : none;
+    }
+
+    .go-topbar.neo-toolbar .neo-button.pressed {
+        box-shadow: inset 0 -3px 0 var(--c-secondary); /* neo resets border on .pressed */
+        color     : #fff;
+    }
+
+    /* GO #secondary-menu: white Material icons, dp(40) round hover */
+    .go-topbar.neo-toolbar .neo-button.go-header-button {
+        border       : none;
+        border-radius: 50%;
+        color        : #fff;
+        height       : 4rem;
+        margin       : 0 .4rem;
+        padding      : 0 .8rem;
+    }
+
+    .go-topbar.neo-toolbar .neo-button.go-header-button:hover {
+        background-color: rgba(255, 255, 255, .12);
+        border          : none;
+    }
+
+    .go-topbar .neo-button.go-header-button .neo-button-glyph.go-icon {
+        color    : #fff;
+        font-size: 2.4rem;
+    }
+
+    /* user menu: GO .user-img .avatar, dp(40) circle with a white border */
+    .go-topbar.neo-toolbar .neo-button.go-header-avatar,
+    .go-topbar.neo-toolbar .neo-button.go-header-avatar:hover {
+        border       : 1px solid #fff;
+        border-radius: 50%;
+        height       : 4rem;
+        margin       : 0 .8rem 0 .4rem;
+        min-width    : 0;
+        padding      : 0;
+        width        : 4rem;
+    }
+
+    .go-topbar .neo-button.go-header-avatar .neo-button-text {
+        color      : #fff;
+        font-size  : 1.6rem;
+        font-weight: normal;
+        width      : 100%;
+    }
+
+    .go-welcome {
+        align-items    : center;
+        color          : var(--fg-secondary-text);
+        display        : flex;
+        height         : 100%;
+        justify-content: center;
+    }
+
+    .go-modules {
+        min-height: 0;
+    }
+
+    /* card of a module that is open in its own window */
+    .go-module-placeholder {
+        background-color: var(--bg-mid);
+        gap             : 1.6rem;
+    }
+}
+
+// Phone (GOUI $breakpointSmall): no logo and only the open module's tab; modules are
+// switched with the "apps" main menu, popout and close need a wider screen
+@media (max-width: 576px) {
+    .neo-theme-go {
+        .go-topbar.neo-toolbar {
+            padding: 0 go.dp(4) 0 go.dp(8);
+        }
+
+        .go-topbar .go-brand,
+        .go-topbar .neo-button.go-module-popout,
+        .go-topbar .neo-button.go-module-close,
+        .go-topbar .neo-button.go-module-button:not(.pressed) {
+            display: none;
+        }
+
+        .go-topbar.neo-toolbar .neo-button.go-module-button.pressed {
+            box-shadow: none;
+            min-width : 0;
+            overflow  : hidden;
+        }
+
+        .go-topbar .go-module-button .neo-button-text {
+            font-size    : go.sp(18);
+            overflow     : hidden;
+            text-overflow: ellipsis;
+            white-space  : nowrap;
+        }
+
+        .go-topbar.neo-toolbar .neo-button.go-header-button {
+            margin: 0;
+        }
+    }
+}
