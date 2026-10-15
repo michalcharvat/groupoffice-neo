@@ -62,7 +62,7 @@ class HistoryMain extends MainThreeColumnPanel {
                 module: Toolbar,
                 flex  : 'none',
                 items : ['->', me.hideWestButton()]
-            }, fieldset(null, [{
+            }, fieldset(t('Filter'), [{
                 // GOUI: this week at first
                 module   : DateRangeField,
                 reference: 'dateRange',

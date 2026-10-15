@@ -16,7 +16,7 @@ class SystemSettingsPanel extends SettingsPanel {
     }
 
     createItems() {
-        return [fieldset(null, [
+        return [fieldset(t('History'), [
             numberField('deleteAfterDays', t('Delete entries after') + ' (' + t('days') + ')', {minValue: 0, width: 240}),
             hint(t('0 keeps the entries forever'))
         ])]

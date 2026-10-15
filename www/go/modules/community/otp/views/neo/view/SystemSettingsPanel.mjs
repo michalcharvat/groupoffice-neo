@@ -24,7 +24,7 @@ class SystemSettingsPanel extends SettingsPanel {
 
         // GO: no count down while the setup blocks GO anyway
         me.on('load', () => me.syncCountDown());
-        me.on('fieldChange', ({field}) => field?.name === 'settings.block' && me.syncCountDown())
+        me.on('fieldChange', ({component}) => component?.name === 'settings.block' && me.syncCountDown())
     }
 
     createItems() {
