@@ -73,7 +73,7 @@ class Neo {
 	 *
 	 * A SharedWorker lives as long as any GO tab is open, and new tabs connect
 	 * to it. Its name carries the GO version and the newest mtime of the neo UI
-	 * sources, so a changed UI gets a new worker instead of the old code.
+	 * sources and theme map, so a changed UI gets a new worker instead of the old code.
 	 */
 	private function buildId(): string
 	{
@@ -82,7 +82,9 @@ class Neo {
 			$dirs[] = $module->moduleManager->path() . 'views/neo';
 		}
 
-		$mtime = 0;
+		// a theme build adds CSS files the worker only knows from its theme map
+		$themeMap = GO::config()->root_path . 'views/neo/resources/theme-map.json';
+		$mtime = is_file($themeMap) ? filemtime($themeMap) : 0;
 		foreach ($dirs as $dir) {
 			if (!is_dir($dir)) {
 				continue;

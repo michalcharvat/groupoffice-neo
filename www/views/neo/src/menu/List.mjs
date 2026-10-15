@@ -37,6 +37,13 @@ class List extends MenuList {
     }
 
     /**
+     * neo creates submenus as Neo.menu.List: give them the GO menu look
+     */
+    getSubMenuData(record) {
+        return {...super.getSubMenuData(record), cls: ['go-menu']}
+    }
+
+    /**
      * Set by showAt(): destroy the menu once it closes
      * @member {Boolean} destroyOnUnmount=false
      */

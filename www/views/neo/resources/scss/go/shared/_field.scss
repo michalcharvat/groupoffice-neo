@@ -1,0 +1,122 @@
+// GO.form.field.Field and its subclasses (DateTimeField, DurationField, DateRangeField,
+// ChipsField, RecurrenceField): GOUI .goui-form-field with "no-floating-label", the same
+// box as the neo text fields in theme-go (go/form/field/Text.scss): 1px outline, radius
+// dp(8), dp(46) high, label in the top border.
+.neo-theme-go {
+    .go-field {
+        display       : flex;
+        flex-direction: column;
+        min-width     : 0;
+        position      : relative;
+    }
+
+    .go-field-box {
+        align-items     : center;
+        background-color: var(--bg-input);
+        border          : 1px solid var(--fg-outline);
+        border-radius   : .8rem;
+        box-sizing      : border-box;
+        color           : var(--fg-text);
+        display         : flex;
+        gap             : 0 .4rem;
+        min-height      : 4.6rem;
+        padding         : 0 .6rem 0 1.4rem;
+    }
+
+    .go-field:focus-within .go-field-box {
+        border-color: var(--fg-main);
+        outline     : 1px solid var(--fg-main);
+    }
+
+    .go-field-label {
+        background-color: var(--bg-input);
+        color           : var(--fg-secondary-text);
+        font-size       : 1.2rem;
+        left            : 1rem;
+        line-height     : 1.6rem;
+        max-width       : calc(100% - 2rem);
+        overflow        : hidden;
+        padding         : 0 .4rem;
+        pointer-events  : none;
+        position        : absolute;
+        text-overflow   : ellipsis;
+        top             : -.8rem;
+        white-space     : nowrap;
+        z-index         : 1;
+    }
+
+    .go-field:focus-within .go-field-label {
+        color: var(--fg-main);
+    }
+
+    .go-field.go-required .go-field-label::after {
+        content: ' *';
+    }
+
+    .go-field-input {
+        background : transparent;
+        border     : 0;
+        color      : inherit;
+        flex       : 1 1 auto;
+        font       : 400 1.6rem/2.4rem var(--font-family);
+        min-width  : 0;
+        outline    : 0;
+        padding    : 1.1rem 0;
+
+        &:disabled {
+            color: var(--fg-secondary-text);
+        }
+
+        &::placeholder {
+            color  : color-mix(in srgb, var(--fg-text) 45%, transparent);
+            opacity: 1;
+        }
+    }
+
+    // round icon buttons inside the box (clear, expand), like the neo triggers
+    .go-field-tool {
+        align-items     : center;
+        background      : transparent;
+        border          : 0;
+        border-radius   : 50%;
+        color           : var(--fg-secondary-text);
+        cursor          : pointer;
+        display         : inline-flex;
+        flex            : none;
+        height          : 3.2rem;
+        justify-content : center;
+        padding         : 0;
+        width           : 3.2rem;
+
+        &:hover {
+            background-color: var(--bg-hover, color-mix(in srgb, var(--fg-text) 8%, transparent));
+        }
+
+        .go-icon {
+            font-size: 2rem;
+        }
+    }
+
+    .go-field-hint {
+        color    : var(--fg-secondary-text);
+        font-size: 1.2rem;
+        padding  : .4rem 1.4rem 0;
+    }
+
+    .go-field.go-invalid {
+        .go-field-box {
+            border-color: var(--fg-error);
+            outline     : none;
+        }
+
+        .go-field-label,
+        .go-field-hint {
+            color: var(--fg-error);
+        }
+    }
+
+    .go-field.go-readonly .go-field-box,
+    .go-field.neo-disabled .go-field-box {
+        background-color: var(--bg-low);
+    }
+}
