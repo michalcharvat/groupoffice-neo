@@ -1,0 +1,109 @@
+// ExtJS ContactDetail: name with avatar, then icon rows (e-mail, phone, address, dates)
+// with the type as a small label below each value
+.neo-theme-go .go-addressbook-detail {
+    .go-addressbook-name-panel {
+        align-items: center;
+        display    : flex;
+        gap        : 1.6rem;
+
+        h3 {
+            margin: 0;
+        }
+
+        h4 {
+            color      : var(--fg-secondary-text);
+            font-weight: normal;
+            margin     : .4rem 0 0;
+        }
+    }
+
+    .go-addressbook-avatar {
+        font-size  : 2rem;
+        height     : 4.8rem;
+        line-height: 4.8rem;
+        width      : 4.8rem;
+
+        .go-icon {
+            font-size  : 2.4rem;
+            line-height: inherit;
+        }
+    }
+
+    img.go-addressbook-avatar {
+        object-fit: cover;
+    }
+
+    .go-addressbook-name {
+        flex     : 1;
+        min-width: 0;
+    }
+
+    .go-addressbook-urls {
+        display: flex;
+        flex   : none;
+        gap    : .4rem;
+    }
+
+    .go-addressbook-url {
+        border-radius: 50%;
+        color        : var(--fg-secondary-text);
+        padding      : .4rem;
+
+        &:hover {
+            background-color: var(--bg-hover);
+        }
+    }
+
+    .go-addressbook-icons {
+        border-top: 1px solid var(--fg-line);
+        margin    : 1.6rem 0 0 6.4rem;
+        padding   : .8rem 0 0;
+    }
+
+    .go-addressbook-icon-row {
+        display: flex;
+        margin : 0 0 .8rem -6.4rem;
+
+        > .go-icon {
+            color: var(--fg-secondary-text);
+            flex : none;
+            width: 6.4rem;
+        }
+
+        > div {
+            display       : flex;
+            flex-direction: column;
+            min-width     : 0;
+        }
+
+        label {
+            color    : var(--fg-secondary-text);
+            font-size: 1.2rem;
+        }
+    }
+
+    .go-addressbook-value {
+        overflow-wrap: anywhere;
+    }
+
+    .go-addressbook-address {
+        white-space: pre-line;
+    }
+
+    .go-addressbook-notes-text {
+        white-space: pre-wrap;
+    }
+
+    .go-addressbook-action-date h3 {
+        margin: 0 0 .8rem;
+    }
+}
+
+// a starred contact: the filled star in orange (ExtJS ic-star)
+.neo-theme-go .go-addressbook-detail .go-starred {
+    color: var(--hue-orange);
+
+    .neo-button-glyph, .go-icon {
+        font-variation-settings: 'FILL' 1;
+    }
+}
