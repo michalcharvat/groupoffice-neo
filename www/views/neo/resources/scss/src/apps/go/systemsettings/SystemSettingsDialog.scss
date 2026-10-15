@@ -1,0 +1,7 @@
+// GO.systemsettings.SystemSettingsDialog; the card list on the left: shared/_settings-cards.scss
+.neo-theme-go {
+    .go-systemsettings-dialog .go-settings-card {
+        min-height: 0;
+        overflow  : hidden;
+    }
+}
