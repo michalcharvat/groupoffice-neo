@@ -1,4 +1,5 @@
 import FormContainer from '../../node_modules/neo.mjs/src/form/Container.mjs';
+import './nestedFields.mjs';
 import client        from '../jmap/Client.mjs';
 import {t}           from '../Translate.mjs';
 
