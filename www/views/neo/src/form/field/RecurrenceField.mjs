@@ -3,7 +3,7 @@ import CheckBox     from '../../../node_modules/neo.mjs/src/form/field/CheckBox.
 import Dialog, {headerTools} from '../../view/Dialog.mjs';
 import DateField    from './DateField.mjs';
 import Field        from './Field.mjs';
-import LocalCombo   from '../../customfields/fields/LocalCombo.mjs';
+import LocalCombo   from './LocalCombo.mjs';
 import MenuList     from '../../menu/List.mjs';
 import NumberField  from '../../../node_modules/neo.mjs/src/form/field/Number.mjs';
 import TextList     from '../../list/TextList.mjs';
