@@ -1,0 +1,7 @@
+# neo.mjs loads ES modules without version query strings: always revalidate
+# (ETag → 304) so a changed module is never served from the heuristic cache.
+<IfModule mod_headers.c>
+    <FilesMatch "\.(mjs|js|css|json)$">
+        Header set Cache-Control "no-cache"
+    </FilesMatch>
+</IfModule>

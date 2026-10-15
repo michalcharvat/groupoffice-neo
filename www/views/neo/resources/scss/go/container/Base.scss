@@ -1,0 +1,5 @@
+// GOUI components have no background of their own: panels show the app background
+:where(.neo-theme-go) {
+    --container-background-color: transparent;
+    --container-color           : var(--fg-text);
+}

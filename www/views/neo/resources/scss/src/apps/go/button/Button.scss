@@ -1,0 +1,67 @@
+@use "../../../../go/go";
+
+// GOUI .goui-button details the theme variables cannot express
+.go-icon,
+.neo-button .neo-button-glyph.go-icon {
+    // GOUI %icon (goui/style/_icons.scss)
+    -webkit-font-smoothing : antialiased;
+    direction              : ltr;
+    display                : inline-block;
+    font-family            : 'Material Symbols Rounded';
+    font-feature-settings  : 'liga';
+    font-size              : go.dp(24);
+    font-style             : normal;
+    font-weight            : normal;
+    height                 : go.dp(24);
+    letter-spacing         : normal;
+    line-height            : go.dp(24);
+    text-transform         : none;
+    white-space            : nowrap;
+    width                  : go.dp(24);
+}
+
+.neo-button {
+    // a <button> takes the UA's "buttontext" (black) instead of inheriting: dark mode
+    &.neo-button-ghost {
+        color: var(--fg-text);
+    }
+
+    &.no-text {
+        // icon only: square dp(11) padding
+        padding: 0 go.dp(11);
+
+        .neo-button-glyph {
+            margin: 0;
+        }
+    }
+
+    &.small {
+        height : auto;
+        padding: .6rem;
+
+        .neo-button-glyph.go-icon {
+            font-size  : 1.8rem;
+            height     : 1.8rem;
+            line-height: 1.8rem;
+            width      : 1.8rem;
+        }
+    }
+}
+
+// GOUI searchbtn: filled accent while a search is active
+.neo-button.go-search-active {
+    background-color: var(--c-accent);
+    color           : white;
+}
+
+// GOUI OverlayToolbarButton: a toolbar laid over the toolbar of the button
+.neo-toolbar:has(> .go-toolbar-overlay) {
+    position: relative;
+}
+
+.go-toolbar-overlay.neo-toolbar {
+    background-color: var(--bg-low);
+    inset           : 0;
+    position        : absolute;
+    z-index         : 1;
+}

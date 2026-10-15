@@ -1,0 +1,31 @@
+// GOUI form field "control pit": 1px outline, radius dp(8), white input, focus = GO main
+:where(.neo-theme-go) {
+    --textfield-border-color         : var(--fg-outline);
+    --textfield-border-color-active  : var(--fg-main);
+    --textfield-border-color-hovered : var(--fg-outline);
+    --textfield-border-color-disabled: var(--fg-divider);
+    --textfield-border-color-readonly: var(--fg-outline);
+    --textfield-border-color-invalid : var(--border-error);
+    --textfield-border-radius        : #{go.dp(8)};
+    --textfield-input-background-color: var(--bg-input);
+    --textfield-input-background-color-readonly: var(--bg-low);
+    --textfield-input-color          : var(--fg-text);
+    --textfield-input-font           : 400 #{go.sp(16)}/#{go.dp(24)} var(--font-family);
+    --textfield-input-height         : #{go.dp(46)};
+    --textfield-input-padding        : #{go.dp(11)} #{go.dp(14)};
+    --textfield-input-placeholder-color: var(--fg-secondary-text);
+    --textfield-label-color          : var(--fg-secondary-text);
+    --textfield-sublabel-color       : var(--fg-secondary-text);
+    --textfield-sublabel-font-size   : #{go.sp(12)};
+}
+
+// The textarea's outline is drawn by its label wrapper, which overlays it: paint the input
+// background on the field, the textarea itself stays transparent so the label shows.
+:root .neo-theme-go .neo-textarea {
+    background-color: var(--bg-input);
+    border-radius   : #{go.dp(8)};
+
+    textarea {
+        flex: 1 1 auto;
+    }
+}

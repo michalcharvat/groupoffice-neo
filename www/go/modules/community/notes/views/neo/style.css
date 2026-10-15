@@ -1,0 +1,5 @@
+/* Notes module, neo.mjs UI. The layout and GO look come from the shell
+   (GO.view.MainThreeColumnPanel and the theme-go neo theme). */
+.go-notes .go-card .go-icon {
+    vertical-align: middle;
+}

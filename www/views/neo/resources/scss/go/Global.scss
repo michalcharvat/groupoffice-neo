@@ -1,0 +1,45 @@
+// GO tokens (--fg-main, --bg-low, ...) exactly as classic GO / GOUI declares them,
+// on html (density, font) and body (colours; body.dark = GO dark mode)
+@use "../../../../goui/groupoffice-core/style/theme" as goTheme;
+
+@font-face {
+    font-family: 'Lato';
+    font-weight: 400;
+    src: url('../../../../../Extjs3/themes/Paper/fonts/Lato-Regular.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Lato';
+    font-weight: 700;
+    src: url('../../../../../Extjs3/themes/Paper/fonts/Lato-Bold.woff2') format('woff2');
+}
+
+// GO icons: <i class="icon">search</i> (ligatures), see GO.component.Icon
+@font-face {
+    font-family: 'Material Symbols Rounded';
+    font-style: normal;
+    font-weight: 400;
+    src: url('../../../../../goui/goui/resources/iconfont/MaterialSymbolsOutlined.woff2') format('woff2');
+}
+
+html {
+    font-size: var(--density); // GOUI: makes every dp()/rem value GO sized
+}
+
+@media (max-device-width: 1200px) {
+    html {
+        font-size: var(--mobile-density);
+    }
+}
+
+:where(.neo-theme-go) {
+    --neo-background-color: var(--bg-low);
+    --neo-color           : var(--fg-text);
+    --neo-font-family     : var(--font-family);
+
+    --global-paragraph-color: var(--fg-text);
+}
+
+.neo-theme-go {
+    font: #{go.sp(16)}/#{go.dp(20)} var(--font-family); // GOUI $fontBase as configured by groupoffice-core/_base.scss
+}

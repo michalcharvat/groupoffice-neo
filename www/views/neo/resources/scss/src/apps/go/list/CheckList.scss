@@ -1,0 +1,36 @@
+@use "../../../../go/go";
+
+// GOUI notebook table: checkbox column, name, row menu column; no headers or row lines
+.go-check-list {
+    .neo-list-item {
+        align-items: center;
+        display    : flex;
+        gap        : go.dp(16);
+        height     : go.dp(40);
+        padding    : 0 go.dp(8) 0 go.dp(16);
+    }
+
+    .go-check-list-text {
+        flex         : 1;
+        min-width    : 0;
+        overflow     : hidden;
+        text-overflow: ellipsis;
+        white-space  : nowrap;
+    }
+
+    // GOUI menucolumn: a small more_vert button
+    .go-row-menu {
+        border-radius: 50%;
+        color        : var(--fg-text);
+        cursor       : pointer;
+        font-size    : go.dp(20);
+        height       : go.dp(32);
+        line-height  : go.dp(32);
+        text-align   : center;
+        width        : go.dp(32);
+
+        &:hover {
+            background-color: var(--bg-hover);
+        }
+    }
+}

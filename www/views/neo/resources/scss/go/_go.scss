@@ -1,0 +1,9 @@
+// GOUI units (views/goui/goui/style/_util.scss): 1dp = .1rem, <html> font-size is
+// var(--density) = 8.64px on desktop, so dp(10) = 8.64px. sp() also follows --font-scale.
+@function dp($width) {
+    @return $width * .1rem;
+}
+
+@function sp($size) {
+    @return calc(dp($size) * var(--font-scale));
+}

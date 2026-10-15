@@ -1,0 +1,62 @@
+// GOUI .goui-button (goui/style/_button.scss)
+//   ui 'primary' (neo default) = GO "filled primary" (teal)
+//   ui 'ghost'                 = GO default button: flat, text colour inherited
+//   ui 'secondary'             = GO "outlined"
+:where(.neo-theme-go) {
+    --button-height            : #{go.dp(48)}; // dp(11) padding + dp(24) line + 1px borders, like form fields
+    --button-margin            : 0;
+    --button-padding           : 0 #{go.dp(18)};
+    --button-min-width         : 0;
+    --button-text-font-family  : var(--font-family);
+    --button-text-font-size    : #{go.sp(16)};
+    --button-text-font-weight  : 700;
+    --button-text-line-height  : #{go.dp(24)};
+    --button-border-radius     : #{go.dp(12)};
+    --button-glyph-margin      : 0 #{go.dp(8)} 0 0;
+    --button-ripple-background-color: var(--bg-pressed);
+
+    --button-background-color         : var(--c-primary);
+    --button-background-color-hover   : var(--c-primary);
+    --button-background-color-active  : var(--c-primary);
+    --button-background-color-disabled: var(--bg-hover);
+    --button-border                   : 1px solid var(--c-primary);
+    --button-border-hover             : 1px solid var(--c-primary);
+    --button-border-active            : 1px solid var(--c-primary);
+    --button-border-disabled          : 1px solid transparent;
+    --button-text-color               : white;
+    --button-text-color-hover         : white;
+    --button-text-color-active        : white;
+    --button-text-color-disabled      : var(--fg-secondary-text);
+    --button-glyph-color              : white;
+    --button-glyph-color-hover        : white;
+    --button-glyph-color-active       : white;
+    --button-glyph-color-disabled     : var(--fg-secondary-text);
+
+    --button-ghost-background-color         : transparent;
+    --button-ghost-background-color-hover   : var(--bg-hover);
+    --button-ghost-background-color-active  : var(--bg-focus);
+    --button-ghost-background-color-disabled: transparent;
+    --button-ghost-border                   : 1px solid transparent;
+    --button-ghost-border-hover             : 1px solid transparent;
+    --button-ghost-border-active            : 1px solid transparent;
+    --button-ghost-border-disabled          : 1px solid transparent;
+    --button-ghost-border-pressed           : 1px solid transparent;
+    --button-ghost-text-color               : inherit;
+    --button-ghost-text-color-hover         : inherit;
+    --button-ghost-text-color-active        : inherit;
+    --button-ghost-text-color-disabled      : var(--fg-secondary-text);
+    --button-ghost-glyph-color              : inherit;
+    --button-ghost-glyph-color-hover        : inherit;
+    --button-ghost-glyph-color-active       : inherit;
+    --button-ghost-glyph-color-disabled     : var(--fg-secondary-text);
+    --button-ghost-ripple-background-color  : var(--bg-pressed);
+
+    --button-secondary-background-color      : transparent;
+    --button-secondary-background-color-hover: var(--bg-hover);
+    --button-secondary-border                : 1px solid var(--fg-outline);
+    --button-secondary-border-hover          : 1px solid var(--fg-outline);
+    --button-secondary-text-color            : inherit;
+    --button-secondary-text-color-hover      : inherit;
+    --button-secondary-glyph-color           : inherit;
+    --button-secondary-glyph-color-hover     : inherit;
+}

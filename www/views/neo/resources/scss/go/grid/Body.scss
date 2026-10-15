@@ -1,0 +1,7 @@
+:where(.neo-theme-go) {
+    --grid-cell-background-color-hover            : var(--bg-hover);
+    --grid-rowmodel-selected-cell-background-color: var(--bg-selected);
+    --grid-rowmodel-selected-cell-color           : var(--fg-selected);
+    --grid-cellmodel-selected-cell-background-color: var(--bg-selected);
+    --grid-cellmodel-selected-cell-color          : var(--fg-selected);
+}

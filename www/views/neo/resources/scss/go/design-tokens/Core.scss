@@ -1,0 +1,48 @@
+// neo core palette and scales → GO (groupoffice-core/style/_theme.scss, GOUI dp/sp)
+:where(.neo-theme-go) {
+    --core-fontfamily-sans     : var(--font-family);
+    --core-fontsize-body       : #{go.sp(16)};
+    --core-fontsize-h1         : #{go.sp(24)};
+    --core-fontsize-h2         : #{go.sp(20)};
+    --core-fontsize-h3         : #{go.sp(18)};
+    --core-fontsize-label      : #{go.sp(16)};
+    --core-fontsize-small      : #{go.sp(12)};
+    --core-fontweight-medium   : 700; // Lato in GO: regular and bold only
+    --core-fontweight-semibold : 700;
+    --core-lineheight-paragraph: 1.25;
+
+    // GO main (blue) where neo uses its purple accent
+    --purple-100: var(--bg-main);
+    --purple-200: var(--bg-focus);
+    --purple-300: var(--fg-main);
+    --purple-400: var(--fg-main);
+    --purple-500: var(--fg-main);
+    --purple-600: var(--fg-main);
+    --purple-700: var(--fg-main);
+
+    // GO primary (teal) where neo uses green
+    --green-50 : var(--bg-main);
+    --green-400: var(--c-primary);
+    --green-500: var(--c-primary);
+    --green-600: var(--c-primary);
+
+    --gray-50 : var(--bg-low);
+    --gray-100: var(--fg-divider);
+    --gray-200: var(--fg-line);
+    --gray-300: var(--fg-secondary-text);
+    --gray-700: var(--fg-secondary-text);
+    --gray-900: var(--fg-text);
+    --black   : var(--fg-text);
+    --white   : var(--bg-lowest);
+
+    --borderradius-4: #{go.dp(4)};
+    --borderradius-8: #{go.dp(8)};
+
+    @each $n in 2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96 {
+        --spacing-#{$n}: #{go.dp($n)};
+    }
+
+    @each $n in 2, 4, 8, 16, 24, 32, 48, 56 {
+        --height-#{$n}: #{go.dp($n)};
+    }
+}

@@ -1,0 +1,11 @@
+:where(.neo-theme-go) {
+    --sem-color-border-default : var(--fg-line);
+    --sem-color-border-subtle  : var(--fg-divider);
+    --sem-color-border-focus   : var(--fg-main);
+    --sem-color-surface-neutral-active : var(--bg-pressed);
+    --sem-color-surface-neutral-hover  : var(--bg-hover);
+    --sem-color-surface-neutral-default: var(--bg-low);
+    --sem-color-surface-primary-background: var(--bg-selected);
+    --sem-color-text-primary-default: var(--fg-text);
+    --sem-typo-body-lineHeight: #{go.dp(20)};
+}

@@ -52,9 +52,13 @@ class PushDispatcher
 
 	public function __construct(array $entities = [])
 	{
-		if(function_exists("apcu_fetch")) {
+		// 'sseUseApcu' => false: always check the database, e.g. when several app
+		// servers share one database and their APCu counters don't see each other's writes
+		if(function_exists("apcu_fetch") && (go()->getConfig()['sseUseApcu'] ?? true)) {
 			$this->apcuEnabled = true;
 			$this->CHECK_INTERVAL = 1;
+		} else if(isset(go()->getConfig()['sseUseApcu'])) {
+			$this->CHECK_INTERVAL = 2;
 		}
 
 		// disable default disconnect checks

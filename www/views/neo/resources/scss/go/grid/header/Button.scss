@@ -1,0 +1,15 @@
+// GOUI th: surface low, .8em, padding dp(8), border-bottom fg-border, column resizer = hr
+:where(.neo-theme-go) {
+    --grid-header-button-background-color      : var(--bg-low);
+    --grid-header-button-background-color-hover: var(--bg-low);
+    --grid-header-button-border-right-color    : transparent;
+    --grid-header-button-border-right-hover-color: var(--fg-border);
+    --grid-header-button-color                 : var(--fg-text);
+    --grid-header-button-color-hover           : var(--fg-text);
+    --grid-header-button-font-size             : #{go.sp(12.8)};
+    --grid-header-button-font-weight           : 400;
+    --grid-header-button-glyph-color           : var(--fg-text);
+    --grid-header-button-glyph-color-hover     : var(--fg-text);
+    --grid-header-button-justify-content       : space-between;
+    --grid-header-button-padding               : #{go.dp(8)} #{go.dp(8)} #{go.dp(8)} #{go.dp(16)};
+}

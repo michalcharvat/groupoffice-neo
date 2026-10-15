@@ -1,0 +1,16 @@
+// GOUI .goui-window: surface low, 1px line border, radius dp(12).
+// Same weight as neo's dialog value sheet (:root .neo-theme-go), which this follows.
+:root .neo-theme-go {
+    --dialog-border-color: var(--fg-line);
+    --dialog-box-shadow  : 0 #{go.dp(12)} #{go.dp(17)} 2px rgba(0, 0, 0, .14), 0 #{go.dp(5)} #{go.dp(22)} 4px rgba(0, 0, 0, .12), 0 #{go.dp(7)} #{go.dp(8)} -4px rgba(0, 0, 0, .2);
+    --dialog-header-color: var(--fg-text);
+    --dialog-icon-color  : var(--fg-text);
+    --dialog-footer-button-border-radius: #{go.dp(12)};
+}
+
+// GOUI window surface. neo's panel takes the container background, which theme-go makes
+// transparent (GOUI components have none).
+:root .neo-theme-go .neo-dialog {
+    background-color: var(--bg-low);
+    border-radius   : #{go.dp(12)};
+}

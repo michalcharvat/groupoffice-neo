@@ -1,0 +1,9 @@
+// GOUI .goui-table (goui/style/_table.scss)
+:where(.neo-theme-go) {
+    --grid-container-border-color               : var(--fg-divider);
+    --grid-container-cell-background-color      : var(--bg-lowest);
+    --grid-container-cell-background-color-even : var(--bg-lowest);
+    --grid-container-color                      : var(--fg-text);
+    --grid-container-font-size                  : #{go.sp(16)};
+    --grid-container-header-cell-border-bottom  : 1px solid var(--fg-border);
+}

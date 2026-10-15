@@ -1,0 +1,86 @@
+@use "../../../go/go";
+
+// groupoffice-core MainThreeColumnPanel: panels touch, separated by the splitters only.
+// West and east sit on the app background (--bg-mid), the center grid is white.
+.go-main-3-col {
+    background-color: var(--bg-mid);
+    height          : 100%;
+
+    > .go-west,
+    > .go-center,
+    > .go-east {
+        min-height: 0;
+        overflow  : hidden;
+    }
+
+    > .go-center {
+        background-color: var(--bg-lowest);
+    }
+}
+
+// GOUI helpers used inside the three panels
+.go-main-3-col {
+    .go-bg-mid {
+        background-color: var(--bg-mid);
+    }
+
+    .go-border-bottom {
+        border-bottom: 1px solid var(--fg-line);
+    }
+
+    // GOUI: h4 in a toolbar, e.g. "Notebooks"
+    .go-toolbar-heading {
+        color      : var(--fg-secondary-text);
+        font-size  : go.sp(16);
+        font-weight: normal;
+        margin     : 0;
+        padding    : go.dp(11) 0;
+    }
+
+    // ExtJS "tbtitle" of GO's filter panel ("Filters")
+    .go-toolbar-title {
+        color      : var(--fg-text);
+        font-size  : go.sp(18);
+        font-weight: normal;
+        margin     : 0;
+        padding    : go.dp(11) 0 go.dp(11) go.dp(8);
+    }
+
+    .go-scroll {
+        overflow-y: auto;
+    }
+
+    // GOUI DetailPanel: scrolling column of cards
+    .go-detail-scroller {
+        overflow: auto;
+    }
+
+    .go-card {
+        background-color: var(--bg-lowest);
+        border-radius   : go.dp(8);
+        margin          : go.dp(8);
+
+        &.go-pad {
+            padding: go.dp(24) go.dp(18);
+        }
+
+        > h3 {
+            font-size  : go.sp(18);
+            font-weight: normal;
+            line-height: go.dp(24);
+            margin     : 0;
+        }
+
+        img {
+            max-width: 100%;
+        }
+    }
+
+    .go-empty {
+        color: var(--fg-secondary-text);
+    }
+}
+
+.go-main-3-col .go-hidden {
+    display: none !important;
+}

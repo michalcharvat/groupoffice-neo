@@ -1,0 +1,603 @@
+/*
+ * Group Office shell of the neo.mjs webclient (topbar, login, dialogs).
+ *
+ * Colours, fonts and sizes come from the neo theme "theme-go"
+ * (resources/scss/go, built by `npm run build-themes`): GO's own tokens
+ * (--fg-main, --bg-mid, ... from views/goui/groupoffice-core/style/_theme.scss)
+ * and GOUI units: 1dp = .1rem, <html> font-size = --density (8.64px).
+ * Component styles of GO.* classes live in resources/scss/src/apps/go.
+ */
+
+html, body {
+    height: 100%;
+    margin: 0;
+}
+
+body, .go-viewport {
+    background-color: var(--bg-mid);
+    color           : var(--fg-text);
+}
+
+.go-loading,
+.go-welcome {
+    align-items    : center;
+    color          : var(--fg-secondary-text);
+    display        : flex;
+    height         : 100%;
+    justify-content: center;
+}
+
+/* ---------- Login: GO login window on the header colour ---------- */
+.go-login {
+    background-color: var(--c-header-bg);
+    height          : 100%;
+}
+
+.go-login-box {
+    background-color: var(--bg-low);
+    border          : 1px solid var(--fg-line);
+    border-radius   : 1.2rem;
+    gap             : 1.4rem;
+    padding         : 2.4rem 1.8rem;
+    width           : 40rem;
+}
+
+.go-login-box h1 {
+    color      : var(--fg-text);
+    font-size  : 2.4rem;
+    font-weight: normal;
+    margin     : 0;
+}
+
+.go-login-subtitle {
+    color        : var(--fg-secondary-text);
+    margin-bottom: .8rem;
+}
+
+.go-login-error {
+    color: var(--fg-error);
+}
+
+/* ---------- Main: GO header (GoUI/ExtJS "main tabs") ---------- */
+.go-main {
+    height  : 100%;
+    position: relative; /* .go-global-search */
+}
+
+/* GO: 64dp blue header, module tabs in bold sp(15), inactive at 50% white,
+   active white with a 3px --c-secondary (yellow) underline */
+.go-topbar.neo-toolbar {
+    background-color: var(--c-header-bg);
+    color           : #fff;
+    gap             : 0;
+    height          : 6.4rem;
+    padding         : 0 .8rem 0 1.6rem;
+    position        : relative;
+    z-index         : 2;
+}
+
+.go-brand { /* GO #go-logo: dp(240) x dp(40), logo-white.svg */
+    background    : url(../../Extjs3/themes/Paper/img/logo-white.svg) no-repeat left center / contain;
+    flex          : none;
+    height        : 4rem;
+    margin-right  : 2.4rem;
+    width         : 24rem;
+}
+
+.go-topbar .neo-button {
+    background-color: transparent;
+    border          : none;
+    border-bottom   : 3px solid transparent;
+    border-radius   : 0;
+    color           : rgba(255, 255, 255, .5);
+    height          : 6.4rem;
+    margin          : 0;
+    padding         : 0 1.2rem;
+}
+
+.go-topbar .neo-button .neo-button-glyph,
+.go-topbar .neo-button .neo-button-text {
+    color         : inherit;
+    font-size     : calc(1.5rem * var(--font-scale));
+    font-weight   : bold;
+    letter-spacing: .022em;
+}
+
+/* GO's module tabs are text only */
+.go-topbar .go-module-button .neo-button-glyph {
+    display: none;
+}
+
+/* "open in new window" icon right after its module tab */
+.go-topbar .neo-button.go-module-popout,
+.go-topbar .neo-button.go-module-close {
+    margin-left : -.8rem;
+    padding     : 0 .6rem;
+}
+
+.go-topbar .go-module-popout .neo-button-glyph,
+.go-topbar .go-module-close .neo-button-glyph {
+    font-size: calc(1.1rem * var(--font-scale));
+}
+
+/* a gap to the popout icon: no closing by a near miss */
+.go-topbar .neo-button.go-module-close {
+    margin-left: .4rem;
+}
+
+.go-topbar.neo-toolbar .neo-button:hover,
+.go-topbar.neo-toolbar .neo-button:focus-visible {
+    /* neo's .neo-button:hover border (a teal frame) loads after this file */
+    background-color: transparent;
+    border          : none;
+    border-bottom   : 3px solid transparent;
+    color           : #fff;
+    outline         : none;
+}
+
+.go-topbar.neo-toolbar .neo-button.pressed {
+    box-shadow: inset 0 -3px 0 var(--c-secondary); /* neo resets border on .pressed */
+    color     : #fff;
+}
+
+/* GO #secondary-menu: white Material icons, dp(40) round hover */
+.go-topbar.neo-toolbar .neo-button.go-header-button {
+    border       : none;
+    border-radius: 50%;
+    color        : #fff;
+    height       : 4rem;
+    margin       : 0 .4rem;
+    padding      : 0 .8rem;
+}
+
+.go-topbar.neo-toolbar .neo-button.go-header-button:hover {
+    background-color: rgba(255, 255, 255, .12);
+    border          : none;
+}
+
+.go-topbar .neo-button.go-header-button .neo-button-glyph.go-icon {
+    color    : #fff;
+    font-size: 2.4rem;
+}
+
+/* user menu: GO .user-img .avatar, dp(40) circle with a white border */
+.go-topbar.neo-toolbar .neo-button.go-header-avatar,
+.go-topbar.neo-toolbar .neo-button.go-header-avatar:hover {
+    border       : 1px solid #fff;
+    border-radius: 50%;
+    height       : 4rem;
+    margin       : 0 .8rem 0 .4rem;
+    min-width    : 0;
+    padding      : 0;
+    width        : 4rem;
+}
+
+.go-topbar .neo-button.go-header-avatar .neo-button-text {
+    color      : #fff;
+    font-size  : 1.6rem;
+    font-weight: normal;
+    width      : 100%;
+}
+
+/* GO .avatar in content (comments, history) */
+.go-avatar {
+    border-radius: 50%;
+    color        : #fff;
+    display      : inline-block;
+    flex         : none;
+    font-size    : 1.6rem;
+    height       : 4rem;
+    line-height  : 4rem;
+    text-align   : center;
+    width        : 4rem;
+}
+
+/* GO .search-field-wrap: the search field covers the header */
+.go-global-search {
+    left    : 0;
+    position: absolute;
+    right   : 0;
+    top     : 0;
+    z-index : 20;
+}
+
+.go-global-search .go-global-search-bar {
+    background-color: var(--c-header-bg);
+    box-sizing      : border-box;
+    height          : 6.4rem;
+    padding         : .8rem 1.6rem;
+}
+
+/* GO .search-field-wrap: translucent box in the middle, white text, × inside */
+.go-global-search .go-global-search-box {
+    background-color: rgba(255, 255, 255, .15);
+    border-radius   : .8rem;
+    max-width       : 100%;
+    padding-right   : .4rem;
+    width           : 49rem;
+}
+
+.go-global-search .go-global-search-box .neo-textfield,
+.go-global-search .go-global-search-box .neo-input-wrapper {
+    background-color: transparent;
+    border          : 0;
+    box-shadow      : none;
+}
+
+.go-global-search .go-global-search-box .neo-textfield-input {
+    background-color: transparent;
+    color           : #fff;
+}
+
+.go-global-search .go-global-search-box .neo-textfield-input::placeholder {
+    color: rgba(255, 255, 255, .7);
+}
+
+.go-global-search .go-global-search-box .neo-button {
+    background-color: transparent;
+}
+
+.go-global-search .go-global-search-box .neo-button .go-icon {
+    color: #fff;
+}
+
+.go-global-search .go-global-search-results {
+    align-self      : center;
+    background-color: var(--bg-low);
+    border          : 1px solid var(--fg-line);
+    border-radius   : 0 0 .8rem .8rem;
+    box-shadow      : 0 4px 12px rgba(0, 0, 0, .16);
+    max-height      : 60vh;
+    max-width       : calc(100% - 3.2rem);
+    overflow-y      : auto;
+    width           : 49rem;
+}
+
+.go-search-result {
+    align-items: center;
+    cursor     : pointer;
+    display    : flex;
+    gap        : 1.6rem;
+    padding    : .8rem 1.6rem;
+}
+
+.go-search-result:hover {
+    background-color: var(--bg-hover);
+}
+
+.go-search-result.go-disabled {
+    cursor : default;
+    opacity: .6;
+}
+
+.go-search-entity {
+    color    : var(--fg-secondary-text);
+    flex     : none;
+    font-size: .85em;
+    width    : 10rem;
+}
+
+.go-search-text {
+    display  : flex;
+    flex     : 1;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.go-search-text b {
+    font-weight  : normal;
+    overflow     : hidden;
+    text-overflow: ellipsis;
+    white-space  : nowrap;
+}
+
+.go-search-text small,
+.go-search-date {
+    color    : var(--fg-secondary-text);
+    font-size: .85em;
+}
+
+.go-modules {
+    min-height: 0;
+}
+
+/* card of a module that is open in its own window */
+.go-module-placeholder {
+    background-color: var(--bg-mid);
+    gap             : 1.6rem;
+}
+
+/* ---------- Shared bits ---------- */
+.go-dialog-buttons {
+    gap    : .8rem;
+    padding: .8rem 1.6rem 1.6rem;
+}
+
+.go-form-error {
+    color: var(--fg-error);
+}
+
+.go-confirm-message {
+    padding: 2rem 1.6rem;
+}
+
+.go-empty {
+    color     : var(--fg-secondary-text);
+    padding   : 2.4rem 0;
+    text-align: center;
+}
+
+/* flat GO toolbar buttons (older code; new code uses GO.button.Button) */
+.go-flat.neo-button {
+    background-color: transparent;
+    border          : none;
+    box-shadow      : none;
+    color           : var(--fg-text);
+}
+
+.go-flat.neo-button .neo-button-glyph,
+.go-flat.neo-button .neo-button-text {
+    color: inherit;
+}
+
+.go-flat.neo-button:hover {
+    background-color: var(--bg-hover);
+}
+
+.go-flat.neo-button[disabled] {
+    opacity: .38;
+}
+
+/* GOUI window: header on the window surface, no coloured bar */
+.neo-dialog {
+    background-color: var(--bg-low);
+    border          : 1px solid var(--fg-line);
+    border-radius   : 1.2rem;
+    overflow        : hidden;
+}
+
+.neo-dialog .neo-header-toolbar {
+    background-color: transparent;
+    color           : var(--fg-text);
+    padding         : 1.2rem 1.2rem 1.2rem 1.8rem;
+}
+
+.neo-dialog .neo-header-toolbar .neo-panel-header-text {
+    color    : var(--fg-text);
+    font-size: calc(1.8rem * var(--font-scale));
+}
+
+.neo-dialog .neo-header-toolbar .neo-button-glyph {
+    color: var(--fg-text);
+}
+
+/* GOUI window tools (open in new window, maximize, close): small round flat buttons */
+.neo-dialog .neo-header-toolbar .neo-button.neo-toolbar-action {
+    border-radius: 50%;
+    height       : 3.2rem;
+    margin-left  : .4rem;
+    min-width    : 0;
+    padding      : 0;
+    width        : 3.2rem;
+}
+
+.neo-dialog .neo-header-toolbar .neo-button.neo-toolbar-action .neo-button-glyph.go-icon {
+    color    : var(--fg-secondary-text, var(--fg-text));
+    font-size: 2rem;
+    margin   : 0;
+}
+
+.neo-dialog .neo-header-toolbar .neo-button.neo-toolbar-action:hover {
+    background-color: var(--bg-hover, rgba(0, 0, 0, .06));
+}
+
+/* GO.view.Dialog moved into its own window (popout) */
+.go-popup {
+    background-color: var(--bg-low);
+}
+
+.go-dialog-popup.neo-dialog {
+    border       : none;
+    border-radius: 0;
+    box-shadow   : none;
+}
+
+/* GOUI ".check.box input" (goui/style/_form.scss): dp(20) box, 1px outline, ticked in the
+   main colour. GO.component.CheckBox and the rows of GO.list.CheckList */
+.go-check {
+    background-color: var(--bg-lowest);
+    border          : 1px solid var(--fg-line);
+    border-radius   : .4rem;
+    box-sizing      : border-box;
+    color           : var(--fg-main);
+    cursor          : pointer;
+    display         : inline-block;
+    flex            : none;
+    height          : 2rem;
+    position        : relative;
+    vertical-align  : middle;
+    width           : 2rem;
+}
+
+.go-check::before { /* tick */
+    background-color: currentColor;
+    clip-path       : polygon(39.375% 74.375%, 16% 51%, 20.48% 46.52%, 39.33% 65.37%, 79.33% 25.37%, 83.81% 29.85%);
+    content         : '';
+    inset           : -1px;
+    position        : absolute;
+    transform       : scale(0);
+    transition      : 90ms transform ease-in-out;
+}
+
+.go-check.go-checked::before,
+.neo-selected > .go-check::before {
+    transform: scale(1);
+}
+
+.go-check.go-indeterminate::before {
+    clip-path: polygon(20% 45%, 80% 45%, 80% 55%, 20% 55%);
+    transform: scale(1);
+}
+
+.go-check:focus-visible {
+    border-color: var(--fg-main);
+    outline     : none;
+}
+
+.go-hint {
+    color    : var(--fg-secondary-text);
+    font-size: .9em;
+}
+
+.go-form-heading {
+    color      : var(--fg-secondary-text);
+    font-weight: normal;
+    margin     : .8rem 0 0;
+}
+
+.neo-toolbar > .go-check {
+    margin-right: .8rem;
+}
+
+/* ExtJS menu button: an arrow after the icon (e.g. "Filters" +▾) */
+.neo-button.go-menu-button::after {
+    content                : 'arrow_drop_down';
+    font-family            : 'Material Symbols Rounded';
+    font-feature-settings  : 'liga';
+    font-size              : 2rem;
+    -webkit-font-smoothing : antialiased;
+}
+
+/* ---------- Detail cards (GO.detail.*): go.detail.Panel's comments, files, history ---------- */
+.go-detail-card {
+    flex: none;
+}
+
+.go-detail-card-header {
+    gap    : .8rem;
+    padding: .4rem .8rem .4rem 1.6rem;
+}
+
+.go-detail-card-header h3 {
+    color      : var(--fg-text);
+    font-size  : calc(1.8rem * var(--font-scale));
+    font-weight: normal;
+    margin     : 0;
+}
+
+.go-detail-card-body {
+    gap    : 1.2rem;
+    padding: 0 1.6rem 1.6rem;
+}
+
+.go-detail-card-buttons {
+    gap: .8rem;
+}
+
+.go-comment {
+    display: flex;
+    gap    : 1.2rem;
+    padding: .8rem 0;
+}
+
+.go-comment-body {
+    flex     : 1;
+    min-width: 0;
+}
+
+.go-comment-meta {
+    color        : var(--fg-secondary-text);
+    font-size    : .9em;
+    margin-bottom: .4rem;
+}
+
+.go-comment-meta b {
+    color      : var(--fg-text);
+    font-weight: normal;
+}
+
+.go-comment-text img {
+    max-width: 100%;
+}
+
+.go-file {
+    align-items    : center;
+    border-radius  : .8rem;
+    color          : var(--fg-text);
+    display        : flex;
+    gap            : 1.6rem;
+    padding        : .8rem;
+    text-decoration: none;
+}
+
+.go-file:hover {
+    background-color: var(--bg-hover);
+}
+
+.go-file .go-icon {
+    color: var(--fg-secondary-text);
+}
+
+.go-file-text {
+    display       : flex;
+    flex-direction: column;
+    min-width     : 0;
+}
+
+.go-file-text small {
+    color    : var(--fg-secondary-text);
+    font-size: .85em;
+}
+
+/* GO .go-dropzone */
+.go-dropzone {
+    border       : 1px dashed var(--fg-line);
+    border-radius: .8rem;
+    color        : var(--fg-secondary-text);
+    padding      : 3.2rem 1.6rem;
+    text-align   : center;
+}
+
+.go-upload-button {
+    cursor: pointer;
+}
+
+.go-upload-input {
+    display: none;
+}
+
+/* GOUI table look for small HTML tables (history) */
+.go-table {
+    border-collapse: collapse;
+    width          : 100%;
+}
+
+.go-table th {
+    background-color: var(--bg-low);
+    border-bottom   : 1px solid var(--fg-line);
+    font-size       : .8em;
+    font-weight     : normal;
+    padding         : .8rem;
+    text-align      : left;
+}
+
+.go-table td {
+    border-bottom: 1px solid var(--fg-line);
+    padding      : .4rem .8rem;
+}
+
+.go-table .go-right {
+    text-align: right;
+}
+
+.go-avatar.go-avatar-small {
+    font-size  : 1.2rem;
+    height     : 3.2rem;
+    line-height: 3.2rem;
+    width      : 3.2rem;
+}
+
+.go-history-detail-body {
+    overflow: auto;
+    padding : 1.6rem;
+}

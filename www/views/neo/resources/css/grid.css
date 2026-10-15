@@ -1,0 +1,25 @@
+/* GO.grid.HeaderButton: column chooser (⋮) in the last column header */
+.go-grid .neo-grid-header-button .go-grid-header-trigger {
+    display: none;
+}
+.go-grid .neo-grid-header-button:last-child {
+    position: relative;
+    /* room for the ⋮ next to the sort icon */
+    padding-right: 22px;
+}
+.go-grid .neo-grid-header-button:last-child .go-grid-header-trigger {
+    display: block;
+    position: absolute;
+    top: 50%;
+    right: 2px;
+    transform: translateY(-50%);
+    font-size: 18px;
+    line-height: 1;
+    border-radius: 4px;
+    cursor: pointer;
+    opacity: .7;
+}
+.go-grid .neo-grid-header-button:last-child .go-grid-header-trigger:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, .08);
+}

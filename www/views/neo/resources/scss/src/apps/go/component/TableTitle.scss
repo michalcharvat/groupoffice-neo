@@ -1,0 +1,21 @@
+@use "../../../../go/go";
+
+.go-table-title {
+    display       : flex;
+    flex-direction: column;
+    min-width     : 0;
+
+    h4 {
+        color      : var(--fg-secondary-text); // GO h4
+        font-size  : go.sp(16);
+        font-weight: normal;
+        margin     : 0;
+        overflow   : hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    small {
+        font-size: .85em;
+    }
+}

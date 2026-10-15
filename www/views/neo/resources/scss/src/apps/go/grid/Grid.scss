@@ -1,0 +1,44 @@
+@use "../../../../go/go";
+
+// GOUI .goui-table look for GO.grid.Grid
+.go-grid {
+    .neo-grid-body .neo-grid-row .neo-grid-cell { // outranks neo's .neo-grid-body .neo-grid-row .neo-grid-cell
+        border-right: none;
+        line-height : go.dp(24);
+        padding     : 0 go.dp(8);
+
+        &:first-child {
+            padding-left: go.dp(16);
+        }
+
+        &.neo-last-column {
+            box-shadow   : none;
+            padding-right: go.dp(16);
+        }
+    }
+
+    .neo-grid-header-button {
+        line-height: go.dp(20);
+
+        &:first-child {
+            padding-left: go.dp(16);
+        }
+
+        // header of a right aligned column (cellAlign: 'right'); the glyph is on the right (row-reverse)
+        &.go-align-right {
+            justify-content: flex-start;
+        }
+
+        // GOUI th.sorted:after: Material "south" (asc), neo rotates it for desc
+        .neo-button-glyph {
+            font-size  : go.dp(16);
+            font-weight: normal;
+            margin     : 0 0 0 go.dp(8);
+
+            &::before {
+                content    : 'south';
+                font-family: 'Material Symbols Rounded';
+            }
+        }
+    }
+}

@@ -44,6 +44,12 @@ class AuthController extends \GO\Base\Controller\AbstractController {
 			\GO::config()->language=$params['SET_LANGUAGE'];
 
 		$this->loadInit();
+
+		if(\go\core\webclient\Neo::enabled()) {
+			\go\core\webclient\Neo::get()->render();
+			return;
+		}
+
 		require(\GO::view()->getTheme()->getPath().'Layout.php');	
 	}
 

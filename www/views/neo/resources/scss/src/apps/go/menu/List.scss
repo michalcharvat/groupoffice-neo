@@ -1,0 +1,40 @@
+@use "../../../../go/go";
+
+// GOUI menu (goui/style/_menu.scss): items dp(40) with a dp(24) icon
+.go-menu.neo-menu-list {
+    background-color: var(--bg-low);
+    border          : 1px solid var(--fg-line);
+    border-radius   : go.dp(8);
+    box-shadow      : 0 4px 12px rgba(0, 0, 0, .16);
+    min-width       : go.dp(200);
+    padding         : go.dp(4) 0;
+
+    .neo-list-item {
+        align-items: center;
+        color      : var(--fg-text);
+        display    : flex;
+        gap        : go.dp(16);
+        min-height : go.dp(40);
+        padding    : 0 go.dp(16);
+
+        &:hover {
+            background-color: var(--bg-hover);
+        }
+
+        &.neo-disabled {
+            opacity: .38;
+        }
+    }
+
+    .neo-menu-icon.go-icon {
+        color : var(--fg-secondary-text);
+        margin: 0;
+    }
+
+    .neo-menu-separator {
+        border-top: 1px solid var(--fg-line);
+        margin    : go.dp(4) 0;
+        min-height: 0;
+        padding   : 0;
+    }
+}

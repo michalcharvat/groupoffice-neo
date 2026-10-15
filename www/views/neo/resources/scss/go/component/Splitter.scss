@@ -1,0 +1,10 @@
+// GOUI <hr class="goui-draghandle">: 5 x borderWidth wide, 1px fg-border line in the middle,
+// -2px margins so the panels touch
+:where(.neo-theme-go) {
+    --splitter-background-color : transparent;
+    --splitter-border           : none;
+    --splitter-border-radius    : 0;
+    --splitter-hover-color      : transparent; // GOUI: only the cursor changes
+    --splitter-margin-horizontal: -2px 0;
+    --splitter-margin-vertical  : 0 -2px;
+}

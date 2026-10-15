@@ -1,0 +1,184 @@
+# neo.mjs webclient (spike)
+
+Alternative Group Office webclient built with [neo.mjs](https://github.com/neomjs/neo)
+13.x. Core components GO vs neo: `docs/neo-core-components.md`.
+
+## Run
+
+- `config.php`: `$config['webclient'] = "neo";` → `AuthController::actionInit()`
+  renders `go\core\webclient\Neo` instead of the ExtJS `Layout.php`.
+- `npm install && npm run build-themes` in this folder: generates the `theme-go` neo theme
+  and builds it with neo's workspace theme build into `dist/development` +
+  `resources/theme-map.json` (see [GO look](#go-look-theme-go)). Needs the GOUI submodules
+  (`views/goui/goui`, `views/goui/groupoffice-core`): the theme uses GO's SCSS tokens.
+- Local instance: `~/Projects/go-docker/docker-compose.go26neo.yml` → http://localhost:8027
+  (same database as classic GO on :8026). Test login in `test/credentials.local` (not committed).
+
+## Layout
+
+| Path | What |
+|---|---|
+| `apps/go/` | shell app: `app.mjs`, Viewport (loading / login / main), LoginView, MainView (module tabs with popout and close ×, right click: close / close others / close all; a closed tab returns when the module is opened again; hash routing) |
+| `src/jmap/Client.mjs` | JMAP client in the App worker: cookie + `X-CSRF-Token`, batching, fetch-based SSE |
+| `src/data/JmapStore.mjs` | `Neo.data.Store` over `Entity/query`+`get`; reloads the page on push |
+| `src/ModuleRegistry.mjs` | modules register `{name, title, iconCls, capability, mainView}` |
+| `src/view/Dialog.mjs` | base for GO dialogs (close/mask fixes, see below) |
+| `src/view/MainThreeColumnPanel.mjs` | GO module layout west \| center \| east with resizable, remembered splitters (groupoffice-core's GOUI class) |
+| `src/button/`, `src/component/`, `src/grid/` | GO components derived from neo: `Button` (flat, Material icons), `SearchButton`, `Splitter`, `TableTitle`, `CheckBox` (select all), `UploadButton`, `Grid`, `selectRow()` |
+| `src/list/CheckList.mjs`, `src/menu/List.mjs` | GOUI checkbox table with row menu (notebooks, filters); GO menu with Material `icon` per item, `List.showAt()` for row menus |
+| `src/view/FilterPanel.mjs`, `FilterDialog.mjs` | west "Filters": saved `EntityFilter`s (type fixed), checked ones ANDed into the grid filter |
+| `src/view/GlobalSearch.mjs` | header search over core `Search`; modules map entities to routes (`routes` in the registry) |
+| `src/detail/` | detail cards below an entity: `CommentsPanel`, `FilesPanel` (legacy files controllers), `HistoryPanel` (LogEntry grid like GOUI LogEntryGrid, loads on scroll, reloads on a push for the shown entity type; css `resources/css/history.css`) |
+| `src/grid/Grid.mjs`, `HeaderButton.mjs` | `GO.grid.Grid`: column chooser on ⋮ in the last column header, right click on a header: sort asc/desc + columns (GO 6.8) (`hidden`, `hideable: false`, `stateKey`), hidden columns and widths saved in `state-<stateId>` in the GOUI format; neo only gets the visible columns |
+| `src/State.mjs` | GOUI-compatible component state in localStorage (`state-<id>`) |
+| `src/Translate.mjs` | `t()`, `translator(pkg, module)`, `fmt()` over GO's language files (see [Translations](#translations)) |
+| `src/form/field/JmapComboBox.mjs`, `PrincipalCombo.mjs`, `GroupCombo.mjs` | remote combo over `Entity/query` (filter as you type, `loadMore` on scroll); value = id, display text fetched for a preset id |
+| `src/form/field/HtmlField.mjs` + `src/main/addon/HtmlEditor.mjs` | rich text field; the editor and its commands live in the main-thread addon (`WS/HtmlEditor`, loaded with `Neo.Main.importAddon` on mount) |
+| `src/link/` | links: `LinkDetail` card, `LinkBrowser`, `AddLinkButton`, `LinkBrowseButton`, `SelectSearchDialog` (core `Search`), `linkTypes` (entity icons, `resolveRoute`) |
+| `src/permissions/SharePanel.mjs` | ACL editor as one form field (`name: 'acl'`, value `{groupId: level}`), GOUI layout: all groups/users with a level each, ACL members first |
+| `resources/css/fields.css` | GOUI look for neo fields: round Material triggers, picker like `menu.goui-dropdown`, centred light inline label on empty fields |
+| `src/form/DataSourceForm.mjs`, `src/view/FormWindow.mjs` | entity form (load/`set`, only modified properties on update, server validation errors on fields) and GOUI FormWindow (tabs via `addCard`, `addCustomFields`, `addSharePanel`, discard prompt). A class field must not share a name with a neo reactive config (`data`, `isLoading`) |
+| `src/customfields/` | custom fields: definitions (`customFields.mjs`), GO types → neo fields (`types.mjs`), `FormFieldset` + `addCustomFieldsTo()` (FormWindow), `DetailFieldsets` cards; fields are named `customFields.<databaseName>` |
+| `src/dev/` | prototype only: "Dev" module (`#dev/<id>`), menu like the GOUI docs (`goui-docs/script/MainMenu.ts`) in `menu.mjs` with a status per component (demo / available / to convert); converting a component = add `src/dev/demo/<Name>.mjs`, set `demo` and `status: 'done'` |
+| `resources/css/*.css` | per component plain CSS, all linked by `Neo.php` |
+| `resources/scss/go/` | GO values of the `theme-go` neo theme, per neo class |
+| `resources/scss/src/apps/go/` | styles of the `GO.*` components |
+| `resources/go.css` | shell: topbar, login, dialog chrome |
+| `go/modules/<pkg>/<name>/views/neo/Index.mjs` | module entry, found by `Neo::moduleFiles()`; optional `style.css` |
+
+Module code imports neo and the shell with relative paths
+(`../../../../../../views/neo/...`): import maps don't apply inside workers.
+
+## GO look (theme-go)
+
+The reference is GO 26's GOUI module UI (e.g. Notes), not the ExtJS Paper theme.
+
+- **Theme**: `Neo.php` sets `themes: ['neo-theme-go']`. neo loads only the first theme's
+  class on `<body>` and scopes every value sheet to it, so there is no runtime inheritance:
+  `buildScripts/generateGoTheme.mjs` copies `theme-neo-light` to `resources/scss/theme-go`
+  (gitignored) re-scoped to `.neo-theme-go`, and appends `resources/scss/go/<same path>.scss`
+  to each file. Overlays get `go.dp()`/`go.sp()` (GOUI units) and may `@use` GO SCSS.
+- **GO tokens**: `go/Global.scss` `@use`s `views/goui/groupoffice-core/style/_theme.scss`,
+  so `--fg-main`, `--bg-mid`, `--density`, … are GO's own (incl. `body.dark`). neo tokens
+  (`--purple-*`, `--sem-*`, `--button-*`, `--grid-*`, …) point at them. `<html>` font-size
+  is `--density` (8.64px) like GOUI: 1dp = .1rem, so GOUI sizes carry over 1:1.
+- **Components**: GO structure comes from derived classes (`GO.button.Button`,
+  `GO.view.MainThreeColumnPanel`, `GO.grid.Grid`, …) with their own SCSS in
+  `resources/scss/src/apps/go/` (`GO.x.Y` → `apps/go/x/Y.scss`, a leading `view` is dropped).
+  Set structural classes with `baseCls`: a subclass's `cls` replaces `cls`.
+- **Icons**: Material Symbols ligatures (`{module: Button, icon: 'add'}`), font from
+  `views/goui/goui/resources/iconfont`. Font Awesome stays for `iconCls`.
+- **Splitter state**: same keys as GOUI (`state-<module>-west-splitter`, width in dp), so
+  on one origin GOUI and neo share the panel widths.
+- **Rebuild** after any SCSS change (`npm run build-themes`, ~4 s); the browser reads
+  `dist/`, not the SCSS.
+
+Still different from GOUI notes: no "Input field" variable
+filters, filter conditions are text values only (no sub groups / pickers), comments are plain
+text (no rich text editor, labels, attachments), files have no drag & drop, overwrite question
+or context menu, no import/export menu, the grid selects one row (no multi-select toolbar). Dark mode follows
+`body.dark` (GO tokens); there is no switch in the neo UI yet.
+
+## Translations
+
+- `lang.php` serves `Neo::getLanguageFile()`: all language sections of the current
+  language as JSON `{package: {module: {key: text}}}`, cached in
+  `cache/clientscripts/neo_lang_<iso>.json` (cleared with the ExtJS client scripts).
+  `Neo.config.goLanguageUrl` carries its mtime.
+- `app.mjs` awaits `load()` before it imports any view or module, so `t()` works in
+  static configs. Code the JMAP client imports (`Format.mjs`) must call `t()` at run time.
+- The language is fixed per App worker: `Neo.php` appends it to the shared worker name.
+  The login screen uses the browser language; after login, a user with another language
+  reloads all windows (unless the `GO_LANGUAGE` cookie from `?SET_LANGUAGE=` is set).
+- Keys are GO's English texts. A module uses `translator('community', 'notes')`, which
+  falls back to core/core. Placeholders like GO: `fmt(t("Are you sure you want to delete '{item}'?"), {item})`.
+  Arrays (`full_months`, `short_days`) via `lookup()`. Missing keys are collected in
+  `missing` and shown in English.
+
+## Gotchas
+
+- **Reserved event names**: neo's core Base fires `ready` (no arguments) when an
+  instance gets `isReady`. Don't fire a custom `ready`: FormWindow fires `formReady`.
+- **Non-sortable columns**: neo 13's header button sorts on click even with
+  `sortable: false`; `GO.grid.HeaderButton.onClick()` skips it (otherwise the server
+  gets an unknown sort property, e.g. LogEntry `creatorName` → SQL error).
+- **Sort arrow**: ↓ ascending, ↑ descending, as GOUI (`_table.scss`: south/north).
+- **Windows leaving during start**: the main thread sends `disconnect` only for apps it
+  knows (after the worker's `registerAppName`), and the worker ignores a disconnect for an
+  app name the port has not registered. `Neo.php` sends `goWindowLeft` to the App worker on
+  `pagehide`: `app.mjs` retires that exact port, remembers the window, `onStart()` skips it
+  and every disconnect removes apps of such windows (otherwise their DOM deltas reach other windows: "insertNode:
+  Parent not found").
+- **Two `text` filters**: GO joins search words as `w0` per `text` condition, two in one
+  query fail (SQL 1066). `JmapStore.getJmapFilter()` merges ANDed `text` conditions; a `text` inside an OR/NOT group
+  next to another one still fails (needs server-side alias handling).
+- **CSS order**: neo's theme CSS (`Base.css`, `Text.css`…) loads after `go.css` and
+  `resources/css/*.css`, so a plain CSS rule with the same specificity loses (e.g.
+  `.neo-container` background). Styles belong in the `theme-go` SCSS.
+- **Testing with Chrome MCP**: clicks sent right after a navigation, before a screenshot,
+  never reach the page. Not an app bug.
+- **No `route` on buttons**: neo renders `route` as `<a href="#x">`, and `<base href>` turns
+  it into `views/neo/apps/go/#x` (403). Use `handler: () => Neo.Main.setRoute(...)`.
+- **Selecting by id**: `selectionModel.select()` takes a record; a string is read as
+  a vdom id. Use `select(list.store.get(id))`.
+- **Page base**: neo assumes the page sits at `apps/<name>/index.html`. The PHP page
+  sets `<base href="views/neo/apps/go/">`, `basePath: '../../'`,
+  `workerBasePath: '../../node_modules/neo.mjs/src/worker/'`. URLs used in the worker
+  (fetch, import) resolve against the worker script, so the API URL is passed
+  absolute (`Neo.config.goBaseUrl`).
+- **Worker output is invisible** to tools reading the page console. `app.mjs` mirrors
+  `console.error/warn`, `error` and `unhandledrejection` to the main thread via `Neo.Main.log`.
+- **Caching**: ES modules load without version query strings; `.htaccess` sends
+  `Cache-Control: no-cache` (ETag revalidation). Navigating to the same URL with only a
+  different hash does not reload the page.
+- **Dialogs**: without an `animateTargetId` a dialog stays at `.neo-floating`'s
+  -10000px; set `left`/`top` in `wrapperStyle`. neo's `closeOrHide()` destroys the
+  dialog and then awaits `this.timeout()`, which never resolves on a destroyed
+  instance → modal mask stays. Escape only hides. `GO.view.Dialog` fixes both.
+- **HTML rendering**: grid renderer strings and List `displayField` go to innerHTML.
+  Escape text (`Format.escapeHtml`, `src/list/TextList.mjs` for lists and ComboBox
+  `listConfig`).
+  HTML written by other users (comments) goes through `Format.sanitizeHtml()` (allowlist,
+  no attributes but safe `a[href]`/`img[src]`): the server's XSS check is a heuristic.
+- **Components**: create child-dependent wiring in `onConstructed()`, not
+  `construct()` (references don't exist yet). `selectRow()` does not fire
+  `selectionChange`. String handlers: `'up.onX'` walks the parents.
+- **Selecting a grid row from code** right after a load is lost: the vnode gets the
+  class, the DOM row does not. Use `src/grid/selectRow.mjs` (checks the DOM and retries).
+- **Never `hidden: true` a `PagingToolbar`**: its store load listener then throws (its
+  buttons are gone) and breaks the grid's load handling (rows render, clicks do nothing).
+  Hide it with a CSS class.
+- **Infinite scroll**: `JmapStore` `scrollLoad: true` + the grid body's `scrollEdge` event →
+  `loadMore()`. `isLoading`/`isLoaded` must be set *before* `data =`/`add()`: the grid fires
+  `scrollEdge` while it renders the new rows.
+- **Legacy controllers** (`client.legacy()`, e.g. files): need `security_token`
+  (`Neo.config.goSecurityToken`, from the PHP session) and may return JS functions inside
+  their JSON (`startjs:…:endjs`); `Client.parseLegacyJson()` turns those into null.
+- **Files across containers**: :8026 and :8027 share the DB, not the file storage. A file
+  uploaded in neo is missing for the classic UI ("Folder … doesn't exist on the filesystem").
+- **`<button>` colour**: buttons take the UA's black, not the parent's colour; ghost buttons
+  set `color: var(--fg-text)` (else black icons in dark mode).
+- **Reserved names**: a Component already has `text` (replaces its content) and `render()`;
+  don't redefine them as configs/methods.
+- **Rich text lives on the main thread**: `HtmlField` is the worker side of the
+  `HtmlEditor` addon; its value syncs debounced, so `FormWindow.submit()` calls `flush()`
+  on every field that has it. Comments are still plain text.
+- **SSE across two containers**: APCu state counters are per container, so writes on
+  :8026 never wake SSE on :8027. `$config['sseUseApcu'] = false` makes
+  `PushDispatcher` check the DB every 2 s. Do not set `apc.enabled=0`: GO's cache
+  then fails (`go/core/cache/Apcu.php` TypeError).
+- **Shared workers** (`useSharedWorkers: true`): one App worker serves all GO windows
+  of the browser profile (shared session, one SSE connection).
+  - `src/Popup.mjs` moves a component into a new window: `?neoPopup=<id>` starts
+    `PopupView`, which adopts it. Used by `GO.view.Dialog` (header action "popout") and
+    `MainView` (topbar button, whole module; closing the window docks it back).
+  - A SharedWorker lives while any GO tab is open and new tabs join it. `Neo.php` adds a
+    build id (GO version + newest mtime of the neo sources) to the worker name, so changed
+    code starts a new worker; old tabs keep the old one.
+  - neo keeps a closed window's components: `app.mjs` destroys its app and main view on
+    `disconnect`; dialogs close themselves. `isDestroyed` is `undefined` on live instances.
+  - neo pushes the initial URL hash only for the first window; later windows read
+    `Neo.windowConfigs[windowId].hash`. `HashHistory` is shared: filter by `windowId`.
+  - Worker console output goes to every window (`app.mjs`); neo already suppresses
+    `PortDisconnectedError` rejections of closed windows.
+  - `window.open` needs a user click; synthetic clicks get the popup blocked.

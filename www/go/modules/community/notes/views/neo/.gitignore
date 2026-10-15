@@ -1,0 +1,2 @@
+# GO ignores **/*.css (built files); this one is a source
+!style.css

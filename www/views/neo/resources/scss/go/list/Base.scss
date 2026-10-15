@@ -1,0 +1,16 @@
+// GOUI table without headers / row lines (notebook list in the west panel)
+:where(.neo-theme-go) {
+    --cmp-list-item-height          : #{go.dp(40)};
+    --cmp-list-item-spacex          : #{go.dp(16)};
+    --cmp-list-borderradius         : 0;
+    --cmp-list-item-borderradius    : 0;
+    --cmp-list-item-surface-default : transparent;
+    --cmp-list-item-surface-hover   : var(--bg-hover);
+    --cmp-list-item-surface-selected: var(--bg-selected);
+    --cmp-list-item-surface-active  : var(--bg-selected);
+    --cmp-list-item-text-selected   : var(--fg-selected);
+    --list-container-background-color: transparent;
+    --list-item-padding             : 0 #{go.dp(16)};
+    --list-item-color-selected      : var(--fg-selected);
+    --list-item-focus-outline       : none;
+}

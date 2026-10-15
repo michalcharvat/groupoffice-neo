@@ -1,0 +1,18 @@
+@use "../../../../go/go";
+
+// GO.component.Splitter = GOUI <hr class="goui-draghandle">: a 1px --fg-border line
+// in the middle of a 5px handle that overlaps both panels by 2px
+.go-splitter.neo-splitter {
+    color  : var(--fg-border);
+    z-index: 1;
+
+    &.neo-vertical {
+        background-image: linear-gradient(90deg, transparent 2px, currentColor 2px 3px, transparent 3px);
+        cursor          : col-resize;
+    }
+
+    &.neo-horizontal {
+        background-image: linear-gradient(180deg, transparent 2px, currentColor 2px 3px, transparent 3px);
+        cursor          : row-resize !important;
+    }
+}

@@ -1,0 +1,5 @@
+// GOUI .goui-toolbar: flex row, gap dp(8), padding dp(8) dp(16)
+:where(.neo-theme-go) {
+    --toolbar-background-color: transparent;
+    --toolbar-padding         : #{go.dp(8)} #{go.dp(16)};
+}
