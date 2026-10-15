@@ -110,6 +110,14 @@ class LoginView extends Container {
                             text     : t('Next'),
                             handler  : 'up.onLogin'
                         }]
+                    }, {
+                        // "Sign in with ..." of modules (Neo.php goLoginButtons, e.g. OpenID Connect)
+                        ntype    : 'container',
+                        cls      : ['go-login-signin'],
+                        flex     : 'none',
+                        reference: 'signInButtons',
+                        hidden   : !Neo.config.goLoginButtons?.length,
+                        layout   : {ntype: 'vbox', align: 'stretch'}
                     }]
                 }, {
                     // go.login.ForgotDialog
@@ -168,6 +176,12 @@ class LoginView extends Container {
 
         let me   = this,
             item = (text, lang) => ({text, handler: () => me.setLanguage(lang)});
+
+        me.getReference('signInButtons').add((Neo.config.goLoginButtons || []).map(({text, url}) => ({
+            module : Button,
+            text,
+            handler: () => me.signInWith(url)
+        })));
 
         me.getReference('languageButton').menu = {
             align: {edgeAlign: 't100-b100'},
@@ -295,6 +309,14 @@ class LoginView extends Container {
         } finally {
             panel.isDestroyed || panel.setBusy(false)
         }
+    }
+
+    /**
+     * A module's "Sign in with ..." button: its page (e.g. OpenID Connect) logs in and comes back
+     * @param {String} url relative to GO
+     */
+    signInWith(url) {
+        Neo.Main.redirectTo({url: client.baseUrl + url, windowId: this.windowId})
     }
 
     /**

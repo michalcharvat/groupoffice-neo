@@ -101,6 +101,18 @@
         padding: go.dp(8) go.dp(12) go.dp(16);
     }
 
+    // "Sign in with ..." of modules (go.login.LoginDialog.addSignInButton(), .oidc-signin-btn)
+    .go-login-signin {
+        gap    : go.dp(8);
+        padding: 0 go.dp(18) go.dp(16);
+
+        .neo-button {
+            border       : 1px solid var(--fg-outline);
+            border-radius: go.dp(20);
+            width        : 100%;
+        }
+    }
+
     .go-login .neo-button.go-login-forgot {
         color: var(--fg-main);
 

@@ -46,6 +46,30 @@ class Neo {
 	}
 
 	/**
+	 * Extra buttons of the login screen (ExtJS: go.login.LoginDialog.addSignInButton()
+	 * in a module's App::EVENT_HEAD script). A module's views/neo/login.php returns
+	 * [['text' => 'Sign in with X', 'url' => 'api/page.php/...'], ...], url relative to GO.
+	 *
+	 * @return array[]
+	 */
+	private function loginButtons(): array
+	{
+		$buttons = [];
+		foreach (GO::modules()->getAllModules(true) as $module) {
+			$file = $module->moduleManager->path() . 'views/neo/login.php';
+			if (!is_file($file)) {
+				continue;
+			}
+			try {
+				$buttons = array_merge($buttons, (array) (static fn() => include $file)());
+			} catch (\Throwable $e) {
+				\go\core\ErrorHandler::logException($e);
+			}
+		}
+		return array_values(array_filter($buttons, fn($b) => is_array($b) && isset($b['text'], $b['url'])));
+	}
+
+	/**
 	 * Shared worker name suffix of this page
 	 *
 	 * A popup (?neoPopup=) must join its opener's worker, which holds the component
@@ -234,6 +258,8 @@ class Neo {
 			'goHolidaySets' => \go\core\model\Holiday::getHolidaySets(),
 			'goLostPasswordUrl' => go()->getSettings()->lostPasswordURL ?: null,
 			'goLogoutWhenInactive' => intval(go()->getSettings()->logoutWhenInactive),
+			// login screen "Sign in with ..." buttons of modules (views/neo/login.php)
+			'goLoginButtons' => $this->loginButtons(),
 			// set in a popup window opened by GO.view.Dialog: id of the dialog to adopt
 			'goPopup' => $this->popupId(),
 			// shared worker name suffix, passed on to popups (src/Popup.mjs)
