@@ -35,7 +35,8 @@ class AccountDialog extends FormWindow {
         const field = (module, name, labelText, config = {}) => ({module, name, labelText, labelPosition: 'inline', ...config});
 
         return [
-            // GOUI: only shown after a failed connection, to switch the account off
+            // GOUI: shown for a working account (switch it off); after a failed connection
+            // saving connects again
             {...field(BoolCheckBox, 'active', null), reference: 'activeField', valueLabel: t('Enabled'), hidden: true},
             field(TextField, 'name', t('Name')),
             field(TextField, 'host', t('Host')),
@@ -120,7 +121,7 @@ class AccountDialog extends FormWindow {
 
         error.text   = me.lastError || '';
         error.hidden = !me.lastError;
-        me.getReference('activeField').hidden = !me.lastError;
+        me.getReference('activeField').hidden = !account.id || !!me.lastError;
         // GOUI: "Connect" until the account works
         me.getReference('saveButton').text = !account.id || me.lastError ? t('Connect') : t('Save');
 

@@ -139,6 +139,17 @@ class EnableDialog extends Dialog {
     }
 
     /**
+     * An enforced setup can't be escaped: only "Setup later" (after its count down) closes it
+     */
+    onKeyDownEscape() {
+        let me = this;
+
+        if (!me.block && !me.getReference('laterButton')?.disabled) {
+            super.onKeyDownEscape()
+        }
+    }
+
+    /**
      * "Setup later (9)" … "Setup later"
      * @param {Number} seconds
      */

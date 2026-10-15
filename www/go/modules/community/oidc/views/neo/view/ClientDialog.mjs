@@ -30,9 +30,9 @@ class ClientDialog extends FormWindow {
             hint(t('The Open ID endpoint that implements the .well-known/openid-configuration path')),
             field(TextField, 'clientId', t('Client ID')),
             field(PasswordField, 'clientSecret', t('Client secret'), {autoComplete: 'new-password'}),
-            // a text, not a field: the form would send it
+            // a text, not a field: the form would send it; absolute like the server's redirectUri
             {ntype: 'component', cls: ['go-oidc-redirect'], flex: 'none',
-             html: `<div class="go-field-hint">Redirect URI</div><code>${escapeHtml(client.baseUrl + 'api/page.php/community/oidc/auth')}</code>`},
+             html: `<div class="go-field-hint">Redirect URI</div><code>${escapeHtml(new URL(client.baseUrl + 'api/page.php/community/oidc/auth', globalThis.location.href).href)}</code>`},
             hint(t("Use this redirect URI in your provider's App registration"))
         ]
     }
