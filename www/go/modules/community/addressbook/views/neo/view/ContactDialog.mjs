@@ -1,94 +1,18 @@
-import Container      from '../../../../../../../views/neo/node_modules/neo.mjs/src/container/Base.mjs';
-import Hidden         from '../../../../../../../views/neo/node_modules/neo.mjs/src/form/field/Hidden.mjs';
 import TextArea       from '../../../../../../../views/neo/node_modules/neo.mjs/src/form/field/TextArea.mjs';
-import TextField      from '../../../../../../../views/neo/node_modules/neo.mjs/src/form/field/Text.mjs';
 import {LEVEL_WRITE}  from '../../../../../../../views/neo/src/Acl.mjs';
-import Button         from '../../../../../../../views/neo/src/button/Button.mjs';
-import ArrayField     from '../../../../../../../views/neo/src/form/field/ArrayField.mjs';
 import BoolCheckBox   from '../../../../../../../views/neo/src/form/field/BoolCheckBox.mjs';
 import ChipsField     from '../../../../../../../views/neo/src/form/field/ChipsField.mjs';
-import ContainerField from '../../../../../../../views/neo/src/form/field/ContainerField.mjs';
 import DateField      from '../../../../../../../views/neo/src/form/field/DateField.mjs';
 import JmapComboBox   from '../../../../../../../views/neo/src/form/field/JmapComboBox.mjs';
-import LocalCombo     from '../../../../../../../views/neo/src/form/field/LocalCombo.mjs';
 import {fieldset}     from '../../../../../../../views/neo/src/form/fieldset.mjs';
 import client         from '../../../../../../../views/neo/src/jmap/Client.mjs';
-import TextList       from '../../../../../../../views/neo/src/list/TextList.mjs';
-import {lookup}       from '../../../../../../../views/neo/src/Translate.mjs';
 import FormWindow     from '../../../../../../../views/neo/src/view/FormWindow.mjs';
-import {t, typeOptions} from '../util.mjs';
+import {t}            from '../util.mjs';
 import ColorField     from './ColorField.mjs';
 import PhotoField     from './PhotoField.mjs';
+import {addressList, dateList, emailList, phoneList, select, text, urlList} from './fields.mjs';
 
 const NAME_PARTS = ['firstName', 'middleName', 'lastName'];
-
-/**
- * Combo over fixed options
- * @param {String} name
- * @param {String} labelText
- * @param {Array[]} options [[id, name]]
- * @param {Object} [config]
- * @returns {Object}
- */
-function select(name, labelText, options, config = {}) {
-    return {
-        module       : LocalCombo,
-        name,
-        labelText,
-        labelPosition: 'inline',
-        width        : null,
-        displayField : 'name',
-        valueField   : 'id',
-        editable     : false,
-        listConfig   : {module: TextList},
-        store        : {keyProperty: 'id', data: options.map(([id, name]) => ({id, name}))},
-        ...config
-    }
-}
-
-const text = (name, labelText, config = {}) => ({module: TextField, name, labelText, labelPosition: 'inline', ...config});
-
-/**
- * ArrayField of typed values (FormGroup in ExtJS): type combo, the value field(s), remove
- * button; an "add" button below
- * @param {String} name e.g. 'emailAddresses'
- * @param {String} langKey e.g. 'emailTypes'
- * @param {String} defaultType
- * @param {Function} valueFields () => field configs
- * @param {String} addText
- * @param {String} addIcon
- * @returns {Object[]} the ArrayField and its add button
- */
-function typedList(name, langKey, defaultType, valueFields, addText, addIcon) {
-    const reference = name + 'Field';
-
-    return [{
-        module    : ArrayField,
-        name,
-        reference,
-        flex      : 'none',
-        style     : {gap: '8px'},
-        buildField: () => ({
-            module: ContainerField,
-            cls   : ['go-ab-row'],
-            style : {gap: '8px'},
-            items : [
-                {module: Hidden, name: 'id'},
-                select('type', t('Type'), typeOptions(langKey), {width: 140, flex: 'none', clearable: false}),
-                ...valueFields(),
-                ArrayField.removeButton({flex: 'none'})
-            ]
-        })
-    }, {
-        module : Button,
-        ui     : 'secondary',
-        icon   : addIcon,
-        text   : addText,
-        flex   : 'none',
-        style  : {alignSelf: 'start'},
-        handler: data => data.component.up({className: 'GO.addressbook.view.ContactDialog'}).getReference(reference).addValue({type: defaultType})
-    }]
-}
 
 /**
  * Create or edit a contact or organization (ExtJS ContactDialog): name (with its parts
@@ -260,51 +184,12 @@ class ContactDialog extends FormWindow {
                 required     : true,
                 flex         : 'none'
             },
-            fieldset(t('Communication'), [
-                ...typedList('emailAddresses', 'emailTypes', 'work',
-                    () => [text('email', t('E-mail'), {flex: 1, required: true, inputType: 'email'})],
-                    t('Add e-mail address'), 'email'),
-                ...typedList('phoneNumbers', 'phoneTypes', 'work',
-                    () => [text('number', t('Number'), {flex: 1, required: true})],
-                    t('Add phone number'), 'phone')
-            ]),
-            fieldset(t('Addresses'), typedList('addresses', 'addressTypes', 'work', () => [{
-                ntype : 'container',
-                flex  : 1,
-                layout: {ntype: 'vbox', align: 'stretch'},
-                style : {gap: '8px'},
-                items : [
-                    {module: TextArea, name: 'address', labelText: t('Address'), labelPosition: 'inline', height: 72},
-                    {
-                        ntype : 'container',
-                        layout: {ntype: 'hbox', align: 'start'},
-                        style : {gap: '8px'},
-                        items : [
-                            text('zipCode', t('ZIP code'), {width: 120, flex: 'none'}),
-                            text('city', t('City'), {flex: 1})
-                        ]
-                    }, {
-                        ntype : 'container',
-                        layout: {ntype: 'hbox', align: 'start'},
-                        style : {gap: '8px'},
-                        items : [
-                            text('state', t('State'), {flex: 1}),
-                            select('countryCode', t('Country'), Object.entries(lookup('countries') || {})
-                                .sort((a, b) => String(a[1]).localeCompare(String(b[1]))), {flex: 1, editable: true})
-                        ]
-                    },
-                    {module: Hidden, name: 'latitude'},
-                    {module: Hidden, name: 'longitude'}
-                ]
-            }], t('Add street address'), 'add_location')),
+            fieldset(t('Communication'), [...emailList(), ...phoneList()]),
+            fieldset(t('Addresses'), addressList()),
             fieldset(t('Other'), [
                 {module: DateField, name: 'actionAt', labelText: t('Action date'), labelPosition: 'inline', width: 200, flex: 'none'},
-                ...typedList('dates', 'dateTypes', 'birthday',
-                    () => [{module: DateField, name: 'date', labelText: t('Date'), labelPosition: 'inline', required: true, flex: 1}],
-                    t('Add date'), 'event'),
-                ...typedList('urls', 'urlTypes', 'homepage',
-                    () => [text('url', 'URL', {flex: 1, required: true})],
-                    t('Add online url'), 'home')
+                ...dateList(),
+                ...urlList()
             ])]
         }]
     }

@@ -3,6 +3,16 @@ import {translator}  from '../../../../../../views/neo/src/Translate.mjs';
 
 const t = translator('community', 'addressbook');
 
+const userSettings = [{
+    title  : t('Address book'),
+    iconCls: 'fa fa-address-book',
+    panel  : () => import('./view/SettingsPanel.mjs')
+}, {
+    title  : t('Profile'),
+    iconCls: 'fa fa-id-card',
+    panel  : () => import('./view/ProfilePanel.mjs')
+}];
+
 ModuleRegistry.register({
     package   : 'community',
     name      : 'addressbook',
@@ -15,5 +25,14 @@ ModuleRegistry.register({
     quickAdd  : {text: t('Contact'), icon: 'person'},
     // header search results: entity → route below "#addressbook/"
     routes    : {Contact: id => 'contact/' + id},
-    mainView  : () => import('./view/AddressBookMain.mjs')
+    mainView  : () => import('./view/AddressBookMain.mjs'),
+    // cards in My account (ExtJS userSettingsPanels); an array of cards needs
+    // ModuleRegistry.loadSettingsPanels() (neo-ui "system settings" card), before that only the first
+    userSettings: typeof ModuleRegistry.loadSettingsPanels === 'function' ? userSettings : userSettings[0],
+    // card in System settings (ExtJS systemSettingsPanels)
+    systemSettings: {
+        title  : t('Address book'),
+        iconCls: 'fa fa-address-book',
+        panel  : () => import('./view/SystemSettingsPanel.mjs')
+    }
 });

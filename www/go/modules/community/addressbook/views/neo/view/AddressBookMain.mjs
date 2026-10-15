@@ -11,7 +11,7 @@ import JmapStore     from '../../../../../../../views/neo/src/data/JmapStore.mjs
 import MenuList      from '../../../../../../../views/neo/src/menu/List.mjs';
 import {parseYmd}    from '../../../../../../../views/neo/src/DateUtil.mjs';
 import {escapeHtml, formatDate, formatUserDateTime, smartDateTime, userFormat} from '../../../../../../../views/neo/src/Format.mjs';
-import {alertLink, dismissAlert, lastAlertId, waitForFinishedAlert} from '../../../../../../../views/neo/src/data/backgroundJob.mjs';
+import {alertBlobId, dismissAlert, lastAlertId, waitForFinishedAlert} from '../../../../../../../views/neo/src/data/backgroundJob.mjs';
 import {notify, notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
 import ConfirmDialog    from '../../../../../../../views/neo/src/view/ConfirmDialog.mjs';
 import FilterPanel      from '../../../../../../../views/neo/src/view/FilterPanel.mjs';
@@ -1180,11 +1180,11 @@ class AddressBookMain extends MainThreeColumnPanel {
             await client.call('Contact/export', {extension, ids});
             notify(me, t('You will be notified when the export is complete. You can close this window now.'), {title: t('Export in progress')});
 
-            const alert = await waitForFinishedAlert(since),
-                  url   = alertLink(alert);
+            const alert  = await waitForFinishedAlert(since),
+                  blobId = alertBlobId(alert);
 
             dismissAlert(alert);
-            url && !me.isDestroyed && Neo.Main.redirectTo({url, windowId: me.windowId})
+            blobId && !me.isDestroyed && Neo.Main.redirectTo({url: downloadUrl(blobId), windowId: me.windowId})
         } catch (e) {
             me.isDestroyed || me.showError(e)
         }

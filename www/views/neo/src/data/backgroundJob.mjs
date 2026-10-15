@@ -9,7 +9,7 @@ import client from '../jmap/Client.mjs';
  *     const since = await lastAlertId();
  *     await client.call('Contact/export', {extension: 'csv', ids});
  *     const alert = await waitForFinishedAlert(since);
- *     const url   = alertLink(alert);   // download URL of the export
+ *     const blobId = alertBlobId(alert); // the export file
  */
 
 /**
@@ -62,12 +62,14 @@ export async function waitForFinishedAlert(sinceId, {interval = 2000, timeout = 
 }
 
 /**
+ * The blob of a finished export. Only the blob id is taken from the alert body (never
+ * its URL): callers build the download URL themselves.
  * @param {Object} alert
- * @returns {String|null} the first link in the alert body (the export's download URL)
+ * @returns {String|null} blob id (hex)
  */
-export function alertLink(alert) {
-    const match = /href="([^"]+)"/.exec(alert?.data?.body || '');
-    return match ? match[1].replace(/&amp;/g, '&') : null
+export function alertBlobId(alert) {
+    const match = /download\.php\?blob=([0-9a-f]{40})\b/i.exec(alert?.data?.body || '');
+    return match ? match[1] : null
 }
 
 /**
