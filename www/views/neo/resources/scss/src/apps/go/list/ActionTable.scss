@@ -1,0 +1,78 @@
+@use "../../../../go/go";
+
+// GO.list.ActionTable: GOUI table metrics (goui/style/_table.scss), buttons at the row end
+.neo-theme-go .go-actiontable {
+    border-collapse: collapse;
+    color          : var(--fg-text);
+    width          : 100%;
+
+    th, td {
+        border-bottom: 1px solid var(--fg-line, var(--fg-outline));
+        height       : go.dp(24);
+        padding      : go.dp(8);
+        text-align   : start;
+        white-space  : nowrap;
+    }
+
+    th {
+        color      : var(--fg-secondary-text);
+        font-size  : 1.2rem;
+        font-weight: 600;
+    }
+
+    th:first-child, td:first-child {
+        padding-left: go.dp(16);
+    }
+
+    .go-actiontable-flex {
+        overflow     : hidden;
+        text-overflow: ellipsis;
+        width        : 100%;
+    }
+
+    .go-actiontable-checkcell {
+        text-align: center;
+    }
+
+    .go-actiontable-actions {
+        padding   : 0 go.dp(8);
+        text-align: end;
+        width     : 1%;
+    }
+
+    .go-actiontable-row:hover {
+        background-color: var(--bg-hover);
+    }
+
+    .go-actiontable-empty td {
+        color     : var(--fg-secondary-text);
+        padding   : go.dp(24) 0;
+        text-align: center;
+    }
+
+    // GOUI flat icon button
+    .go-actiontable-action {
+        background   : none;
+        border       : 0;
+        border-radius: 50%;
+        color        : var(--fg-text);
+        cursor       : pointer;
+        height       : go.dp(32);
+        padding      : 0;
+        width        : go.dp(32);
+
+        &:hover:not(:disabled) {
+            background-color: var(--bg-hover);
+        }
+
+        &:disabled {
+            cursor : default;
+            opacity: .4;
+        }
+
+        .go-icon {
+            font-family: 'Material Symbols Rounded';
+            font-size  : go.dp(20);
+        }
+    }
+}
