@@ -12,6 +12,10 @@
  * @returns {Promise<void>}
  */
 export async function selectRow(grid, recordId) {
+    // the store's own key: a deep link passes the id as a string, the grid selects numbers
+    const found = grid.store.get(recordId);
+    found && (recordId = grid.view.getRecordId(found));
+
     const sm         = grid.view.selectionModel,
           generation = grid.goSelectGeneration = (grid.goSelectGeneration || 0) + 1,
           current    = () => !grid.isDestroyed && grid.goSelectGeneration === generation,
@@ -26,7 +30,9 @@ export async function selectRow(grid, recordId) {
         return
     }
 
-    sm.selectRow(recordId);
+    // only this row, also in a multi select grid (GO.grid.RowSelectionModel)
+    [...sm.selectedRows].forEach(id => id !== recordId && sm.deselectRow(id));
+    sm.isSelectedRow(recordId) || sm.selectRow(recordId);
 
     for (let attempt = 0; attempt < 10; attempt++) {
         await grid.timeout(300);
