@@ -1,0 +1,28 @@
+@use "../../../../../go/go";
+
+// GO.otp.view.EnableDialog (go.modules.community.otp.EnableAuthenticatorDialog, otp/views/extjs3/themes)
+.neo-theme-go {
+    .go-otp-enable-form {
+        gap    : go.dp(12);
+        padding: go.dp(16);
+    }
+
+    .go-otp-qr {
+        text-align: center;
+
+        img {
+            background-color: #fff;
+            padding         : go.dp(8);
+        }
+    }
+
+    // ExtJS p.info: administrator requires the setup
+    .go-otp-info {
+        align-items     : center;
+        background-color: var(--bg-low);
+        border-radius   : go.dp(8);
+        display         : flex;
+        gap             : go.dp(8);
+        padding         : go.dp(8) go.dp(12);
+    }
+}
