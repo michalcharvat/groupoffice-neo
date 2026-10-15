@@ -21,7 +21,10 @@ Alternative Group Office webclient built with [neo.mjs](https://github.com/neomj
 | `apps/go/` | shell app: `app.mjs`, Viewport (loading / login / main), LoginView (GO login: "Login required" window, language menu, forgot credentials card), MainView (module tabs with popout and close ×, right click: close / close others / close all; a closed tab returns when the module is opened again; hash routing) |
 | `src/jmap/Client.mjs` | JMAP client in the App worker: cookie + `X-CSRF-Token`, batching, fetch-based SSE |
 | `src/data/JmapStore.mjs` | `Neo.data.Store` over `Entity/query`+`get`; reloads the page on push |
-| `src/ModuleRegistry.mjs` | modules register `{name, title, iconCls, capability, mainView}` |
+| `src/ModuleRegistry.mjs` | modules register `{name, title, iconCls, capability, mainView}`, optional `userSettings: {title, iconCls, panel}` (a card in My account) |
+| `src/usersettings/` | My account (header avatar menu): `UserSettingsDialog` (FormWindow over the logged-in `User`, cards on the left: Account, Look & feel, Notifications, Visible to, custom field tabs, module cards; one `User/set`, asks for the current password like ExtJS, a new language reloads with `?SET_LANGUAGE=`, formats reload the windows), `AccountPanel`, `LookAndFeelPanel`, `NotificationPanel`, `VisibleToPanel`. A module card binds with dotted names (`notesSettings.defaultNoteBookId`) and may implement `onLoad(user)` |
+| `src/Preferences.mjs` + `src/main/addon/Preferences.mjs` | theme (`html.compact`) and colour scheme (`body.light/dark/system`) without a reload, "Reset windows and grids" (removes `state-*`); `Neo.php` renders the saved ones into the page |
+| `src/form/fieldset.mjs`, `src/form/field/BoolCheckBox.mjs`, `LocalCombo.mjs`, `src/view/PasswordPrompt.mjs` | GOUI fieldset with a legend (config helper), boolean checkbox, combo over fixed `[{id, name}]` matching ids loosely, password question |
 | `src/view/Dialog.mjs` | base for GO dialogs (close/mask fixes, see below) |
 | `src/view/MainThreeColumnPanel.mjs` | GO module layout west \| center \| east with resizable, remembered splitters (groupoffice-core's GOUI class) |
 | `src/button/`, `src/component/`, `src/grid/` | GO components derived from neo: `Button` (flat, Material icons), `SearchButton`, `Splitter`, `TableTitle`, `CheckBox` (select all), `UploadButton`, `Grid`, `selectRow()` |
@@ -83,7 +86,7 @@ Still different from GOUI notes: no "Input field" variable
 filters, filter conditions are text values only (no sub groups / pickers), comments are plain
 text (no rich text editor, labels, attachments), files have no drag & drop, overwrite question
 or context menu, no import/export menu. Dark mode follows
-`body.dark` (GO tokens); there is no switch in the neo UI yet.
+`body.dark` (GO tokens), set in My account → Look & feel.
 
 ## Translations
 
@@ -206,3 +209,17 @@ or context menu, no import/export menu. Dark mode follows
   - Worker console output goes to every window (`app.mjs`); neo already suppresses
     `PortDisconnectedError` rejections of closed windows.
   - `window.open` needs a user click; synthetic clicks get the popup blocked.
+- **Empty fields skip their validator**: neo only runs `validator` for a field with a value
+  (or `required`). A check between two fields (password + confirmation) must sit on the field
+  that has the value too, and a save that must never go out unchecked checks again in code
+  (`UserSettingsDialog.submit()`).
+- **Ids as number or string**: JMAP returns `defaultNoteBookId: 65`, a `JmapComboBox` that
+  resolved its record returns `"65"`. `DataSourceForm.isSameValue()` compares scalars as
+  strings, otherwise the form is "modified" right after loading.
+- **Left tab bar**: neo turns `tabBarPosition: 'left'` tabs sideways and sizes their buttons
+  (also the pressed one) for it; `usersettings/UserSettingsDialog.scss` sets them upright.
+- **Scrolling vbox cards**: a container in a card with `overflow-y: auto` needs `flex: 'none'`,
+  or the vbox squeezes it to the card height and its content is cut off (narrow screens).
+- **Testing on another port**: cookies are per host, not port. A container on :8028/:8029 uses
+  the login of :8027, which may be the real admin, not the test user: never save passwords or
+  other account data there without checking who is logged in.

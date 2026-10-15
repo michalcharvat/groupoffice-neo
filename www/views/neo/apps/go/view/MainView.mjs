@@ -10,6 +10,7 @@ import GlobalSearch   from '../../../src/view/GlobalSearch.mjs';
 import ModuleRegistry from '../../../src/ModuleRegistry.mjs';
 import {notifyError}           from '../../../src/Notify.mjs';
 import {closePopup, openPopup} from '../../../src/Popup.mjs';
+import {applyTheme}            from '../../../src/Preferences.mjs';
 import {t} from '../../../src/Translate.mjs';
 
 // header menus open below their button, right edges aligned (they sit at the right)
@@ -145,6 +146,10 @@ class MainView extends Container {
                 icon    : 'account_circle',
                 disabled: true
             }, {
+                text   : t('My account'),
+                icon   : 'manage_accounts',
+                handler: () => me.openUserSettings()
+            }, {
                 text   : t('Logout'),
                 icon   : 'logout',
                 handler: () => client.logout().catch(e => notifyError(me, e))
@@ -176,13 +181,33 @@ class MainView extends Container {
         // later windows find it in their window config
         const current = HashHistory.first(me.windowId) || Neo.windowConfigs?.[me.windowId]?.hash;
 
+        // a page rendered for the login screen has no user theme yet (Neo.php)
+        applyTheme({theme: client.user?.theme, colorScheme: client.user?.themeColorScheme}, [me.windowId]);
+
+        // the user's start module (My account), or the only module
+        const start = available.find(m => m.name === client.user?.start_module) || (available.length === 1 && available[0]);
+
         if (current) {
             me.onHashChange(current)
-        } else if (available.length === 1) {
-            // only one module: open it right away
-            Neo.Main.setRoute({value: available[0].name, windowId: me.windowId})
+        } else if (start) {
+            Neo.Main.setRoute({value: start.name, windowId: me.windowId})
         } else {
             me.getReference('modules').layout.activeIndex = 0
+        }
+    }
+
+    /**
+     * Header user menu "My account"
+     */
+    async openUserSettings() {
+        let me = this;
+
+        try {
+            const {default: UserSettingsDialog} = await import('../../../src/usersettings/UserSettingsDialog.mjs');
+
+            me.isDestroyed || Neo.create(UserSettingsDialog, {appName: me.appName, windowId: me.windowId})
+        } catch (e) {
+            notifyError(me, e)
         }
     }
 

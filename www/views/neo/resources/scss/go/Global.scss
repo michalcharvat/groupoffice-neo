@@ -36,6 +36,13 @@ html {
     }
 }
 
+// theme "Compact" (My account): Neo.php / src/main/addon/Preferences.mjs set html.compact,
+// densities of groupoffice-core/style/_compact.scss
+html.compact {
+    --density       : 7.125px;
+    --mobile-density: 8.64px;
+}
+
 :where(.neo-theme-go) {
     --neo-background-color: var(--bg-low);
     --neo-color           : var(--fg-text);
