@@ -3,6 +3,7 @@ import Toolbar       from '../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import {LEVEL_MANAGE} from '../Acl.mjs';
 import Button        from '../button/Button.mjs';
 import client        from '../jmap/Client.mjs';
+import {escapeHtml}  from '../Format.mjs';
 import JmapStore     from '../data/JmapStore.mjs';
 import CheckList     from '../list/CheckList.mjs';
 import EntityFilter  from '../model/EntityFilter.mjs';
@@ -133,7 +134,7 @@ class FilterPanel extends Container {
         const confirmed = await ConfirmDialog.ask({
             appName : me.appName,
             windowId: me.windowId,
-            message : fmt(t("Are you sure you want to delete '{item}'?"), {item: record.name})
+            message : fmt(t("Are you sure you want to delete '{item}'?"), {item: escapeHtml(record.name)})
         });
 
         if (confirmed) {

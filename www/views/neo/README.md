@@ -220,6 +220,8 @@ or context menu, no import/export menu. Dark mode follows
   (also the pressed one) for it; `usersettings/UserSettingsDialog.scss` sets them upright.
 - **Scrolling vbox cards**: a container in a card with `overflow-y: auto` needs `flex: 'none'`,
   or the vbox squeezes it to the card height and its content is cut off (narrow screens).
+- **Overlays over buttons**: neo gives a button's glyph and text `z-index: 2`; anything laid
+  over a toolbar (e.g. the SearchButton overlay) needs a higher z-index.
 - **Testing on another port**: cookies are per host, not port. A container on :8028/:8029 uses
   the login of :8027, which may be the real admin, not the test user: never save passwords or
   other account data there without checking who is logged in.
