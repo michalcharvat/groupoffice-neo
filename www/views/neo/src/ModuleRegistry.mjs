@@ -16,7 +16,12 @@ import client from './jmap/Client.mjs';
  *     // optional card in My account (src/usersettings/UserSettingsDialog.mjs)
  *     userSettings: {title: 'Notes', iconCls: 'fa fa-sticky-note', panel: () => import('./view/SettingsPanel.mjs')},
  *     // optional card(s) in System settings (src/systemsettings/SystemSettingsDialog.mjs)
- *     systemSettings: {title: 'Notes', iconCls: 'fa fa-sticky-note', panel: () => import('./view/SystemSettingsPanel.mjs')}
+ *     systemSettings: {title: 'Notes', iconCls: 'fa fa-sticky-note', panel: () => import('./view/SystemSettingsPanel.mjs')},
+ *     // optional login step per authenticator id (2FA, GO go.AuthenticationManager.register()),
+ *     // see apps/go/view/LoginView.mjs; available before login (no capability check)
+ *     loginPanels: {otpauthenticator: () => import('./view/OtpLoginPanel.mjs')},
+ *     // optional, called with each window's main view after login (e.g. a dialog to show then)
+ *     onMainView: mainView => {}
  * });
  *
  * A module without a mainView only adds settings cards: it is not an app in the header.
@@ -26,6 +31,30 @@ class ModuleRegistry {
 
     register(module) {
         this.#modules.set(module.name, module)
+    }
+
+    /**
+     * Login step of a secondary authenticator, from any registered module
+     * @param {String} id authenticator id, e.g. 'otpauthenticator'
+     * @returns {Function|null} () => import(...)
+     */
+    getLoginPanel(id) {
+        return [...this.#modules.values()].find(m => m.loginPanels?.[id])?.loginPanels[id] || null
+    }
+
+    /**
+     * Calls a function config (e.g. onMainView) of every module the user has access to
+     * @param {String} name
+     * @param {...*} args
+     */
+    callHook(name, ...args) {
+        this.#accessible().forEach(m => {
+            try {
+                m[name]?.(...args)
+            } catch (e) {
+                console.error(`${name} of ${m.name}`, e)
+            }
+        })
     }
 
     get(name) {

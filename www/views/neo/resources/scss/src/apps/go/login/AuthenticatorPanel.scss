@@ -1,0 +1,9 @@
+@use "../../../../go/go";
+
+// GO.login.AuthenticatorPanel: a 2FA step in the login window (GO.view.LoginView), room for
+// the error below the code field
+.neo-theme-go {
+    .go-login-authenticator .go-login-fields {
+        padding-bottom: go.dp(24);
+    }
+}
