@@ -77,6 +77,8 @@ class AccountPanel extends Container {
                 labelText: t('Disk quota') + ' (MB)',
                 labelPosition: 'inline',
                 minValue : 0,
+                // neo's default maximum is 100
+                maxValue : Number.MAX_SAFE_INTEGER,
                 stepSize : 1
             }, {
                 ntype: 'component',

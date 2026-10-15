@@ -143,8 +143,9 @@ const TYPES = {
             return {
                 ...baseConfig(f),
                 module        : NumberField,
-                maxValue      : null,
-                minValue      : null,
+                // neo clamps on blur with Math.min/max: null would turn values into 0
+                maxValue      : Number.MAX_SAFE_INTEGER,
+                minValue      : -Number.MAX_SAFE_INTEGER,
                 stepSize      : Math.pow(10, -decimals),
                 useSpinButtons: false
             }
