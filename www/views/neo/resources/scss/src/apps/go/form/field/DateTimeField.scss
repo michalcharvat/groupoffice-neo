@@ -1,0 +1,11 @@
+// GO.form.field.DateTimeField: date input grows, time input fits "--:--"
+.neo-theme-go .go-datetimefield {
+    .go-datetime-date {
+        flex: 1 1 auto;
+    }
+
+    .go-datetime-time {
+        flex : none;
+        width: 12rem;
+    }
+}

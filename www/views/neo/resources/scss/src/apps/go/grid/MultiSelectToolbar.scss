@@ -1,0 +1,22 @@
+// GO.grid.MultiSelectToolbar: GOUI .goui-toolbar.overlay.multiselect, over the toolbar
+// before it (the parent has .go-mstb-host)
+.neo-theme-go {
+    .go-mstb-host {
+        position: relative;
+    }
+
+    .go-multiselect-toolbar {
+        background-color: var(--bg-mid);
+        border-bottom   : 1px solid var(--fg-line);
+        box-sizing      : border-box;
+        inset           : 0;
+        position        : absolute;
+        z-index         : 2;
+    }
+
+    .go-multiselect-label {
+        font-size  : 1.6rem;
+        font-weight: 600;
+        margin     : 0 .8rem;
+    }
+}

@@ -78,7 +78,8 @@
         }
     }
 
-    .neo-selected > .go-check::before {
+    // CheckList rows: checked = selected (a GO.tree.Tree row is selected, its box is not)
+    .go-check-list .neo-selected > .go-check::before {
         transform: scale(1);
     }
 

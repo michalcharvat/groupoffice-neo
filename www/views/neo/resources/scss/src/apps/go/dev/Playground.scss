@@ -47,3 +47,15 @@
     .go-dev-status-neo  { background: #1565c0; }
     .go-dev-status-todo { background: #e65100; }
 }
+
+// demo pages (src/dev/demo/FormDemo.mjs)
+.neo-theme-go .go-dev-output {
+    font-size  : 1.2rem;
+    margin     : 0;
+    white-space: pre-wrap;
+    word-break : break-all;
+}
+
+.neo-theme-go .go-dev-intro {
+    max-width: 64rem;
+}

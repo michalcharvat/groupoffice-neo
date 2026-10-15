@@ -1,0 +1,21 @@
+// GO.form.field.DurationField: "hh : mm" like GOUI .duration
+.neo-theme-go .go-durationfield {
+    .go-field-box {
+        gap: 0;
+    }
+
+    .go-field-input {
+        flex      : none;
+        text-align: right;
+        width     : 6rem;
+    }
+
+    .go-duration-minutes {
+        text-align: left;
+        width     : 4rem;
+    }
+
+    .go-duration-sep {
+        padding: 0 .2rem;
+    }
+}
