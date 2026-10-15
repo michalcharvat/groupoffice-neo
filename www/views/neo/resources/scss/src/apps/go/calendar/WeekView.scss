@@ -1,0 +1,157 @@
+@use "../../../../go/go";
+@use "cal" as *;
+
+// GO.calendar.WeekView: day, days and week
+.go-cal.week {
+    --hour-height : 5vh;
+    display       : flex;
+    flex-direction: column;
+
+    > ul {
+        border-bottom   : 2px solid $colorBorder;
+        display         : flex;
+        flex            : none;
+        overflow-y      : auto;
+        scrollbar-gutter: stable;
+
+        &:first-child { // header
+            @include weekhead;
+
+            > li[data-action] {
+                cursor: pointer;
+            }
+        }
+
+        > li:first-child { // week number / "All day"
+            font-size  : .9em;
+            min-height : go.dp(24);
+            padding-top: go.dp(4);
+            text-align : center;
+        }
+
+        + ul { // all day items
+            background-color: $surfaceLowest;
+            border-bottom   : 2px solid $colorLine;
+            max-height      : 30%;
+            min-height      : go.dp(32);
+            overflow-x      : hidden;
+            position        : relative;
+        }
+    }
+
+    .all-days {
+        left          : $timeMargin;
+        min-height    : go.dp(24);
+        pointer-events: none;
+        position      : absolute;
+        right         : 0;
+
+        > div {
+            @include event;
+            align-items   : center;
+            display       : flex;
+            padding-left  : go.dp(8);
+            pointer-events: all;
+
+            > em {
+                white-space: nowrap;
+            }
+        }
+
+        ~ li {
+            border-right: 1px solid $colorDivider;
+        }
+    }
+
+    > dl { // day columns
+        background-color: $surfaceLowest;
+        display         : flex;
+        flex            : 1;
+        overflow-y      : scroll;
+        position        : relative;
+
+        > dd {
+            background-image: repeating-linear-gradient(to bottom, $colorLine 0, $colorLine 1px, transparent 1px, transparent var(--hour-height));
+            border-right    : 1px solid $colorLine;
+            height          : calc(24 * var(--hour-height));
+            overflow        : hidden;
+            position        : relative;
+
+            &:last-child {
+                border-right: 0;
+            }
+
+            > div {
+                @include event;
+                border-left: go.dp(6) solid currentColor;
+                min-height : go.dp(24);
+                position   : absolute;
+
+                > em, > span, > span > i {
+                    color: color-mix(in srgb, currentColor 36%, var(--fg-text));
+                }
+
+                > span {
+                    display: inline-block;
+                    float  : right;
+                }
+
+                &.selected > em, &.selected > span, &.selected > span > i {
+                    color: #fff;
+                }
+
+                // resize handles
+                &::before, &::after {
+                    content : '';
+                    cursor  : row-resize;
+                    height  : 4px;
+                    left    : 0;
+                    position: absolute;
+                    right   : 0;
+                }
+
+                &::before {
+                    top: 0;
+                }
+
+                &::after {
+                    bottom: 0;
+                }
+            }
+        }
+
+        > dt { // hours
+            > em {
+                color      : $colorTextSecondary;
+                display    : block;
+                font-size  : .8em;
+                font-style : normal;
+                height     : var(--hour-height);
+                line-height: 0;
+                padding    : 0 go.dp(15) 0 0;
+                text-align : right;
+            }
+        }
+    }
+
+    li, dd, dt {
+        flex: 5 0 0;
+
+        &.weekend {
+            background-color: $surfaceLow;
+        }
+
+        &:first-child {
+            max-width: $timeMargin;
+        }
+    }
+
+    &.resizing {
+        cursor: row-resize;
+
+        dl dd > div {
+            pointer-events: none;
+            transition    : height 84ms ease-out, top 84ms ease-out;
+        }
+    }
+}

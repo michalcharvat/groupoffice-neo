@@ -1,0 +1,67 @@
+@use "../../../../go/go";
+@use "cal" as *;
+
+// GO.calendar.ListView: days of a month with their items
+.go-cal.list {
+    background-color: $surfaceLowest;
+    overflow-y      : auto;
+
+    > li {
+        border-bottom: 1px solid $colorLine;
+        overflow     : hidden;
+        padding      : go.dp(16);
+
+        &.empty {
+            padding: 0 go.dp(16);
+        }
+
+        > h3 {
+            float : left;
+            margin: 0;
+
+            > em {
+                font-size   : 1.4em;
+                font-style  : normal;
+                margin-right: go.dp(8);
+                padding     : 0 go.dp(4);
+            }
+        }
+
+        &.empty > h3 {
+            float      : none;
+            font-weight: 400;
+            line-height: go.dp(32);
+        }
+
+        > div {
+            border-radius: go.dp(8);
+            box-sizing   : border-box;
+            cursor       : pointer;
+            display      : flex;
+            flex-wrap    : nowrap;
+            font-size    : 1.1em;
+            margin       : go.dp(4) 0 go.dp(4) go.dp(144);
+            min-height   : go.dp(28);
+            overflow     : hidden;
+            padding      : go.dp(4) go.dp(6);
+            user-select  : none;
+
+            &.selected {
+                background-color: currentColor;
+
+                > i, > span {
+                    color: #fff;
+                }
+            }
+
+            > span {
+                color: $colorText;
+            }
+
+            > span:first-of-type {
+                margin-left: go.dp(8);
+                width      : go.dp(198);
+            }
+        }
+    }
+}

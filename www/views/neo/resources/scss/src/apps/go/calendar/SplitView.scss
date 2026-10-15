@@ -1,0 +1,41 @@
+@use "../../../../go/go";
+@use "cal" as *;
+
+// GO.calendar.SplitView: a week row per calendar
+.go-cal.split {
+    display       : flex;
+    flex-direction: column;
+    overflow-y    : auto;
+
+    > ul {
+        @include weekhead;
+        flex            : none;
+        scrollbar-gutter: auto;
+
+        > li {
+            flex: 5 0 0;
+
+            &.weeknb {
+                color    : $colorPrimary;
+                font-size: .9em;
+                padding  : go.dp(8) go.dp(16);
+                position : absolute;
+            }
+        }
+    }
+
+    > div { // calendar name
+        flex   : none;
+        padding: go.dp(4) go.dp(8);
+    }
+
+    > ol {
+        border-bottom: 1px solid $colorLine;
+        flex         : 1 0 auto;
+        min-height   : go.dp(64);
+
+        > li.events.events {
+            margin-top: go.dp(4);
+        }
+    }
+}

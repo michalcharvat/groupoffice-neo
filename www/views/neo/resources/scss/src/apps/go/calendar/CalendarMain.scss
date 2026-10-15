@@ -1,0 +1,96 @@
+@use "../../../../go/go";
+@use "cal" as *;
+
+// GO.calendar.CalendarMain: sidebar | toolbar + views
+.neo-theme-go .go-calendar {
+    .go-cal-west {
+        background-color: var(--bg-low);
+        padding-top     : go.dp(4);
+    }
+
+    // GOUI tbar({cls: 'dense'}) with an h3
+    .go-cal-dense {
+        flex   : none;
+        padding: go.dp(7) go.dp(3.5) go.dp(7) go.dp(11);
+
+        > h3 {
+            color    : $colorTextSecondary;
+            flex     : 1;
+            font-size: .9em;
+            margin   : 0;
+        }
+    }
+
+    .go-cal-toolbar {
+        background-color: var(--bg-mid);
+        border-bottom   : 1px solid var(--fg-line);
+        gap             : go.dp(4);
+    }
+
+    .go-cal-period-title {
+        flex          : 1 0 auto;
+        font-size     : 1.8em;
+        font-weight   : 400;
+        margin        : 0 go.dp(8);
+        min-width     : 100px;
+        overflow      : hidden;
+        text-overflow : ellipsis;
+        text-transform: capitalize;
+        white-space   : nowrap;
+
+        em {
+            color     : $colorTextSecondary;
+            font-style: normal;
+        }
+    }
+
+    // GOUI group of view buttons
+    .go-cal-view-buttons {
+        background-color: var(--bg-lowest);
+        border          : 1px solid var(--fg-line);
+        border-radius   : go.dp(20);
+        overflow        : hidden;
+
+        > .neo-button {
+            border-radius: 0;
+            margin       : 0;
+
+            &.pressed {
+                background-color: var(--bg-selected);
+                color           : var(--fg-main);
+            }
+        }
+    }
+
+    .go-cal-inbox {
+        background-color: var(--c-accent, #f39c12);
+        color           : #fff;
+    }
+
+    .go-cal-cards {
+        min-height: 0;
+    }
+
+    .go-cal-list-container {
+        border-top: 1px solid $colorBorder;
+    }
+
+    .go-cal-for-phone {
+        display: none;
+    }
+
+    // GOUI $breakpointMedium: the views as a menu
+    @media (max-width: 1000px) {
+        .go-cal-not-phone {
+            display: none;
+        }
+
+        .go-cal-for-phone {
+            display: inline-flex;
+        }
+
+        .go-cal-list-container > .go-cal-detail {
+            display: none;
+        }
+    }
+}

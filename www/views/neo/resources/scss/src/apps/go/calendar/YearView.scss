@@ -1,0 +1,89 @@
+@use "../../../../go/go";
+@use "cal" as *;
+
+// GO.calendar.YearView
+.go-cal.yearview {
+    align-items     : center;
+    background-color: $surfaceLow;
+    border-top      : 1px solid $colorBorder;
+    display         : flex;
+    flex-wrap       : wrap;
+    gap             : go.dp(16);
+    justify-content : space-evenly;
+    overflow-y      : auto;
+
+    > div {
+        flex     : 1 1 24%;
+        min-width: go.dp(200);
+    }
+
+    table {
+        color     : $colorTextSecondary;
+        margin    : 0 auto;
+        max-width : go.dp(340);
+        min-height: go.dp(210);
+        width     : 100%;
+
+        caption {
+            cursor    : pointer;
+            padding   : go.dp(8) 0 go.dp(4);
+            text-align: center;
+
+            &.current {
+                color: $colorPrimary;
+            }
+        }
+
+        th {
+            @include font-caption;
+            height: 20px;
+        }
+
+        td, th {
+            cursor        : default;
+            overflow      : hidden;
+            position      : relative;
+            text-align    : center;
+            vertical-align: top;
+        }
+
+        td {
+            height: go.dp(26);
+
+            &[data-action] {
+                cursor: pointer;
+            }
+
+            &.today {
+                color      : $colorPrimary;
+                font-weight: 500;
+            }
+
+            &.past {
+                opacity: .7;
+            }
+
+            > div.events {
+                height     : 6px;
+                line-height: 6px;
+                position   : absolute;
+                text-align : center;
+                top        : 15px;
+                width      : 100%;
+
+                > p {
+                    border-radius: 50%;
+                    display      : inline-block;
+                    height       : 6px;
+                    margin       : 0 1px 0 0;
+                    padding      : 0;
+                    width        : 6px;
+                }
+            }
+        }
+
+        td.weeknb {
+            color: $colorTextSecondary;
+        }
+    }
+}

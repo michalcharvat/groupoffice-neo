@@ -1,0 +1,79 @@
+@use "../../../../go/go";
+@use "cal" as *;
+
+// GO.calendar.CheckRows: GOUI check-list with coloured check boxes
+.neo-theme-go .go-cal-check-rows {
+    list-style: none;
+    margin    : 0;
+    padding   : 0 0 go.dp(16);
+
+    > li {
+        align-items: center;
+        display    : flex;
+        gap        : go.dp(12);
+        min-height : go.dp(32);
+        padding    : 0 go.dp(4) 0 go.dp(11);
+
+        &.selected {
+            background-color: var(--bg-selected-inactive);
+        }
+
+        &.go-cal-check-row {
+            cursor: pointer;
+        }
+
+        &.go-cal-check-group > h3 {
+            color    : $colorTextSecondary;
+            font-size: .9em;
+            margin   : go.dp(8) 0 go.dp(4);
+        }
+
+        .go-row-menu {
+            border-radius: 50%;
+            color        : var(--fg-text);
+            cursor       : pointer;
+            font-size    : go.dp(20);
+            height       : go.dp(28);
+            line-height  : go.dp(28);
+            text-align   : center;
+            visibility   : hidden;
+            width        : go.dp(28);
+
+            &:hover {
+                background-color: var(--bg-hover);
+            }
+        }
+
+        &:hover .go-row-menu {
+            visibility: visible;
+        }
+    }
+
+    // GOUI checkbox({color}): the box in the colour, white tick
+    .go-cal-check {
+        border-color: currentColor;
+        border-width: 2px;
+
+        &.go-checked {
+            background-color: currentColor;
+
+            &::before {
+                background-color: #fff;
+            }
+        }
+    }
+
+    .go-cal-check-text {
+        flex         : 1;
+        min-width    : 0;
+        overflow     : hidden;
+        text-overflow: ellipsis;
+        white-space  : nowrap;
+
+        > .go-icon {
+            font-size     : go.dp(16);
+            margin-left   : go.dp(4);
+            vertical-align: middle;
+        }
+    }
+}
