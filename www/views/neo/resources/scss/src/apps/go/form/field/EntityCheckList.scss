@@ -1,0 +1,95 @@
+// GO.form.field.EntityCheckList (+ GO.groups.GroupCheckList): checkbox list of entities, the
+// rows of GOUI's SharePanel with a check instead of a level
+.neo-theme-go {
+    .go-entitychecklist {
+        display       : flex;
+        flex-direction: column;
+        min-height    : 20rem;
+        overflow      : hidden;
+    }
+
+    .go-entitychecklist-tbar {
+        align-items: center;
+        display    : flex;
+        flex       : none;
+        gap        : .8rem;
+        padding    : .8rem 0;
+    }
+
+    .go-entitychecklist-title {
+        font-size  : 1.6rem;
+        font-weight: 500;
+    }
+
+    .go-entitychecklist-search {
+        background   : var(--bg-lowest);
+        border       : 1px solid var(--fg-line);
+        border-radius: .8rem;
+        color        : var(--fg-main);
+        font         : inherit;
+        padding      : .6rem 1rem;
+        width        : 18rem;
+    }
+
+    .go-entitychecklist-list {
+        background   : var(--bg-lowest);
+        border       : 1px solid var(--fg-line);
+        border-radius: .8rem;
+        flex         : 1;
+        overflow-y   : auto;
+    }
+
+    .go-entitychecklist-row {
+        align-items  : center;
+        border-bottom: 1px solid var(--fg-line);
+        cursor       : pointer;
+        display      : flex;
+        gap          : 1.2rem;
+        padding      : .8rem 1.2rem;
+
+        &:last-child {
+            border-bottom: 0;
+        }
+
+        &:hover {
+            background: var(--bg-mid);
+        }
+    }
+
+    .go-entitychecklist.go-readonly .go-entitychecklist-row {
+        cursor: default;
+
+        .go-check {
+            cursor : default;
+            opacity: .6;
+        }
+    }
+
+    .go-entitychecklist-text {
+        display       : flex;
+        flex          : 1;
+        flex-direction: column;
+        min-width     : 0;
+
+        > div,
+        > small {
+            overflow     : hidden;
+            text-overflow: ellipsis;
+            white-space  : nowrap;
+        }
+
+        > small {
+            color    : var(--fg-secondary-text);
+            font-size: 1.2rem;
+        }
+    }
+
+    .go-entitychecklist-checked .go-entitychecklist-name {
+        font-weight: 500;
+    }
+
+    .go-entitychecklist .go-empty {
+        color  : var(--fg-secondary-text);
+        padding: 1.6rem;
+    }
+}

@@ -164,6 +164,13 @@ class Client {
     }
 
     /**
+     * @returns {Boolean} the user may manage groups (core capability mayChangeGroups)
+     */
+    get mayChangeGroups() {
+        return !!this.session?.capabilities?.['go:core:core']?.mayChangeGroups
+    }
+
+    /**
      * @returns {Boolean} the user is in the Admins group (go.User.isAdmin)
      */
     get isAdmin() {

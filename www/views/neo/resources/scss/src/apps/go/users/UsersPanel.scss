@@ -1,0 +1,45 @@
+// GO.users.UsersPanel: System settings card "Users" (go.users.SystemSettingsUserGrid)
+.neo-theme-go .go-users-panel {
+    > .go-users-tbar {
+        padding: .8rem 1.6rem;
+    }
+
+    .go-users-user {
+        align-items: center;
+        display    : flex;
+        gap        : 1.2rem;
+        min-width  : 0;
+
+        &.go-users-disabled {
+            opacity: .5;
+        }
+    }
+
+    .go-users-text {
+        display       : flex;
+        flex-direction: column;
+        line-height   : 1.3;
+        min-width     : 0;
+
+        > div,
+        > small {
+            overflow     : hidden;
+            text-overflow: ellipsis;
+            white-space  : nowrap;
+        }
+
+        > small {
+            color    : var(--fg-secondary-text);
+            font-size: 1.2rem;
+        }
+    }
+
+    .go-users-more {
+        color : var(--fg-secondary-text);
+        cursor: pointer;
+
+        &:hover {
+            color: var(--fg-main);
+        }
+    }
+}

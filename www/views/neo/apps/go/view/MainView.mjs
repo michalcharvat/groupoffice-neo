@@ -155,7 +155,7 @@ class MainView extends Container {
                 text   : t('My account'),
                 icon   : 'manage_accounts',
                 handler: () => me.openUserSettings()
-            }, ...client.isAdmin ? [{
+            }, ...client.isAdmin || client.mayChangeUsers || client.mayChangeGroups ? [{
                 text   : t('System settings'),
                 icon   : 'settings',
                 handler: () => me.openSystemSettings()
@@ -225,14 +225,15 @@ class MainView extends Container {
     }
 
     /**
-     * Header user menu "System settings" (administrators), route "#systemsettings/<card>"
+     * Header user menu "System settings" (administrators, user and group managers), route "#systemsettings/<card>"
      * @param {String|null} [activeItem] card to show
      * @param {Boolean} [fromRoute] opened by the address: closing leaves it
      */
     async openSystemSettings(activeItem = null, fromRoute = false) {
         let me = this;
 
-        if (!client.isAdmin) {
+        // user and group managers see their cards only (SystemSettingsDialog CORE_CARDS)
+        if (!client.isAdmin && !client.mayChangeUsers && !client.mayChangeGroups) {
             return
         }
 

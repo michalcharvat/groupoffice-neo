@@ -57,6 +57,8 @@ Small modules, 2FA login, module hooks: `docs/neo-small-modules.md`.
 | `src/form/field/AutocompleteChips.mjs` | chips of entity ids with a ▾ menu of the entity (`entity`, `setJmapFilter()`) |
 | `go/modules/<pkg>/<name>/views/neo/Index.mjs` | module entry, found by `Neo::moduleFiles()`; optional `style.css` |
 | `src/login/AuthenticatorPanel.mjs`, `src/systemsettings/EntityListPanel.mjs` | 2FA login step of a module (`loginPanels`), entity list card for System settings / My account (see `docs/neo-small-modules.md`) |
+| `src/users/`, `src/groups/`, `src/defaultpermissions/` | System settings cards Users (`UsersPanel`: show disabled, search, ⋮/right-click row menu: edit = `UserSettingsDialog` with `entityId`, login as (admins, `User/loginAs` reloads all windows), archive, delete; ⋮: `UserDefaultsDialog`, export), `CreateUserDialog` (account / password / groups, default groups), Groups (`GroupsPanel`, `GroupDialog`: name + members, permissions, `GroupModulesPanel` modules and their rights, saved after the group), Default permissions (`DefaultPermissionsPanel`, `DefaultAclDialog` with Reset all / Add to all). Cards show for `mayChangeUsers` / `mayChangeGroups` / admins |
+| `src/form/field/EntityCheckList.mjs`, `src/groups/GroupCheckList.mjs`, `src/model/User.mjs`, `Group.mjs` | form field: checkbox list over a JMAP entity, value = checked ids (search, loads on scroll, `jmapFilter`, `readOnly`); the group version shows members (User `groups`, My account "Groups" card) |
 
 Module code imports neo and the shell with relative paths
 (`../../../../../../views/neo/...`): import maps don't apply inside workers.
@@ -267,3 +269,13 @@ or context menu, no import/export menu. Dark mode follows
   hidden card): show server-side messages in an own component (maildomains DNS records).
 - **Bottom toasts** (`notify()`, position `br`): neo sets no `top`, `.neo-floating`'s -10000px
   stretched them over the page; `go/component/Toast.scss` sets `top: auto`.
+- **Grid stores need a Model**: a `JmapStore` in a `GO.grid.Grid` without `model` gives the
+  renderers empty records (rows show, cells are blank). Give it a `Neo.data.Model` with the
+  fields (`src/model/User.mjs`).
+- **`Module/get` needs `package` and `name`** in `properties`, or PHP fails ("Typed property
+  Module::$package must not be accessed before initialization").
+- **Every ACL owner has a default ACL**: `Module.entities[name].defaultAcl` is `null` when it is
+  empty, not only when the entity has none (`EntityType::getDefaultAcl()`).
+- **Login as on the shared test cookie**: `User/loginAs` switches the session token itself. On
+  127.0.0.1 all ports share the cookie (other sessions' browsers too): test it with an own API
+  token, not in the browser.

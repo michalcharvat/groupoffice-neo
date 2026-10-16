@@ -1,0 +1,38 @@
+// GO.groups.GroupsPanel: System settings card "Groups" (go.groups.SystemSettingsGroupGrid)
+.neo-theme-go .go-groups-panel {
+    > .go-groups-tbar {
+        padding: .8rem 1.6rem;
+    }
+
+    .go-groups-cell {
+        display       : flex;
+        flex-direction: column;
+        line-height   : 1.3;
+        min-width     : 0;
+
+        > div,
+        > small {
+            overflow     : hidden;
+            text-overflow: ellipsis;
+            white-space  : nowrap;
+        }
+
+        > small {
+            color        : var(--fg-secondary-text);
+            display      : block;
+            font-size    : 1.2rem;
+            overflow     : hidden;
+            text-overflow: ellipsis;
+            white-space  : nowrap;
+        }
+    }
+
+    .go-groups-more {
+        color : var(--fg-secondary-text);
+        cursor: pointer;
+
+        &:hover {
+            color: var(--fg-main);
+        }
+    }
+}

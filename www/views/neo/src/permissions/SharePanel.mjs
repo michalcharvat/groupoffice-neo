@@ -142,6 +142,13 @@ class SharePanel extends Field {
     }
 
     /**
+     * Forgets the cached default ACLs (after they were changed in System settings)
+     */
+    static clearDefaultAcls() {
+        defaultAcls.clear()
+    }
+
+    /**
      * @param {String} entity
      * @returns {Promise<Object|null>}
      */
