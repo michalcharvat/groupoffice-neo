@@ -1,10 +1,11 @@
+import AutocompleteChips from '../../form/field/AutocompleteChips.mjs';
 import ChipsField from '../../form/field/ChipsField.mjs';
 import FormDemo   from './FormDemo.mjs';
 import client     from '../../jmap/Client.mjs';
 
 /**
  * Dev demo: GOUI form/ChipsFieldPage — plain text chips, and user ids shown by name
- * (textInputToValue / chipRenderer over JMAP).
+ * (textInputToValue / chipRenderer over JMAP), and AutocompleteChips over an entity.
  */
 class ChipsDemo extends FormDemo {
     static config = {
@@ -29,8 +30,15 @@ class ChipsDemo extends FormDemo {
                 const [user] = await client.get('User', [String(id)], ['id', 'displayName']);
                 return user?.displayName || '#' + id
             }
+        }, {
+            module   : AutocompleteChips,
+            name     : 'noteBookIds',
+            entity   : 'NoteBook',
+            jmapSort : [{property: 'name', isAscending: true}],
+            labelText: 'Note books (AutocompleteChips)',
+            hint     : '▾ lists the entities (filtered by the typed text), Enter adds the first match'
         }],
-        sample: {tags: ['red', 'green'], userIds: [1]}
+        sample: {tags: ['red', 'green'], userIds: [1], noteBookIds: []}
     }
 }
 
