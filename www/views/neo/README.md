@@ -226,5 +226,7 @@ or context menu, no import/export menu. Dark mode follows
 - **NumberField limits**: neo's `maxValue` defaults to 100, and on blur it clamps with
   `Math.min(maxValue, value)` / `Math.max(minValue, value)`, so `null` turns every value into 0.
   For no limit use `Number.MAX_SAFE_INTEGER` (custom number fields, disk quota, mail quotas).
+- **`error` on a text field** is ignored while the field is clean and not mounted (e.g. in a
+  hidden card): show server-side messages in an own component (maildomains DNS records).
 - **Bottom toasts** (`notify()`, position `br`): neo sets no `top`, `.neo-floating`'s -10000px
   stretched them over the page; `go/component/Toast.scss` sets `top: auto`.
