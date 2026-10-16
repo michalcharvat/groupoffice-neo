@@ -15,5 +15,11 @@ ModuleRegistry.register({
     quickAdd  : {text: t('Event'), icon: 'event'},
     // header search results and notifications: entity → route below "#calendar/"
     routes    : {CalendarEvent: id => 'event/' + id},
-    mainView  : () => import('./view/CalendarMain.mjs')
+    mainView  : () => import('./view/CalendarMain.mjs'),
+    // card in My account
+    userSettings: {
+        title  : t('Calendar'),
+        iconCls: 'fa fa-calendar',
+        panel  : () => import('./view/PreferencesPanel.mjs')
+    }
 });

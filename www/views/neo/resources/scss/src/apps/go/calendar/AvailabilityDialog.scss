@@ -1,0 +1,108 @@
+@use "../../../../go/go";
+
+$side: go.dp(240);
+
+// GO.calendar.AvailabilityDialog (GOUI .cal.availability)
+.neo-theme-go .go-cal-availability-dialog {
+    .go-cal-av-title {
+        font-size  : 1.4em;
+        font-weight: 400;
+        margin     : 0 go.dp(8);
+    }
+
+    .go-cal-availability {
+        overflow-y: auto;
+
+        > ol {
+            display   : flex;
+            list-style: none;
+            margin    : 0;
+            padding   : 0;
+
+            > li:first-child {
+                padding: 0 go.dp(16);
+                width  : $side;
+            }
+
+            > li + li {
+                align-items  : flex-end;
+                border-bottom: 1px solid var(--fg-line);
+                display      : flex;
+                flex         : 1;
+                justify-content: center;
+            }
+        }
+
+        em {
+            color         : var(--fg-secondary-text);
+            display       : inline-block;
+            font-style    : normal;
+            padding-bottom: go.dp(4);
+            padding-top   : go.dp(12);
+            text-align    : center;
+            width         : 4.166%;
+        }
+    }
+
+    .go-cal-av-row {
+        align-items: stretch;
+        display    : flex;
+        margin     : 0;
+        min-height : go.dp(48);
+
+        > dt {
+            background-color: var(--bg-low);
+            box-sizing      : border-box;
+            padding         : go.dp(8) go.dp(16);
+            width           : $side;
+
+            h3, h4 {
+                margin       : 0;
+                overflow     : hidden;
+                text-overflow: ellipsis;
+                white-space  : nowrap;
+            }
+
+            h4 {
+                color      : var(--fg-secondary-text);
+                font-weight: 400;
+            }
+        }
+
+        > dd {
+            background     : linear-gradient(90deg, var(--fg-line) 1px, transparent 1px) repeat-x;
+            background-size: 4.166% 100%;
+            flex           : 1;
+            margin         : 0;
+            position       : relative;
+
+            > div {
+                border-radius : go.dp(8);
+                bottom        : go.dp(8);
+                pointer-events: none;
+                position      : absolute;
+                top           : go.dp(8);
+            }
+        }
+
+        .go-cal-av-plan {
+            cursor: pointer;
+        }
+    }
+
+    .go-cal-av-busy {
+        background-color: var(--fg-line);
+    }
+
+    .go-cal-av-free {
+        background-color: color-mix(in srgb, var(--fg-main) 10%, transparent);
+        border          : 2px dashed var(--c-primary);
+        box-sizing      : border-box;
+    }
+
+    .go-cal-av-event {
+        background-color: color-mix(in srgb, var(--fg-main) 60%, transparent);
+        border          : 2px solid var(--c-primary);
+        box-sizing      : border-box;
+    }
+}

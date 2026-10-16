@@ -1,0 +1,6 @@
+@use "../../../../go/go";
+
+// GO.calendar.PreferencesPanel (My account)
+.neo-theme-go .go-cal-preferences .go-fieldset {
+    gap: go.dp(24);
+}

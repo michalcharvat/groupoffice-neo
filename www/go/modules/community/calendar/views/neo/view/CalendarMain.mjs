@@ -6,7 +6,7 @@ import CheckBox      from '../../../../../../../views/neo/src/component/CheckBox
 import client        from '../../../../../../../views/neo/src/jmap/Client.mjs';
 import MenuList      from '../../../../../../../views/neo/src/menu/List.mjs';
 import {escapeHtml} from '../../../../../../../views/neo/src/Format.mjs';
-import {notify, notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
+import {notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
 import {fmt, translator} from '../../../../../../../views/neo/src/Translate.mjs';
 import ConfirmDialog from '../../../../../../../views/neo/src/view/ConfirmDialog.mjs';
 import FilterPanel   from '../../../../../../../views/neo/src/view/FilterPanel.mjs';
@@ -14,9 +14,19 @@ import MainThreeColumnPanel from '../../../../../../../views/neo/src/view/MainTh
 import CalendarAdapter from '../CalendarAdapter.mjs';
 import CalendarItem  from '../CalendarItem.mjs';
 import calendarData  from '../data.mjs';
-import {addDays, addMonths, diffDays, format, parseDate, startOfDay, weekStart, ymd} from '../util/date.mjs';
+import {addDays, addMonths, diffDays, format, parseDate, startOfDay, weekStart, ymd, ymdhis} from '../util/date.mjs';
 import CalendarView  from './CalendarView.mjs';
+import AvailabilityDialog from './AvailabilityDialog.mjs';
+import CalendarDialog from './CalendarDialog.mjs';
+import CategoryDialog from './CategoryDialog.mjs';
 import CheckRows     from './CheckRows.mjs';
+import ImportDialog  from './ImportDialog.mjs';
+import InvitationsDialog from './InvitationsDialog.mjs';
+import ResourceDialog from './ResourceDialog.mjs';
+import ResourcesDialog from './ResourcesDialog.mjs';
+import SubscribeDialog from './SubscribeDialog.mjs';
+import ViewDialog    from './ViewDialog.mjs';
+import WebcalDialog  from './WebcalDialog.mjs';
 import EventDetail   from './EventDetail.mjs';
 import EventDetailDialog from './EventDetailDialog.mjs';
 import EventDialog   from './EventDialog.mjs';
@@ -197,6 +207,7 @@ class CalendarMain extends MainThreeColumnPanel {
                     icon     : 'add',
                     cls      : ['small'],
                     reference: 'addCategoryButton',
+                    hidden   : true,
                     tooltip  : t('Create category'),
                     handler  : () => me.openCategoryDialog(null)
                 }]
@@ -369,6 +380,7 @@ class CalendarMain extends MainThreeColumnPanel {
         let me = this;
 
         me.removeDataListener?.();
+        me.removeInviteListener?.();
         me._adapter?.destroy();
         clearTimeout(me.saveVisibleTimer);
         me.dialogs.forEach(dialog => dialog.isDestroyed || dialog.close());
@@ -400,7 +412,8 @@ class CalendarMain extends MainThreeColumnPanel {
         CalendarView.selectedCalendarId = prefs.defaultCalendarId ? String(prefs.defaultCalendarId) : null;
 
         me.getReference('cards').toggleCls('multiline', !!prefs.multiLine);
-        me.getReference('addCategoryButton').hidden = false;
+        // GOUI: only with the module right (the server refuses categories otherwise)
+        me.getReference('addCategoryButton').hidden = !calendarData.rights.mayChangeCategories;
 
         Object.entries(me.adapter.providers).forEach(([type, p]) => {
             p.checkbox && (p.enabled = !!prefs[type + 'sAreVisible'])
@@ -412,6 +425,9 @@ class CalendarMain extends MainThreeColumnPanel {
         me.onCalendarsLoaded();
 
         me.initialized = true;
+
+        me.loadInvitations();
+        me.removeInviteListener = client.on('stateChange', ({changed}) => changed.includes('CalendarEvent') && me.loadInvitations());
 
         if (me.pendingRoute !== undefined) {
             me.route(me.pendingRoute)
@@ -652,7 +668,7 @@ class CalendarMain extends MainThreeColumnPanel {
 
         String(id) !== String(calendarData.prefs.personalCalendarId) && items.push(
             {separator: true},
-            {text: t('Unsubscribe'), icon: 'remove_circle', handler: () => client.set('Calendar', {update: {[id]: {isSubscribed: false}}}).catch(e => me.showError(e))}
+            {text: t('Unsubscribe'), icon: 'remove_circle', handler: () => client.set('Calendar', {update: {[id]: {isSubscribed: false}}}).then(() => calendarData.loadCalendars()).catch(e => me.showError(e))}
         );
 
         if (!c.groupId) {
@@ -1071,22 +1087,146 @@ class CalendarMain extends MainThreeColumnPanel {
         this.getReference('listDetail').setItem(item)
     }
 
-    showInvitations() {
+    /**
+     * Open invitations: the inbox button shows while there are any (GOUI showBadge())
+     */
+    async loadInvitations() {
+        let me = this;
+
+        try {
+            const {list} = await client.queryGet('CalendarEvent', {filter: {inbox: true}, sort: [{property: 'start'}]});
+
+            me.invitations = list;
+            me.isDestroyed || (me.getReference('inboxButton').hidden = !list.length)
+        } catch (e) {
+            console.error(e)
+        }
     }
 
-    // Dialogs of later parts
-    openCalendarDialog(calendar) {this.todo()}
-    openCategoryDialog(category) {this.todo()}
-    openViewDialog(view) {this.todo()}
-    openSubscribeDialog() {this.todo()}
-    openWebcalDialog() {this.todo()}
-    openResourcesDialog() {this.todo()}
-    importIcs(calendar) {this.todo()}
-    syncCalendar(calendar) {this.todo()}
-    reloadWebcal(calendar) {this.todo()}
+    showInvitations() {
+        let me = this;
 
-    todo() {
-        notify(this, 'Not available yet')
+        if (!me.invitations?.length) {
+            return
+        }
+
+        const dialog = me.trackDialog(Neo.create(InvitationsDialog, {appName: me.appName, windowId: me.windowId, events: me.invitations}));
+        dialog.on('answered', () => me.loadInvitations())
+    }
+
+    dialogConfig(config = {}) {
+        return {appName: this.appName, windowId: this.windowId, ...config}
+    }
+
+    /**
+     * Opens an entity dialog; after saving the module data reloads (per-user calendar
+     * properties like the colour don't always come with a push)
+     * @param {Object} Dialog class
+     * @param {Object} config
+     * @param {Function} reload
+     */
+    openEntityDialog(Dialog, config, reload) {
+        const dialog = this.trackDialog(Neo.create(Dialog, this.dialogConfig(config)));
+        dialog.on('save', () => reload().catch(e => this.showError(e)));
+        return dialog
+    }
+
+    openCalendarDialog(calendar) {
+        this.openEntityDialog(calendar?.groupId ? ResourceDialog : CalendarDialog,
+            {entityId: calendar?.id || null, values: calendar ? {} : {color: '356772'}}, () => calendarData.loadCalendars())
+    }
+
+    openCategoryDialog(category) {
+        this.openEntityDialog(CategoryDialog, {entityId: category?.id || null, values: category ? {} : {color: '356772'}}, () => calendarData.loadCategories())
+    }
+
+    openViewDialog(view) {
+        this.openEntityDialog(ViewDialog, {entityId: view?.id || null, values: view ? {} : {calendarIds: this.visibleIds()}}, () => calendarData.loadViews())
+    }
+
+    openSubscribeDialog() {
+        let me     = this,
+            dialog = me.trackDialog(Neo.create(SubscribeDialog, me.dialogConfig()));
+
+        // subscribing changes the user's calendar list
+        dialog.on('close', () => calendarData.loadCalendars().catch(e => me.showError(e)));
+
+        dialog.on({
+            edit  : ({calendar}) => me.openCalendarDialog(calendar),
+            delete: ({calendar}) => me.deleteCalendar(calendar).then(() => dialog.isDestroyed || dialog.load(dialog.search)),
+            export: ({calendar}) => me.download('community/calendar/calendar/' + calendar.id)
+        })
+    }
+
+    openWebcalDialog() {
+        this.openEntityDialog(WebcalDialog, {}, () => calendarData.loadCalendars())
+    }
+
+    openResourcesDialog() {
+        this.trackDialog(Neo.create(ResourcesDialog, this.dialogConfig()))
+    }
+
+    importIcs(calendar) {
+        const dialog = this.trackDialog(Neo.create(ImportDialog, this.dialogConfig({calendar})));
+        dialog.on('imported', () => this.adapter.reload(['event']))
+    }
+
+    /**
+     * Free/busy of the event dialog's participants; "Apply" sets its start and end
+     * @param {GO.calendar.EventDialog} eventDialog
+     */
+    openAvailability(eventDialog) {
+        let me    = this,
+            start = eventDialog.getReference('startField').getValueAsDate(),
+            end   = eventDialog.getReference('endField').getValueAsDate(),
+            ids   = Object.keys(eventDialog.getReference('participantField').participants);
+
+        const dialog = me.trackDialog(Neo.create(AvailabilityDialog, me.dialogConfig({principalIds: ids, start, end})));
+
+        dialog.on('changeTime', ({start, end}) => {
+            if (eventDialog.isDestroyed || !start) {
+                return
+            }
+
+            eventDialog.getReference('startField').value = ymdhis(start);
+            eventDialog.getReference('endField').value   = ymdhis(end);
+            eventDialog.checkAvailability()
+        })
+    }
+
+    /**
+     * DAV account calendar: synchronise now (GOUI "Synchronize")
+     */
+    async syncCalendar(calendar) {
+        let me = this;
+
+        me.isLoading = t('Synchronize') + '…';
+
+        try {
+            await client.call('DavAccount/sync', {accountId: calendar.davaccountId, collectionId: calendar.id});
+            me.adapter.reload(['event'])
+        } catch (e) {
+            me.showError(e)
+        } finally {
+            me.isDestroyed || (me.isLoading = false)
+        }
+    }
+
+    /**
+     * Webcal calendar: fetch the ICS again (GOUI "Reload")
+     */
+    async reloadWebcal(calendar) {
+        let me = this;
+
+        me.isLoading = t('Reload') + '…';
+
+        try {
+            await client.call('Calendar/reload', {calendarId: calendar.id})
+        } catch (e) {
+            me.showError(e)
+        } finally {
+            me.isDestroyed || (me.isLoading = false)
+        }
     }
 
     async confirmDestroy(entity, id, name) {
@@ -1100,7 +1240,9 @@ class CalendarMain extends MainThreeColumnPanel {
 
         if (ok) {
             try {
-                await client.set(entity, {destroy: [id]})
+                await client.set(entity, {destroy: [id]});
+                await ({Calendar: () => calendarData.loadCalendars(), CalendarCategory: () => calendarData.loadCategories(),
+                        CalendarView: () => calendarData.loadViews()})[entity]?.()
             } catch (e) {
                 me.showError(e)
             }
@@ -1132,6 +1274,7 @@ class CalendarMain extends MainThreeColumnPanel {
             download  : blobId => me.download(blobId),
             mailTo    : to => me.openUrl('mailto:' + to),
             openExceptions: (item, overrides) => me.openExceptions(item, overrides),
+            openAvailability: eventDialog => me.openAvailability(eventDialog),
             noWritableCalendar: () => me.noWritableCalendar()
         }
     }
