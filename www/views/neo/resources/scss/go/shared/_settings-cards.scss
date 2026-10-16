@@ -47,6 +47,13 @@
     .go-settings-cards.neo-tab-container > .neo-tab-strip {
         display: none;
     }
+
+    // flex items default to min-height: auto and grow with a long card: the card scrolls
+    // inside the dialog instead of pushing the Save bar out of it
+    .go-settings-cards.neo-tab-container,
+    .go-settings-cards.neo-tab-container > .neo-tab-body-container {
+        min-height: 0;
+    }
 }
 
 // phone: the card list on top, scrolling sideways

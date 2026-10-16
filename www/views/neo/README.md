@@ -246,6 +246,13 @@ or context menu, no import/export menu. Dark mode follows
   other account data there without checking who is logged in.
 - **`update()` is neo's**: Component.update() sends the vdom; a method of your own named
   `update` recurses forever when render code calls `me.update()` (calendar: `refresh()`).
+- **`createItems()` is neo's too**: Container.createItems() turns the `items` configs into
+  components in `onConstructed()`. A subclass method of that name that only returns configs
+  leaves `items` as plain objects: nothing renders, `getReference()` gives null and mounting
+  throws "reading 'removeDom'". System settings cards use `createFields()`; override
+  `createItems()` only to call neo's afterwards (MainThreeColumnPanel).
+- **Legacy routes need the CSRF token**: `client.legacy()` sends `X-CSRF-Token` like JMAP,
+  otherwise GO answers "Access denied" (as an HTML exception page without `X-Requested-With`).
 - **Rebuilt vdom loses the scroll position**: neo stores a synced `scrollTop` on the vdom node
   object; replacing a scrolling child node with a new object resets it on the next update.
   Copy `scrollTop`/`scrollLeft` from the old node (calendar `WeekView.render()`).
