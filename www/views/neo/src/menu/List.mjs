@@ -37,10 +37,11 @@ class List extends MenuList {
     }
 
     /**
-     * neo creates submenus as Neo.menu.List: give them the GO menu look
+     * neo creates submenus as Neo.menu.List: give them the GO menu look, and the window
+     * (without it their align goes to the deprecated "main" destination)
      */
     getSubMenuData(record) {
-        return {...super.getSubMenuData(record), cls: ['go-menu']}
+        return {...super.getSubMenuData(record), cls: ['go-menu'], windowId: this.windowId}
     }
 
     /**

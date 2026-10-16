@@ -97,15 +97,45 @@
         font-size: 1.2rem;
     }
 
+    // a GO field box with a Material chevron, not the browser's select
+    .go-sharepanel-level-wrap {
+        flex    : none;
+        position: relative;
+        width   : 14rem;
+
+        &::after {
+            color                 : var(--fg-secondary-text);
+            content               : 'expand_more';
+            font-family           : 'Material Symbols Rounded';
+            font-feature-settings : 'liga';
+            font-size             : 2.4rem;
+            line-height           : 1;
+            pointer-events        : none;
+            position              : absolute;
+            right                 : .6rem;
+            top                   : 50%;
+            transform             : translateY(-50%);
+            -webkit-font-smoothing: antialiased;
+        }
+    }
+
     .go-sharepanel-level {
-        width        : 14rem;
-        flex         : none;
-        padding      : .4rem .8rem;
-        border       : 1px solid var(--fg-line);
-        border-radius: .8rem;
-        background   : var(--bg-lowest);
-        color        : var(--fg-main);
-        font         : inherit;
+        appearance      : none;
+        background-color: var(--bg-input, var(--bg-lowest));
+        border          : 1px solid var(--fg-outline);
+        border-radius   : .8rem;
+        box-sizing      : border-box;
+        color           : var(--fg-text);
+        cursor          : pointer;
+        font            : inherit;
+        height          : 3.6rem;
+        padding         : 0 3.6rem 0 1.2rem;
+        width           : 100%;
+
+        &:focus {
+            border-color: var(--fg-main);
+            outline     : 1px solid var(--fg-main);
+        }
     }
 
     .go-sharepanel .go-empty {

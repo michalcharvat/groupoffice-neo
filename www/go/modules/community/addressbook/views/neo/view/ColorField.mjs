@@ -39,7 +39,7 @@ class ColorField extends Field {
             tag  : 'input',
             id   : me.id + '__input',
             type : 'color',
-            cls  : ['go-field-input'],
+            cls  : ['go-field-input', me.value ? null : 'go-ab-color-empty'].filter(Boolean),
             value: '#' + (me.value || 'FFFFFF'),
             ...me.inputFlags()
         }, {

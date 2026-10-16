@@ -7,10 +7,36 @@
         background: none;
         border    : 0;
         cursor    : pointer;
-        flex      : 1;
-        height    : 2.8rem;
-        min-width : 0;
+        flex      : none;
+        height    : 2.4rem;
         padding   : 0;
+        width     : 4rem;
+
+        // the native swatch has a grey frame and inner padding: a plain rounded swatch instead
+        &::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+
+        &::-webkit-color-swatch {
+            border       : 0;
+            border-radius: .4rem;
+        }
+
+        &::-moz-color-swatch {
+            border       : 0;
+            border-radius: .4rem;
+        }
+
+        // no colour: an outlined empty swatch, not a white one
+        &.go-ab-color-empty::-webkit-color-swatch {
+            background-color: transparent !important;
+            outline         : 1px dashed var(--fg-outline);
+        }
+
+        &.go-ab-color-empty::-moz-color-swatch {
+            background-color: transparent !important;
+            outline         : 1px dashed var(--fg-outline);
+        }
     }
 
     .go-ab-color-clear {

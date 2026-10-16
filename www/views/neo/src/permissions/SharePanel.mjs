@@ -314,17 +314,21 @@ class SharePanel extends Field {
                         {tag: 'small', text: members}
                     ]
                 }, {
-                    tag            : 'select',
-                    cls            : ['go-sharepanel-level'],
-                    'aria-label'   : fmt('{0}: {1}', [t('Level'), name]),
-                    'data-group-id': String(group.id),
-                    value          : current,
-                    cn             : levels.map(o => ({
-                        tag     : 'option',
-                        value   : String(o.value),
-                        selected: String(o.value) === current ? true : null,
-                        text    : o.name
-                    }))
+                    // the wrapper draws the GO chevron instead of the native one
+                    cls: ['go-sharepanel-level-wrap'],
+                    cn : [{
+                        tag            : 'select',
+                        cls            : ['go-sharepanel-level'],
+                        'aria-label'   : fmt('{0}: {1}', [t('Level'), name]),
+                        'data-group-id': String(group.id),
+                        value          : current,
+                        cn             : levels.map(o => ({
+                            tag     : 'option',
+                            value   : String(o.value),
+                            selected: String(o.value) === current ? true : null,
+                            text    : o.name
+                        }))
+                    }]
                 }
             ]
         }

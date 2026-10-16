@@ -53,4 +53,47 @@
     .neo-input-wrapper .neo-field-trigger.fa-magnifying-glass::before {
         content: 'search';
     }
+
+    // NumberField: up/down stacked in one trigger; the wrapper itself shows no icon
+    .neo-input-wrapper .neo-field-trigger.neo-spin-buttons {
+        border-radius: .4rem;
+        height       : 3.6rem;
+        line-height  : normal;
+
+        &:hover {
+            background-color: transparent;
+        }
+
+        &::before {
+            content: none;
+        }
+
+        .neo-spin-button {
+            border       : 0;
+            border-radius: .4rem;
+            color        : var(--fg-secondary-text);
+            font-size    : 0;
+            height       : 50%;
+
+            &:hover {
+                background-color: var(--bg-hover);
+                color           : var(--fg-text);
+            }
+
+            &::before {
+                -webkit-font-smoothing: antialiased;
+                content               : 'expand_less';
+                font-family           : 'Material Symbols Rounded';
+                font-feature-settings : 'liga';
+                font-size             : 2rem;
+                font-style            : normal;
+                font-weight           : normal;
+                line-height           : 1;
+            }
+
+            &.neo-down::before {
+                content: 'expand_more';
+            }
+        }
+    }
 }

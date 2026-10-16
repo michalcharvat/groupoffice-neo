@@ -37,7 +37,7 @@ class AccountDialog extends FormWindow {
         return [
             // GOUI: shown for a working account (switch it off); after a failed connection
             // saving connects again
-            {...field(BoolCheckBox, 'active', null), reference: 'activeField', valueLabel: t('Enabled'), hidden: true},
+            {module: BoolCheckBox, name: 'active', reference: 'activeField', valueLabel: t('Enabled'), hidden: true},
             field(TextField, 'name', t('Name')),
             field(TextField, 'host', t('Host')),
             {module: BoolCheckBox, name: 'verifySSL', valueLabel: t('Verify SSL certificate')},
