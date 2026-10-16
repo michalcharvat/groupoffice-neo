@@ -18,6 +18,9 @@ const CORE_CARDS = () => [
     ['appearance',     t('Appearance'),      'fa fa-palette',      () => import('./AppearancePanel.mjs'),     () => client.isAdmin],
     ['notifications',  t('Notifications'),   'fa fa-bell',         () => import('./NotificationsPanel.mjs'),  () => client.isAdmin],
     ['authentication', t('Authentication'),  'fa fa-lock',         () => import('./AuthenticationPanel.mjs'), () => client.isAdmin],
+    ['users',          t('Users'),           'fa fa-user',         () => import('../users/UsersPanel.mjs'),   () => client.mayChangeUsers],
+    ['groups',         t('Groups'),          'fa fa-users',        () => import('../groups/GroupsPanel.mjs'), () => client.mayChangeGroups],
+    ['defaultpermissions', t('Default permissions'), 'fa fa-share-nodes', () => import('../defaultpermissions/DefaultPermissionsPanel.mjs'), () => client.isAdmin],
     ['modules',        t('Modules'),         'fa fa-puzzle-piece', () => import('./ModulesPanel.mjs'),        () => client.isAdmin]
 ];
 
