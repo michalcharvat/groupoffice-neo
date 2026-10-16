@@ -61,7 +61,8 @@ class RecurrenceField extends Field {
     }
 
     destroy(...args) {
-        this.menu?.isDestroyed === false && this.menu.destroy();
+        // isDestroyed is undefined on live neo instances
+        this.menu && !this.menu.isDestroyed && this.menu.destroy();
         super.destroy(...args)
     }
 

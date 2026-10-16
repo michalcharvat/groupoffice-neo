@@ -1,0 +1,45 @@
+// go.form.ImageField: a round photo, click to upload
+.neo-theme-go .go-ab-photofield {
+    .go-field-box {
+        border  : 0;
+        position: relative;
+    }
+
+    .go-ab-photo {
+        align-items     : center;
+        background-color: var(--bg-mid);
+        border-radius   : 50%;
+        color           : var(--fg-secondary-text);
+        cursor          : pointer;
+        display         : flex;
+        height          : 12rem;
+        justify-content : center;
+        overflow        : hidden;
+        width           : 12rem;
+
+        img {
+            height    : 100%;
+            object-fit: cover;
+            width     : 100%;
+        }
+
+        .go-icon {
+            font-size: 6rem;
+        }
+    }
+
+    .go-ab-photo-input {
+        display: none;
+    }
+
+    .go-ab-photo-clear {
+        background-color: var(--bg-lowest);
+        border-radius   : 50%;
+        bottom          : 0;
+        box-shadow      : 0 1px 3px rgba(0, 0, 0, .3);
+        cursor          : pointer;
+        padding         : .4rem;
+        position        : absolute;
+        right           : 0;
+    }
+}

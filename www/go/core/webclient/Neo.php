@@ -46,6 +46,30 @@ class Neo {
 	}
 
 	/**
+	 * Extra buttons of the login screen (ExtJS: go.login.LoginDialog.addSignInButton()
+	 * in a module's App::EVENT_HEAD script). A module's views/neo/login.php returns
+	 * [['text' => 'Sign in with X', 'url' => 'api/page.php/...'], ...], url relative to GO.
+	 *
+	 * @return array[]
+	 */
+	private function loginButtons(): array
+	{
+		$buttons = [];
+		foreach (GO::modules()->getAllModules(true) as $module) {
+			$file = $module->moduleManager->path() . 'views/neo/login.php';
+			if (!is_file($file)) {
+				continue;
+			}
+			try {
+				$buttons = array_merge($buttons, (array) (static fn() => include $file)());
+			} catch (\Throwable $e) {
+				\go\core\ErrorHandler::logException($e);
+			}
+		}
+		return array_values(array_filter($buttons, fn($b) => is_array($b) && isset($b['text'], $b['url'])));
+	}
+
+	/**
 	 * Shared worker name suffix of this page
 	 *
 	 * A popup (?neoPopup=) must join its opener's worker, which holds the component
@@ -134,6 +158,57 @@ class Neo {
 	 *
 	 * @return array{compact: bool, scheme: string}
 	 */
+	/**
+	 * System settings → Appearance like views/Layout.php: the logo and the colours of the
+	 * light and dark scheme. The selectors outrank theme-go's token rules (body, body.dark),
+	 * which load later; light colours stay out of dark mode as in the classic UI.
+	 */
+	private function brandingCss(string $root): string
+	{
+		$settings = go()->getSettings();
+		$css = '';
+
+		if ($settings->logoId) {
+			// the blob id only busts the cache; rawurlencode() keeps quotes and parentheses out
+			$css .= '.neo-theme-go .go-brand, .neo-theme-go .go-login-logo { background-image: url(' . $root . 'api/page.php/core/logo?v=' . rawurlencode($settings->logoId) . ') !important; }';
+		}
+
+		if ($settings->logoIdDark && go()->getAuthState() && go()->getAuthState()->isAuthenticated()) {
+			$css .= '.neo-theme-go.dark .go-brand { background-image: url(' . $root . 'api/download.php?blob=' . rawurlencode($settings->logoIdDark) . ') !important; }';
+		}
+
+		$light = $this->colorVars($settings, 'Color');
+		$dark = $this->colorVars($settings, 'Dark');
+
+		$light && ($css .= 'html body.neo-theme-go:not(.dark) {' . $light . '}');
+		$dark && ($css .= 'html body.neo-theme-go.dark {' . $dark . '}');
+
+		return $css;
+	}
+
+	/**
+	 * Settings::printCssVars() for valid colours only (6 hex digits): a setting must never
+	 * add CSS of its own
+	 */
+	private function colorVars($settings, string $theme): string
+	{
+		$css = '';
+
+		foreach (['--fg-main' => 'primary', '--c-primary' => 'secondary', '--c-secondary' => 'tertiary', '--c-accent' => 'accent'] as $var => $type) {
+			$value = (string) $settings->{$type . $theme};
+
+			if (preg_match('/^[0-9a-f]{6}$/i', $value)) {
+				$css .= $var . ': #' . $value . ';';
+
+				if ($type === 'primary') {
+					$css .= '--fg-main-tp: rgba(' . implode(', ', array_map('hexdec', str_split($value, 2))) . ', .16);';
+				}
+			}
+		}
+
+		return $css;
+	}
+
 	private function theme(): array
 	{
 		$user = go()->getAuthState() && go()->getAuthState()->isAuthenticated()
@@ -183,6 +258,8 @@ class Neo {
 			'goHolidaySets' => \go\core\model\Holiday::getHolidaySets(),
 			'goLostPasswordUrl' => go()->getSettings()->lostPasswordURL ?: null,
 			'goLogoutWhenInactive' => intval(go()->getSettings()->logoutWhenInactive),
+			// login screen "Sign in with ..." buttons of modules (views/neo/login.php)
+			'goLoginButtons' => $this->loginButtons(),
 			// set in a popup window opened by GO.view.Dialog: id of the dialog to adopt
 			'goPopup' => $this->popupId(),
 			// shared worker name suffix, passed on to popups (src/Popup.mjs)
@@ -203,6 +280,7 @@ class Neo {
 <?php foreach ($this->moduleFiles('style.css') as $css): ?>
 	<link rel="stylesheet" href="<?= $root . $css ?>">
 <?php endforeach; ?>
+	<style><?= $this->brandingCss($root) ?></style>
 </head>
 <body class="<?= $theme['scheme'] ?>">
 <script>

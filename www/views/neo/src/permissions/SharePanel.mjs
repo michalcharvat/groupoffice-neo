@@ -148,7 +148,8 @@ class SharePanel extends Field {
     async getDefaultAcl(entity) {
         if (!defaultAcls.has(entity)) {
             try {
-                const {list} = await client.queryGet('Module', {properties: ['id', 'entities']});
+                // the server needs package and name to compute entities ("Typed property Module::$package")
+                const {list} = await client.queryGet('Module', {properties: ['id', 'package', 'name', 'entities']});
 
                 list.forEach(module => Object.entries(module.entities || {}).forEach(([name, info]) => {
                     defaultAcls.set(name, info?.defaultAcl || null)

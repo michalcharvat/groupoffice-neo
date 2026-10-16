@@ -520,7 +520,7 @@ class NotesMain extends MainThreeColumnPanel {
         const confirmed = await ConfirmDialog.ask({
             appName : me.appName,
             windowId: me.windowId,
-            message : fmt(t("Are you sure you want to delete '{item}'?"), {item: record.name})
+            message : fmt(t("Are you sure you want to delete '{item}'?"), {item: escapeHtml(record.name)})
         });
 
         if (!confirmed) {
@@ -716,7 +716,7 @@ class NotesMain extends MainThreeColumnPanel {
         const confirmed = await ConfirmDialog.ask({
             appName : me.appName,
             windowId: me.windowId,
-            message : fmt(t("Are you sure you want to delete '{item}'?"), {item: note.name})
+            message : fmt(t("Are you sure you want to delete '{item}'?"), {item: escapeHtml(note.name)})
         });
 
         if (!confirmed) {

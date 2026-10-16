@@ -9,6 +9,7 @@ const SCHEMES = ['light', 'dark', 'system'];
  *   light / dark / system (+ dark when the OS is dark) for the colour scheme
  * - clearState(): removes the GOUI-compatible component state ("state-*" in
  *   localStorage), the "Reset windows and grids" button of Look & feel
+ * - setBodyStyle(): CSS variables on <body>, the colour preview of System settings → Appearance
  *
  * Neo.php sets the classes of a logged-in user's page already and lets "system"
  * follow the OS; this addon changes them without a reload. Loaded per window:
@@ -22,7 +23,8 @@ class Preferences extends Base {
         remote: {
             app: [
                 'applyTheme',
-                'clearState'
+                'clearState',
+                'setBodyStyle'
             ]
         }
     }
@@ -51,6 +53,21 @@ class Preferences extends Base {
         if (classList.contains('system')) {
             classList.toggle('dark', !!globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches)
         }
+    }
+
+    /**
+     * @param {Object} data
+     * @param {Object} data.props CSS property → value, null removes it
+     * @param {String} [data.scheme] 'light' or 'dark': only a window showing that scheme
+     */
+    setBodyStyle({props, scheme}) {
+        if (scheme && document.body.classList.contains('dark') !== (scheme === 'dark')) {
+            return
+        }
+
+        Object.entries(props).forEach(([name, value]) => {
+            value === null ? document.body.style.removeProperty(name) : document.body.style.setProperty(name, value)
+        })
     }
 
     /**

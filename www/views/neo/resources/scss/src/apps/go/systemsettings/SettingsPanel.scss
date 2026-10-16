@@ -1,0 +1,59 @@
+// GO.systemsettings.SettingsPanel: a System settings card over Module.settings
+.neo-theme-go {
+    .go-systemsettings-panel {
+        overflow-y: auto;
+        padding   : 2.4rem;
+
+        // ExtJS fieldsets: fields dp(360) wide, rich text full width
+        > .go-fieldset {
+            max-width: 72rem;
+        }
+    }
+
+    // fields locked in config.php
+    .go-systemsettings-info {
+        align-items     : center;
+        background-color: var(--bg-low);
+        border-radius   : .8rem;
+        display         : flex;
+        gap             : .8rem;
+        margin-bottom   : 1.6rem;
+        padding         : 1.2rem 1.6rem;
+    }
+}
+
+// GO.systemsettings.AppearancePanel: light and dark side by side, one column on narrow screens
+.neo-theme-go {
+    .go-systemsettings-columns {
+        column-gap           : 3.2rem;
+        display              : grid;
+        grid-template-columns: repeat(auto-fit, minmax(30rem, 1fr));
+    }
+
+    .go-systemsettings-logo {
+        gap: .8rem;
+
+        .go-systemsettings-logo-image {
+            background         : var(--fg-main) no-repeat center / contain;
+            border-radius      : .8rem;
+            height             : 7.2rem;
+            min-width          : 0;
+        }
+    }
+}
+
+.neo-theme-go .go-systemsettings-panel .go-systemsettings-action {
+    align-self: flex-start;
+}
+
+.neo-theme-go .go-systemsettings-panel {
+    .go-systemsettings-text {
+        color: var(--fg-secondary-text);
+    }
+
+    .go-systemsettings-grid {
+        border       : 1px solid var(--fg-outline);
+        border-radius: .8rem;
+        overflow     : hidden;
+    }
+}

@@ -1,0 +1,9 @@
+// GO.dokuwiki.view.DokuwikiMain: the wiki fills the module below its toolbar
+.neo-theme-go .go-dokuwiki {
+    height: 100%;
+
+    .go-dokuwiki-frame {
+        border: 0;
+        width : 100%;
+    }
+}

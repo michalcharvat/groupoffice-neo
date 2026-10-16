@@ -1,0 +1,50 @@
+@use "../../../../go/go";
+
+// GO.tasks.TaskDetail: the task card (GOUI TaskDetail form card)
+.neo-theme-go .go-tasks-detail {
+    .go-tasks-card {
+        padding: 0 go.dp(16) go.dp(16);
+
+        > .neo-toolbar {
+            padding: go.dp(8) 0;
+
+            h3 {
+                margin: 0;
+            }
+        }
+    }
+
+    .go-tasks-fields {
+        display              : grid;
+        gap                  : 0 go.dp(16);
+        grid-template-columns: repeat(auto-fill, minmax(go.dp(200), 1fr));
+    }
+
+    .go-tasks-field {
+        margin-bottom: go.dp(12);
+
+        > label {
+            color    : var(--fg-secondary-text);
+            display  : block;
+            font-size: 1.2rem;
+        }
+
+        .go-tasks-progressbar {
+            display       : inline-block;
+            margin-right  : go.dp(8);
+            vertical-align: middle;
+            width         : 60%;
+        }
+    }
+
+    // the status chip is a button: keep the chip look
+    .neo-button.go-tasks-status {
+        border   : 0;
+        height   : auto;
+        min-width: 0;
+
+        .neo-button-text {
+            color: inherit;
+        }
+    }
+}
