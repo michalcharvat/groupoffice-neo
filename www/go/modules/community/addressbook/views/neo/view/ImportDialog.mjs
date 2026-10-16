@@ -6,17 +6,16 @@ import {dismissAlert, runBackgroundJob} from '../../../../../../../views/neo/src
 import JmapComboBox from '../../../../../../../views/neo/src/form/field/JmapComboBox.mjs';
 import client       from '../../../../../../../views/neo/src/jmap/Client.mjs';
 import {notify, notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
-import {escapeHtml}   from '../../../../../../../views/neo/src/Format.mjs';
+import {importFile, needsMapping} from '../../../../../../../views/neo/src/import/importFile.mjs';
+import {contactImportOptions} from './importOptions.mjs';
 import Dialog       from '../../../../../../../views/neo/src/view/Dialog.mjs';
 import {t}          from '../util.mjs';
 
 /**
- * Import contacts from a vCard or JSON file into an address book (go.util.importFile
- * with Contact/import). The import runs in the background; the dialog waits for its
- * alert and reports the result.
- *
- * CSV and Excel need the column mapping dialog (go.import.CsvMappingDialog), which neo
- * does not have yet.
+ * Import contacts into an address book (go.util.importFile with Contact/import). vCard and
+ * JSON import right away: the import runs in the background, the dialog waits for its
+ * alert and reports the result. CSV and Excel files open the column mapping
+ * (GO.import.CsvMappingDialog) with the address book as a fixed value.
  */
 class ImportDialog extends Dialog {
     static config = {
@@ -58,7 +57,7 @@ class ImportDialog extends Dialog {
                 ntype    : 'component',
                 reference: 'status',
                 cls      : ['go-addressbook-import-status'],
-                text     : t('Choose a vCard (.vcf) or JSON file.')
+                text     : t('Choose a vCard (.vcf), JSON, CSV or Excel file.')
             }]
         }, {
             module: Toolbar,
@@ -72,19 +71,11 @@ class ImportDialog extends Dialog {
                 module    : UploadButton,
                 reference : 'upload',
                 multiple  : false,
+                accept    : '.vcf,text/vcard,.json,.csv,.xlsx',
                 buttonText: t('Import'),
                 listeners : {files: ({files}) => me.onFiles(files)}
             }]
         }]
-    }
-
-    onConstructed() {
-        super.onConstructed();
-
-        const upload = this.getReference('upload');
-
-        upload.vdom.cn[0].accept = '.vcf,text/vcard,.json';
-        upload.update()
     }
 
     setStatus(text) {
@@ -105,8 +96,19 @@ class ImportDialog extends Dialog {
             return
         }
 
-        if (/\.(csv|xlsx)$/i.test(file.name)) {
-            me.setStatus(t('CSV and Excel files need the column mapping of the classic user interface.'));
+        if (needsMapping(file.name)) {
+            me.getReference('upload').disabled = true;
+            me.setStatus(t('Uploading...'));
+
+            try {
+                await importFile(me, file, 'Contact', {addressBookId}, contactImportOptions());
+                me.isDestroyed || me.close()
+            } catch (e) {
+                me.setStatus('');
+                notifyError(me, e)
+            } finally {
+                me.isDestroyed || (me.getReference('upload').disabled = false)
+            }
             return
         }
 
@@ -123,7 +125,8 @@ class ImportDialog extends Dialog {
                 onProgress: a => a.data?.progress !== undefined && me.setStatus(t('Importing...') + ' ' + a.data.progress + '%')
             });
 
-            const text = escapeHtml(String(alert.data?.body || '').replace(/<[^>]*>/g, ' '));
+            // the toast shows text (not HTML)
+            const text = String(alert.data?.body || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 
             dismissAlert(alert);
             notify(me, text, {title: alert.data?.title || t('Import finished')});

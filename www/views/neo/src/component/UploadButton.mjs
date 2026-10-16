@@ -6,7 +6,7 @@ import {t} from '../Translate.mjs';
  * <input type="file">. neo's DOM events carry the chosen File objects into the
  * App worker; the component fires `files` with them.
  *
- *     {module: UploadButton, buttonText: 'Upload', listeners: {files: ({files}) => ...}}
+ *     {module: UploadButton, buttonText: 'Upload', accept: '.json', listeners: {files: ({files}) => ...}}
  */
 class UploadButton extends Component {
     static config = {
@@ -16,6 +16,11 @@ class UploadButton extends Component {
          * @member {Boolean} multiple=true
          */
         multiple: true,
+        /**
+         * File types the chooser offers, e.g. '.json' or '.csv,.xlsx'
+         * @member {String|null} accept=null
+         */
+        accept: null,
         /**
          * (Component's `text` would replace the label's content)
          * @member {String} buttonText_='Upload'
@@ -32,7 +37,9 @@ class UploadButton extends Component {
 
         let me = this;
 
-        me.vdom.cn[0].multiple = me.multiple;
+        // a false boolean attribute would still be set (multiple="false")
+        me.vdom.cn[0].multiple = me.multiple || null;
+        me.accept && (me.vdom.cn[0].accept = me.accept);
 
         me.addDomListeners([{
             change: me.onInputChange,

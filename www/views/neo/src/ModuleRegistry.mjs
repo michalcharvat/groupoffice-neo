@@ -20,6 +20,9 @@ import client from './jmap/Client.mjs';
  *     // optional login step per authenticator id (2FA, GO go.AuthenticationManager.register()),
  *     // see apps/go/view/LoginView.mjs; available before login (no capability check)
  *     loginPanels: {otpauthenticator: () => import('./view/OtpLoginPanel.mjs')},
+ *     // optional: custom field types and field set extensions for the custom fields admin
+ *     // (registerFieldType() / registerFieldSetExtension(), src/customfields/admin/), loaded when it opens
+ *     customFieldsAdmin: () => import('./customfields/admin.mjs'),
  *     // optional, called with each window's main view after login (e.g. a dialog to show then)
  *     onMainView: mainView => {},
  *     // optional, awaited after login before the main view is built: may register more modules

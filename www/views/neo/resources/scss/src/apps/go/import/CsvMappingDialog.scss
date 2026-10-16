@@ -1,0 +1,24 @@
+// GO.import.CsvMappingDialog: profile, formats and the mapping scroll in the body
+.neo-theme-go .go-import-dialog {
+    .go-import-body {
+        gap       : 1.6rem;
+        min-height: 0;
+        overflow-y: auto;
+        padding   : .8rem 1.6rem 1.6rem;
+    }
+
+    .go-import-intro {
+        color : var(--fg-secondary-text);
+        margin: 0;
+    }
+
+    .go-import-profile {
+        gap: .8rem;
+    }
+
+    .go-import-formats {
+        display              : grid;
+        gap                  : 1.6rem;
+        grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    }
+}

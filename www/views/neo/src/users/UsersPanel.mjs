@@ -231,6 +231,11 @@ class UsersPanel extends Container {
             }, {
                 separator: true
             }, {
+                text    : t('Import'),
+                icon    : 'cloud_upload',
+                disabled: !client.mayChangeUsers,
+                handler : () => me.openImport()
+            }, {
                 text : t('Export'),
                 icon : 'cloud_download',
                 items: [
@@ -377,6 +382,28 @@ class UsersPanel extends Container {
     }
 
     /**
+     * go.util.importFile('User', '.csv, .json, .xlsx'): CSV and Excel go through the column mapping
+     */
+    async openImport() {
+        const {default: ImportFileDialog} = await import('../import/ImportFileDialog.mjs');
+
+        Neo.create(ImportFileDialog, {
+            appName : this.appName,
+            windowId: this.windowId,
+            entity  : 'User',
+            accept  : '.csv,.json,.xlsx',
+            options : {labels: {
+                username     : t('Username'),
+                displayName  : t('Display name'),
+                password     : t('Password'),
+                email        : t('E-mail'),
+                recoveryEmail: t('Recovery e-mail'),
+                groups       : t('Groups')
+            }}
+        })
+    }
+
+    /**
      * go.util.exportToFile('User', query, extension): runs in the background, its alert links the file
      * @param {String} extension xlsx, csv or json
      */
@@ -391,7 +418,20 @@ class UsersPanel extends Container {
                 throw new Error(t("There's nothing to export"))
             }
 
-            const job = runBackgroundJob(() => client.call('User/export', {extension, ids}));
+            // spreadsheets: the user picks the columns (go.import.ColumnSelectDialog)
+            let columns;
+
+            if (['csv', 'xlsx'].includes(extension)) {
+                const {default: ColumnSelectDialog} = await import('../import/ColumnSelectDialog.mjs');
+
+                columns = await ColumnSelectDialog.ask({appName: me.appName, windowId: me.windowId, entity: 'User', extension});
+
+                if (!columns || me.isDestroyed) {
+                    return
+                }
+            }
+
+            const job = runBackgroundJob(() => client.call('User/export', {extension, ids, ...columns ? {columns} : {}}));
 
             notify(me, t('You will be notified when the export is complete. You can close this window now.'), {title: t('Export in progress')});
 

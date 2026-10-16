@@ -123,6 +123,16 @@ function formatNumber(value, decimals) {
     })
 }
 
+/**
+ * Decimals of a number / function field (GO option "numberDecimals")
+ * @param {Object} field
+ * @returns {Number}
+ */
+function decimalsOf(field) {
+    const decimals = parseInt(field.options?.numberDecimals, 10);
+    return isNaN(decimals) ? 2 : decimals
+}
+
 const TYPES = {
     Text: {
         formField : f => ({...baseConfig(f), module: TextField, maxLength: Number(f.options?.maxLength) || null}),
@@ -138,7 +148,7 @@ const TYPES = {
     },
     Number: {
         formField: f => {
-            const decimals = f.options?.decimals ?? 2;
+            const decimals = decimalsOf(f);
 
             return {
                 ...baseConfig(f),
@@ -146,17 +156,18 @@ const TYPES = {
                 // no limits: neo clamps on blur with Math.min/max, a null limit turns any value into 0
                 maxValue      : Number.MAX_SAFE_INTEGER,
                 minValue      : -Number.MAX_SAFE_INTEGER,
-                stepSize      : Math.pow(10, -decimals),
+                // neo reads the decimals from the step as text: 1e-7 would round to integers
+                stepSize      : Math.pow(10, -Math.min(decimals, 6)),
                 useSpinButtons: false
             }
         },
-        detailHtml: (f, v) => formatNumber(v, f.options?.decimals)
+        detailHtml: (f, v) => formatNumber(v, decimalsOf(f))
     },
     FunctionField: {
         // calculated by the server: shown, never submitted
         formField : () => null,
         readOnly  : true,
-        detailHtml: (f, v) => Number(v) > 0 ? formatNumber(v, f.options?.decimals) : null
+        detailHtml: (f, v) => Number(v) > 0 ? formatNumber(v, decimalsOf(f)) : null
     },
     Date: {
         formField : f => ({...baseConfig(f), module: DateField}),

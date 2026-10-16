@@ -58,6 +58,10 @@ Small modules, 2FA login, module hooks: `docs/neo-small-modules.md`.
 | `go/modules/<pkg>/<name>/views/neo/Index.mjs` | module entry, found by `Neo::moduleFiles()`; optional `style.css` |
 | `src/login/AuthenticatorPanel.mjs`, `src/systemsettings/EntityListPanel.mjs` | 2FA login step of a module (`loginPanels`), entity list card for System settings / My account (see `docs/neo-small-modules.md`) |
 | `src/users/`, `src/groups/`, `src/defaultpermissions/` | System settings cards Users (`UsersPanel`: show disabled, search, ⋮/right-click row menu: edit = `UserSettingsDialog` with `entityId`, login as (admins, `User/loginAs` reloads all windows), archive, delete; ⋮: `UserDefaultsDialog`, export), `CreateUserDialog` (account / password / groups, default groups), Groups (`GroupsPanel`, `GroupDialog`: name + members, permissions, `GroupModulesPanel` modules and their rights, saved after the group), Default permissions (`DefaultPermissionsPanel`, `DefaultAclDialog` with Reset all / Add to all). Cards show for `mayChangeUsers` / `mayChangeGroups` / admins |
+| `src/customfields/admin/` | System settings card Custom fields (`CustomFieldsPanel`: entities with `supportsCustomFields`, core right `mayChangeCustomFields`), `EntityFieldsDialog` (field sets + fields, add / move / edit / delete, JSON import / export), `FieldSetDialog` (+ `registerFieldSetExtension(entity)`), `FieldDialog` (+ types in `fieldTypes.mjs`, `registerFieldType()`), `SelectOptionsField` (select option tree). Modules add types / extensions in a file their registry entry loads with `customFieldsAdmin` (addressbook: Contact) |
+| `src/emailtemplate/`, `src/pdftemplate/` | a module's e-mail / PDF templates: `EmailTemplateGrid` / `PdfTemplateGrid` (`templateModule: {package, name}`, `key`; search, copy / paste, add, edit, delete), `EmailTemplateDialog`, `emailTemplateItems()` (fields for a template inside another form), `PdfTemplateDialog` (page, margins, header / footer, content blocks); demo `#dev/core/Templates` |
+| `src/import/` | `importFile()` (upload; CSV / Excel → `CsvMappingDialog` with `MappingEditor` and saved column profiles, other formats → `Entity/import`), `ImportFileDialog` (file chooser for menus), `ColumnSelectDialog.ask()` (export columns + presets); used by the address book and Users |
+| `src/form/field/AttachmentsField.mjs`, `BlobField.mjs` | uploaded files as form values: `[{blobId, name, attachment}]` chips with "Attach files"; one blob `{id, name}` with upload / remove (PDF template logo) |
 | `src/form/field/EntityCheckList.mjs`, `src/groups/GroupCheckList.mjs`, `src/model/User.mjs`, `Group.mjs` | form field: checkbox list over a JMAP entity, value = checked ids (search, loads on scroll, `jmapFilter`, `readOnly`); the group version shows members (User `groups`, My account "Groups" card) |
 
 Module code imports neo and the shell with relative paths
@@ -279,3 +283,11 @@ or context menu, no import/export menu. Dark mode follows
 - **Login as on the shared test cookie**: `User/loginAs` switches the session token itself. On
   127.0.0.1 all ports share the cookie (other sessions' browsers too): test it with an own API
   token, not in the browser.
+- **DOM listener `delegate`** matches classes and ids only (`.go-x`), not attribute selectors:
+  `delegate: '[data-action]'` never fires. Give actionable vdom nodes a class.
+- **Toasts show text**: `notify()` puts `msg` in as text, so HTML (`<br>`, escaped entities) shows
+  literally; pass plain text.
+- **`'' == 0`**: `LocalCombo` matches option ids loosely (loaded `false` finds option `0`), so an
+  option id `''` also matches the value `0`. Use a non-numeric id like `'all'` for "none".
+- **`EmailTemplate/get` / `PdfTemplate/get` need `moduleId`** in `properties`: the permission
+  check reads it ("Typed property …::$moduleId must not be accessed before initialization").

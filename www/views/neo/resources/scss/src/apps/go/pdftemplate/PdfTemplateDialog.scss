@@ -1,0 +1,32 @@
+// GO.pdftemplate.PdfTemplateDialog: page and margins side by side, blocks as framed rows
+.neo-theme-go .go-pdftemplate-dialog {
+    .go-pdftemplate-columns {
+        display              : grid;
+        gap                  : 0 3.2rem;
+        grid-template-columns: repeat(auto-fit, minmax(32rem, 1fr));
+
+        > .go-fieldset {
+            align-self     : start;
+            justify-content: flex-start;
+        }
+    }
+
+    .go-pdftemplate-xy, .go-pdftemplate-block-row {
+        gap: .8rem;
+    }
+
+    .go-pdftemplate-blocks {
+        gap: 1.6rem;
+    }
+
+    .go-pdftemplate-block {
+        border       : 1px solid var(--fg-outline);
+        border-radius: .8rem;
+        gap          : .8rem;
+        padding      : 1.2rem;
+    }
+
+    .go-pdftemplate-add-block {
+        align-self: flex-start;
+    }
+}

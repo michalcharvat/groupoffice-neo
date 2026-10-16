@@ -171,6 +171,13 @@ class Client {
     }
 
     /**
+     * @returns {Boolean} the user may manage custom fields (core capability mayChangeCustomFields)
+     */
+    get mayChangeCustomFields() {
+        return !!this.session?.capabilities?.['go:core:core']?.mayChangeCustomFields
+    }
+
+    /**
      * @returns {Boolean} the user is in the Admins group (go.User.isAdmin)
      */
     get isAdmin() {
