@@ -1,0 +1,99 @@
+// GO.groups.GroupModulesPanel (go.groups.GroupModuleGrid): a module per row, its rights as checks
+.neo-theme-go {
+    .go-groupmodules {
+        display       : flex;
+        flex-direction: column;
+        min-height    : 20rem;
+        overflow      : hidden;
+    }
+
+    .go-groupmodules-tbar {
+        align-items: center;
+        display    : flex;
+        flex       : none;
+        padding    : .8rem 0;
+    }
+
+    .go-groupmodules-search {
+        background   : var(--bg-lowest);
+        border       : 1px solid var(--fg-line);
+        border-radius: .8rem;
+        color        : var(--fg-main);
+        font         : inherit;
+        padding      : .6rem 1rem;
+        width        : 18rem;
+    }
+
+    .go-groupmodules-list {
+        background   : var(--bg-lowest);
+        border       : 1px solid var(--fg-line);
+        border-radius: .8rem;
+        flex         : 1;
+        overflow-y   : auto;
+    }
+
+    .go-groupmodules-row {
+        align-items  : center;
+        border-bottom: 1px solid var(--fg-line);
+        display      : flex;
+        flex-wrap    : wrap;
+        gap          : .8rem 1.2rem;
+        padding      : .8rem 1.2rem;
+
+        &:last-child {
+            border-bottom: 0;
+        }
+    }
+
+    .go-groupmodules-icon {
+        background-position: center;
+        background-repeat  : no-repeat;
+        background-size    : contain;
+        flex               : none;
+        height             : 3.2rem;
+        width              : 3.2rem;
+    }
+
+    .go-groupmodules-text {
+        display       : flex;
+        flex          : 1;
+        flex-direction: column;
+        min-width     : 16rem;
+
+        > small {
+            color    : var(--fg-secondary-text);
+            font-size: 1.2rem;
+        }
+    }
+
+    .go-groupmodules-enabled .go-groupmodules-name {
+        font-weight: 500;
+    }
+
+    .go-groupmodules-rights {
+        display  : flex;
+        flex-wrap: wrap;
+        gap      : .4rem 1.6rem;
+    }
+
+    .go-groupmodules-right {
+        align-items: center;
+        cursor     : pointer;
+        display    : inline-flex;
+        gap        : .6rem;
+    }
+
+    .go-groupmodules .go-check.go-disabled {
+        cursor : default;
+        opacity: .5;
+    }
+
+    .go-groupmodules.go-readonly .go-groupmodules-right {
+        cursor: default;
+    }
+
+    .go-groupmodules .go-empty {
+        color  : var(--fg-secondary-text);
+        padding: 1.6rem;
+    }
+}
