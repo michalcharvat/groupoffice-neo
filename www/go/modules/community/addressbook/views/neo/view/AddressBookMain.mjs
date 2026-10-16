@@ -1213,7 +1213,20 @@ class AddressBookMain extends MainThreeColumnPanel {
                 throw new Error(t("There's nothing to export"))
             }
 
-            const job = runBackgroundJob(() => client.call('Contact/export', {extension, ids}));
+            // spreadsheets and HTML: the user picks the columns (go.import.ColumnSelectDialog)
+            let columns;
+
+            if (['csv', 'xlsx', 'html'].includes(extension)) {
+                const {default: ColumnSelectDialog} = await import('../../../../../../../views/neo/src/import/ColumnSelectDialog.mjs');
+
+                columns = await ColumnSelectDialog.ask({appName: me.appName, windowId: me.windowId, entity: 'Contact', extension});
+
+                if (!columns || me.isDestroyed) {
+                    return
+                }
+            }
+
+            const job = runBackgroundJob(() => client.call('Contact/export', {extension, ids, ...columns ? {columns} : {}}));
 
             notify(me, t('You will be notified when the export is complete. You can close this window now.'), {title: t('Export in progress')});
 
