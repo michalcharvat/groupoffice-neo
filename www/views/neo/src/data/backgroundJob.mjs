@@ -58,6 +58,7 @@ export async function lastAlertId() {
  */
 export async function waitForFinishedAlert(sinceId, {interval = 2000, timeout = 600000, onProgress} = {}) {
     const end = Date.now() + timeout;
+    let lockedId = null;
 
     while (Date.now() < end) {
         await new Promise(resolve => setTimeout(resolve, interval));
@@ -68,10 +69,16 @@ export async function waitForFinishedAlert(sinceId, {interval = 2000, timeout = 
             limit : 10
         });
 
-        // the job's alert: the oldest one created after it started
-        const alert = list.filter(a => Number(a.id) > sinceId).sort((a, b) => Number(a.id) - Number(b.id))[0];
+        // the job's alert: the oldest converter alert (entity Module, with progress or
+        // already finished) created after the job started; other modules' alerts are skipped
+        const alert = lockedId
+            ? list.find(a => String(a.id) === lockedId)
+            : list.filter(a => Number(a.id) > sinceId && a.entity === 'Module' && a.data && ('progress' in a.data || a.data.persistent === false))
+                  .sort((a, b) => Number(a.id) - Number(b.id))[0];
 
         if (alert) {
+            lockedId = String(alert.id);
+
             if (alert.data && alert.data.persistent === false) {
                 return alert
             }

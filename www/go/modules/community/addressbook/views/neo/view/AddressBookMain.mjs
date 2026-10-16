@@ -773,6 +773,9 @@ class AddressBookMain extends MainThreeColumnPanel {
     }
 
     onContactSelectionChange({records}) {
+        // a contact menu still loading belongs to the old selection
+        this.menuGeneration = (this.menuGeneration || 0) + 1;
+
         if (records.length > 1) {
             return
         }
@@ -1050,6 +1053,8 @@ class AddressBookMain extends MainThreeColumnPanel {
             groupIds = [...new Set(records.flatMap(r => (r.groups || []).map(String)))],
             books    = tree.getAddressBookNodes().filter(n => n.data.permissionLevel >= LEVEL_CREATE),
             items    = [],
+            // a newer menu or another selection makes this one stale (it awaits the groups)
+            generation = me.menuGeneration = (me.menuGeneration || 0) + 1,
             groups;
 
         // the tree loads groups only when expanded (ExtJS: AddressBookGroup get)
@@ -1068,7 +1073,7 @@ class AddressBookMain extends MainThreeColumnPanel {
             groups = groups || []
         }
 
-        if (me.isDestroyed) {
+        if (me.isDestroyed || generation !== me.menuGeneration) {
             return
         }
 
