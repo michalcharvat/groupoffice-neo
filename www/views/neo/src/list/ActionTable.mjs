@@ -18,7 +18,11 @@ import {t}       from '../Translate.mjs';
  *         records: [{id: 1, name: 'Admins', mayRead: true}]
  *     }
  *
- * Events: action {action, record}, check {record, field, checked}, rowDoubleClick {record}
+ * An action may have `disabled(record)` and `hidden(record)`; `rowCls(record)` adds row classes
+ * (e.g. group header rows).
+ *
+ * Events: action {action, record, target (DOM id of the button, for menus)}, check {record, field, checked},
+ * rowDoubleClick {record}
  */
 class ActionTable extends Component {
     static config = {
@@ -52,6 +56,11 @@ class ActionTable extends Component {
          * @member {Boolean} readOnly_=false
          */
         readOnly_: false,
+        /**
+         * (record) => extra row classes
+         * @member {Function|null} rowCls=null
+         */
+        rowCls: null,
         _vdom:
         {tag: 'table', cn: [
             {tag: 'thead', cn: [{tag: 'tr', cn: []}]},
@@ -153,7 +162,7 @@ class ActionTable extends Component {
 
         return {
             tag     : 'tr',
-            cls     : ['go-actiontable-row'],
+            cls     : ['go-actiontable-row', ...me.rowCls?.(record) || []],
             'data-key': key,
             cn      : [
                 ...me.columns.map(column => {
@@ -177,7 +186,7 @@ class ActionTable extends Component {
                 ...me.actions.length ? [{
                     tag: 'td',
                     cls: ['go-actiontable-actions'],
-                    cn : me.actions.map(action => ({
+                    cn : me.actions.filter(action => !action.hidden?.(record)).map(action => ({
                         tag         : 'button',
                         type        : 'button',
                         cls         : ['go-actiontable-action', 'neo-button', 'go-icon-button'],
@@ -203,10 +212,10 @@ class ActionTable extends Component {
     }
 
     onActionClick(data) {
-        const dataset = ActionTable.findData(data, 'action'),
-              record  = dataset && this.getRecord(dataset.key);
+        const node   = data.path?.find(n => n.data?.action !== undefined),
+              record = node && this.getRecord(node.data.key);
 
-        record && this.fire('action', {action: dataset.action, record})
+        record && this.fire('action', {action: node.data.action, record, target: node.id})
     }
 
     onCheckChange(data) {

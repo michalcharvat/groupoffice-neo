@@ -1,0 +1,5 @@
+// GO.customfields.admin.OptionDialog: neo's form container padding is replaced by the dialog's
+.neo-theme-go .go-cf-option-dialog .neo-form-container {
+    gap    : 1.6rem;
+    padding: .8rem 1.6rem;
+}

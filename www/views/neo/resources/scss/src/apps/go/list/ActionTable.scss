@@ -50,8 +50,12 @@
         text-align: center;
     }
 
-    // GOUI flat icon button
+    // GOUI flat icon button; neo-button is display: flex, which stacks several in one cell
     .go-actiontable-action {
+        align-items    : center;
+        display        : inline-flex;
+        justify-content: center;
+        vertical-align : middle;
         background   : none;
         border       : 0;
         border-radius: 50%;

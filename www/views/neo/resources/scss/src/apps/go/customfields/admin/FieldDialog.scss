@@ -1,0 +1,22 @@
+// GO.customfields.admin.FieldDialog: "General" and "Validation" side by side, stacked on phones
+.neo-theme-go .go-cf-field-dialog {
+    .go-cf-field-columns {
+        display              : grid;
+        gap                  : 0 3.2rem;
+        grid-template-columns: repeat(auto-fit, minmax(32rem, 1fr));
+
+        // the shorter column keeps its items at the top
+        > .go-fieldset {
+            align-self     : start;
+            justify-content: flex-start;
+        }
+    }
+
+    .go-cf-type-label {
+        color: var(--fg-secondary-text);
+    }
+
+    .go-cf-field-card .go-cf-selectoptions {
+        min-height: 20rem;
+    }
+}

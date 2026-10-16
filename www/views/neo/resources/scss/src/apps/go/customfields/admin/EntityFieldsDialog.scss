@@ -1,0 +1,25 @@
+// GO.customfields.admin.EntityFieldsDialog: field sets as header rows, their fields indented
+.neo-theme-go .go-cf-entity-dialog {
+    .go-cf-entity-tbar {
+        gap    : .8rem;
+        padding: .8rem 1.6rem;
+    }
+
+    .go-cf-entity-body {
+        min-height: 0;
+        overflow-y: auto;
+        padding   : 0 1.6rem 1.6rem;
+    }
+
+    .go-cf-fieldset-row {
+        background-color: var(--bg-low);
+
+        td:first-child {
+            font-weight: 600;
+        }
+    }
+
+    .go-cf-field-row td:first-child {
+        padding-left: 4rem;
+    }
+}

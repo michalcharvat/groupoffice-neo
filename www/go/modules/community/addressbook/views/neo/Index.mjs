@@ -35,6 +35,8 @@ ModuleRegistry.register({
     // cards in My account (ExtJS userSettingsPanels); an array of cards needs
     // ModuleRegistry.loadSettingsPanels() (neo-ui "system settings" card), before that only the first
     userSettings: typeof ModuleRegistry.loadSettingsPanels === 'function' ? userSettings : userSettings[0],
+    // Contact field types and the contact field set filter for the custom fields admin
+    customFieldsAdmin: () => import('./customFieldsAdmin.mjs'),
     // card in System settings (ExtJS systemSettingsPanels)
     systemSettings: {
         title  : t('Address book'),

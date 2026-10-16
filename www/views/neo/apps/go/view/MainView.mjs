@@ -155,7 +155,7 @@ class MainView extends Container {
                 text   : t('My account'),
                 icon   : 'manage_accounts',
                 handler: () => me.openUserSettings()
-            }, ...client.isAdmin || client.mayChangeUsers || client.mayChangeGroups ? [{
+            }, ...client.isAdmin || client.mayChangeUsers || client.mayChangeGroups || client.mayChangeCustomFields ? [{
                 text   : t('System settings'),
                 icon   : 'settings',
                 handler: () => me.openSystemSettings()
@@ -233,7 +233,7 @@ class MainView extends Container {
         let me = this;
 
         // user and group managers see their cards only (SystemSettingsDialog CORE_CARDS)
-        if (!client.isAdmin && !client.mayChangeUsers && !client.mayChangeGroups) {
+        if (!client.isAdmin && !client.mayChangeUsers && !client.mayChangeGroups && !client.mayChangeCustomFields) {
             return
         }
 

@@ -1,0 +1,89 @@
+// GO.customfields.admin.SelectOptionsField: options as an indented list with row buttons
+.neo-theme-go .go-cf-selectoptions {
+    border       : 1px solid var(--fg-outline);
+    border-radius: .8rem;
+    display      : flex;
+    flex-direction: column;
+
+    .go-cf-selectoptions-list {
+        flex      : 1;
+        overflow-y: auto;
+    }
+
+    .go-cf-selectoptions-row {
+        align-items  : center;
+        border-bottom: 1px solid var(--fg-line, var(--fg-outline));
+        display      : flex;
+        gap          : .8rem;
+        min-height   : 4rem;
+        padding-right: .8rem;
+
+        &:hover {
+            background-color: var(--bg-hover);
+        }
+
+        &.go-disabled .go-cf-selectoptions-text {
+            color: var(--fg-secondary-text);
+        }
+    }
+
+    // the option's colours cover its text only, the buttons go to the end
+    .go-cf-selectoptions-text {
+        border-radius: .4rem;
+        color        : var(--fg-text);
+        flex         : 0 1 auto;
+        margin-right : auto;
+        overflow     : hidden;
+        padding      : .2rem .6rem;
+        text-overflow: ellipsis;
+        white-space  : nowrap;
+    }
+
+    .go-icon-button, .go-cf-selectoptions-add {
+        background   : none;
+        border       : 0;
+        color        : var(--fg-text);
+        cursor       : pointer;
+        flex         : none;
+
+        &:hover:not(:disabled) {
+            background-color: var(--bg-hover);
+        }
+
+        &:disabled {
+            cursor : default;
+            opacity: .4;
+        }
+    }
+
+    .go-icon-button {
+        border-radius: 50%;
+        height       : 3.2rem;
+        padding      : 0;
+        width        : 3.2rem;
+    }
+
+    .go-icon {
+        font-family: 'Material Symbols Rounded';
+        font-size  : 2rem;
+    }
+
+    .go-cf-selectoptions-tbar {
+        display: flex;
+        padding: .4rem .8rem;
+    }
+
+    .go-cf-selectoptions-add {
+        align-items  : center;
+        border-radius: 1.6rem;
+        display      : flex;
+        gap          : .4rem;
+        padding      : .4rem 1.2rem .4rem .8rem;
+    }
+
+    .go-empty {
+        color  : var(--fg-secondary-text);
+        padding: 2.4rem;
+        text-align: center;
+    }
+}
