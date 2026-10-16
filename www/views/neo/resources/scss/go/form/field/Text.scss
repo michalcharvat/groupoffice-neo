@@ -35,7 +35,8 @@
    does not read as a value. Focus or content float it into the border as before. */
 :root body .neo-textfield.label-inline:not(.neo-textarea):not(.neo-focus):not(.neo-has-content) .neo-textfield-label {
     color     : color-mix(in srgb, var(--fg-text) 45%, transparent);
-    margin-top: calc((var(--textfield-input-height) - 1.728rem) / 2);
+    // 1lh: the label's own line height (px); a rem value is off by the root font size
+    margin-top: calc((var(--textfield-input-height) - 1lh) / 2);
 }
 
 :root body .neo-textfield.label-inline .neo-textfield-label {
