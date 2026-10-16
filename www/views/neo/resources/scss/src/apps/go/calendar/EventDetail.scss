@@ -1,0 +1,75 @@
+@use "../../../../go/go";
+@use "cal" as *;
+
+// GO.calendar.EventDetail
+.neo-theme-go .go-cal-detail {
+    background-color: var(--bg-low);
+    min-width       : 0;
+
+    .go-card {
+        > h3 {
+            margin: 0 0 go.dp(8);
+        }
+
+        > div {
+            align-items: flex-start;
+            display    : flex;
+            gap        : go.dp(8);
+            margin     : go.dp(6) 0;
+        }
+
+        .go-icon {
+            color    : $colorTextSecondary;
+            font-size: go.dp(20);
+        }
+
+        h4 {
+            color : $colorTextSecondary;
+            margin: go.dp(16) 0 go.dp(4);
+        }
+    }
+
+    .go-cal-detail-desc {
+        overflow-wrap: anywhere;
+    }
+
+    .go-cal-detail-meta {
+        color    : $colorTextSecondary;
+        font-size: .9em;
+    }
+
+    .go-cal-detail-participants {
+        list-style: none;
+        margin    : 0;
+        padding   : 0;
+
+        > li {
+            align-items: center;
+            display    : flex;
+            gap        : go.dp(8);
+            min-height : go.dp(36);
+
+            > span {
+                display       : flex;
+                flex          : 1;
+                flex-direction: column;
+
+                > small {
+                    color: $colorTextSecondary;
+                }
+            }
+        }
+
+        .green  {color: var(--c-success, #2e7d32);}
+        .orange {color: var(--c-warning, #ef6c00);}
+        .red, .danger {color: var(--c-danger, #c62828);}
+    }
+
+    .go-cal-status-bar {
+        justify-content: space-around;
+
+        .neo-button.pressed {
+            background-color: var(--bg-selected);
+        }
+    }
+}

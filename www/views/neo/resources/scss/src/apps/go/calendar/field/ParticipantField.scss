@@ -1,0 +1,47 @@
+@use "../../../../../go/go";
+
+// GO.calendar.field.ParticipantField
+.neo-theme-go .go-cal-participants {
+    .go-cal-participant-list {
+        flex      : 1 0 100%;
+        list-style: none;
+        margin    : 0;
+        padding   : go.dp(4) 0;
+
+        > li {
+            align-items: center;
+            display    : flex;
+            gap        : go.dp(8);
+            min-height : go.dp(36);
+        }
+    }
+
+    .go-cal-participant-name {
+        display       : flex;
+        flex          : 1;
+        flex-direction: column;
+        min-width     : 0;
+
+        &.busy {
+            color: var(--c-danger, #c00);
+        }
+
+        > small {
+            color: var(--fg-secondary-text);
+        }
+    }
+
+    .go-cal-participant-menu {
+        border-radius: 50%;
+        cursor       : pointer;
+        padding      : go.dp(4);
+
+        &:hover {
+            background-color: var(--bg-hover);
+        }
+    }
+
+    .green  {color: var(--c-success, #2e7d32);}
+    .orange {color: var(--c-warning, #ef6c00);}
+    .red, .danger {color: var(--c-danger, #c62828);}
+}

@@ -1,0 +1,63 @@
+@use "../../../../../go/go";
+
+// GO.calendar.field.SuggestField (participants, location, categories)
+.neo-theme-go .go-cal-suggest {
+    .go-field-box {
+        flex-wrap: wrap;
+        position : relative;
+    }
+
+    .go-cal-suggest-input {
+        flex     : 1 1 auto;
+        min-width: go.dp(120);
+        resize   : none;
+    }
+
+    textarea.go-cal-suggest-input {
+        font  : inherit;
+        border: 0;
+        outline: none;
+        background: transparent;
+        color : inherit;
+        padding: go.dp(11) 0;
+        overflow: hidden;
+    }
+
+    .go-cal-suggestions {
+        background-color: var(--bg-lowest);
+        border-radius   : go.dp(8);
+        box-shadow      : 0 4px 16px rgba(0, 0, 0, .2);
+        left            : 0;
+        list-style      : none;
+        margin          : 0;
+        max-height      : go.dp(320);
+        overflow-y      : auto;
+        padding         : go.dp(4) 0;
+        position        : absolute;
+        right           : 0;
+        top             : 100%;
+        z-index         : 100;
+
+        > li {
+            align-items: center;
+            cursor     : pointer;
+            display    : flex;
+            gap        : go.dp(12);
+            padding    : go.dp(6) go.dp(16);
+
+            &.active, &:hover {
+                background-color: var(--bg-hover);
+            }
+
+            > span {
+                display       : flex;
+                flex-direction: column;
+                min-width     : 0;
+
+                > small {
+                    color: var(--fg-secondary-text);
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,30 @@
+@use "../../../../../go/go";
+
+// GO.calendar.field.AttachmentsField (also the attachments of EventDetail)
+.neo-theme-go .go-cal-attachments .go-field-box {
+    flex-direction: column;
+    align-items   : stretch;
+    min-height    : go.dp(8);
+}
+
+.neo-theme-go .go-cal-attachment {
+    display: flex;
+
+    > button {
+        background: none;
+        border    : 0;
+        color     : var(--fg-text);
+        cursor    : pointer;
+        font      : inherit;
+        padding   : go.dp(6) go.dp(4);
+        text-align: left;
+
+        &:hover {
+            background-color: var(--bg-hover);
+        }
+    }
+
+    .go-cal-attachment-file {
+        flex: 1;
+    }
+}

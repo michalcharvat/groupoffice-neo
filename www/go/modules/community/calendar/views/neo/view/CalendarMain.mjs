@@ -17,6 +17,10 @@ import calendarData  from '../data.mjs';
 import {addDays, addMonths, diffDays, format, parseDate, startOfDay, weekStart, ymd} from '../util/date.mjs';
 import CalendarView  from './CalendarView.mjs';
 import CheckRows     from './CheckRows.mjs';
+import EventDetail   from './EventDetail.mjs';
+import EventDetailDialog from './EventDetailDialog.mjs';
+import EventDialog   from './EventDialog.mjs';
+import ExceptionsDialog from './ExceptionsDialog.mjs';
 import MiniCalendar  from './MiniCalendar.mjs';
 import ChoiceDialog  from './ChoiceDialog.mjs';
 import ListView      from './ListView.mjs';
@@ -308,7 +312,18 @@ class CalendarMain extends MainThreeColumnPanel {
                         items    : [{module: ListView, reference: 'listView', flex: 1, adapter: me.adapter, listeners: {
                             ...me.viewListeners(),
                             selectItem: ({item}) => me.onListSelect(item)
-                        }}]
+                        }}, {
+                            module      : Splitter,
+                            resizeTarget: 'next',
+                            stateId     : 'calendar-list-splitter'
+                        }, {
+                            module   : EventDetail,
+                            reference: 'listDetail',
+                            cls      : ['go-cal-detail'],
+                            flex     : 'none',
+                            width    : '44rem',
+                            listeners: {edit: ({item}) => item.open(null, true)}
+                        }]
                     }
                 ]
             }]
@@ -1053,6 +1068,7 @@ class CalendarMain extends MainThreeColumnPanel {
     }
 
     onListSelect(item) {
+        this.getReference('listDetail').setItem(item)
     }
 
     showInvitations() {
@@ -1115,17 +1131,48 @@ class CalendarMain extends MainThreeColumnPanel {
             unmask    : () => {--masks <= 0 && (masks = 0, me.isLoading = false)},
             download  : blobId => me.download(blobId),
             mailTo    : to => me.openUrl('mailto:' + to),
+            openExceptions: (item, overrides) => me.openExceptions(item, overrides),
             noWritableCalendar: () => me.noWritableCalendar()
         }
     }
 
-    openEditor(item, opts) {
-        this.todo();
-        opts?.onCancel?.()
+    /**
+     * @param {CalendarItem} item
+     * @param {Object} [opts] {onCancel}
+     * @returns {GO.calendar.EventDialog}
+     */
+    openEditor(item, opts = {}) {
+        let me = this;
+
+        const dialog = me.trackDialog(Neo.create(EventDialog, {appName: me.appName, windowId: me.windowId, item}));
+
+        dialog.on('cancel', () => {
+            opts.onCancel?.();
+            me.clearCreation()
+        });
+        dialog.on('saved', () => me.clearCreation());
+
+        return dialog
+    }
+
+    /**
+     * The item drawn with the mouse goes away with its dialog
+     */
+    clearCreation() {
+        const view = this.view;
+
+        if (view?.currentCreation) {
+            view.currentCreation = null;
+            view.refresh()
+        }
     }
 
     openDetail(item) {
-        this.todo()
+        return this.trackDialog(Neo.create(EventDetailDialog, {appName: this.appName, windowId: this.windowId, item}))
+    }
+
+    openExceptions(item, overrides) {
+        return this.trackDialog(Neo.create(ExceptionsDialog, {appName: this.appName, windowId: this.windowId, item, overrides}))
     }
 
     /**
