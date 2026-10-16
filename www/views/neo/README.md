@@ -223,3 +223,12 @@ or context menu, no import/export menu. Dark mode follows
 - **Testing on another port**: cookies are per host, not port. A container on :8028/:8029 uses
   the login of :8027, which may be the real admin, not the test user: never save passwords or
   other account data there without checking who is logged in.
+- **`update()` is neo's**: Component.update() sends the vdom; a method of your own named
+  `update` recurses forever when render code calls `me.update()` (calendar: `refresh()`).
+- **Rebuilt vdom loses the scroll position**: neo stores a synced `scrollTop` on the vdom node
+  object; replacing a scrolling child node with a new object resets it on the next update.
+  Copy `scrollTop`/`scrollLeft` from the old node (calendar `WeekView.render()`).
+- **`mouseleave`/`mouseenter` listen with capture**: a component gets them for every child
+  element; check `data.target.id === me.id` for the component itself.
+- **`text` after `html`**: setting a component's `text` keeps an earlier `html`, which wins;
+  stick to one of them per component.
