@@ -49,6 +49,7 @@ Alternative Group Office webclient built with [neo.mjs](https://github.com/neomj
 | `src/dev/` | prototype only: "Dev" module (`#dev/<id>`), menu like the GOUI docs (`goui-docs/script/MainMenu.ts`) in `menu.mjs` with a status per component (demo / available / to convert); converting a component = add `src/dev/demo/<Name>.mjs`, set `demo` and `status: 'done'` |
 | `resources/scss/go/` | GO values and GOUI look of neo classes in the `theme-go` neo theme, per neo class (e.g. `form/field/trigger/Base.scss`: round Material triggers, `Picker.scss`: picker like `menu.goui-dropdown`, `dialog/Base.scss`: GOUI window chrome); `shared/` partials (in `Global.scss`): classes several GO components render (`go-avatar`, `go-check`, `go-empty`, links) |
 | `resources/scss/src/apps/go/` | styles of the `GO.*` components and the shell (`Viewport`, `LoginView`, `MainView` topbar, `GlobalSearch`, …) |
+| `src/form/field/AutocompleteChips.mjs` | chips of entity ids with a ▾ menu of the entity (`entity`, `setJmapFilter()`) |
 | `go/modules/<pkg>/<name>/views/neo/Index.mjs` | module entry, found by `Neo::moduleFiles()`; optional `style.css` |
 
 Module code imports neo and the shell with relative paths

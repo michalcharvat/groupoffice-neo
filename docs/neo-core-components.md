@@ -47,7 +47,7 @@ Status: **neo** = neo.mjs 13.2 ships it, usable as is (maybe GO styling);
 | **DataSourceForm** (load/save an entity) | – | **missing: generic entity form** (NoteDialog does it by hand) |
 | DateField, DateTimeField, DateRangeField, DurationField | form/field/Date (native input + picker) | GO.neo (`GO.form.field.*`; DateRangeField: custom range/from/until in a dialog instead of picker submenus) |
 | **HtmlField** (rich text) | – | **missing, large**: editor must live on the main thread (addon + worker bridge); notes use a textarea |
-| ChipsField, AutocompleteChips, AutocompleteField | form/field/Chip (basic) | ChipsField: GO.neo (`GO.form.field.ChipsField`, async textInputToValue/chipRenderer); autocomplete list: missing |
+| ChipsField, AutocompleteChips, AutocompleteField | form/field/Chip (basic) | ChipsField: GO.neo (`GO.form.field.ChipsField`, async textInputToValue/chipRenderer); AutocompleteChips: GO.neo (`GO.form.field.AutocompleteChips`, entity ids, ▾ menu; tasks categories); AutocompleteField: missing |
 | ArrayField, ContainerField, MapField, ListField | – | ArrayField, ContainerField: GO.neo (`src/form/nestedFields.mjs`); MapField, ListField: missing |
 | CheckboxGroup | – | missing (small) |
 | DatePicker / MonthPicker / WeekPicker | component/DateSelector | neo (month/week: missing) |
