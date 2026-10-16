@@ -130,6 +130,20 @@ export function escapeHtml(value) {
 }
 
 /**
+ * GOUI Format.fileSize(): 1536 → "1.50 kB", 0 / empty → ''
+ * @param {Number} bytes
+ * @returns {String}
+ */
+export function fileSize(bytes) {
+    if (!bytes) {
+        return ''
+    }
+
+    const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), 4);
+    return (bytes / Math.pow(1024, i)).toFixed(i ? 2 : 0) + ' ' + ['B', 'kB', 'MB', 'GB', 'TB'][i]
+}
+
+/**
  * GO's initials for an avatar (go.util.initials): first and last word
  */
 export function initials(name) {
