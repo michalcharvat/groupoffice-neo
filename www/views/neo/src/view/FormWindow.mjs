@@ -394,6 +394,14 @@ class FormWindow extends Dialog {
     }
 
     /**
+     * Unsaved changes, asked before closing. Subclasses add state that is no form value.
+     * @returns {Promise<Boolean>}
+     */
+    isModified() {
+        return this.form.isModified()
+    }
+
+    /**
      * Close by the user (Cancel, X, Escape): asks before discarding changes
      */
     async requestClose() {
@@ -403,7 +411,7 @@ class FormWindow extends Dialog {
             return
         }
 
-        if (await me.form.isModified()) {
+        if (await me.isModified()) {
             const discard = await ConfirmDialog.ask({
                 appName : me.appName,
                 windowId: me.windowId,
