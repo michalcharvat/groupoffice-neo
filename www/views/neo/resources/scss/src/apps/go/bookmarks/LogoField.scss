@@ -1,0 +1,25 @@
+// GO.bookmarks.LogoField: logo preview with upload and clear buttons
+.neo-theme-go .go-bookmark-logofield {
+    .go-field-box {
+        gap    : .8rem;
+        padding: .8rem 1.2rem;
+    }
+
+    .go-bookmark-logo-preview {
+        color     : var(--fg-secondary-text);
+        flex      : none;
+        font-size : 3.2rem;
+        height    : 3.2rem;
+        object-fit: contain;
+        width     : 3.2rem;
+    }
+
+    .go-bookmark-logo-upload, .go-bookmark-logo-clear {
+        color : var(--fg-text);
+        cursor: pointer;
+    }
+
+    .go-bookmark-logo-input {
+        display: none;
+    }
+}

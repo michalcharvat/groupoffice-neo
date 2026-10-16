@@ -21,7 +21,7 @@ Alternative Group Office webclient built with [neo.mjs](https://github.com/neomj
 | `apps/go/` | shell app: `app.mjs`, Viewport (loading / login / main), LoginView (GO login: "Login required" window, language menu, forgot credentials card), MainView (module tabs with popout and close ×, right click: close / close others / close all; a closed tab returns when the module is opened again; hash routing) |
 | `src/jmap/Client.mjs` | JMAP client in the App worker: cookie + `X-CSRF-Token`, batching, fetch-based SSE |
 | `src/data/JmapStore.mjs` | `Neo.data.Store` over `Entity/query`+`get`; reloads the page on push |
-| `src/ModuleRegistry.mjs` | modules register `{name, title, iconCls, capability, mainView}`, optional `userSettings: {title, iconCls, panel}` (a card in My account) |
+| `src/ModuleRegistry.mjs` | modules register `{name, title, iconCls, capability, mainView}`, optional `userSettings: {title, iconCls, panel}` (a card in My account) and `onLogin()` (awaited after login before the main view is built, may register more modules) |
 | `src/usersettings/` | My account (header avatar menu): `UserSettingsDialog` (FormWindow over the logged-in `User`, cards on the left: Account, Look & feel, Notifications, Visible to, custom field tabs, module cards; one `User/set`, asks for the current password like ExtJS, a new language reloads with `?SET_LANGUAGE=`, formats reload the windows), `AccountPanel`, `LookAndFeelPanel`, `NotificationPanel`, `VisibleToPanel`. A module card binds with dotted names (`notesSettings.defaultNoteBookId`) and may implement `onLoad(user)` |
 | `src/Preferences.mjs` + `src/main/addon/Preferences.mjs` | theme (`html.compact`) and colour scheme (`body.light/dark/system`) without a reload, "Reset windows and grids" (removes `state-*`); `Neo.php` renders the saved ones into the page |
 | `src/form/fieldset.mjs`, `src/form/field/BoolCheckBox.mjs`, `LocalCombo.mjs`, `src/view/PasswordPrompt.mjs` | GOUI fieldset with a legend (config helper), boolean checkbox, combo over fixed `[{id, name}]` matching ids loosely, password question |
@@ -220,6 +220,8 @@ or context menu, no import/export menu. Dark mode follows
   (also the pressed one) for it; `usersettings/UserSettingsDialog.scss` sets them upright.
 - **Scrolling vbox cards**: a container in a card with `overflow-y: auto` needs `flex: 'none'`,
   or the vbox squeezes it to the card height and its content is cut off (narrow screens).
+- **Overlays over buttons**: neo gives a button's glyph and text `z-index: 2`; anything laid
+  over a toolbar (e.g. the SearchButton overlay) needs a higher z-index.
 - **Testing on another port**: cookies are per host, not port. A container on :8028/:8029 uses
   the login of :8027, which may be the real admin, not the test user: never save passwords or
   other account data there without checking who is logged in.

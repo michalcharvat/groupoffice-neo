@@ -2,6 +2,7 @@ import BaseViewport from '../../../node_modules/neo.mjs/src/container/Viewport.m
 import client       from '../../../src/jmap/Client.mjs';
 import LoginView    from './LoginView.mjs';
 import MainView     from './MainView.mjs';
+import ModuleRegistry from '../../../src/ModuleRegistry.mjs';
 import {t} from '../../../src/Translate.mjs';
 
 /**
@@ -50,6 +51,8 @@ class Viewport extends BaseViewport {
     showLogin(message) {
         let me = this;
 
+        me.showToken = null;
+
         if (me.mainView) {
             me.remove(me.mainView);
             me.mainView = null
@@ -59,10 +62,19 @@ class Viewport extends BaseViewport {
         me.layout.activeIndex = 1
     }
 
-    showMain() {
-        let me = this;
+    async showMain() {
+        let me    = this,
+            token = me.showToken = Symbol();
 
         if (!me.mainView) {
+            // modules may add modules for this user (ModuleRegistry onLogin)
+            await ModuleRegistry.init();
+
+            // logged out or shown again meanwhile
+            if (me.isDestroyed || me.showToken !== token) {
+                return
+            }
+
             me.mainView = me.add({module: MainView})
         }
 

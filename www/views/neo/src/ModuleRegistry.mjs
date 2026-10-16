@@ -14,7 +14,9 @@ import client from './jmap/Client.mjs';
  *     routes    : {Note: id => 'note/' + id},             // header search result → "#notes/note/5"
  *     mainView  : () => import('./view/NotesMain.mjs'),  // lazy, default export = neo class
  *     // optional card in My account (src/usersettings/UserSettingsDialog.mjs)
- *     userSettings: {title: 'Notes', iconCls: 'fa fa-sticky-note', panel: () => import('./view/SettingsPanel.mjs')}
+ *     userSettings: {title: 'Notes', iconCls: 'fa fa-sticky-note', panel: () => import('./view/SettingsPanel.mjs')},
+ *     // optional, awaited after login before the main view is built: may register more modules
+ *     onLogin     : async () => {}
  * });
  */
 class ModuleRegistry {
@@ -22,6 +24,20 @@ class ModuleRegistry {
 
     register(module) {
         this.#modules.set(module.name, module)
+    }
+
+    unregister(name) {
+        this.#modules.delete(name)
+    }
+
+    /**
+     * Runs the modules' onLogin() (e.g. bookmarks shown as modules). A failing module
+     * does not keep the others from loading.
+     * @returns {Promise<void>}
+     */
+    async init() {
+        await Promise.all([...this.#modules.values()].filter(m => m.onLogin).map(m =>
+            Promise.resolve().then(() => m.onLogin()).catch(e => console.error(`Module ${m.name} onLogin`, e))))
     }
 
     get(name) {
