@@ -5,6 +5,7 @@ import ModuleRegistry    from '../ModuleRegistry.mjs';
 import {applyTheme}      from '../Preferences.mjs';
 import {notifyError}     from '../Notify.mjs';
 import {t}               from '../Translate.mjs';
+import GroupCheckList    from '../groups/GroupCheckList.mjs';
 import AccountPanel      from './AccountPanel.mjs';
 import LookAndFeelPanel  from './LookAndFeelPanel.mjs';
 import NotificationPanel from './NotificationPanel.mjs';
@@ -86,9 +87,21 @@ class UserSettingsDialog extends FormWindow {
         })
     }
 
+    /**
+     * @returns {Boolean} the dialog shows the logged-in user (My account), not another user
+     */
+    get isOwnAccount() {
+        return String(this.entityId) === String(client.user?.id)
+    }
+
     onConstructed() {
         let me      = this,
             promise = super.onConstructed();
+
+        // a user manager editing someone else (go.users.SystemSettingsUserGrid)
+        me.isOwnAccount || me.form.on('load', ({data}) => {
+            me.title = t('User') + ': ' + (data.username || data.displayName || '')
+        });
 
         // before the form loads: FormWindow.onConstructed() loads after a timeout
         me.form.on({
@@ -113,12 +126,25 @@ class UserSettingsDialog extends FormWindow {
     async addCustomFields() {
         let me = this;
 
-        me.addCard({module: LookAndFeelPanel,  header: {text: t('Look & feel'),   iconCls: 'fa fa-palette'}});
+        me.addCard({module: LookAndFeelPanel,  header: {text: t('Look & feel'),   iconCls: 'fa fa-palette'}, livePreview: me.isOwnAccount});
         me.addCard({module: NotificationPanel, header: {text: t('Notifications'), iconCls: 'fa fa-bell'}});
 
         client.mayChangeUsers && me.addCard({module: VisibleToPanel, header: {text: t('Visible to'), iconCls: 'fa fa-eye'}});
 
         await super.addCustomFields();
+
+        // go.users.UserGroupGrid (core userSettingsPanels): only admins change groups
+        me.addCard({
+            header: {text: t('Groups'), iconCls: 'fa fa-users'},
+            items : [{
+                module    : GroupCheckList,
+                reference : 'groups',
+                flex      : 1,
+                readOnly  : !client.isAdmin,
+                // groupMember sorts the user's groups on top
+                jmapFilter: {excludeEveryone: true, hideUsers: true, groupMember: me.entityId}
+            }]
+        });
 
         const panels = await ModuleRegistry.loadSettingsPanels('userSettings');
 

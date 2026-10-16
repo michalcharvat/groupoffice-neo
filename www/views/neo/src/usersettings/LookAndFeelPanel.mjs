@@ -46,7 +46,7 @@ function check(name, text) {
 }
 
 /** GO time zones: the browser's IANA list */
-function timeZones() {
+export function timeZones() {
     try {
         return Intl.supportedValuesOf('timeZone')
     } catch (e) {
@@ -55,7 +55,7 @@ function timeZones() {
 }
 
 /** go.util.Format.dateFormats */
-const DATE_FORMATS = () => [
+export const DATE_FORMATS = () => [
     ['d-m-Y', t('Day-Month-Year')],
     ['m/d/Y', t('Month/Day/Year')],
     ['d/m/Y', t('Day/Month/Year')],
@@ -80,7 +80,12 @@ class LookAndFeelPanel extends Container {
     static config = {
         className: 'GO.usersettings.LookAndFeelPanel',
         baseCls  : ['go-usersettings-lookandfeel', 'neo-container'],
-        layout   : {ntype: 'vbox', align: 'stretch'}
+        layout   : {ntype: 'vbox', align: 'stretch'},
+        /**
+         * Show a chosen theme right away: only for the logged-in user's own account
+         * @member {Boolean} livePreview=true
+         */
+        livePreview: true
     }
 
     construct(config) {
@@ -197,7 +202,7 @@ class LookAndFeelPanel extends Container {
     preview() {
         let me = this;
 
-        applyTheme({theme: me.down({name: 'theme'})?.getSubmitValue(), colorScheme: me.getReference('colorScheme').value}, [me.windowId])
+        me.livePreview && applyTheme({theme: me.down({name: 'theme'})?.getSubmitValue(), colorScheme: me.getReference('colorScheme').value}, [me.windowId])
     }
 
     /**
