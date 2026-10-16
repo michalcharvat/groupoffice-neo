@@ -86,19 +86,19 @@ class Dialog extends BaseDialog {
 
         const me = this;
 
-        // a dialog is not an item of its window's view: close it with its window
-        me.onWindowDisconnect = ({windowId}) => {
+        // a dialog is not an item of its window's view: close it with its window.
+        // Removed by event id: neo's un() with a function also matches by fn.name, and an
+        // anonymous handler would remove app.mjs's (no popup window would get cleaned up).
+        me.disconnectListenerId = Neo.currentWorker.on('disconnect', ({windowId}) => {
             if (windowId === me.windowId) {
                 me.popup = null; // gone already
                 me.close()
             }
-        };
-
-        Neo.currentWorker.on('disconnect', me.onWindowDisconnect)
+        })
     }
 
     destroy(...args) {
-        Neo.currentWorker.un('disconnect', this.onWindowDisconnect);
+        Neo.currentWorker.un('disconnect', this.disconnectListenerId);
         super.destroy(...args)
     }
 
@@ -191,6 +191,19 @@ class Dialog extends BaseDialog {
 
         // the opener's mask was synced while the dialog still had .neo-modal
         Neo.main.DomAccess.syncModalMask({id, modal: false, windowId: openerWindowId});
+
+        // the popup window sizes the dialog: no resizing. neo cannot drop the resizable plugin
+        // (its DOM listeners stay): no element carries its delegation class any more. The
+        // config covers a plugin whose import (afterSetResizable) is still pending
+        const resizer = me.getPlugin('resizable');
+
+        me.resizablePluginConfig = {...me.resizablePluginConfig, delegationCls: 'go-no-resize'};
+
+        if (resizer) {
+            resizer.currentNodeName && resizer.removeBodyCursorCls();
+            resizer.removeAllNodes();
+            resizer.delegationCls = 'go-no-resize'
+        }
 
         // a dragged dialog keeps its position in style (dialog/Base.mjs onDragEnd)
         const {height, left, top, transform, width, ...style} = me.style || {};

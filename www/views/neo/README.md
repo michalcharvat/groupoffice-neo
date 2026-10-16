@@ -219,6 +219,10 @@ or context menu, no import/export menu. Dark mode follows
     `disconnect`; dialogs close themselves. `isDestroyed` is `undefined` on live instances.
   - neo pushes the initial URL hash only for the first window; later windows read
     `Neo.windowConfigs[windowId].hash`. `HashHistory` is shared: filter by `windowId`.
+  - `un(event, fn)` also matches listeners by `fn.name` (+ scope): an anonymous arrow or a
+    `bound x` shared by several instances removes someone else's listener (a closed
+    popped-out dialog removed `app.mjs`'s `disconnect` handler, later popups never docked
+    back). Keep the id `on()` returns and call `un(event, id)`.
   - Worker console output goes to every window (`app.mjs`); neo already suppresses
     `PortDisconnectedError` rejections of closed windows.
   - `window.open` needs a user click; synthetic clicks get the popup blocked.

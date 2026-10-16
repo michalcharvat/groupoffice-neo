@@ -184,8 +184,9 @@ class MainView extends Container {
         // browser still counts it as user activation
         available.forEach(m => m.mainView().catch(() => {}));
 
-        me.onHashChange = me.onHashChange.bind(me);
-        HashHistory.on('change', me.onHashChange);
+        // by event id: un() with a function matches by name, and every window's MainView
+        // has a "bound onHashChange" (see Dialog.mjs)
+        me.hashListenerId = HashHistory.on('change', me.onHashChange.bind(me));
 
         // shared worker: neo pushes the initial hash only for the first window,
         // later windows find it in their window config
@@ -261,7 +262,7 @@ class MainView extends Container {
     }
 
     destroy(...args) {
-        HashHistory.un('change', this.onHashChange);
+        HashHistory.un('change', this.hashListenerId);
         super.destroy(...args)
     }
 
