@@ -1,0 +1,96 @@
+@use "../../../../go/go";
+@use "cal" as *;
+
+// GO.calendar.CalendarView: shared by all views
+.go-cal {
+    box-sizing: border-box;
+    height    : 100%;
+    outline   : none;
+
+    ul, ol, dl, dd, dt {
+        list-style: none;
+        margin    : 0;
+        padding   : 0;
+    }
+
+    i.go-icon {
+        display: inline-block;
+    }
+
+    ul > li, &.month li {
+        &.today em {
+            background-color: $colorPrimary !important;
+            border-radius   : 999px;
+            color           : #fff !important;
+            display         : inline-block;
+            font-weight     : 600;
+            min-width       : go.dp(36);
+            text-align      : center;
+        }
+
+        &.current {
+            color: $colorPrimary !important;
+        }
+
+        &.weekend {
+            background-color: $surfaceLow;
+        }
+
+        &.other {
+            color: $colorTextSecondary;
+        }
+    }
+
+    // the now line
+    .now {
+        left          : $timeMargin;
+        pointer-events: none;
+        position      : absolute;
+        right         : 0;
+        z-index       : 10;
+
+        > hr {
+            border       : 0;
+            border-bottom: 1px dashed $colorPrimary;
+            height       : 1.5px;
+            margin       : 0;
+        }
+
+        > b {
+            background-color: $colorPrimary;
+            border-radius   : 50%;
+            box-shadow      : 0 0 0 2px $surfaceLow;
+            display         : block;
+            height          : go.dp(12);
+            position        : absolute;
+            transform       : translate(-50%, -50%);
+            width           : go.dp(12);
+        }
+
+        > span {
+            background-color: $colorPrimary;
+            clip-path       : polygon(0 0, 80% 0, 100% 50%, 80% 100%, 0 100%);
+            color           : #fff;
+            display         : inline-block;
+            font-size       : .9em;
+            height          : go.dp(22);
+            line-height     : go.dp(22);
+            margin-left     : go.dp(-72);
+            padding-right   : go.dp(16);
+            text-align      : right;
+            transform       : translateY(-54%);
+            white-space     : nowrap;
+            width           : go.dp(72);
+        }
+    }
+}
+
+// tooltip / quick info (CalendarItem.quickText)
+.go-cal-quick-title {
+    margin : 0;
+    padding: 0;
+}
+
+.go-cal-pre {
+    white-space: pre;
+}

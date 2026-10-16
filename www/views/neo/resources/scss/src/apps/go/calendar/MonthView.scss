@@ -1,0 +1,163 @@
+@use "../../../../go/go";
+@use "cal" as *;
+
+// GO.calendar.MonthView (also the base of SplitView)
+.go-cal.month {
+    display       : flex;
+    flex-direction: column;
+
+    > ul { // weekday header
+        @include font-caption;
+        align-items     : center;
+        background-color: $surfaceMid;
+        border-bottom   : 1px solid $colorBorder;
+        display         : flex;
+        flex            : none;
+        height          : go.dp(40);
+
+        > li {
+            flex      : 1 0 0;
+            padding   : 0 go.dp(8);
+            text-align: right;
+        }
+
+        + ol {
+            border-top: 0;
+        }
+    }
+
+    ol > li[data-date] {
+        > sub { // week number
+            background-color: $surfaceHighest;
+            border-radius   : 99px;
+            cursor          : pointer;
+            float           : left;
+            font-size       : .7em;
+            font-weight     : 400;
+            margin          : go.dp(4) 0 go.dp(4) go.dp(4);
+            padding         : 0 go.dp(6);
+            position        : relative;
+            text-align      : center;
+            z-index         : 1;
+        }
+
+        > span { // day number
+            cursor      : pointer;
+            float       : right;
+            height      : go.dp(30);
+            line-height : go.dp(30);
+            margin-right: go.dp(8);
+            margin-top  : go.dp(2);
+            position    : relative;
+            z-index     : 1;
+
+            > em {
+                display    : inline-block;
+                font-style : normal;
+                font-weight: 500;
+                height     : go.dp(30);
+                line-height: go.dp(30);
+                min-width  : go.dp(30);
+                text-align : center;
+            }
+        }
+    }
+}
+
+.go-cal.month, .go-cal.split {
+    ol { // week row
+        align-items     : stretch;
+        background-color: $surfaceLowest;
+        border-top      : 1px solid $colorDivider;
+        display         : flex;
+        flex            : 1 0 0;
+        position        : relative;
+        user-select     : none;
+
+        > li { // day
+            border-right: 1px solid $colorDivider;
+            flex        : 1 0 0;
+            min-width   : 0;
+            position    : relative;
+
+            &.weekend {
+                background-color: $surfaceLow;
+            }
+
+            &.showMore > div.more {
+                display: block;
+            }
+
+            > div.more {
+                background-color: $surfaceLowest;
+                bottom          : 0;
+                box-sizing      : border-box;
+                color           : $colorTextSecondary;
+                cursor          : pointer;
+                display         : none;
+                font-size       : go.sp(12);
+                left            : 0;
+                mask-image      : linear-gradient(to top, #fff 80%, transparent);
+                overflow        : hidden;
+                padding         : .6rem 2rem 0;
+                position        : absolute;
+                right           : 0;
+                text-overflow   : ellipsis;
+                white-space     : nowrap;
+                z-index         : 2;
+            }
+
+            &.weekend > div.more {
+                background-color: $surfaceLow;
+            }
+
+            &:last-child {
+                border-right: 0;
+            }
+
+            &.events { // the lines, over the days
+                border-right  : 0;
+                bottom        : 0;
+                left          : 0;
+                margin-top    : go.dp(34);
+                overflow      : hidden;
+                pointer-events: none;
+                position      : absolute;
+                right         : 0;
+                top           : 0;
+                z-index       : 1;
+
+                > div {
+                    @include event;
+                    align-items   : center;
+                    display       : flex;
+                    padding-left  : go.dp(16);
+                    pointer-events: all;
+
+                    &:not(.allday) {
+                        padding-left : 0;
+                        padding-right: 0;
+
+                        &::before {
+                            background-color: currentColor;
+                            border-radius   : 999px;
+                            content         : '';
+                            height          : go.dp(16);
+                            margin          : go.dp(5);
+                            min-width       : go.dp(4);
+                        }
+                    }
+
+                    &.continues {
+                        border-bottom-left-radius: 0;
+                        border-top-left-radius   : 0;
+                    }
+
+                    > em {
+                        white-space: nowrap;
+                    }
+                }
+            }
+        }
+    }
+}

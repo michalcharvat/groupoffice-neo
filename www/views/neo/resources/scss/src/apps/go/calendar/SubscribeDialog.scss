@@ -1,0 +1,31 @@
+@use "../../../../go/go";
+
+// GO.calendar.SubscribeDialog
+.neo-theme-go .go-cal-subscribe-list {
+    list-style: none;
+    margin    : 0;
+    overflow-y: auto;
+    padding   : 0 go.dp(16);
+
+    > li {
+        align-items  : center;
+        border-bottom: 1px solid var(--fg-line);
+        display      : flex;
+        gap          : go.dp(12);
+        min-height   : go.dp(48);
+    }
+
+    .go-cal-subscribe-name {
+        flex: 1;
+    }
+
+    .go-row-menu {
+        border-radius: 50%;
+        cursor       : pointer;
+        padding      : go.dp(4);
+
+        &:hover {
+            background-color: var(--bg-hover);
+        }
+    }
+}

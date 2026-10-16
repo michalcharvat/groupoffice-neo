@@ -1,0 +1,25 @@
+@use "../../../../go/go";
+
+// GO.calendar.ChoiceDialog
+.neo-theme-go .go-cal-choice-dialog {
+    .go-cal-choice-body {
+        display: flex;
+        gap    : go.dp(16);
+        padding: go.dp(16);
+    }
+
+    .go-cal-choice-icon {
+        flex      : none;
+        font-size : 3em;
+        text-align: center;
+        width     : go.dp(100);
+    }
+
+    .go-cal-choice-text {
+        flex: 1;
+    }
+
+    .go-cal-choice-warning {
+        margin-top: go.dp(16);
+    }
+}

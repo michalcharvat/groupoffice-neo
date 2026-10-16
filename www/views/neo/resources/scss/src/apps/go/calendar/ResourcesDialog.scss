@@ -1,0 +1,50 @@
+@use "../../../../go/go";
+
+// GO.calendar.ResourcesDialog: groups | resources
+.neo-theme-go .go-cal-resources-dialog {
+    .go-cal-resources-groups {
+        border-right: 1px solid var(--fg-line);
+    }
+
+    .go-cal-resources-main {
+        background-color: var(--bg-low);
+    }
+
+    .neo-toolbar h3 {
+        margin: 0 go.dp(8);
+    }
+
+    .go-cal-resources-list {
+        list-style: none;
+        margin    : 0;
+        overflow-y: auto;
+        padding   : 0;
+
+        > li {
+            align-items: center;
+            cursor     : pointer;
+            display    : flex;
+            gap        : go.dp(12);
+            min-height : go.dp(40);
+            padding    : 0 go.dp(8) 0 go.dp(16);
+
+            &.selected {
+                background-color: var(--bg-selected);
+            }
+
+            &:hover {
+                background-color: var(--bg-hover);
+            }
+        }
+    }
+
+    .go-cal-res-name {
+        flex: 1;
+    }
+
+    .go-cal-res-color {
+        border-radius: go.dp(4);
+        height       : go.dp(16);
+        width        : go.dp(16);
+    }
+}

@@ -1,0 +1,80 @@
+@use "../../../../go/go";
+@use "cal" as *;
+
+// GO.calendar.MiniCalendar: GOUI datepicker in the sidebar
+.neo-theme-go .go-cal-mini {
+    margin    : 0 auto;
+    padding   : 0 go.dp(8) go.dp(8);
+    user-select: none;
+    width     : go.dp(258);
+
+    .go-cal-mini-header {
+        align-items: center;
+        display    : flex;
+    }
+
+    .go-cal-mini-nav {
+        background   : none;
+        border       : 0;
+        border-radius: 999px;
+        color        : var(--fg-text);
+        cursor       : pointer;
+        font-size    : go.dp(20);
+        height       : go.dp(32);
+        min-width    : go.dp(32);
+
+        &:hover {
+            background-color: var(--bg-hover);
+        }
+    }
+
+    .go-cal-mini-title {
+        flex       : 1;
+        font-family: inherit;
+        font-size  : go.sp(14);
+        font-weight: 600;
+        text-transform: capitalize;
+    }
+
+    table {
+        border-collapse: collapse;
+        width          : 100%;
+    }
+
+    th {
+        color      : $colorTextSecondary;
+        font-size  : go.sp(11);
+        font-weight: 600;
+        height     : go.dp(24);
+    }
+
+    td {
+        cursor     : pointer;
+        font-size  : go.sp(12);
+        height     : go.dp(30);
+        text-align : center;
+
+        &.go-cal-mini-week {
+            color    : $colorTextSecondary;
+            cursor   : default;
+            font-size: go.sp(10);
+        }
+
+        &.other {
+            color: $colorTextSecondary;
+        }
+
+        &.selected {
+            background-color: var(--bg-selected);
+        }
+
+        &.today {
+            color      : $colorPrimary;
+            font-weight: 700;
+        }
+
+        &.go-cal-mini-day:hover {
+            background-color: var(--bg-hover);
+        }
+    }
+}

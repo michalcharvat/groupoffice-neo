@@ -1,0 +1,34 @@
+@use "../../../../go/go";
+
+// GO.calendar.ExceptionsDialog
+.neo-theme-go .go-cal-exceptions {
+    list-style: none;
+    margin    : 0;
+    overflow-y: auto;
+    padding   : go.dp(8) go.dp(16);
+
+    > li {
+        align-items  : center;
+        border-bottom: 1px solid var(--fg-line);
+        display      : flex;
+        padding      : go.dp(8) 0;
+
+        > span {
+            display       : flex;
+            flex          : 1;
+            flex-direction: column;
+
+            > small {
+                color: var(--fg-secondary-text);
+            }
+        }
+
+        > button {
+            background: none;
+            border    : 0;
+            color     : var(--fg-text);
+            cursor    : pointer;
+            font-size : go.dp(20);
+        }
+    }
+}

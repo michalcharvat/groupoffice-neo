@@ -1,0 +1,143 @@
+@use "../../../../go/go";
+
+// GOUI calendar style.scss tokens
+$colorText         : var(--fg-text);
+$colorTextSecondary: var(--fg-secondary-text);
+$colorPrimary      : var(--c-primary);
+$colorLine         : var(--fg-line);
+$colorDivider      : var(--fg-divider);
+$colorBorder       : var(--fg-border);
+$surfaceLowest     : var(--bg-lowest);
+$surfaceLow        : var(--bg-low);
+$surfaceMid        : var(--bg-mid);
+$surfaceHighest    : var(--bg-highest);
+$timeMargin        : go.dp(72);
+
+@mixin font-caption {
+    color      : $colorTextSecondary;
+    font-size  : 1.2em;
+    font-weight: 600;
+}
+
+// an item in a view (GOUI %event)
+@mixin event {
+    border-radius: go.dp(4);
+    box-sizing   : border-box;
+    cursor       : pointer;
+    height       : go.dp(24);
+    overflow     : hidden;
+    overflow-wrap: break-word;
+    padding      : go.dp(2) 1px go.dp(2) go.dp(6);
+    position     : absolute;
+    text-align   : left;
+    user-select  : none;
+
+    .multiline & {
+        height: go.dp(36);
+
+        > em {
+            font-weight   : 500;
+            letter-spacing: -.05em;
+            line-height   : 1em;
+            max-height    : go.dp(32);
+            overflow      : visible;
+            white-space   : normal;
+        }
+    }
+
+    > em, > span {
+        color         : $colorText;
+        pointer-events: none;
+    }
+
+    > em {
+        flex         : 1 1 auto;
+        font-style   : normal;
+        overflow     : hidden;
+        text-overflow: ellipsis;
+    }
+
+    > span {
+        color        : $colorTextSecondary;
+        font-size    : .85em;
+        font-weight  : 400;
+        order        : 2;
+        padding-left : .4rem;
+        padding-right: .4rem;
+        text-align   : right;
+        white-space  : nowrap;
+    }
+
+    &.new {
+        background-color: var(--bg-lowest) !important;
+        border          : 1px solid;
+    }
+
+    &.allday, &.multiday {
+        background-color: color-mix(in srgb, currentColor 56%, transparent);
+    }
+
+    &.selected {
+        background-color: currentColor;
+
+        > *, > span > *, &:not(.allday)::before {
+            color: #fff;
+        }
+    }
+
+    &.declined em {
+        text-decoration: line-through;
+    }
+
+    &.undecided {
+        border     : 1px dashed $colorText;
+        color      : $colorText;
+        margin-left: -1px;
+        opacity    : .6;
+    }
+
+    &:focus {
+        outline: none;
+    }
+
+    i {
+        color       : inherit;
+        display     : inline-block;
+        font-size   : inherit !important;
+        height      : go.dp(16);
+        margin-right: go.dp(4);
+        min-height  : go.dp(16);
+        min-width   : go.dp(16);
+        width       : go.dp(16);
+    }
+
+    i.cat {
+        background-color: currentColor;
+        border-radius   : go.dp(3);
+        margin          : go.dp(2);
+        vertical-align  : middle;
+    }
+}
+
+// header with week number and days (week and split view)
+@mixin weekhead {
+    align-items       : center;
+    border-bottom     : 1px solid $colorBorder;
+    display           : flex;
+    overflow-y        : auto;
+    scrollbar-gutter  : stable;
+
+    > li {
+        @include font-caption;
+        text-align: center;
+
+        > em {
+            color      : $colorText;
+            display    : inline-block;
+            font-size  : 1.1em;
+            font-style : normal;
+            margin-left: go.dp(8);
+            padding    : go.dp(8);
+        }
+    }
+}

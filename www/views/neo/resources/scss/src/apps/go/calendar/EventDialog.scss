@@ -1,0 +1,22 @@
+@use "../../../../go/go";
+
+// GO.calendar.EventDialog
+.neo-theme-go .go-cal-event-dialog {
+    .go-form-general {
+        gap       : go.dp(12);
+        overflow-y: auto;
+        padding   : go.dp(16);
+    }
+
+    // the field labels sit in the top border: keep them visible
+    .go-cal-form-row {
+        gap        : go.dp(12);
+        overflow   : visible;
+        padding-top: go.dp(6);
+
+        > .neo-button {
+            margin-top: go.dp(8);
+        }
+    }
+}
+

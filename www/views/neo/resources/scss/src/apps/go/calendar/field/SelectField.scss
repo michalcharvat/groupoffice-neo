@@ -1,0 +1,19 @@
+@use "../../../../../go/go";
+
+// GO.calendar.field.SelectField: native select in the field box
+.neo-theme-go .go-cal-select select.go-field-input {
+    appearance: auto;
+    background: transparent;
+    border    : 0;
+    color     : inherit;
+    cursor    : pointer;
+    font      : inherit;
+    outline   : none;
+    padding   : go.dp(11) 0;
+    width     : 100%;
+
+    option {
+        background-color: var(--bg-lowest);
+        color           : var(--fg-text);
+    }
+}

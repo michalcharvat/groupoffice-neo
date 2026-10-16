@@ -1,0 +1,22 @@
+@use "../../../../../go/go";
+
+// GO.calendar.field.CategoryField: coloured chips
+.neo-theme-go .go-cal-categories .go-cal-chip {
+    align-items     : center;
+    background-color: color-mix(in srgb, currentColor 18%, transparent);
+    border-radius   : 999px;
+    display         : inline-flex;
+    gap             : go.dp(4);
+    margin          : go.dp(4) go.dp(4) go.dp(4) 0;
+    padding         : go.dp(2) go.dp(4) go.dp(2) go.dp(10);
+
+    > span {
+        color: var(--fg-text);
+    }
+
+    .go-cal-chip-remove {
+        color    : var(--fg-text);
+        cursor   : pointer;
+        font-size: go.dp(16);
+    }
+}

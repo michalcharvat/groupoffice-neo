@@ -1,0 +1,17 @@
+@use "../../../../go/go";
+
+// GO.calendar.ImportDialog
+.neo-theme-go .go-cal-import-body {
+    padding: go.dp(8) go.dp(16);
+
+    .go-cal-import-uid {
+        align-items: center;
+        cursor     : pointer;
+        display    : flex;
+        gap        : go.dp(8);
+    }
+
+    .green  {color: var(--c-success, #2e7d32);}
+    .orange {color: var(--c-warning, #ef6c00);}
+    .red    {color: var(--c-danger, #c62828);}
+}
