@@ -1,0 +1,9 @@
+
+// GOUI rangefield: the slider spans the field (neo gives it flex: 1 in a block box, so it
+// keeps the browser's ~130px), below the inline label
+:root .neo-theme-go .neo-rangefield .neo-rangefield-input {
+    box-sizing: border-box;
+    margin    : go.dp(20) 0 0;
+    padding   : 0 go.dp(14);
+    width     : 100%;
+}

@@ -1,0 +1,6 @@
+@use "../../../../go/go";
+
+// GO.tasks.ContinueTaskDialog: fields side by side (row() of TaskDialog)
+.neo-theme-go .go-tasks-continue-dialog .go-tasks-row {
+    gap: go.dp(16);
+}

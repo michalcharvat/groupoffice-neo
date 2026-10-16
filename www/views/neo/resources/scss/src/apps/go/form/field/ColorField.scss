@@ -1,0 +1,10 @@
+// GO.form.field.ColorField: hex value with a swatch in front (--go-colorfield-color)
+.neo-theme-go .go-colorfield .neo-textfield-input {
+    background-image   : linear-gradient(var(--go-colorfield-color, transparent), var(--go-colorfield-color, transparent));
+    background-position: 1.2rem center;
+    background-repeat  : no-repeat;
+    background-size    : 2rem 2rem;
+    font-family        : monospace;
+    padding-left       : 4.4rem;
+    text-transform     : uppercase;
+}

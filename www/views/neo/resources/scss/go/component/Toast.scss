@@ -1,0 +1,10 @@
+
+// neo 13: the bottom positions set no `top`, so .neo-floating's top: -10000px stays and the
+// toast stretches from there to `bottom` (~10000px high, covering the page)
+.neo-theme-go {
+    .neo-toast-bl,
+    .neo-toast-bc,
+    .neo-toast-br {
+        top: auto;
+    }
+}

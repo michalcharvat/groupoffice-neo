@@ -10,6 +10,7 @@ const pad = n => String(n).padStart(2, '0');
  * - 'h:I' (default) "1:05"
  * - 'j'   total minutes as a number (65)
  * - 'iso' ISO 8601 duration ("PT1H5M"), as JMAP durations (calendar events)
+ * - 's'   total seconds as a number (3900), e.g. Task.estimatedDuration
  *
  * minValue / maxValue in minutes.
  *
@@ -96,13 +97,25 @@ class DurationField extends Field {
 
         switch (this.outputFormat) {
             case 'j'  : return minutes;
+            case 's'  : return minutes * 60;
             case 'iso': return `${sign}PT${h ? h + 'H' : ''}${i || !h ? i + 'M' : ''}`;
             default   : return `${sign}${h}:${pad(i)}`
         }
     }
 
     beforeSetValue(value) {
-        return this.formatMinutes(DurationField.toMinutes(value))
+        return this.formatMinutes(this.valueToMinutes(value))
+    }
+
+    /**
+     * @param {String|Number|null} value in any format; a number is in outputFormat's unit
+     * @returns {Number|null} minutes
+     * @protected
+     */
+    valueToMinutes(value) {
+        return this.outputFormat === 's' && typeof value === 'number'
+            ? (isNaN(value) ? null : Math.round(value / 60))
+            : DurationField.toMinutes(value)
     }
 
     afterSetValue(value, oldValue) {
@@ -115,7 +128,7 @@ class DurationField extends Field {
      * @returns {Number|null} GOUI getValueAsDateInterval(), in minutes
      */
     getMinutes() {
-        return DurationField.toMinutes(this.value)
+        return this.valueToMinutes(this.value)
     }
 
     createControl() {

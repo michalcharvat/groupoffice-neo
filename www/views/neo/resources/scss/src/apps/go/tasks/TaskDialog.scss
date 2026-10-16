@@ -1,0 +1,24 @@
+@use "../../../../go/go";
+
+// GO.tasks.TaskDialog : fields side by side
+.neo-theme-go .go-tasks-dialog {
+    .go-tasks-dialog-body {
+        gap       : go.dp(16);
+        overflow-y: auto;
+    }
+
+    .go-tasks-row {
+        gap: go.dp(16);
+    }
+}
+
+// phone: one field per row
+@media (max-width: 576px) {
+    .neo-theme-go .go-tasks-dialog .go-tasks-row {
+        flex-wrap: wrap;
+
+        > * {
+            flex: 1 1 100% !important;
+        }
+    }
+}

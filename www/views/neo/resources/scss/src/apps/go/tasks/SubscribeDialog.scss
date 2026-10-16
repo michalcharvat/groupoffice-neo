@@ -1,0 +1,33 @@
+@use "../../../../go/go";
+
+// GO.tasks.SubscribeDialog: name and a "Subscribe" button per list
+.neo-theme-go .go-tasks-subscribe-list {
+    overflow-y: auto;
+
+    .neo-list-item {
+        align-items: center;
+        display    : flex;
+        gap        : go.dp(8);
+        padding    : go.dp(8) go.dp(16);
+    }
+
+    .go-tasks-subscribe-name {
+        flex         : 1;
+        overflow     : hidden;
+        text-overflow: ellipsis;
+        white-space  : nowrap;
+    }
+
+    .go-tasks-subscribe-button {
+        background   : transparent;
+        border       : 1px solid var(--fg-line);
+        border-radius: .4rem;
+        color        : var(--fg-main);
+        cursor       : pointer;
+        padding      : go.dp(4) go.dp(12);
+
+        &:hover {
+            background-color: var(--bg-hover);
+        }
+    }
+}

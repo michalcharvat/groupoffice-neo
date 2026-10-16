@@ -69,6 +69,8 @@ class List extends MenuList {
             align   : {edgeAlign: 't100-b100', target, ...align},
             floating: true,
             hidden  : true,
+            // neo menus default to z-index 100 (inline style): dialogs and their mask are 1000
+            zIndex  : 1100,
             ...config
         });
 

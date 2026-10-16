@@ -1,0 +1,93 @@
+@use "../../../../go/go";
+
+// GO.tasks.TasksMain: west filters, task grid cells; the status chips, progress bar
+// and categories are shared with GO.tasks.TaskDetail (only shown inside this view)
+.neo-theme-go .go-tasks {
+    .go-tasks-assigned {
+        gap    : go.dp(4);
+        padding: go.dp(8) go.dp(16) go.dp(16);
+
+        h3 {
+            color      : var(--fg-secondary-text);
+            font-size  : 1.2rem;
+            font-weight: 600;
+            margin     : go.dp(12) 0 go.dp(4);
+            text-transform: uppercase;
+        }
+    }
+
+    // GOUI ExtJS Paper .status: uppercase chip on a hue (tasks style.scss)
+    .go-tasks-status {
+        border-radius : .4rem;
+        color         : #fff;
+        display       : inline-block;
+        font-size     : 1.2rem;
+        font-weight   : 600;
+        line-height   : go.dp(24);
+        padding       : 0 go.dp(8);
+        text-transform: uppercase;
+        white-space   : nowrap;
+    }
+
+    .go-tasks-status-needs-action { background-color: var(--hue-yellow); color: #000; }
+    .go-tasks-status-in-progress  { background-color: var(--hue-blue); }
+    .go-tasks-status-completed    { background-color: var(--hue-green); }
+    .go-tasks-status-failed       { background-color: var(--hue-red); }
+    .go-tasks-status-cancelled    { background-color: var(--hue-bluegrey); }
+
+    .go-tasks-progressbar {
+        background-color: var(--bg-mid);
+        border          : 1px solid var(--fg-line);
+        box-sizing      : border-box;
+        height          : go.dp(12);
+        min-width       : go.dp(60);
+
+        > div {
+            background-color: var(--fg-main);
+            height          : 100%;
+        }
+    }
+
+    .go-tasks-category {
+        background-color: var(--bg-mid);
+        border-radius   : 1.2rem;
+        display         : inline-block;
+        line-height     : go.dp(20);
+        margin-right    : go.dp(4);
+        padding         : 0 go.dp(8);
+    }
+
+    .go-tasks-principal {
+        align-items: center;
+        display    : inline-flex;
+        gap        : go.dp(8);
+        min-width  : 0;
+
+        .go-avatar {
+            flex     : none;
+            font-size: 1rem;
+            height   : go.dp(24);
+            line-height: go.dp(24);
+            width    : go.dp(24);
+        }
+    }
+
+    // GOUI startDueRenderer: overdue red, started green
+    .go-tasks-danger  { color: var(--hue-red); }
+    .go-tasks-success { color: var(--hue-green); }
+
+    .go-tasks-orange { color: var(--hue-orange); }
+    .go-tasks-blue   { color: var(--hue-blue); }
+    .go-tasks-green  { color: var(--hue-green); }
+    .go-tasks-purple { color: var(--hue-purple); }
+    .go-tasks-red    { color: var(--hue-red); }
+
+    .neo-grid-cell .go-icon {
+        font-size     : go.dp(18);
+        vertical-align: middle;
+    }
+
+    .neo-grid-cell .go-check {
+        vertical-align: middle;
+    }
+}

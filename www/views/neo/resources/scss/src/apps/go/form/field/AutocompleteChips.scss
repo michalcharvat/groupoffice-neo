@@ -1,0 +1,16 @@
+// GO.form.field.AutocompleteChips: ChipsField with a ▾ button that lists the entities
+.neo-theme-go .go-autocompletechips .go-chips-trigger {
+    background   : transparent;
+    border       : 0;
+    border-radius: 50%;
+    color        : var(--fg-secondary-text);
+    cursor       : pointer;
+    display      : inline-flex;
+    margin-left  : auto;
+    padding      : .2rem;
+
+    &:hover {
+        background-color: var(--bg-hover);
+        color           : var(--fg-text);
+    }
+}

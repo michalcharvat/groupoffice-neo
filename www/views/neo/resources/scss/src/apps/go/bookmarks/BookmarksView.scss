@@ -1,0 +1,104 @@
+@use "../../../../go/go";
+
+// GO.bookmarks.BookmarksView: bookmarks per category (GOUI bookmarks style.scss)
+.neo-theme-go .go-bookmarks-view {
+    padding: 0 1.6rem 1.6rem;
+
+    .go-bookmarks-category {
+        color      : var(--fg-secondary-text);
+        font-size  : go.sp(16);
+        font-weight: normal;
+        margin     : 2.4rem .4rem .8rem;
+    }
+
+    .go-bookmarks-items {
+        display  : flex;
+        flex-wrap: wrap;
+        gap      : .8rem;
+    }
+
+    .go-bookmark {
+        align-items    : flex-start;
+        border-radius  : var(--border-radius, .8rem);
+        color          : var(--fg-text);
+        cursor         : pointer;
+        display        : flex;
+        gap            : 1.6rem;
+        height         : 10rem;
+        overflow       : hidden;
+        padding        : 1.2rem 1.6rem;
+        text-decoration: none;
+        width          : 32rem;
+
+        &:hover, &:focus-visible {
+            background-color: var(--bg-highest);
+        }
+    }
+
+    .go-bookmark-logo {
+        flex     : none;
+        font-size: 2.4rem;
+        height   : 2.4rem;
+        margin-top: .4rem;
+        object-fit: contain;
+        width    : 2.4rem;
+    }
+
+    i.go-bookmark-logo {
+        color: var(--fg-secondary-text);
+    }
+
+    .go-bookmark-text {
+        min-width: 0;
+    }
+
+    .go-bookmark-name {
+        font-size    : go.sp(14);
+        font-weight  : 500;
+        margin       : .4rem 0;
+        overflow     : hidden;
+        text-overflow: ellipsis;
+        white-space  : nowrap;
+    }
+
+    .go-bookmark-desc {
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 3;
+        color             : var(--fg-secondary-text);
+        display           : -webkit-box;
+        font-size         : go.sp(12);
+        overflow          : hidden;
+    }
+
+    // GOUI BookmarksColumnView: one column per category, logo and name
+    &.go-bookmarks-mode-columns {
+        align-items: flex-start;
+        display    : flex;
+        flex-wrap  : wrap;
+        gap        : 1.6rem;
+
+        .go-bookmarks-section {
+            width: 32rem;
+        }
+
+        .go-bookmarks-items {
+            flex-direction: column;
+            gap           : 0;
+        }
+
+        .go-bookmark {
+            align-items: center;
+            height     : auto;
+            padding    : .8rem 1.6rem;
+            width      : auto;
+        }
+
+        .go-bookmark-logo {
+            margin-top: 0;
+        }
+
+        .go-bookmark-desc {
+            display: none;
+        }
+    }
+}
