@@ -291,7 +291,9 @@ class Client {
         const response = await fetch(this.legacyUrl(route), {
             method     : 'POST',
             credentials: 'same-origin',
-            headers    : {'Content-Type': 'application/x-www-form-urlencoded'},
+            // the session needs the CSRF token like JMAP (else Access denied); as an AJAX
+            // request GO answers errors with JSON instead of its HTML exception page
+            headers    : {...this.#headers(), 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest'},
             body       : new URLSearchParams(params)
         });
 
