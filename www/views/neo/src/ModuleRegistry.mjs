@@ -21,7 +21,9 @@ import client from './jmap/Client.mjs';
  *     // see apps/go/view/LoginView.mjs; available before login (no capability check)
  *     loginPanels: {otpauthenticator: () => import('./view/OtpLoginPanel.mjs')},
  *     // optional, called with each window's main view after login (e.g. a dialog to show then)
- *     onMainView: mainView => {}
+ *     onMainView: mainView => {},
+ *     // optional, awaited after login before the main view is built: may register more modules
+ *     onLogin     : async () => {}
  * });
  *
  * A module without a mainView only adds settings cards: it is not an app in the header.
@@ -65,6 +67,20 @@ class ModuleRegistry {
                 console.error(`${name} of ${m.name}`, e)
             }
         })
+    }
+
+    unregister(name) {
+        this.#modules.delete(name)
+    }
+
+    /**
+     * Runs the modules' onLogin() (e.g. bookmarks shown as modules). A failing module
+     * does not keep the others from loading.
+     * @returns {Promise<void>}
+     */
+    async init() {
+        await Promise.all([...this.#modules.values()].filter(m => m.onLogin).map(m =>
+            Promise.resolve().then(() => m.onLogin()).catch(e => console.error(`Module ${m.name} onLogin`, e))))
     }
 
     get(name) {

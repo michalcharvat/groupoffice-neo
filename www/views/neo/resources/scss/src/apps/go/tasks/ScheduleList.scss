@@ -1,0 +1,24 @@
+@use "../../../../go/go";
+
+// GO.tasks.ScheduleList: GOUI tasks-filter-table, icon and name per row
+.neo-theme-go .go-tasks-schedule {
+    flex: none;
+
+    .neo-list-item {
+        align-items: center;
+        display    : flex;
+        gap        : go.dp(16);
+        height     : go.dp(40);
+        padding    : 0 go.dp(16);
+    }
+
+    .go-tasks-schedule-icon {
+        font-size: go.dp(20);
+    }
+
+    .go-tasks-green  { color: var(--hue-green); }
+    .go-tasks-purple { color: var(--hue-purple); }
+    .go-tasks-red    { color: var(--hue-red); }
+    .go-tasks-blue   { color: var(--hue-blue); }
+    .go-tasks-orange { color: var(--hue-orange); }
+}

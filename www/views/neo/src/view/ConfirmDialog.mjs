@@ -22,6 +22,7 @@ class ConfirmDialog extends Dialog {
             layout: {ntype: 'vbox', align: 'stretch'}
         },
         /**
+         * HTML: escape names and other user text in it
          * @member {String} message=''
          */
         message: ''

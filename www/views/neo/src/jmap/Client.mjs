@@ -208,14 +208,14 @@ class Client {
               get    = this.call(entity + '/get', {'#ids': {resultOf: id, path: '/ids'}, properties}),
               [q, g] = await Promise.all([query, get]);
 
-        this.#states[entity] = g.state;
+        this.#baseState(entity, g.state);
 
         return {list: g.list, total: q.total, ids: q.ids}
     }
 
     async get(entity, ids, properties) {
         const response = await this.call(entity + '/get', {ids, properties});
-        this.#states[entity] = response.state;
+        this.#baseState(entity, response.state);
         return response.list
     }
 
@@ -491,14 +491,30 @@ class Client {
         const states  = JSON.parse(data),
               changed = [];
 
+        // only push events move known states (see #baseState()); a type never fetched yet
+        // has no store to reload
         Object.entries(states).forEach(([entity, state]) => {
-            if (this.#states[entity] !== state) {
+            if (!(entity in this.#states)) {
+                this.#states[entity] = state
+            } else if (this.#states[entity] !== state) {
                 this.#states[entity] = state;
                 changed.push(entity)
             }
         });
 
         changed.length && this.fire('stateChange', {changed, states})
+    }
+
+    /**
+     * The state of the first fetch of a type is the baseline the first push is compared
+     * with. Later fetches must not move it: a dialog that saves and reads back its entity
+     * would take the new state, and the push of its own change would no longer reload the
+     * lists showing it.
+     * @param {String} entity
+     * @param {String} state
+     */
+    #baseState(entity, state) {
+        state !== undefined && !(entity in this.#states) && (this.#states[entity] = state)
     }
 
     #headers() {

@@ -46,7 +46,7 @@ class DateRangeField extends Field {
     }
 
     destroy(...args) {
-        this.menu?.isDestroyed === false && this.menu.destroy();
+        this.menu && !this.menu.isDestroyed && this.menu.destroy();
         super.destroy(...args)
     }
 

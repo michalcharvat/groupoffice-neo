@@ -67,7 +67,7 @@ class MultiSelectToolbar extends Toolbar {
     }
 
     destroy(...args) {
-        this.grid?.isDestroyed === false && this.grid.view?.selectionModel?.un('selectionChange', this.onSelectionChange, this);
+        this.grid && !this.grid.isDestroyed && this.grid.view?.selectionModel?.un('selectionChange', this.onSelectionChange, this);
         super.destroy(...args)
     }
 

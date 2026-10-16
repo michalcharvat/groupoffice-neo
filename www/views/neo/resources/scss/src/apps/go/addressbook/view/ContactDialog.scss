@@ -1,0 +1,16 @@
+// ExtJS ContactDialog: one scrolling general tab, typed rows (type | value | delete)
+.neo-theme-go .go-addressbook-contact-dialog {
+    .go-ab-dialog-scroll {
+        gap       : .8rem;
+        overflow-y: auto;
+        padding   : 0 .4rem;
+    }
+
+    .go-ab-row {
+        align-items: flex-start;
+    }
+
+    .go-ab-dialog-scroll > * {
+        flex: none;
+    }
+}

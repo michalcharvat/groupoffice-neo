@@ -2,7 +2,7 @@ import ComboBox from '../../../node_modules/neo.mjs/src/form/field/ComboBox.mjs'
 
 /**
  * ComboBox over fixed options [{id, name}] whose value is the option id. The API may
- * send the id as number or string ("1" / 1): match it loosely to the option.
+ * send the id as number or string ("1" / 1): match it loosely to the option. An id 0 is a value.
  */
 class LocalCombo extends ComboBox {
     static config = {
@@ -17,6 +17,16 @@ class LocalCombo extends ComboBox {
         }
 
         return super.beforeSetValue(value, oldValue)
+    }
+
+    /**
+     * neo returns `value[valueField] || emptyValue`: an option id 0 (e.g. Task priority
+     * "Normal") would be submitted as null
+     * @returns {*}
+     */
+    getSubmitValue() {
+        const id = this.value?.[this.valueField];
+        return id === undefined || id === null || id === '' ? this.emptyValue : id
     }
 }
 

@@ -1,0 +1,24 @@
+// GO.bookmarks.BookmarksMain: toolbar and the scrolling bookmarks
+.neo-theme-go .go-bookmarks {
+    .go-bookmarks-scroll {
+        overflow-y: auto;
+    }
+
+    .go-bookmarks-filter-label {
+        color      : var(--fg-secondary-text);
+        font-weight: normal;
+        margin     : 0 .4rem 0 .8rem;
+    }
+
+    .go-bookmarks-filter {
+        flex: none;
+    }
+}
+
+// phone: the buttons keep their icons only
+@media (max-width: 576px) {
+    .neo-theme-go .go-bookmarks-toolbar .neo-button-text,
+    .neo-theme-go .go-bookmarks-filter-label {
+        display: none;
+    }
+}

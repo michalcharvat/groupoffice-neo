@@ -20,14 +20,14 @@ export function textField(name, labelText, config = {}) {
 }
 
 /**
- * Whole numbers
+ * Whole numbers; no upper limit unless given (neo's NumberField defaults to 100; null would clamp to 0 on blur)
  * @param {String} name
  * @param {String} labelText
  * @param {Object} [config]
  * @returns {Object}
  */
 export function numberField(name, labelText, config = {}) {
-    return {module: NumberField, name: 'settings.' + name, labelText, labelPosition: 'inline', stepSize: 1, ...config}
+    return {module: NumberField, name: 'settings.' + name, labelText, labelPosition: 'inline', stepSize: 1, maxValue: Number.MAX_SAFE_INTEGER, ...config}
 }
 
 /**
