@@ -22,7 +22,10 @@ Alternative Group Office webclient built with [neo.mjs](https://github.com/neomj
 | `src/jmap/Client.mjs` | JMAP client in the App worker: cookie + `X-CSRF-Token`, batching, fetch-based SSE |
 | `src/data/JmapStore.mjs` | `Neo.data.Store` over `Entity/query`+`get`; reloads the page on push |
 | `src/data/backgroundJob.mjs` | `Entity/export`/`import` run in the background and end in a core Alert: `lastAlertId()`, `waitForFinishedAlert()`, `alertBlobId()` (address book export/import) |
-| `src/ModuleRegistry.mjs` | modules register `{name, title, iconCls, capability, mainView}`, optional `userSettings: {title, iconCls, panel}` (a card in My account) and `onLogin()` (awaited after login before the main view is built, may register more modules) |
+| `src/ModuleRegistry.mjs` | modules register `{name, title, iconCls, capability, mainView}`, optional `userSettings` / `systemSettings: {title, iconCls, panel}` (cards in My account / System settings, one or an array; `loadSettingsPanels(key)`) and `onLogin()` (awaited after login before the main view is built, may register more modules); a registration without `mainView` only adds settings cards |
+| `src/systemsettings/` | System settings (admins; user menu or `#systemsettings/<card>`): `SystemSettingsDialog` (cards on the left; card interface `load`, `isModified`, `validate`, `save`, `needsReload` → all windows reload on close), `SettingsPanel` (card over `Module.settings`, fields `settings.<key>`, config.php keys disabled; `fields.mjs` helpers), General, Appearance (logo, colours previewed; `Neo.php` renders the saved ones), Notifications (SMTP + test message), Authentication (+ `AuthAllowGroupGrid`), Modules (`ModuleTiles`, install / enable / uninstall, `ModuleRightsDialog`) |
+| `src/smtp/` | `SmtpAccountGrid` (a module's SMTP accounts: `{smtpModule: {package, name}}`, call `load()`), `SmtpAccountDialog` (test message, permissions), `SmtpAccountCombo` |
+| `src/list/ActionTable.mjs`, `src/form/field/ColorField.mjs`, `LinesField.mjs` | small table over plain records with check columns and row icon actions (events `action`, `check`, `rowDoubleClick`); hex colour field with swatch (value without `#`); array of strings, one per line |
 | `src/usersettings/` | My account (header avatar menu): `UserSettingsDialog` (FormWindow over the logged-in `User`, cards on the left: Account, Look & feel, Notifications, Visible to, custom field tabs, module cards; one `User/set`, asks for the current password like ExtJS, a new language reloads with `?SET_LANGUAGE=`, formats reload the windows), `AccountPanel`, `LookAndFeelPanel`, `NotificationPanel`, `VisibleToPanel`. A module card binds with dotted names (`notesSettings.defaultNoteBookId`) and may implement `onLoad(user)` |
 | `src/Preferences.mjs` + `src/main/addon/Preferences.mjs` | theme (`html.compact`) and colour scheme (`body.light/dark/system`) without a reload, "Reset windows and grids" (removes `state-*`); `Neo.php` renders the saved ones into the page |
 | `src/form/fieldset.mjs`, `src/form/field/BoolCheckBox.mjs`, `LocalCombo.mjs`, `src/view/PasswordPrompt.mjs` | GOUI fieldset with a legend (config helper), boolean checkbox, combo over fixed `[{id, name}]` matching ids loosely, password question |
@@ -222,6 +225,18 @@ or context menu, no import/export menu. Dark mode follows
   (also the pressed one) for it; `usersettings/UserSettingsDialog.scss` sets them upright.
 - **Scrolling vbox cards**: a container in a card with `overflow-y: auto` needs `flex: 'none'`,
   or the vbox squeezes it to the card height and its content is cut off (narrow screens).
+- **Shared SCSS of several classes**: neo loads a class's SCSS only with that class. Styles two
+  unrelated classes need (the left card list of My account and System settings) go to
+  `resources/scss/go/shared/` (Global). Their selectors must outrank neo's component rules, which
+  load later: `.go-settings-cards.neo-tab-container`, not just `.go-settings-cards`.
+- **NumberField limits**: neo's `maxValue` defaults to 100, and on blur it clamps with
+  `Math.min(maxValue, value)` / `Math.max(minValue, value)`, so `null` turns values into 0. Give
+  open limits as `±Number.MAX_SAFE_INTEGER`.
+- **`change` fires on load**: a form `reset()` fires every field's `change`. Side effects that
+  must follow the user only (Appearance colour preview) listen to `userChange`.
+- **System settings has no single entity**: `SystemSettingsDialog` saves each card itself
+  (the cards' calls of the same tick share a request); a `SettingsPanel` that did not load refuses to save, otherwise
+  `DataSourceForm.submit()` would create a new Module.
 - **Overlays over buttons**: neo gives a button's glyph and text `z-index: 2`; anything laid
   over a toolbar (e.g. the SearchButton overlay) needs a higher z-index.
 - **Testing on another port**: cookies are per host, not port. A container on :8028/:8029 uses

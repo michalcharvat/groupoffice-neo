@@ -13,7 +13,7 @@ import {t}          from '../Translate.mjs';
 
 /** User properties the shell keeps in client.user */
 export const USER_PROPERTIES = ['id', 'username', 'displayName', 'avatarId', 'dateFormat', 'timeFormat', 'language',
-    'start_module', 'theme', 'themeColorScheme'];
+    'start_module', 'theme', 'themeColorScheme', 'isAdmin'];
 
 class Client {
     /** Web root of Group Office, e.g. "/" */
@@ -134,6 +134,13 @@ class Client {
      */
     get mayChangeUsers() {
         return !!this.session?.capabilities?.['go:core:core']?.mayChangeUsers
+    }
+
+    /**
+     * @returns {Boolean} the user is in the Admins group (go.User.isAdmin)
+     */
+    get isAdmin() {
+        return !!this.user?.isAdmin
     }
 
     hasCapability(name) {

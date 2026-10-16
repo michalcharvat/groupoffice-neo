@@ -1,51 +1,5 @@
-// GO.usersettings.UserSettingsDialog (My account): cards listed on the left like go.NavMenu
+// GO.usersettings.UserSettingsDialog (My account); the card list on the left: shared/_settings-cards.scss
 .neo-theme-go {
-    .go-usersettings-dialog .go-form-cards > .neo-tab-header-toolbar {
-        background-color: var(--bg-low);
-        border-right    : 1px solid var(--fg-outline);
-        align-items     : stretch;
-        min-width       : 22rem;
-        padding         : .8rem 0;
-    }
-
-    // neo turns left tabs sideways: GO lists them upright
-    .go-usersettings-dialog .go-form-cards > .neo-tab-header-toolbar .neo-tab-header-button {
-        .neo-button-glyph,
-        .neo-button-text {
-            transform   : none;
-            writing-mode: horizontal-tb;
-        }
-
-        .neo-button-glyph {
-            margin-right: 1.2rem;
-            width       : 2rem;
-        }
-
-        &.pressed {
-            background-color: var(--bg-selected, var(--bg-highest));
-        }
-
-        .neo-tab-button-indicator {
-            display: none;
-        }
-    }
-
-    .go-usersettings-dialog .go-form-cards > .neo-tab-header-toolbar .neo-tab-header-button {
-        flex-direction : row;
-        // neo sizes left tab buttons (pressed ones too) for sideways text
-        height         : 4rem !important;
-        justify-content: flex-start;
-        margin         : 0;
-        padding        : 0 1.6rem;
-        text-align     : start;
-        width          : 100% !important;
-    }
-
-    // neo's moving indicator next to the tab bar: the pressed button shows the card
-    .go-usersettings-dialog .go-form-cards > .neo-tab-strip {
-        display: none;
-    }
-
     .go-usersettings-dialog .go-form-card {
         padding: 2.4rem;
     }
@@ -74,29 +28,5 @@
 
     .go-usersettings-reset {
         align-self: flex-start;
-    }
-}
-
-// phone: the card list on top, scrolling sideways
-@media (max-width: 576px) {
-    .neo-theme-go .go-usersettings-dialog .go-form-cards {
-        flex-direction: column !important;
-    }
-
-    .neo-theme-go .go-usersettings-dialog .go-form-cards > .neo-tab-header-toolbar {
-        align-self    : stretch;
-        border-bottom : 1px solid var(--fg-outline);
-        border-right  : 0;
-        flex-direction: row !important;
-        flex-shrink   : 0;
-        min-width     : 0;
-        overflow-x    : auto;
-        padding       : 0;
-        width         : auto !important;
-    }
-
-    .neo-theme-go .go-usersettings-dialog .go-form-cards > .neo-tab-header-toolbar .neo-tab-header-button {
-        flex : none;
-        width: auto !important;
     }
 }
