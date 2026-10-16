@@ -249,7 +249,11 @@ class WeekView extends CalendarView {
 
             type === 'resize' && me.addCls('resizing');
 
-            me.drag = {type, item, day, anchor, grab: minute - startM, last: null, moved: false};
+            const cursor = new Date(day);
+            cursor.setHours(0, minute, 0, 0);
+
+            // ms from the item start to the mouse: also right for a continuation from the day before
+            me.drag = {type, item, day, anchor, grab: cursor - item.start, last: null, moved: false};
             return
         }
 
@@ -307,25 +311,26 @@ class WeekView extends CalendarView {
             drag.moved = true
         }
 
-        let from, till;
+        let start, end;
 
         if (drag.type === 'move') {
-            const length = (item.end - item.start) / 60000;
-            from = minute - drag.grab;
-            till = from + length
+            const cursor = new Date(day);
+            cursor.setHours(0, minute, 0, 0);
+
+            start = new Date(cursor.getTime() - drag.grab);
+            end   = new Date(start.getTime() + (item.end - item.start))
         } else {
-            [from, till] = minute > drag.anchor ? [drag.anchor, minute] : [minute, drag.anchor]
+            const [from, till] = minute > drag.anchor ? [drag.anchor, minute] : [minute, drag.anchor];
+
+            if (from === till) {
+                return
+            }
+
+            start = new Date(day);
+            start.setHours(0, from, 0, 0);
+            end = new Date(day);
+            end.setHours(0, till, 0, 0)
         }
-
-        if (from === till) {
-            return
-        }
-
-        const start = new Date(day);
-        start.setHours(0, from, 0, 0);
-
-        const end = new Date(day);
-        end.setHours(0, till, 0, 0);
 
         if (start.getTime() !== item.start.getTime() || end.getTime() !== item.end.getTime()) {
             item.start = start;

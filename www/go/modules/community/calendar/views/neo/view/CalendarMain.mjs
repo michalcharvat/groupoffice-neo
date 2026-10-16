@@ -83,6 +83,9 @@ class CalendarMain extends MainThreeColumnPanel {
         moduleName: null
     }
 
+    /** @member {Set<GO.calendar.CalendarMain>} instances open calendar views (windows) */
+    static instances = new Set()
+
     /** @member {Date} date the shown date */
     date = startOfDay(new Date())
     /** @member {String} timeSpan */
@@ -365,7 +368,9 @@ class CalendarMain extends MainThreeColumnPanel {
         let me      = this,
             adapter = me.adapter;
 
-        CalendarItem.ui = me.createUi();
+        // one calendar view per window: the last opened one shows the item dialogs
+        me.itemUi = CalendarItem.ui = me.createUi();
+        CalendarMain.instances.add(me);
 
         adapter.windowId = me.windowId;
         adapter.onLoad   = () => me.isDestroyed || me.view?.refresh();
@@ -381,6 +386,9 @@ class CalendarMain extends MainThreeColumnPanel {
 
         me.removeDataListener?.();
         me.removeInviteListener?.();
+        // the item dialogs must not open through a destroyed view: another open one takes over
+        CalendarMain.instances.delete(me);
+        CalendarItem.ui === me.itemUi && (CalendarItem.ui = [...CalendarMain.instances].pop()?.itemUi || null);
         me._adapter?.destroy();
         clearTimeout(me.saveVisibleTimer);
         me.dialogs.forEach(dialog => dialog.isDestroyed || dialog.close());

@@ -12,7 +12,7 @@ import RecurrenceField from '../../../../../../views/neo/src/form/field/Recurren
 import {translator} from '../../../../../../views/neo/src/Translate.mjs';
 import calendarData from './data.mjs';
 import Recurrence   from './util/Recurrence.mjs';
-import {addDays, addDuration, diffDays, diffDuration, format, formatTime, parseDate, sameDay, toUserTime, ymd, ymdhis} from './util/date.mjs';
+import {addDays, addDuration, diffDays, diffDuration, format, formatTime, fromUserTime, parseDate, sameDay, toUserTime, ymd, ymdhis} from './util/date.mjs';
 
 const t = translator('community', 'calendar');
 
@@ -186,8 +186,13 @@ export default class CalendarItem {
 
                 const oStart = parseDate(o.start ?? recurrenceId);
 
-                if (oStart < until && addDuration(oStart, o.duration ?? e.duration) > from) {
-                    yield new CalendarItem({key: e.id + '/' + recurrenceId, recurrenceId, override: o, data: e})
+                // a day of margin in event time, the exact check in the user's time
+                if (oStart < addDays(until, 1) && addDuration(oStart, o.duration ?? e.duration) > addDays(from, -1)) {
+                    const item = new CalendarItem({key: e.id + '/' + recurrenceId, recurrenceId, override: o, data: e});
+
+                    if (item.end > from && item.start < until) {
+                        yield item
+                    }
                 }
             }
 
@@ -206,8 +211,12 @@ export default class CalendarItem {
                     }
                 }
             }
-        } else if (end > from && start < until) {
-            yield new CalendarItem({key: String(e.id), data: e})
+        } else if (end > addDays(from, -1) && start < addDays(until, 1)) {
+            const item = new CalendarItem({key: String(e.id), data: e});
+
+            if (item.end > from && item.start < until) {
+                yield item
+            }
         }
     }
 
@@ -469,8 +478,9 @@ export default class CalendarItem {
     save(onCancel) {
         let me = this;
 
-        const f        = me.data.showWithoutTime ? ymd : ymdhis,
-              start    = f(me.start),
+        // the item shows the user's time, the event stores its own zone's
+        const allDay   = !!me.data.showWithoutTime,
+              start    = allDay ? ymd(me.start) : ymdhis(fromUserTime(me.start, me.data.timeZone)),
               duration = diffDuration(me.start, me.end);
 
         if (!me.isTimeModified()) {
@@ -723,8 +733,8 @@ export default class CalendarItem {
 
         for (const name of ['start', 'duration', 'title', 'freeBusyStatus', 'location', 'status', 'description']) {
             // only what differs from the series
-            if (name in modified && modified[name] != original[name]) {
-                patch[name] = modified[name]
+            if (name in modified) {
+                modified[name] != original[name] ? (patch[name] = modified[name]) : delete patch[name]
             }
         }
 
@@ -764,6 +774,24 @@ export default class CalendarItem {
     }
 
     /**
+     * Occurrences of the series before a date
+     * @param {Date} date
+     * @returns {Number}
+     */
+    occurrencesBefore(date) {
+        let n = 0;
+
+        for (const d of new Recurrence({dtstart: parseDate(this.data.start), rule: this.data.recurrenceRule}).all(date)) {
+            if (d >= date) {
+                break
+            }
+            n++
+        }
+
+        return n
+    }
+
+    /**
      * Overrides before `until` (the rest is dropped for "this and future")
      * @param {Date} until
      * @returns {Object}
@@ -785,7 +813,9 @@ export default class CalendarItem {
     async patchThisAndFuture(modified, onFinish, onCancel) {
         let me    = this,
             rule  = clone(me.data.recurrenceRule),
-            until = addDays(parseDate(me.recurrenceId), -1);
+            from  = parseDate(me.recurrenceId),
+            until = addDays(from, -1),
+            count = rule.count ? me.occurrencesBefore(from) : 0;
 
         rule.until = ymd(until);
         delete rule.count;
@@ -798,13 +828,18 @@ export default class CalendarItem {
         }
 
         const update    = {recurrenceRule: rule},
-              overrides = me.removeFutureOverrides(until);
+              overrides = me.removeFutureOverrides(from);
 
         if (Object.keys(overrides).length !== Object.keys(me.data.recurrenceOverrides || {}).length) {
             update.recurrenceOverrides = overrides
         }
 
         const next = {...me.data, start: me.recurrenceId, ...modified};
+
+        // a counted series: the new one has what is left of the count
+        if (count && !modified.recurrenceRule && next.recurrenceRule) {
+            next.recurrenceRule = {...next.recurrenceRule, count: Math.max(1, me.data.recurrenceRule.count - count)}
+        }
 
         ['modifier', 'creator', 'id', 'uid', 'recurrenceOverrides', 'createdAt', 'modifiedAt', 'createdBy', 'modifiedBy', 'isOrigin']
             .forEach(key => delete next[key]);
@@ -940,9 +975,17 @@ export default class CalendarItem {
         const answer = await this.confirmScheduleMessage(false);
 
         if (answer) {
-            const rule = {...this.data.recurrenceRule, until: ymd(addDays(parseDate(this.recurrenceId), -1))};
+            const from      = parseDate(this.recurrenceId),
+                  rule      = {...this.data.recurrenceRule, until: ymd(addDays(from, -1))},
+                  overrides = this.removeFutureOverrides(from),
+                  update    = {recurrenceRule: rule};
+
             delete rule.count;
-            await CalendarItem.update(this.data.id, {recurrenceRule: rule}, answer.send).catch(() => {})
+
+            // overrides after the end would still show
+            Object.keys(overrides).length !== Object.keys(this.data.recurrenceOverrides || {}).length && (update.recurrenceOverrides = overrides);
+
+            await CalendarItem.update(this.data.id, update, answer.send).catch(() => {})
         }
     }
 

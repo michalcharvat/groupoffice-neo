@@ -13,7 +13,7 @@ import {translator}  from '../../../../../../../views/neo/src/Translate.mjs';
 import FormWindow    from '../../../../../../../views/neo/src/view/FormWindow.mjs';
 import CalendarItem  from '../CalendarItem.mjs';
 import calendarData  from '../data.mjs';
-import {addDays, addDuration, diffDuration, parseDate, startOfDay, ymd, ymdhi, ymdhis} from '../util/date.mjs';
+import {addDays, addDuration, diffDuration, fromUserTime, parseDate, startOfDay, ymd, ymdhis} from '../util/date.mjs';
 import AlertField    from './field/AlertField.mjs';
 import AttachmentsField from './field/AttachmentsField.mjs';
 import CategoryField from './field/CategoryField.mjs';
@@ -273,10 +273,13 @@ class EventDialog extends FormWindow {
 
         const values = {};
 
-        // an occurrence: its own times (and override values)
+        // an occurrence: its own times (and override values), in the event's zone like the series
         if (item.recurrenceId) {
-            const end = allDay ? addDays(item.end, -1) : item.end;
-            values.start = allDay ? ymd(item.start) : ymdhis(item.start);
+            const zone  = data.timeZone || item.data.timeZone,
+                  start = allDay ? item.start : fromUserTime(item.start, zone),
+                  end   = allDay ? addDays(item.end, -1) : fromUserTime(item.end, zone);
+
+            values.start = allDay ? ymd(start) : ymdhis(start);
             values.end   = allDay ? ymd(end) : ymdhis(end)
         }
 
@@ -286,12 +289,14 @@ class EventDialog extends FormWindow {
             })
         }
 
-        // pasted (copy / cut)
+        // pasted (copy / cut): a change, not loaded values
+        const pasted = {};
+
         if (item.pasteValues) {
             const {start, end, calendarId} = item.pasteValues;
-            values.start = allDay ? ymd(start) : ymdhis(start);
-            values.end   = allDay ? ymd(addDays(end, -1)) : ymdhis(end);
-            values.calendarId = String(calendarId);
+            pasted.start      = allDay ? ymd(start) : ymdhis(start);
+            pasted.end        = allDay ? ymd(addDays(end, -1)) : ymdhis(end);
+            pasted.calendarId = String(calendarId);
             delete item.pasteValues
         }
 
@@ -304,7 +309,9 @@ class EventDialog extends FormWindow {
             }
         }
 
-        me.getReference('recurrenceField').setStartDate(ymd(parseDate(values.start || data.start) || new Date()));
+        Object.keys(pasted).length && await form.setValues(pasted);
+
+        me.getReference('recurrenceField').setStartDate(ymd(parseDate(pasted.start || values.start || data.start) || new Date()));
         me.updateDefaultAlertLabel();
         me.onParticipantsChange();
 

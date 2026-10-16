@@ -187,14 +187,24 @@ export default class Recurrence {
                     rule.byYearDay.map(Number).forEach(n => {
                         const index = n > 0 ? n - 1 : total + n;
                         index >= 0 && index < total && dates.push(at(year, 0, 1 + index))
-                    })
+                    });
+
+                    // BYDAY limits BYYEARDAY (RFC 5545), so does BYMONTH
+                    dates = dates.filter(d => me.matchesWeekDay(d) && me.matchesMonth(d))
                 } else if (rule.byWeekNo?.length) {
                     const weekDays = rule.byDay?.length ? rule.byDay.map(d => DAYS[d.day]) : [start.getDay()],
-                          weeks    = rule.byWeekNo.map(Number);
+                          // weeks of the ISO year (52 or 53), negative counts from its end
+                          last     = weekOfYear(new Date(year, 11, 28)),
+                          weeks    = rule.byWeekNo.map(Number).map(n => n < 0 ? last + n + 1 : n);
 
                     // ISO weeks of `year` start up to 3 days before and end up to 3 days after it
                     for (let day = at(year - 1, 11, 29); day < at(year + 1, 0, 4); day = addDays(day, 1)) {
                         isoYear(day) === year && weeks.includes(weekOfYear(day)) && weekDays.includes(day.getDay()) && dates.push(day)
+                    }
+                } else if (rule.byMonthDay?.length && !rule.byMonth?.length) {
+                    // BYMONTHDAY without BYMONTH: those days in every month
+                    for (let month = 0; month < 12; month++) {
+                        dates.push(...me.monthDates(year, month, at))
                     }
                 } else if (rule.byMonth?.length) {
                     rule.byMonth.map(m => parseInt(m) - 1).sort((a, b) => a - b).forEach(month => {

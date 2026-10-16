@@ -80,14 +80,34 @@ export default class CalendarAdapter {
         me.start = start;
         me.end   = end;
 
+        await me.loadProviders(Object.values(me.providers).filter(p => p.enabled), start, end, generation)
+    }
+
+    /**
+     * Loads providers; their lists are only taken when no later load started (a slow
+     * response for an older period must not replace the current one)
+     * @param {Object[]} providers
+     * @param {Date} start
+     * @param {Date} end
+     * @param {Number} generation
+     */
+    async loadProviders(providers, start, end, generation) {
+        let me = this;
+
         try {
-            await Promise.all(Object.values(me.providers).filter(p => p.enabled).map(p => p.load(start, end)));
+            const lists = await Promise.all(providers.map(p => p.load(start, end)));
+
+            if (generation !== me.#generation) {
+                return
+            }
+
+            providers.forEach((p, i) => p.list = lists[i] || [])
         } catch (e) {
-            me.onError(e)
+            generation === me.#generation && me.onError(e);
+            return
         }
 
-        // a later goto() wins
-        generation === me.#generation && me.onLoad()
+        me.onLoad()
     }
 
     /**
@@ -95,22 +115,15 @@ export default class CalendarAdapter {
      * @param {String[]} [types] all enabled when left out
      */
     async reload(types) {
-        let me         = this,
-            generation = me.#generation;
+        let me = this;
 
         if (!me.start) {
             return
         }
 
-        try {
-            await Promise.all(Object.entries(me.providers)
-                .filter(([type, p]) => p.enabled && (!types || types.includes(type)))
-                .map(([, p]) => p.load(me.start, me.end)))
-        } catch (e) {
-            me.onError(e)
-        }
+        const providers = Object.entries(me.providers).filter(([type, p]) => p.enabled && (!types || types.includes(type))).map(([, p]) => p);
 
-        generation === me.#generation && me.onLoad()
+        await me.loadProviders(providers, me.start, me.end, ++me.#generation)
     }
 
     /**
@@ -160,7 +173,7 @@ export default class CalendarAdapter {
                     }
                 });
 
-                this.list = list
+                return list
             },
             *items(start, end) {
                 // personal calendar first: a merged (same uid) item favours the personal one
@@ -196,7 +209,7 @@ export default class CalendarAdapter {
                     till: ymd(end)
                 });
 
-                this.list = response.list || []
+                return response.list || []
             },
             *items() {
                 for (const o of this.list) {
@@ -235,7 +248,7 @@ export default class CalendarAdapter {
                               }
                           });
 
-                    this.list = list
+                    return list
                 },
                 *items(from, until) {
                     const today = ymd(new Date());
@@ -276,7 +289,7 @@ export default class CalendarAdapter {
                         properties: ['id', 'name', 'birthday']
                     });
 
-                    this.list = list
+                    return list
                 },
                 *items(from, end) {
                     const sy = from.getFullYear(),

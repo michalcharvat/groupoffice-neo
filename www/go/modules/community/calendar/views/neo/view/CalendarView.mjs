@@ -615,7 +615,8 @@ class CalendarView extends Component {
                 start          : allDay ? ymd(start) : ymdhis(start),
                 title          : t('New event'),
                 showWithoutTime: allDay,
-                duration       : dd ?? 'P1D',
+                // an all day event lasts days, also with a timed default duration
+                duration       : allDay ? 'P1D' : (dd ?? 'PT1H'),
                 calendarId     : CalendarView.selectedCalendarId,
                 ...data
             }
