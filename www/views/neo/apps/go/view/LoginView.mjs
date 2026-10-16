@@ -7,7 +7,8 @@ import TextField     from '../../../node_modules/neo.mjs/src/form/field/Text.mjs
 import Toolbar       from '../../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import Button        from '../../../src/button/Button.mjs';
 import client        from '../../../src/jmap/Client.mjs';
-import {t} from '../../../src/Translate.mjs';
+import ModuleRegistry from '../../../src/ModuleRegistry.mjs';
+import {fmt, t} from '../../../src/Translate.mjs';
 
 /**
  * GO login screen (go.login.LoginPanel + LoginDialog + UsernamePanel): the logo top left,
@@ -15,6 +16,10 @@ import {t} from '../../../src/Translate.mjs';
  * middle a window "Login required" with username / password, "remember my login",
  * "Forgot login credentials?" and Next. The forgot card replaces the login card in the
  * window (GO opens go.login.ForgotDialog over it).
+ *
+ * A user with secondary authenticators (2FA) gets a loginToken instead of a session: each
+ * pending authenticator shows the card its module registered (ModuleRegistry `loginPanels`,
+ * GO.login.AuthenticatorPanel) until api/auth.php answers with the session.
  */
 class LoginView extends Container {
     static config = {
@@ -105,6 +110,14 @@ class LoginView extends Container {
                             text     : t('Next'),
                             handler  : 'up.onLogin'
                         }]
+                    }, {
+                        // "Sign in with ..." of modules (Neo.php goLoginButtons, e.g. OpenID Connect)
+                        ntype    : 'container',
+                        cls      : ['go-login-signin'],
+                        flex     : 'none',
+                        reference: 'signInButtons',
+                        hidden   : !Neo.config.goLoginButtons?.length,
+                        layout   : {ntype: 'vbox', align: 'stretch'}
                     }]
                 }, {
                     // go.login.ForgotDialog
@@ -164,6 +177,12 @@ class LoginView extends Container {
         let me   = this,
             item = (text, lang) => ({text, handler: () => me.setLanguage(lang)});
 
+        me.getReference('signInButtons').add((Neo.config.goLoginButtons || []).map(({text, url}) => ({
+            module : Button,
+            text,
+            handler: () => me.signInWith(url)
+        })));
+
         me.getReference('languageButton').menu = {
             align: {edgeAlign: 't100-b100'},
             items: [item(t('My selected language'), ''), {separator: true},
@@ -185,14 +204,119 @@ class LoginView extends Container {
         button.disabled = true;
         me.showError(null);
 
+        me.rememberLogin = !!rememberLogin;
+
         try {
             const result = await client.login(username, password, !!rememberLogin);
-            !result.success && me.showError(result.message)
+
+            if (result.loginToken) {
+                await me.showAuthenticator(result)
+            } else if (!result.success) {
+                me.showError(result.message)
+            }
         } catch (e) {
             me.showError(e.message)
         } finally {
             button.disabled = false
         }
+    }
+
+    /**
+     * Login token of the running login with pending authenticators
+     * @member {String|null} loginToken=null
+     */
+    loginToken = null
+
+    /**
+     * @member {Boolean} rememberLogin=false
+     */
+    rememberLogin = false
+
+    /**
+     * Authenticator id → its card (GO.login.AuthenticatorPanel)
+     * @member {Object} authenticatorCards={}
+     */
+    authenticatorCards = {}
+
+    /**
+     * The card of the first pending authenticator (go.AuthenticationManager)
+     * @param {Object} result client.login()/authenticate(): loginToken, authenticators, errors
+     */
+    async showAuthenticator({loginToken, authenticators, errors}) {
+        let me   = this,
+            id   = authenticators[0],
+            card = me.authenticatorCards[id];
+
+        me.loginToken = loginToken;
+
+        if (!card) {
+            const load = ModuleRegistry.getLoginPanel(id);
+
+            if (!load) {
+                me.showLoginCard();
+                me.showError(fmt(t('The login method "{method}" is not supported by this client.'), {method: id}));
+                return
+            }
+
+            card = me.authenticatorCards[id] = me.getReference('cards').add({
+                module         : (await load()).default,
+                authenticatorId: id,
+                listeners      : {
+                    next  : ({panel}) => me.onAuthenticatorNext(panel),
+                    cancel: () => me.reset()
+                }
+            });
+
+            await me.timeout(0) // rendered before its fields are reset
+        }
+
+        await card.clear();
+        errors?.[id] && await card.setErrors(errors[id]);
+
+        me.getReference('title').text = card.title || t('Login required');
+        me.getReference('cards').layout.activeIndex = me.getReference('cards').items.indexOf(card)
+    }
+
+    /**
+     * Sends a card's data (api/auth.php with the loginToken)
+     * @param {GO.login.AuthenticatorPanel} panel
+     */
+    async onAuthenticatorNext(panel) {
+        let me   = this,
+            data = await panel.getAuthenticatorData();
+
+        if (!data) {
+            return
+        }
+
+        panel.setBusy(true);
+        panel.showError(null);
+
+        try {
+            const result = await client.authenticate(me.loginToken, {[panel.authenticatorId]: data}, me.rememberLogin);
+
+            if (result.success) {
+                me.loginToken = null
+            } else if (result.errors?.[panel.authenticatorId]) {
+                await panel.setErrors(result.errors[panel.authenticatorId])
+            } else if (result.loginToken && result.authenticators?.length) {
+                await me.showAuthenticator(result)
+            } else {
+                panel.showError(result.message || t('Login failed'))
+            }
+        } catch (e) {
+            panel.showError(e.message)
+        } finally {
+            panel.isDestroyed || panel.setBusy(false)
+        }
+    }
+
+    /**
+     * A module's "Sign in with ..." button: its page (e.g. OpenID Connect) logs in and comes back
+     * @param {String} url relative to GO
+     */
+    signInWith(url) {
+        Neo.Main.redirectTo({url: client.baseUrl + url, windowId: this.windowId})
     }
 
     /**
@@ -269,6 +393,8 @@ class LoginView extends Container {
 
     reset(message) {
         let me = this;
+
+        me.loginToken = null;
 
         me.showLoginCard();
         me.getReference('loginForm').reset({username: '', password: ''});

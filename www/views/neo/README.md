@@ -2,6 +2,7 @@
 
 Alternative Group Office webclient built with [neo.mjs](https://github.com/neomjs/neo)
 13.x. Core components GO vs neo: `docs/neo-core-components.md`.
+Small modules, 2FA login, module hooks: `docs/neo-small-modules.md`.
 
 ## Run
 
@@ -55,6 +56,7 @@ Alternative Group Office webclient built with [neo.mjs](https://github.com/neomj
 | `resources/scss/src/apps/go/` | styles of the `GO.*` components and the shell (`Viewport`, `LoginView`, `MainView` topbar, `GlobalSearch`, …) |
 | `src/form/field/AutocompleteChips.mjs` | chips of entity ids with a ▾ menu of the entity (`entity`, `setJmapFilter()`) |
 | `go/modules/<pkg>/<name>/views/neo/Index.mjs` | module entry, found by `Neo::moduleFiles()`; optional `style.css` |
+| `src/login/AuthenticatorPanel.mjs`, `src/systemsettings/EntityListPanel.mjs` | 2FA login step of a module (`loginPanels`), entity list card for System settings / My account (see `docs/neo-small-modules.md`) |
 
 Module code imports neo and the shell with relative paths
 (`../../../../../../views/neo/...`): import maps don't apply inside workers.

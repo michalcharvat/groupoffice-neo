@@ -204,6 +204,9 @@ class MainView extends Container {
         } else {
             me.getReference('modules').layout.activeIndex = 0
         }
+
+        // modules that act after login (OTP: setup enforced by the administrator)
+        ModuleRegistry.callHook('onMainView', me)
     }
 
     /**

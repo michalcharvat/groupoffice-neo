@@ -71,11 +71,33 @@ class Client {
      * @returns {Promise<{success: Boolean, message?: String}>}
      */
     async login(username, password, rememberLogin=false) {
+        return this.#authRequest({username, password, rememberLogin})
+    }
+
+    /**
+     * Next login step of a user with more authenticators (2FA): the loginToken of
+     * login() and the data of the pending authenticators.
+     * @param {String} loginToken
+     * @param {Object} authenticators e.g. {otpauthenticator: {otp_code: '123456'}}
+     * @param {Boolean} rememberLogin
+     * @returns {Promise<{success: Boolean, message?: String, loginToken?: String, authenticators?: String[], errors?: Object}>}
+     *   errors: authenticator id → {field: {code, description}}
+     */
+    async authenticate(loginToken, authenticators, rememberLogin=false) {
+        return this.#authRequest({loginToken, authenticators, rememberLogin})
+    }
+
+    /**
+     * POST api/auth.php: 201 logged in, 200/400 with a loginToken: authenticators pending
+     * @param {Object} body
+     * @returns {Promise<Object>}
+     */
+    async #authRequest(body) {
         const response = await fetch(this.apiUrl + 'auth.php', {
             method     : 'POST',
             credentials: 'same-origin',
             headers    : {'Content-Type': 'application/json'},
-            body       : JSON.stringify({username, password, rememberLogin})
+            body       : JSON.stringify(body)
         });
 
         let data = null;
@@ -92,8 +114,13 @@ class Client {
             return {success: true}
         }
 
-        if (response.status === 200 && data?.loginToken) {
-            return {success: false, message: t('Accounts with two-factor authentication are not supported in this preview.')}
+        // more authenticators (2FA), or their data was wrong (400 with errors)
+        if ((response.status === 200 || response.status === 400) && data?.loginToken) {
+            return {success: false, loginToken: data.loginToken, authenticators: data.authenticators || [], errors: data.errors || null}
+        }
+
+        if (response.status === 503) {
+            return {success: false, message: t("Sorry, maintenance mode is enabled and you can't login right now. Please come back later or contact your system administrator")}
         }
 
         return {success: false, message: data?.validationErrors ? t('Wrong username or password.') : (response.statusText || t('Login failed'))}

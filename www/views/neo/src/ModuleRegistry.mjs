@@ -17,6 +17,11 @@ import client from './jmap/Client.mjs';
  *     userSettings: {title: 'Notes', iconCls: 'fa fa-sticky-note', panel: () => import('./view/SettingsPanel.mjs')},
  *     // optional card(s) in System settings (src/systemsettings/SystemSettingsDialog.mjs)
  *     systemSettings: {title: 'Notes', iconCls: 'fa fa-sticky-note', panel: () => import('./view/SystemSettingsPanel.mjs')},
+ *     // optional login step per authenticator id (2FA, GO go.AuthenticationManager.register()),
+ *     // see apps/go/view/LoginView.mjs; available before login (no capability check)
+ *     loginPanels: {otpauthenticator: () => import('./view/OtpLoginPanel.mjs')},
+ *     // optional, called with each window's main view after login (e.g. a dialog to show then)
+ *     onMainView: mainView => {},
  *     // optional, awaited after login before the main view is built: may register more modules
  *     onLogin     : async () => {}
  * });
@@ -28,6 +33,40 @@ class ModuleRegistry {
 
     register(module) {
         this.#modules.set(module.name, module)
+    }
+
+    /**
+     * Login step of a secondary authenticator, from any registered module
+     * @param {String} id authenticator id, e.g. 'otpauthenticator'
+     * @returns {Function|null} () => import(...)
+     */
+    getLoginPanel(id) {
+        return [...this.#modules.values()].find(m => m.loginPanels?.[id])?.loginPanels[id] || null
+    }
+
+    /**
+     * Configs that modules the user has access to register under `key`,
+     * e.g. 'onlineMeeting' (jitsimeet: online meeting services of the calendar's event dialog)
+     * @param {String} key
+     * @returns {Object[]}
+     */
+    getConfigs(key) {
+        return this.#accessible().filter(m => m[key]).map(m => m[key])
+    }
+
+    /**
+     * Calls a function config (e.g. onMainView) of every module the user has access to
+     * @param {String} name
+     * @param {...*} args
+     */
+    callHook(name, ...args) {
+        this.#accessible().forEach(m => {
+            try {
+                m[name]?.(...args)
+            } catch (e) {
+                console.error(`${name} of ${m.name}`, e)
+            }
+        })
     }
 
     unregister(name) {
