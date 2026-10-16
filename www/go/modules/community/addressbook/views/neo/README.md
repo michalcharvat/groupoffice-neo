@@ -18,15 +18,16 @@ Port of `views/extjs3` (there is no GOUI address book) to the neo webclient
 ## Differences to ExtJS
 
 - **Drag and drop** of contacts onto address books/groups: `GO.tree.Tree` has none; the
-  contact menu has "Move to" (address book) and "Remove from group" instead.
+  contact menu has "Move to" (address book), "Add to group" and "Remove from group" instead.
 - **Name field**: the name parts (first, middle, last, initials, prefix, suffix,
   salutation) are always visible for persons instead of the popup menu; they build the name.
 - **Organizations** (chips): an exact name picks the organization, any other text creates
   one in the contact's address book (no autocomplete list yet). The profile card only picks.
 - **Import**: vCard and JSON. CSV/Excel need `go.import.CsvMappingDialog` (not in neo yet).
 - **Export**: no column chooser for CSV/Excel/HTML (all columns). Exports run in the
-  background; `src/data/backgroundJob.mjs` waits for the user's "Export finished" alert,
-  downloads the blob and removes the alert.
+  background; `src/data/backgroundJob.mjs` runs them one after the other per worker,
+  waits for the job's alert ("Export finished" / "Export error"), downloads the blob or shows
+  the error, and removes the alert.
 - Not ported: ICD combo (`ICDCombo.js`), language combo, birthday portlet, select dialog
   panel (`SelectDialogPanel.js`), custom field types Contact / MultiContact, custom field
   set dialog override, batch edit, e-mail composer / callto (plain `mailto:` / `tel:` links),

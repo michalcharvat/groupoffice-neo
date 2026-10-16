@@ -25,7 +25,13 @@ ModuleRegistry.register({
     quickAdd  : {text: t('Contact'), icon: 'person'},
     // header search results: entity → route below "#addressbook/"
     routes    : {Contact: id => 'contact/' + id},
-    mainView  : () => import('./view/AddressBookMain.mjs'),
+    // the user's address book settings first: the grid's name column and sort follow sortBy
+    mainView  : async () => {
+        const [view, {settings}] = await Promise.all([import('./view/AddressBookMain.mjs'), import('./util.mjs')]);
+
+        await settings.load().catch(e => console.error('addressBookSettings', e));
+        return view
+    },
     // cards in My account (ExtJS userSettingsPanels); an array of cards needs
     // ModuleRegistry.loadSettingsPanels() (neo-ui "system settings" card), before that only the first
     userSettings: typeof ModuleRegistry.loadSettingsPanels === 'function' ? userSettings : userSettings[0],

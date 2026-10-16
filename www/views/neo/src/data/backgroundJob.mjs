@@ -6,11 +6,32 @@ import client from '../jmap/Client.mjs';
  * finished" whose body links the blob (AbstractConverter notifyStart/notifyEnd). The
  * ExtJS client shows them as notifications; neo has none yet, so the caller waits:
  *
- *     const since = await lastAlertId();
- *     await client.call('Contact/export', {extension: 'csv', ids});
- *     const alert = await waitForFinishedAlert(since);
- *     const blobId = alertBlobId(alert); // the export file
+ *     const alert  = await runBackgroundJob(() => client.call('Contact/export', {extension: 'csv', ids}));
+ *     const blobId = alertBlobId(alert); // the export file, null for an "Export error"
+ *
+ * Jobs of this worker run one after the other: the first alert created after a job
+ * started is that job's alert (the converter updates that same alert until it ends).
  */
+
+let queue = Promise.resolve();
+
+/**
+ * Starts a background job and waits for its finished alert
+ * @param {Function} start () => Promise, the Entity/export or Entity/import call
+ * @param {Object} [opts] see waitForFinishedAlert()
+ * @returns {Promise<Object>} the finished alert
+ */
+export function runBackgroundJob(start, opts) {
+    const run = queue.then(async () => {
+        const since = await lastAlertId();
+        await start();
+        return waitForFinishedAlert(since, opts)
+    });
+
+    // the next job waits for this one, also when it failed
+    queue = run.catch(() => {});
+    return run
+}
 
 /**
  * @returns {Promise<Number>} id of the user's newest alert, 0 for none
@@ -47,9 +68,10 @@ export async function waitForFinishedAlert(sinceId, {interval = 2000, timeout = 
             limit : 10
         });
 
-        const fresh = list.filter(alert => Number(alert.id) > sinceId);
+        // the job's alert: the oldest one created after it started
+        const alert = list.filter(a => Number(a.id) > sinceId).sort((a, b) => Number(a.id) - Number(b.id))[0];
 
-        for (const alert of fresh) {
+        if (alert) {
             if (alert.data && alert.data.persistent === false) {
                 return alert
             }

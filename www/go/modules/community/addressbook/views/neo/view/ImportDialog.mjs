@@ -2,7 +2,7 @@ import Toolbar      from '../../../../../../../views/neo/node_modules/neo.mjs/sr
 import {LEVEL_CREATE} from '../../../../../../../views/neo/src/Acl.mjs';
 import Button       from '../../../../../../../views/neo/src/button/Button.mjs';
 import UploadButton from '../../../../../../../views/neo/src/component/UploadButton.mjs';
-import {dismissAlert, lastAlertId, waitForFinishedAlert} from '../../../../../../../views/neo/src/data/backgroundJob.mjs';
+import {dismissAlert, runBackgroundJob} from '../../../../../../../views/neo/src/data/backgroundJob.mjs';
 import JmapComboBox from '../../../../../../../views/neo/src/form/field/JmapComboBox.mjs';
 import client       from '../../../../../../../views/neo/src/jmap/Client.mjs';
 import {notify, notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
@@ -115,14 +115,11 @@ class ImportDialog extends Dialog {
         try {
             me.setStatus(t('Uploading...'));
 
-            const blob  = await client.upload(file),
-                  since = await lastAlertId();
+            const blob = await client.upload(file);
 
             me.setStatus(t('Importing...'));
 
-            await client.call('Contact/import', {blobId: blob.blobId, values: {addressBookId}});
-
-            const alert = await waitForFinishedAlert(since, {
+            const alert = await runBackgroundJob(() => client.call('Contact/import', {blobId: blob.blobId, values: {addressBookId}}), {
                 onProgress: a => a.data?.progress !== undefined && me.setStatus(t('Importing...') + ' ' + a.data.progress + '%')
             });
 

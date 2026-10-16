@@ -198,12 +198,19 @@ class ContactDetail extends Container {
             me.settingActionDate = false
         }
 
+        // a later setContact() wins over this one's address book lookup
+        const generation = me.renderGeneration = (me.renderGeneration || 0) + 1;
+
         if (!contact) {
             me.getReference('body').html = '';
             return
         }
 
-        me.getReference('body').html = me.renderContact(contact, await me.getAddressBookName(contact.addressBookId));
+        const addressBookName = await me.getAddressBookName(contact.addressBookId);
+
+        if (!me.isDestroyed && generation === me.renderGeneration) {
+            me.getReference('body').html = me.renderContact(contact, addressBookName)
+        }
     }
 
     async getAddressBookName(id) {

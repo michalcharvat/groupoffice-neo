@@ -11,7 +11,7 @@ import JmapStore     from '../../../../../../../views/neo/src/data/JmapStore.mjs
 import MenuList      from '../../../../../../../views/neo/src/menu/List.mjs';
 import {parseYmd}    from '../../../../../../../views/neo/src/DateUtil.mjs';
 import {escapeHtml, formatDate, formatUserDateTime, smartDateTime, userFormat} from '../../../../../../../views/neo/src/Format.mjs';
-import {alertBlobId, dismissAlert, lastAlertId, waitForFinishedAlert} from '../../../../../../../views/neo/src/data/backgroundJob.mjs';
+import {alertBlobId, dismissAlert, runBackgroundJob} from '../../../../../../../views/neo/src/data/backgroundJob.mjs';
 import {notify, notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
 import ConfirmDialog    from '../../../../../../../views/neo/src/view/ConfirmDialog.mjs';
 import FilterPanel      from '../../../../../../../views/neo/src/view/FilterPanel.mjs';
@@ -1029,7 +1029,9 @@ class AddressBookMain extends MainThreeColumnPanel {
               records  = selected.includes(record) ? selected : [record];
 
         if (!selected.includes(record)) {
-            selectRow(grid, record.id)
+            // selectRow() fires no selectionChange
+            selectRow(grid, record.id);
+            me.showInDetail(record)
         }
 
         me.showContactMenu(records, data.path[0]?.id || row.id)
@@ -1040,15 +1042,35 @@ class AddressBookMain extends MainThreeColumnPanel {
      * @param {Object[]} records contacts
      * @param {String} target DOM id the menu aligns to
      */
-    showContactMenu(records, target) {
+    async showContactMenu(records, target) {
         let me       = this,
             single   = records.length === 1 ? records[0] : null,
             starred  = records.every(r => r.starred),
             tree     = me.getReference('tree'),
             groupIds = [...new Set(records.flatMap(r => (r.groups || []).map(String)))],
-            groups   = groupIds.map(id => tree.getNode('AddressBookGroup-' + id)?.data).filter(Boolean),
             books    = tree.getAddressBookNodes().filter(n => n.data.permissionLevel >= LEVEL_CREATE),
-            items    = [];
+            items    = [],
+            groups;
+
+        // the tree loads groups only when expanded (ExtJS: AddressBookGroup get)
+        const bookIds = [...new Set(records.map(r => String(r.addressBookId)))];
+        let addable = [];
+
+        try {
+            [groups, addable] = await Promise.all([
+                groupIds.length ? client.get('AddressBookGroup', groupIds, ['id', 'name']) : [],
+                // drag and drop onto a group in ExtJS: the groups of the contacts' (one) address book
+                bookIds.length === 1
+                    ? client.queryGet('AddressBookGroup', {filter: {addressBookId: bookIds[0]}, sort: [{property: 'name', isAscending: true}]}).then(r => r.list)
+                    : []
+            ])
+        } catch (e) {
+            groups = groups || []
+        }
+
+        if (me.isDestroyed) {
+            return
+        }
 
         items.push({
             text    : t('Edit'),
@@ -1070,6 +1092,17 @@ class AddressBookMain extends MainThreeColumnPanel {
                 text   : node.data.name,
                 icon   : 'import_contacts',
                 handler: () => me.moveContacts(records, node.data.id)
+            }))
+        });
+
+        addable.length && items.push({
+            text    : t('Add to group'),
+            icon    : 'group_add',
+            disabled: records.some(r => r.permissionLevel < LEVEL_WRITE),
+            items   : addable.map(group => ({
+                text   : group.name,
+                icon   : 'group',
+                handler: () => me.addToGroup(records, String(group.id))
             }))
         });
 
@@ -1175,16 +1208,21 @@ class AddressBookMain extends MainThreeColumnPanel {
                 throw new Error(t("There's nothing to export"))
             }
 
-            const since = await lastAlertId();
+            const job = runBackgroundJob(() => client.call('Contact/export', {extension, ids}));
 
-            await client.call('Contact/export', {extension, ids});
             notify(me, t('You will be notified when the export is complete. You can close this window now.'), {title: t('Export in progress')});
 
-            const alert  = await waitForFinishedAlert(since),
+            const alert  = await job,
                   blobId = alertBlobId(alert);
 
             dismissAlert(alert);
-            blobId && !me.isDestroyed && Neo.Main.redirectTo({url: downloadUrl(blobId), windowId: me.windowId})
+
+            // "Export error": the alert says why
+            if (!blobId) {
+                throw new Error(String(alert.data?.body || alert.data?.title || t('Error')).replace(/<[^>]*>/g, ' '))
+            }
+
+            me.isDestroyed || Neo.Main.redirectTo({url: downloadUrl(blobId), windowId: me.windowId})
         } catch (e) {
             me.isDestroyed || me.showError(e)
         }
@@ -1259,6 +1297,26 @@ class AddressBookMain extends MainThreeColumnPanel {
             await client.set('Contact', {update: Object.fromEntries(moving.map(r => [r.id, {addressBookId, groups: []}]))})
         } catch (e) {
             me.showError(e)
+        }
+    }
+
+    async addToGroup(records, groupId) {
+        const update = {};
+
+        records.forEach(r => {
+            const groups = (r.groups || []).map(String);
+
+            groups.includes(groupId) || (update[r.id] = {groups: [...groups, groupId]})
+        });
+
+        if (!Object.keys(update).length) {
+            return
+        }
+
+        try {
+            await client.set('Contact', {update})
+        } catch (e) {
+            this.showError(e)
         }
     }
 
