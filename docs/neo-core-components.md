@@ -22,9 +22,9 @@ Status: **neo** = neo.mjs 13.2 ships it, usable as is (maybe GO styling);
 | Paginator | toolbar/Paging | neo (Notes uses infinite scroll) |
 | List, ListPicker | list/Base | GO.neo (`TextList`, `CheckList`) |
 | Table, TableColumns, RowSelect | grid/Container (buffered) | GO.neo (`GO.grid.Grid`, `selectRow`) |
-| SelectAllCheckboxField, MultiSelectToolbar | – | missing (bulk actions) |
-| Tree, TreeStore, TreeColumn | tree/List, tree/Accordion (basic) | missing: lazy-loading checkable tree (folders, categories) |
-| DescriptionList | – | missing (detail key/value blocks) |
+| SelectAllCheckboxField, MultiSelectToolbar | – | GO.neo (`GO.grid.Grid` `multiSelect`, `RowSelectionModel` with `selectAll()`, `MultiSelectToolbar`; Notes deletes several notes) |
+| Tree, TreeStore, TreeColumn | tree/List, tree/Accordion (basic) | GO.neo (`GO.tree.Tree`: lazy `nodeProvider`, checkboxes; no drag and drop, no extra columns) |
+| DescriptionList | – | GO.neo (`GO.component.DescriptionList`) |
 | Avatar | – | partial (`Format.avatarHtml`, HTML only) |
 | ToolTip | tooltip/Base | neo |
 | Sortable, DraggableComponent | draggable/DragZone, DropZone | neo (not wired: drag rows to notebooks, sort lists) |
@@ -45,10 +45,10 @@ Status: **neo** = neo.mjs 13.2 ships it, usable as is (maybe GO styling);
 | ComboBox, Select | form/field/ComboBox | neo; **missing JMAP-backed remote combo** (query as you type) |
 | Fieldset, Form | form/Fieldset, form/Container | neo |
 | **DataSourceForm** (load/save an entity) | – | **missing: generic entity form** (NoteDialog does it by hand) |
-| DateTimeField, DateRangeField, DurationField | – | missing |
+| DateField, DateTimeField, DateRangeField, DurationField | form/field/Date (native input + picker) | GO.neo (`GO.form.field.*`; DateRangeField: custom range/from/until in a dialog instead of picker submenus) |
 | **HtmlField** (rich text) | – | **missing, large**: editor must live on the main thread (addon + worker bridge); notes use a textarea |
-| ChipsField, AutocompleteChips, AutocompleteField | form/field/Chip (basic) | missing (recipients, tags) |
-| ArrayField, ContainerField, MapField, ListField | – | missing (repeating sub-records: e-mails, phones, addresses) |
+| ChipsField, AutocompleteChips, AutocompleteField | form/field/Chip (basic) | ChipsField: GO.neo (`GO.form.field.ChipsField`, async textInputToValue/chipRenderer); AutocompleteChips: GO.neo (`GO.form.field.AutocompleteChips`, entity ids, ▾ menu; tasks categories); AutocompleteField: missing |
+| ArrayField, ContainerField, MapField, ListField | – | ArrayField, ContainerField: GO.neo (`src/form/nestedFields.mjs`); MapField, ListField: missing |
 | CheckboxGroup | – | missing (small) |
 | DatePicker / MonthPicker / WeekPicker | component/DateSelector | neo (month/week: missing) |
 
@@ -68,7 +68,7 @@ Status: **neo** = neo.mjs 13.2 ships it, usable as is (maybe GO styling);
 | **links/** (LinkBrowser, CreateLinkButton/Field, LinkDetail, SelectSearch) | **missing** — links panel in every detail |
 | **customfields/** (FormFieldset, DetailFieldset, Types, TreeSelectField) | **missing** — every entity with custom fields |
 | **permissions/SharePanel** (ACL) | **missing** — sharing notebooks, address books, … |
-| RecurrenceField, RecurrencePicker | missing (calendar, tasks) |
+| RecurrenceField, RecurrencePicker | GO.neo (`GO.form.field.RecurrenceField`: presets menu + "Customize" dialog) |
 | RecipientPicker, HtmlFieldMentionPlugin | missing (mail, comments mentions) |
 | EntityTypeTable | missing |
 | chart | missing (neo has no chart component; would need a library) |
@@ -88,4 +88,4 @@ needed only when the corresponding screens move.
 4. **Links** and **custom fields** (form + detail) — present in nearly every module.
 5. **SharePanel** — needed as soon as containers (note books, address books) are edited.
 6. **HtmlField** — rich text (notes, comments, mail); largest single item.
-7. DateTime/DateRange/Duration fields, Chips/Autocomplete, ArrayField, Tree, DescriptionList, multi-select toolbar.
+7. ~~DateTime/DateRange/Duration fields, Chips, ArrayField, Tree, DescriptionList, multi-select toolbar, RecurrenceField~~ (2026-10-16, demos in the Dev module); left: autocomplete chips, MapField, tree drag and drop.

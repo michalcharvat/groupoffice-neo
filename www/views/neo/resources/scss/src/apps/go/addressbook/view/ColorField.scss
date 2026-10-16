@@ -1,0 +1,20 @@
+// colour of a contact: native colour input + clear icon in the GO field box
+.neo-theme-go .go-ab-colorfield {
+    // in line with the neo text fields beside it
+    margin-top: .5rem;
+
+    input[type=color] {
+        background: none;
+        border    : 0;
+        cursor    : pointer;
+        flex      : 1;
+        height    : 2.8rem;
+        min-width : 0;
+        padding   : 0;
+    }
+
+    .go-ab-color-clear {
+        color : var(--fg-secondary-text);
+        cursor: pointer;
+    }
+}

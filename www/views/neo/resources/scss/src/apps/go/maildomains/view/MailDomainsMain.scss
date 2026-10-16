@@ -1,0 +1,196 @@
+@use "../../../../../go/go";
+
+// community/maildomains (go/modules/community/maildomains/views/neo). GO.maildomains.view.MailDomainsMain
+// loads before any of the module's dialogs, so their classes are here too.
+.neo-theme-go {
+    // GOUI icon colours: success, danger, warning; inactive domain
+    .go-md-success {
+        color: #2e7d32;
+    }
+
+    .go-md-danger {
+        color: var(--fg-error);
+    }
+
+    .go-md-warning {
+        color: var(--fg-warning);
+    }
+
+    .go-md-disabled {
+        color: var(--fg-secondary-text);
+    }
+
+    .go-md-status {
+        vertical-align: middle;
+    }
+
+    &.dark .go-md-success {
+        color: #81c784;
+    }
+
+    // "PTR OK" / "PTR error (ip)" in the list toolbar
+    .go-md-ptr {
+        align-items: center;
+        color      : var(--fg-secondary-text);
+        display    : flex;
+        gap        : go.dp(4);
+        white-space: nowrap;
+    }
+
+    // the domain card: status, name, description; owner and quotas
+    .go-md-header {
+        padding: go.dp(16) go.dp(18);
+    }
+
+    .go-md-header-title {
+        align-items: center;
+        display    : flex;
+        gap        : go.dp(16);
+
+        h3 {
+            font-size  : go.sp(18);
+            font-weight: normal;
+            margin     : 0;
+        }
+
+        small {
+            color: var(--fg-secondary-text);
+        }
+    }
+
+    .go-md-header-items {
+        display  : flex;
+        flex-wrap: wrap;
+        gap      : go.dp(8) go.dp(32);
+        margin   : go.dp(16) 0 0 go.dp(40);
+    }
+
+    .go-md-header-item {
+        display       : flex;
+        flex-direction: column;
+
+        label {
+            color    : var(--fg-secondary-text);
+            font-size: go.sp(12);
+        }
+    }
+
+    // DNS card: records with their status, DKIM keys
+    .go-md-dns {
+        gap    : go.dp(8);
+        padding: 0 go.dp(16) go.dp(8);
+    }
+
+    .go-md-dns-records {
+        gap: go.dp(16);
+    }
+
+    .go-md-dns-record,
+    .go-md-dkim-head,
+    .go-md-dkim-dns {
+        gap: go.dp(8);
+    }
+
+    // GOUI setInvalid() text below a record
+    .go-md-dns-error {
+        color    : var(--fg-error);
+        font-size: go.sp(12);
+        padding  : go.dp(4) go.dp(16) 0;
+    }
+
+    .go-md-dns-status {
+        padding-top: go.dp(12);
+    }
+
+    .go-md-dkim-head .go-md-dns-status {
+        padding-top: 0;
+    }
+
+    .go-md-dns .go-empty {
+        padding: go.dp(8) 0;
+    }
+
+    .go-md-dkim-key {
+        border-top: 1px solid var(--fg-line);
+        gap       : go.dp(12);
+        padding   : go.dp(12) 0;
+    }
+
+    .go-md-dkim-dns textarea {
+        font-family: monospace;
+        font-size  : go.sp(12);
+    }
+
+    // mailbox / alias cards
+    .go-md-grid-card {
+        flex: none;
+
+        > .go-empty {
+            padding: go.dp(16);
+        }
+    }
+
+    .go-md-grid {
+        max-height: 40rem;
+    }
+
+    // one line per row, like GOUI's table cells (long recipient lists)
+    .go-md-grid .neo-grid-cell {
+        overflow     : hidden;
+        text-overflow: ellipsis;
+        white-space  : nowrap;
+    }
+
+    .go-md-row-menu {
+        color : var(--fg-secondary-text);
+        cursor: pointer;
+
+        &:hover {
+            color: var(--fg-text);
+        }
+    }
+
+    // dialogs: "user" + "@example.com", two columns (one on a phone)
+    .go-md-form-scroll {
+        gap       : 2rem;
+        min-height: 0;
+    }
+
+    .go-md-address {
+        gap: go.dp(8);
+    }
+
+    .go-md-at-domain {
+        color      : var(--fg-secondary-text);
+        white-space: nowrap;
+    }
+
+    .go-md-columns {
+        gap: 2rem go.dp(24);
+    }
+
+    // equal columns, wrapped below each other when they get narrower than 30rem
+    .go-md-column {
+        gap      : 2rem;
+        min-width: 30rem;
+    }
+
+    .go-md-dialog-form {
+        gap    : 2rem;
+        padding: go.dp(16);
+    }
+
+    .go-md-export-result {
+        align-items: center;
+        display    : flex;
+        gap        : go.dp(8);
+    }
+
+    .go-md-muted {
+        color: var(--fg-secondary-text);
+    }
+
+    .go-md-error {
+        color: var(--fg-error);
+    }
+}

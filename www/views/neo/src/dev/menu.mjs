@@ -23,11 +23,11 @@ export default [
     {id: 'datepicker',    text: 'DatePicker',     level: 1, status: 'neo',  neo: 'neo component/DateSelector',     goui: 'DatePickerPage.ts'},
     {id: 'form',          text: 'Form',           level: 1, status: 'neo',  neo: 'GO.form.DataSourceForm',         goui: 'Form.ts'},
 
-    {id: 'form/ArrayField',      text: 'ArrayField',         level: 2, status: 'todo', goui: 'form/ArrayFieldPage.ts'},
+    {id: 'form/ArrayField',      text: 'ArrayField',         level: 2, status: 'done', demo: 'ArrayField', neo: 'GO.form.field.ArrayField', goui: 'form/ArrayFieldPage.ts'},
     {id: 'form/ChecksAndRadios', text: 'Checks and Radios',  level: 2, status: 'neo',  neo: 'GO.component.CheckBox, neo Radio', goui: 'form/ChecksAndRadios.ts'},
-    {id: 'form/ChipsField',      text: 'ChipsField',         level: 2, status: 'todo', goui: 'form/ChipsFieldPage.ts'},
-    {id: 'form/ContainerField',  text: 'ContainerField',     level: 2, status: 'todo', goui: 'form/ContainerFieldPage.ts'},
-    {id: 'form/DateTime',        text: 'Date and time',      level: 2, status: 'todo', neo: 'neo Date, Time (no DateTime/DateRange/Duration)', goui: 'form/DateTimePage.ts'},
+    {id: 'form/ChipsField',      text: 'ChipsField',         level: 2, status: 'done', demo: 'Chips', neo: 'GO.form.field.ChipsField', goui: 'form/ChipsFieldPage.ts'},
+    {id: 'form/ContainerField',  text: 'ContainerField',     level: 2, status: 'done', demo: 'ArrayField', neo: 'GO.form.field.ContainerField', goui: 'form/ContainerFieldPage.ts'},
+    {id: 'form/DateTime',        text: 'Date and time',      level: 2, status: 'done', demo: 'DateTime', neo: 'GO.form.field.DateField, DateTimeField, DateRangeField, DurationField', goui: 'form/DateTimePage.ts'},
     {id: 'form/DisplayField',    text: 'DisplayField',       level: 2, status: 'neo',  neo: 'neo form/field/Display',  goui: 'form/DisplayFieldPage.ts'},
     {id: 'form/HtmlField',       text: 'HtmlField',          level: 2, status: 'done', demo: 'HtmlField', neo: 'GO.form.field.HtmlField', goui: 'form/HtmlFieldPage.ts'},
     {id: 'form/MapField',        text: 'MapField',           level: 2, status: 'todo', goui: 'form/MapFieldPage.ts'},
@@ -35,12 +35,14 @@ export default [
     {id: 'form/Select',          text: 'Select fields',      level: 2, status: 'done', demo: 'JmapCombo', neo: 'GO.form.field.JmapComboBox, PrincipalCombo, GroupCombo', goui: 'form/SelectPage.ts'},
     {id: 'form/TextField',       text: 'TextField',          level: 2, status: 'neo',  neo: 'neo form/field/Text, TextArea', goui: 'form/TextFieldPage.ts'},
 
+    {id: 'descriptionlist', text: 'DescriptionList', level: 1, status: 'done', demo: 'DescriptionList', neo: 'GO.component.DescriptionList', goui: 'DescriptionList.ts'},
     {id: 'list',     text: 'List',     level: 1, status: 'neo',  neo: 'GO.list.TextList, CheckList', goui: 'List.ts'},
     {id: 'panel',    text: 'Panel',    level: 1, status: 'neo',  neo: 'neo container/Panel',         goui: 'Panel.ts'},
     {id: 'patching', text: 'Patching', level: 1, status: 'neo',  neo: 'neo class overwrites (Neo.overwrites)', goui: 'Patching.ts'},
     {id: 'table',    text: 'Table',    level: 1, status: 'neo',  neo: 'GO.grid.Grid',                goui: 'Table.ts'},
+    {id: 'table/MultiSelect', text: 'Multi select', level: 2, status: 'done', demo: 'MultiSelect', neo: 'GO.grid.Grid multiSelect, GO.grid.RowSelectionModel, MultiSelectToolbar', goui: 'table/MultiSelectToolbar.ts, RowSelect.ts'},
     {id: 'tooltip',  text: 'Tooltip',  level: 1, status: 'neo',  neo: 'neo tooltip/Base',            goui: 'TooltipPage.ts'},
-    {id: 'tree',     text: 'Tree',     level: 1, status: 'todo', neo: 'neo tree/List (no lazy, checkable tree)', goui: 'Tree.ts'},
+    {id: 'tree',     text: 'Tree',     level: 1, status: 'done', demo: 'Tree', neo: 'GO.tree.Tree', goui: 'Tree.ts'},
     {id: 'window',   text: 'Window',   level: 1, status: 'neo',  neo: 'GO.view.Dialog, ConfirmDialog', goui: 'Window.ts'},
 
     {id: 'core',              text: 'Group-Office core', level: 0, header: true},
@@ -48,6 +50,6 @@ export default [
     {id: 'core/Links',        text: 'Links',             level: 1, status: 'done', demo: 'Links',        neo: 'src/link/*',                   goui: 'groupoffice-core/script/components/links/'},
     {id: 'core/CustomFields', text: 'Custom fields',     level: 1, status: 'done', demo: 'CustomFields', neo: 'src/customfields/*',           goui: 'groupoffice-core/script/customfields/'},
     {id: 'core/SharePanel',   text: 'SharePanel',        level: 1, status: 'done', demo: 'SharePanel',   neo: 'GO.permissions.SharePanel',    goui: 'groupoffice-core/script/permissions/SharePanel.ts'},
-    {id: 'core/Recurrence',   text: 'RecurrenceField',   level: 1, status: 'todo', goui: 'groupoffice-core/script/components/form/RecurrenceField.ts'},
+    {id: 'core/Recurrence',   text: 'RecurrenceField',   level: 1, status: 'done', demo: 'Recurrence', neo: 'GO.form.field.RecurrenceField', goui: 'groupoffice-core/script/components/form/RecurrenceField.ts'},
     {id: 'core/Recipients',   text: 'RecipientPicker',   level: 1, status: 'todo', goui: 'goui-docs/script/components/RecipientsField.ts'}
 ];

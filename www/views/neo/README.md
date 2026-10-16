@@ -21,7 +21,8 @@ Alternative Group Office webclient built with [neo.mjs](https://github.com/neomj
 | `apps/go/` | shell app: `app.mjs`, Viewport (loading / login / main), LoginView (GO login: "Login required" window, language menu, forgot credentials card), MainView (module tabs with popout and close ×, right click: close / close others / close all; a closed tab returns when the module is opened again; hash routing) |
 | `src/jmap/Client.mjs` | JMAP client in the App worker: cookie + `X-CSRF-Token`, batching, fetch-based SSE |
 | `src/data/JmapStore.mjs` | `Neo.data.Store` over `Entity/query`+`get`; reloads the page on push |
-| `src/ModuleRegistry.mjs` | modules register `{name, title, iconCls, capability, mainView}`, optional `userSettings` / `systemSettings: {title, iconCls, panel}` (cards in My account / System settings, one or an array; `loadSettingsPanels(key)`); a registration without `mainView` only adds settings cards |
+| `src/data/backgroundJob.mjs` | `Entity/export`/`import` run in the background and end in a core Alert: `lastAlertId()`, `waitForFinishedAlert()`, `alertBlobId()` (address book export/import) |
+| `src/ModuleRegistry.mjs` | modules register `{name, title, iconCls, capability, mainView}`, optional `userSettings` / `systemSettings: {title, iconCls, panel}` (cards in My account / System settings, one or an array; `loadSettingsPanels(key)`) and `onLogin()` (awaited after login before the main view is built, may register more modules); a registration without `mainView` only adds settings cards |
 | `src/systemsettings/` | System settings (admins; user menu or `#systemsettings/<card>`): `SystemSettingsDialog` (cards on the left; card interface `load`, `isModified`, `validate`, `save`, `needsReload` → all windows reload on close), `SettingsPanel` (card over `Module.settings`, fields `settings.<key>`, config.php keys disabled; `fields.mjs` helpers), General, Appearance (logo, colours previewed; `Neo.php` renders the saved ones), Notifications (SMTP + test message), Authentication (+ `AuthAllowGroupGrid`), Modules (`ModuleTiles`, install / enable / uninstall, `ModuleRightsDialog`) |
 | `src/smtp/` | `SmtpAccountGrid` (a module's SMTP accounts: `{smtpModule: {package, name}}`, call `load()`), `SmtpAccountDialog` (test message, permissions), `SmtpAccountCombo` |
 | `src/list/ActionTable.mjs`, `src/form/field/ColorField.mjs`, `LinesField.mjs` | small table over plain records with check columns and row icon actions (events `action`, `check`, `rowDoubleClick`); hex colour field with swatch (value without `#`); array of strings, one per line |
@@ -42,11 +43,17 @@ Alternative Group Office webclient built with [neo.mjs](https://github.com/neomj
 | `src/form/field/HtmlField.mjs` + `src/main/addon/HtmlEditor.mjs` | rich text field; the editor and its commands live in the main-thread addon (`WS/HtmlEditor`, loaded with `Neo.Main.importAddon` on mount) |
 | `src/link/` | links: `LinkDetail` card, `LinkBrowser`, `AddLinkButton`, `LinkBrowseButton`, `SelectSearchDialog` (core `Search`), `linkTypes` (entity icons, `resolveRoute`) |
 | `src/permissions/SharePanel.mjs` | ACL editor as one form field (`name: 'acl'`, value `{groupId: level}`), GOUI layout: all groups/users with a level each, ACL members first |
+| `src/form/field/Field.mjs` + `DateField`, `DateTimeField`, `DateRangeField`, `DurationField`, `ChipsField`, `RecurrenceField` | GOUI fields: `GO.form.field.Field` is the outlined box with the label in its border (`go/shared/_field.scss`), hint/error below, `required`, `validator`; subclasses render their inputs in `createControl()` |
+| `src/form/field/ContainerField.mjs`, `ArrayField.mjs`, `src/form/nestedFields.mjs` | fields made of fields: ContainerField = object of its children, ArrayField = one row field per array item (`buildField`, `addValue()`, `ArrayField.removeButton()`); `nestedFields.mjs` patches neo's form.Container so a form never sees fields inside a field |
+| `src/tree/Tree.mjs`, `src/component/DescriptionList.mjs` | GOUI Tree (lazy `nodeProvider`, caret, icon, checkbox per node, expanded nodes kept on reload) and DescriptionList (`records: [[term, value…]]`) |
+| `src/grid/RowSelectionModel.mjs`, `MultiSelectToolbar.mjs` | `GO.grid.Grid` `multiSelect: true`: ctrl/⌘ toggles, shift selects a range, a plain click selects only that row; MultiSelectToolbar overlays the toolbar from 2 selected rows (`setGrid(grid)`, host container `go-mstb-host`) |
+| `src/DateUtil.mjs` | local "Y-m-d" parsing/formatting (`new Date('Y-m-d')` is UTC), ISO with offset, week start |
 | `src/form/DataSourceForm.mjs`, `src/view/FormWindow.mjs` | entity form (load/`set`, only modified properties on update, server validation errors on fields) and GOUI FormWindow (tabs via `addCard`, `addCustomFields`, `addSharePanel`, discard prompt). A class field must not share a name with a neo reactive config (`data`, `isLoading`) |
 | `src/customfields/` | custom fields: definitions (`customFields.mjs`), GO types → neo fields (`types.mjs`), `FormFieldset` + `addCustomFieldsTo()` (FormWindow), `DetailFieldsets` cards; fields are named `customFields.<databaseName>` |
 | `src/dev/` | prototype only: "Dev" module (`#dev/<id>`), menu like the GOUI docs (`goui-docs/script/MainMenu.ts`) in `menu.mjs` with a status per component (demo / available / to convert); converting a component = add `src/dev/demo/<Name>.mjs`, set `demo` and `status: 'done'` |
 | `resources/scss/go/` | GO values and GOUI look of neo classes in the `theme-go` neo theme, per neo class (e.g. `form/field/trigger/Base.scss`: round Material triggers, `Picker.scss`: picker like `menu.goui-dropdown`, `dialog/Base.scss`: GOUI window chrome); `shared/` partials (in `Global.scss`): classes several GO components render (`go-avatar`, `go-check`, `go-empty`, links) |
 | `resources/scss/src/apps/go/` | styles of the `GO.*` components and the shell (`Viewport`, `LoginView`, `MainView` topbar, `GlobalSearch`, …) |
+| `src/form/field/AutocompleteChips.mjs` | chips of entity ids with a ▾ menu of the entity (`entity`, `setJmapFilter()`) |
 | `go/modules/<pkg>/<name>/views/neo/Index.mjs` | module entry, found by `Neo::moduleFiles()`; optional `style.css` |
 
 Module code imports neo and the shell with relative paths
@@ -83,7 +90,7 @@ The reference is GO 26's GOUI module UI (e.g. Notes), not the ExtJS Paper theme.
 Still different from GOUI notes: no "Input field" variable
 filters, filter conditions are text values only (no sub groups / pickers), comments are plain
 text (no rich text editor, labels, attachments), files have no drag & drop, overwrite question
-or context menu, no import/export menu, the grid selects one row (no multi-select toolbar). Dark mode follows
+or context menu, no import/export menu. Dark mode follows
 `body.dark` (GO tokens), set in My account → Look & feel.
 
 ## Translations
@@ -152,6 +159,22 @@ or context menu, no import/export menu, the grid selects one row (no multi-selec
 - **Components**: create child-dependent wiring in `onConstructed()`, not
   `construct()` (references don't exist yet). `selectRow()` does not fire
   `selectionChange`. String handlers: `'up.onX'` walks the parents.
+- **Boolean attributes in vdom**: neo knows only lowercase void attributes (`readonly`,
+  `disabled`, …); `readOnly: false` renders `readonly="false"`, which is read-only. Leave
+  them out when false (`GO.form.field.Field#inputFlags()`).
+- **Reserved names (more)**: `bind` is a neo config (state binding), `value_` is already
+  reactive in `Neo.form.field.Base` (use `value: null` in a subclass config).
+- **Fields inside fields**: neo's form.Container collects every field below it and
+  `setValues()` wrapped the leaves inside an object/array value (`{street: {value}}`).
+  `src/form/nestedFields.mjs` (imported by DataSourceForm and the composite fields) stops
+  at a field and passes a field's value whole. Inner fields still fire `fieldChange` on
+  the outer forms (with their own names).
+- **Native date/time inputs** fire `change` per completed segment (typing a year gives
+  0002, 0020, …): DateTimeField reports each, the last one is the value.
+- **Submenus** of a neo menu are plain `Neo.menu.List`: `GO.menu.List#getSubMenuData()`
+  adds `go-menu`. A `separator: true` item is a separator only (its text is not shown).
+- **Theme builds and the shared worker**: the worker reads `theme-map.json` once; `Neo.php`
+  includes its mtime in the build id, so `npm run build-themes` starts a new worker.
 - **Selecting a grid row from code** right after a load is lost: the vnode gets the
   class, the DOM row does not. Use `src/grid/selectRow.mjs` (checks the DOM and retries).
 - **Never `hidden: true` a `PagingToolbar`**: its store load listener then throws (its
@@ -214,6 +237,15 @@ or context menu, no import/export menu, the grid selects one row (no multi-selec
 - **System settings has no single entity**: `SystemSettingsDialog` saves each card itself
   (the cards' calls of the same tick share a request); a `SettingsPanel` that did not load refuses to save, otherwise
   `DataSourceForm.submit()` would create a new Module.
+- **Overlays over buttons**: neo gives a button's glyph and text `z-index: 2`; anything laid
+  over a toolbar (e.g. the SearchButton overlay) needs a higher z-index.
 - **Testing on another port**: cookies are per host, not port. A container on :8028/:8029 uses
   the login of :8027, which may be the real admin, not the test user: never save passwords or
   other account data there without checking who is logged in.
+- **NumberField limits**: neo's `maxValue` defaults to 100, and on blur it clamps with
+  `Math.min(maxValue, value)` / `Math.max(minValue, value)`, so `null` turns every value into 0.
+  For no limit use `Number.MAX_SAFE_INTEGER` (custom number fields, disk quota, mail quotas).
+- **`error` on a text field** is ignored while the field is clean and not mounted (e.g. in a
+  hidden card): show server-side messages in an own component (maildomains DNS records).
+- **Bottom toasts** (`notify()`, position `br`): neo sets no `top`, `.neo-floating`'s -10000px
+  stretched them over the page; `go/component/Toast.scss` sets `top: auto`.

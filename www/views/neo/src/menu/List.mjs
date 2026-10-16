@@ -37,6 +37,13 @@ class List extends MenuList {
     }
 
     /**
+     * neo creates submenus as Neo.menu.List: give them the GO menu look
+     */
+    getSubMenuData(record) {
+        return {...super.getSubMenuData(record), cls: ['go-menu']}
+    }
+
+    /**
      * Set by showAt(): destroy the menu once it closes
      * @member {Boolean} destroyOnUnmount=false
      */
@@ -62,6 +69,8 @@ class List extends MenuList {
             align   : {edgeAlign: 't100-b100', target, ...align},
             floating: true,
             hidden  : true,
+            // neo menus default to z-index 100 (inline style): dialogs and their mask are 1000
+            zIndex  : 1100,
             ...config
         });
 

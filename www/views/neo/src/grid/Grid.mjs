@@ -1,6 +1,7 @@
 import GridContainer from '../../node_modules/neo.mjs/src/grid/Container.mjs';
 import HeaderButton  from './HeaderButton.mjs';
 import MenuList      from '../menu/List.mjs';
+import RowSelectionModel from './RowSelectionModel.mjs';
 import {dpSize, getState, setState} from '../State.mjs';
 import {t}           from '../Translate.mjs';
 
@@ -28,6 +29,12 @@ class Grid extends GridContainer {
         baseCls  : ['go-grid', 'neo-grid-container'],
         rowHeight: 35,
         /**
+         * GOUI multiSelect: ctrl/shift + click select more rows (GO.grid.RowSelectionModel),
+         * GO.grid.MultiSelectToolbar shows actions for them
+         * @member {Boolean} multiSelect=false
+         */
+        multiSelect: false,
+        /**
          * GOUI compatible state key ("state-<stateId>"): hidden columns, widths
          * @member {String|null} stateId=null
          */
@@ -51,11 +58,20 @@ class Grid extends GridContainer {
 
         super.construct({
             ...config,
+            ...(config.multiSelect ? {viewConfig: {...config.viewConfig, selectionModel: {module: RowSelectionModel}}} : {}),
             columns      : Grid.visibleColumns(all),
             headerToolbar: {...config.headerToolbar, itemDefaults: {module: HeaderButton, ntype: 'go-grid-header-button'}}
         });
 
         this.allColumns = all
+    }
+
+    /**
+     * @returns {Object[]} selected records
+     */
+    getSelectedRecords() {
+        const sm = this.view?.selectionModel;
+        return (sm?.selectedRows || []).map(id => this.store.get(id)).filter(Boolean)
     }
 
     /**

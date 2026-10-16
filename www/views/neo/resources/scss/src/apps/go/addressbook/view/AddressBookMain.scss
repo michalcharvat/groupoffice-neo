@@ -1,0 +1,17 @@
+// contacts grid: avatar column and the letter of the alphabet (ExtJS go-addressbook-index-row)
+.neo-theme-go .go-addressbook-grid {
+    .go-addressbook-index {
+        color      : var(--fg-main);
+        font-size  : 1.8rem;
+        font-weight: 500;
+    }
+
+    img.go-avatar {
+        object-fit: cover;
+    }
+
+    .go-avatar .go-icon {
+        font-size  : 1.8rem;
+        line-height: inherit;
+    }
+}

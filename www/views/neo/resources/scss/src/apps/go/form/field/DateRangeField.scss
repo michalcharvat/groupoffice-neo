@@ -1,0 +1,20 @@
+// GO.form.field.DateRangeField: the value as text, clear and ▾ at the end
+.neo-theme-go .go-daterangefield {
+    .go-field-box {
+        cursor: pointer;
+    }
+
+    .go-daterange-text {
+        flex         : 1 1 auto;
+        line-height  : 2.4rem;
+        overflow     : hidden;
+        padding      : 1.1rem 0;
+        text-overflow: ellipsis;
+        white-space  : nowrap;
+    }
+}
+
+.neo-theme-go .go-daterange-dialog-fields {
+    gap    : 2rem;
+    padding: 2rem 1.6rem 1rem;
+}

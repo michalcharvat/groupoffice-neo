@@ -1,0 +1,63 @@
+// GO.tree.Tree: GOUI .goui-table.tree rows (goui/style/_tree.scss): indent dp(24) per
+// level, caret, icon, checkbox, label; no row lines
+.neo-theme-go .go-tree {
+    .neo-list-item {
+        align-items: center;
+        border     : 0;
+        display    : flex;
+        gap        : .4rem;
+        line-height: 2.4rem;
+        padding    : .4rem .8rem;
+    }
+
+    .go-tree-indent {
+        flex : none;
+        width: 2rem;
+    }
+
+    .go-tree-caret {
+        border-radius: 50%;
+        color        : var(--fg-secondary-text);
+        cursor       : pointer;
+        flex         : none;
+
+        &:hover {
+            background-color: var(--bg-hover);
+        }
+
+        &.go-tree-leaf {
+            cursor: default;
+
+            &:hover {
+                background-color: transparent;
+            }
+        }
+
+        &.go-tree-loading {
+            animation: go-tree-spin 1s linear infinite;
+        }
+    }
+
+    .go-tree-icon {
+        color: var(--fg-secondary-text);
+        flex : none;
+    }
+
+    .go-tree-label {
+        flex         : 1 1 auto;
+        min-width    : 0;
+        overflow     : hidden;
+        text-overflow: ellipsis;
+        white-space  : nowrap;
+    }
+
+    .go-check {
+        flex: none;
+    }
+}
+
+@keyframes go-tree-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

@@ -1,8 +1,9 @@
 import Toolbar       from '../../../../../../../views/neo/node_modules/neo.mjs/src/toolbar/Base.mjs';
-import {LEVEL_CREATE, LEVEL_MANAGE, LEVEL_WRITE} from '../../../../../../../views/neo/src/Acl.mjs';
+import {LEVEL_CREATE, LEVEL_DELETE, LEVEL_MANAGE, LEVEL_WRITE} from '../../../../../../../views/neo/src/Acl.mjs';
 import Button        from '../../../../../../../views/neo/src/button/Button.mjs';
 import SearchButton  from '../../../../../../../views/neo/src/button/SearchButton.mjs';
 import Grid          from '../../../../../../../views/neo/src/grid/Grid.mjs';
+import MultiSelectToolbar from '../../../../../../../views/neo/src/grid/MultiSelectToolbar.mjs';
 import {selectRow}   from '../../../../../../../views/neo/src/grid/selectRow.mjs';
 import CheckBox      from '../../../../../../../views/neo/src/component/CheckBox.mjs';
 import TableTitle    from '../../../../../../../views/neo/src/component/TableTitle.mjs';
@@ -136,28 +137,45 @@ class NotesMain extends MainThreeColumnPanel {
             ntype : 'container',
             layout: {ntype: 'vbox', align: 'stretch'},
             items : [{
-                module: Toolbar,
+                // GOUI: the multi select toolbar covers the toolbar while rows are selected
+                ntype : 'container',
                 flex  : 'none',
-                cls   : ['go-bg-mid', 'go-border-bottom'],
-                items : [this.showWestButton(), {
-                    module   : TableTitle,
-                    reference: 'tableTitle',
-                    title    : t('All notes')
-                }, '->', {
-                    module   : SearchButton,
-                    listeners: {search: ({text}) => this.onSearch(text)}
+                cls   : ['go-mstb-host'],
+                items : [{
+                    module: Toolbar,
+                    cls   : ['go-bg-mid', 'go-border-bottom'],
+                    items : [this.showWestButton(), {
+                        module   : TableTitle,
+                        reference: 'tableTitle',
+                        title    : t('All notes')
+                    }, '->', {
+                        module   : SearchButton,
+                        listeners: {search: ({text}) => this.onSearch(text)}
+                    }, {
+                        module   : Button,
+                        icon     : 'add',
+                        ui       : 'primary',
+                        reference: 'newButton',
+                        tooltip  : t('Add'),
+                        handler  : 'up.onNew'
+                    }]
                 }, {
-                    module   : Button,
-                    icon     : 'add',
-                    ui       : 'primary',
-                    reference: 'newButton',
-                    tooltip  : t('Add'),
-                    handler  : 'up.onNew'
+                    module   : MultiSelectToolbar,
+                    reference: 'multiSelectToolbar',
+                    items    : [{
+                        module   : Button,
+                        icon     : 'delete',
+                        reference: 'deleteSelectedButton',
+                        tooltip  : t('Delete'),
+                        handler  : 'up.onDeleteSelected'
+                    }]
                 }]
             }, {
                 module   : Grid,
                 reference: 'grid',
                 flex     : 1,
+                // ctrl/shift + click: more notes, deleted at once (MultiSelectToolbar)
+                multiSelect: true,
                 store    : {
                     module    : JmapStore,
                     entity    : 'Note',
@@ -261,15 +279,16 @@ class NotesMain extends MainThreeColumnPanel {
         bookList.store.on('load', me.onNoteBooksLoad, me);
 
         grid.view.selectionModel.on('selectionChange', me.onNoteSelectionChange, me);
-        // neo toggles a clicked row, GOUI keeps it selected: tapping the open note again (a phone
-        // after "close") must show it, not deselect it
+        me.getReference('multiSelectToolbar').setGrid(grid);
+        // GO.grid.RowSelectionModel keeps a clicked row selected (no selectionChange): tapping
+        // the open note again (a phone after "close") must show it
         grid.on('rowClick', event => {
             const sm     = grid.view.selectionModel,
-                  record = event.record || sm.getRecord(event.data?.path),
+                  data   = event.data || {},
+                  record = event.record || sm.getRecord(data.path),
                   id     = record && grid.view.getRecordId(record);
 
-            if (record && !sm.isSelectedRow(id)) {
-                selectRow(grid, id);
+            if (record && !data.ctrlKey && !data.metaKey && !data.shiftKey && sm.selectedRows.length === 1 && sm.isSelectedRow(id)) {
                 me.showInDetail(record);
                 me.activatePanel('east')
             }
@@ -501,7 +520,7 @@ class NotesMain extends MainThreeColumnPanel {
         const confirmed = await ConfirmDialog.ask({
             appName : me.appName,
             windowId: me.windowId,
-            message : fmt(t("Are you sure you want to delete '{item}'?"), {item: record.name})
+            message : fmt(t("Are you sure you want to delete '{item}'?"), {item: escapeHtml(record.name)})
         });
 
         if (!confirmed) {
@@ -528,6 +547,11 @@ class NotesMain extends MainThreeColumnPanel {
     }
 
     onNoteSelectionChange({records}) {
+        // more rows selected: the detail keeps its note, MultiSelectToolbar has the actions
+        if (records.length > 1) {
+            return
+        }
+
         let me   = this,
             note = records[0] || null;
 
@@ -654,13 +678,45 @@ class NotesMain extends MainThreeColumnPanel {
         })
     }
 
+    /**
+     * MultiSelectToolbar: deletes the selected notes the user may delete
+     */
+    async onDeleteSelected() {
+        let me    = this,
+            grid  = me.getReference('grid'),
+            notes = grid.getSelectedRecords().filter(note => note.permissionLevel >= LEVEL_DELETE);
+
+        if (!notes.length) {
+            return
+        }
+
+        const confirmed = await ConfirmDialog.ask({
+            appName : me.appName,
+            windowId: me.windowId,
+            message : fmt(t('Are you sure you want to delete the {count} items?'), {count: notes.length})
+        });
+
+        if (!confirmed || me.isDestroyed) {
+            return
+        }
+
+        try {
+            await client.set('Note', {destroy: notes.map(note => note.id)});
+            grid.view.selectionModel.clear();
+            me.showInDetail(null);
+            grid.store.load().catch(() => {}) // loadError shows it
+        } catch (e) {
+            me.showError(e)
+        }
+    }
+
     async deleteNote(note) {
         let me = this;
 
         const confirmed = await ConfirmDialog.ask({
             appName : me.appName,
             windowId: me.windowId,
-            message : fmt(t("Are you sure you want to delete '{item}'?"), {item: note.name})
+            message : fmt(t("Are you sure you want to delete '{item}'?"), {item: escapeHtml(note.name)})
         });
 
         if (!confirmed) {
