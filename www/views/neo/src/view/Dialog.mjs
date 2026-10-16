@@ -201,7 +201,9 @@ class Dialog extends BaseDialog {
             maximized   : false,
             style,
             windowId,
-            wrapperStyle: {height: '100%', left: 0, top: 0, width: '100%'}
+            // wrapperStyle merges: drop a dialog's max size too (FormWindow maxHeight: 90vh), it
+            // would leave a strip of the popup window empty
+            wrapperStyle: {height: '100%', left: 0, maxHeight: 'none', maxWidth: 'none', top: 0, width: '100%'}
         });
 
         // the window manages size and position now

@@ -77,6 +77,12 @@
         > * {
             margin: 0;
         }
+
+        // neo fixes a text field's height to its input, so the "Required" error text would
+        // overflow onto the next field: let the field grow by its error line
+        > .neo-textfield {
+            height: auto;
+        }
     }
 
     .go-login-remember {
