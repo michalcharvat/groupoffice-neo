@@ -17,7 +17,7 @@ class NotificationsPanel extends SettingsPanel {
         className: 'GO.systemsettings.NotificationsPanel'
     }
 
-    createItems() {
+    createFields() {
         let me = this;
 
         return [fieldset(t('Outgoing E-mail (SMTP)'), [

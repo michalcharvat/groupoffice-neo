@@ -16,7 +16,7 @@ class SystemSettingsPanel extends SettingsPanel {
         moduleName   : 'pwned'
     }
 
-    createItems() {
+    createFields() {
         return [fieldset(t('`;-- Have I been Pwned'), [{
             ntype: 'component',
             tag  : 'p',

@@ -14,7 +14,7 @@ class GeneralPanel extends SettingsPanel {
         reloadOnSave: true
     }
 
-    createItems() {
+    createFields() {
         let me = this;
 
         return [

@@ -17,7 +17,7 @@ class SystemSettingsPanel extends SettingsPanel {
         reloadOnSave : true
     }
 
-    createItems() {
+    createFields() {
         return [fieldset(t('Dokuwiki'), [
             textField('externalUrl', t('URL')),
             hint(t('Used as dokuwiki URL')),

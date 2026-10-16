@@ -9,7 +9,7 @@ import {t}            from '../Translate.mjs';
  *     class SystemSettingsPanel extends SettingsPanel {
  *         static config = {className: 'GO.history.SystemSettingsPanel', modulePackage: 'community', moduleName: 'history'}
  *
- *         createItems() {
+ *         createFields() {
  *             return [{module: NumberField, name: 'settings.deleteAfterDays', labelText: t('Delete entries after')}]
  *         }
  *     }
@@ -68,7 +68,7 @@ class SettingsPanel extends DataSourceForm {
             flex     : 'none',
             hidden   : true,
             html     : `<i class="go-icon">info</i>${t("Some fields on this page can't be edited because they have been locked in the server configuration file.")}`
-        }, ...me.createItems()];
+        }, ...me.createFields()];
 
         me.on('load', ({data}) => me.onSettingsLoad(data))
     }
@@ -77,7 +77,7 @@ class SettingsPanel extends DataSourceForm {
      * The card's fields, named "settings.<key>"
      * @returns {Object[]}
      */
-    createItems() {
+    createFields() {
         return []
     }
 

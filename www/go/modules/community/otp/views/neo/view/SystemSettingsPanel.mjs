@@ -27,7 +27,7 @@ class SystemSettingsPanel extends SettingsPanel {
         me.on('fieldChange', ({component}) => component?.name === 'settings.block' && me.syncCountDown())
     }
 
-    createItems() {
+    createFields() {
         return [fieldset(t('OTP Authenticator'), [{
             ntype: 'component',
             tag  : 'p',

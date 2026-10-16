@@ -18,7 +18,7 @@ class AuthenticationPanel extends SettingsPanel {
         reloadOnSave: true
     }
 
-    createItems() {
+    createFields() {
         // authentication domains of the installed authenticators (go.login.DomainCombo)
         const domains = client.session?.auth?.domains || [];
 

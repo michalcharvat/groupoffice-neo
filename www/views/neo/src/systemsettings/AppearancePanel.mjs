@@ -36,7 +36,7 @@ class AppearancePanel extends SettingsPanel {
      */
     previewed = new Set()
 
-    createItems() {
+    createFields() {
         return [{
             ntype : 'container',
             cls   : ['go-systemsettings-columns'],

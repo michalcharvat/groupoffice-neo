@@ -17,7 +17,7 @@ class SystemSettingsPanel extends SettingsPanel {
         moduleName   : 'addressbook'
     }
 
-    createItems() {
+    createFields() {
         const saveMailAs = client.hasCapability('go:legacy:savemailas');
 
         return [{

@@ -16,7 +16,7 @@ class SystemSettingsPanel extends SettingsPanel {
         moduleName   : 'jitsimeet'
     }
 
-    createItems() {
+    createFields() {
         return [fieldset(t('Video meeting'), [
             textField('videoUri', t('Server URL')),
             checkField('videoJwtEnabled', t('Enable JWT authentification')),
