@@ -3,7 +3,7 @@ import MenuList  from '../../../../../../../views/neo/src/menu/List.mjs';
 import {translator} from '../../../../../../../views/neo/src/Translate.mjs';
 import CalendarItem from '../CalendarItem.mjs';
 import calendarData from '../data.mjs';
-import {addDays, diffDays, formatTime, parseDate, startOfDay, ymd, ymdhis} from '../util/date.mjs';
+import {addDays, addDuration, diffDays, diffDuration, formatTime, parseDate, sameDay, startOfDay, ymd, ymdhis} from '../util/date.mjs';
 
 const t = translator('community', 'calendar');
 
@@ -53,7 +53,11 @@ class CalendarView extends Component {
             {click      : me.onViewClick,       scope: me},
             {dblclick   : me.onViewDblClick,    scope: me},
             {contextmenu: me.onViewContextMenu, scope: me},
-            {keydown    : me.onViewKeyDown,     scope: me}
+            {keydown    : me.onViewKeyDown,     scope: me},
+            {mousedown  : me.onDragDown,        scope: me},
+            {mousemove  : {fn: me.onDragMove, scope: me, local: true}},
+            {mouseup    : me.onDragUp,          scope: me},
+            {mouseleave : me.onDragLeave,       scope: me}
         ])
     }
 
@@ -86,6 +90,7 @@ class CalendarView extends Component {
     populate() {
         this.itemsByUid.clear();
         this.viewModel = [...this.adapter.items];
+        this.currentCreation && this.viewModel.unshift(this.currentCreation);
         this.render()
     }
 
@@ -158,7 +163,6 @@ class CalendarView extends Component {
             tag       : 'div',
             id        : `${me.id}__ev_${item.uid}${part ? '_' + part : ''}`,
             'data-uid': item.uid,
-            tabIndex  : 0,
             title     : calendarData.prefs.showTooltips === false ? null : CalendarView.tooltipText(item),
             cls       : [
                 ...cls,
@@ -329,6 +333,181 @@ class CalendarView extends Component {
      */
     contextDate(data) {
         return CalendarView.dataFromEvent(data, 'date')
+    }
+
+    /**
+     * Drag state: {type, item, …} while the mouse button is down
+     * @member {Object|null} drag
+     */
+    drag = null
+
+    /**
+     * Node of the event's path with a data attribute
+     * @param {Object} data
+     * @param {String} key
+     * @returns {Object|undefined}
+     */
+    static nodeWith(data, key) {
+        return data.path?.find(n => n.data?.[key] !== undefined)
+    }
+
+    onDragDown(data) {
+        if (data.button !== 0 || CalendarView.dataFromEvent(data, 'action')) {
+            return
+        }
+
+        this.dragDown(data)
+    }
+
+    /**
+     * Starts a drag (GOUI makeDraggableDay()): on an item it moves the item by days, on a day
+     * it draws a new event over the days the mouse passes
+     * @param {Object} data mousedown
+     * @param {Boolean} [withoutTime] new events are all day (week view's all day row)
+     * @protected
+     */
+    dragDown(data, withoutTime = false) {
+        let me      = this,
+            evNode  = CalendarView.nodeWith(data, 'uid'),
+            dayNode = CalendarView.nodeWith(data, 'date');
+
+        if (evNode) {
+            const item = me.itemsByUid.get(evNode.data.uid),
+                  date = me.dateAt(data);
+
+            if (item && item.mayChange && item.key && date) {
+                me.drag = {type: 'moveDay', item, last: date, moved: false}
+            }
+            return
+        }
+
+        if (dayNode) {
+            const date   = parseDate(dayNode.data.date),
+                  dd     = calendarData.prefs.defaultDuration,
+                  allDay = withoutTime || !dd,
+                  start  = new Date(date);
+
+            allDay ? start.setHours(0, 0, 0, 0) : start.setHours(new Date().getHours(), 0, 0, 0);
+
+            const item = CalendarView.newItem(start, {showWithoutTime: allDay});
+
+            me.currentCreation = item;
+            me.drag = {type: 'createDay', item, anchor: date, withoutTime, moved: false};
+            me.addCls('go-cal-dragging');
+            me.populate()
+        }
+    }
+
+    /**
+     * Day under the mouse: a day cell, or the column of the events layer of a week row
+     * @param {Object} data
+     * @returns {Date|null}
+     */
+    dateAt(data) {
+        const day = CalendarView.nodeWith(data, 'date');
+
+        if (day && !CalendarView.nodeWith(data, 'uid')) {
+            return parseDate(day.data.date)
+        }
+
+        const layer = CalendarView.nodeWith(data, 'week');
+
+        if (layer?.rect) {
+            const days  = Number(layer.data.days) || 7,
+                  index = Math.max(0, Math.min(days - 1, Math.floor((data.clientX - layer.rect.x) / layer.rect.width * days)));
+
+            return addDays(parseDate(layer.data.week), index)
+        }
+
+        return null
+    }
+
+    onDragMove(data) {
+        let me   = this,
+            drag = me.drag;
+
+        if (!drag) {
+            return
+        }
+
+        if (data.buttons === 0) {
+            // released outside the browser window
+            me.onDragUp(data);
+            return
+        }
+
+        me.dragMove(data)
+    }
+
+    /**
+     * @param {Object} data mousemove
+     * @protected
+     */
+    dragMove(data) {
+        let me   = this,
+            drag = me.drag,
+            date = me.dateAt(data);
+
+        if (!date || (drag.last && sameDay(drag.last, date))) {
+            return
+        }
+
+        drag.last  = date;
+        drag.moved = true;
+        me.addCls('go-cal-dragging');
+
+        const item = drag.item;
+
+        if (drag.type === 'moveDay') {
+            const start = new Date(item.start);
+            start.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+
+            item.end   = addDuration(start, diffDuration(item.start, item.end));
+            item.start = start
+        } else {
+            const [from, till] = drag.anchor <= date ? [drag.anchor, date] : [date, drag.anchor],
+                  allDay       = !sameDay(from, till) || drag.withoutTime || !calendarData.prefs.defaultDuration;
+
+            item.data.showWithoutTime = allDay;
+
+            if (allDay) {
+                item.start = startOfDay(from);
+                item.end   = addDays(startOfDay(till), 1)
+            } else {
+                const start = new Date(from);
+                start.setHours(item.start.getHours(), item.start.getMinutes(), 0, 0);
+                item.start = start;
+                item.end   = addDuration(start, item.data.duration || 'PT1H')
+            }
+        }
+
+        me.render()
+    }
+
+    onDragUp() {
+        let me   = this,
+            drag = me.drag;
+
+        if (!drag) {
+            return
+        }
+
+        me.drag = null;
+        me.removeCls('go-cal-dragging');
+        me.removeCls('resizing');
+
+        if (drag.moved || drag.type.startsWith('create')) {
+            drag.item.save(() => {
+                // cancelled: back to the stored times
+                me.currentCreation = null;
+                me.refresh()
+            })
+        }
+    }
+
+    onDragLeave(data) {
+        // capture: only leaving the view itself ends the drag
+        data.target?.id === this.id && this.drag && this.onDragUp(data)
     }
 
     showMenu(items, target) {

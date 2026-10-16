@@ -951,7 +951,7 @@ class CalendarMain extends MainThreeColumnPanel {
 
         me.viewStart = start;
         me.viewEnd   = end || null;
-        me.getReference('picker').setValue(start, end || null);
+        me.getReference('picker').setValue(start, end || (['week', 'split'].includes(me.timeSpan) ? addDays(start, (me.spanAmount || 7) - 1) : null));
         me.fire('periodChange', {start, end: end || start});
 
         me.view.goto(start, me.spanAmount)

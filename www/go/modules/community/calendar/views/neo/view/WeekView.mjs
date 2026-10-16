@@ -1,6 +1,6 @@
 import {translator} from '../../../../../../../views/neo/src/Translate.mjs';
 import calendarData from '../data.mjs';
-import {addDays, dayNumber, diffDays, format, formatTime, minuteOfDay, startOfDay, weekOfYear, ymd} from '../util/date.mjs';
+import {addDays, addMinutes, dayNumber, diffDays, format, formatTime, minuteOfDay, parseDate, sameDay, startOfDay, weekOfYear, ymd, ymdhis} from '../util/date.mjs';
 import CalendarView from './CalendarView.mjs';
 
 const t = translator('community', 'calendar');
@@ -153,22 +153,186 @@ class WeekView extends CalendarView {
             ]}
         }
 
+        const oldScroller = me.vdom.cn?.find(node => node?.id === me.scrollerId);
+
         me.vdom.cn = [
             {tag: 'ul', cn: [{tag: 'li', cls: showNow ? ['current'] : [], 'data-date': ymd(me.day), 'data-action': 'weekClick', text: t('Wk') + ' ' + weekOfYear(me.day)}, ...heads]},
             {tag: 'ul', style: {height: (rows * me.rowHeight + .6) + 'rem'}, cn: [
                 {tag: 'li', text: t('All day')},
-                {tag: 'li', cls: ['all-days'], cn: lines},
+                {tag: 'li', cls: ['all-days'], 'data-week': ymd(me.day), 'data-days': String(me.days), cn: lines},
                 ...fullDays
             ]},
             {
                 tag  : 'dl',
                 id   : me.scrollerId,
+                // neo keeps the synced scroll position on the vdom node: a new node without it scrolls to the top
+                scrollTop : oldScroller?.scrollTop,
+                scrollLeft: oldScroller?.scrollLeft,
                 style: {'--hour-height': gridSize + 'vh'},
                 cn   : [{tag: 'dt', cn: [nowBar, {tag: 'em'}, ...hours].filter(Boolean)}, ...cols]
             }
         ];
 
         me.update()
+    }
+
+    /**
+     * Right click in a day column: that time; in the all day row: the day
+     */
+    contextDate(data) {
+        const column = CalendarView.nodeWith(data, 'day');
+
+        if (column?.rect) {
+            const start = parseDate(column.data.day);
+            start.setHours(0, this.minuteAt(data, column), 0, 0);
+            return ymdhis(start)
+        }
+
+        return super.contextDate(data)
+    }
+
+    get snap() {
+        return Number(calendarData.prefs.weekViewGridSnap) || 15
+    }
+
+    /**
+     * Minute of the day under the mouse in a day column, snapped
+     * @param {Object} data mouse event
+     * @param {Object} column path node of the dd (with rect)
+     * @returns {Number}
+     */
+    minuteAt(data, column) {
+        const snap = this.snap,
+              m    = (data.clientY - column.rect.y) / column.rect.height * 1440;
+
+        return Math.max(0, Math.min(1440, Math.round(m / snap) * snap))
+    }
+
+    /**
+     * In a day column: move or resize a timed item, or draw a new one (GOUI makeDraggable());
+     * elsewhere (all day row) the day drag of CalendarView
+     */
+    dragDown(data) {
+        let me     = this,
+            column = CalendarView.nodeWith(data, 'day');
+
+        if (!column?.rect) {
+            super.dragDown(data, true);
+            return
+        }
+
+        const evNode = CalendarView.nodeWith(data, 'uid'),
+              day    = parseDate(column.data.day),
+              minute = me.minuteAt(data, column);
+
+        if (evNode) {
+            const item = me.itemsByUid.get(evNode.data.uid);
+
+            if (!item || !item.mayChange || !item.key) {
+                return
+            }
+
+            const offset = data.clientY - evNode.rect.y,
+                  startM = sameDay(item.start, day) ? minuteOfDay(item.start) : 0,
+                  endM   = sameDay(item.end, day) ? minuteOfDay(item.end) : 1440;
+
+            let type = 'move', anchor = 0;
+
+            // 4 px handles on top and bottom resize
+            if (offset < 4) {
+                type = 'resize';
+                anchor = endM
+            } else if (offset > evNode.rect.height - 4) {
+                type = 'resize';
+                anchor = startM
+            }
+
+            type === 'resize' && me.addCls('resizing');
+
+            me.drag = {type, item, day, anchor, grab: minute - startM, last: null, moved: false};
+            return
+        }
+
+        // a new event from here, resized by dragging
+        const start = new Date(day);
+        start.setHours(0, minute, 0, 0);
+
+        const item = CalendarView.newItem(start, {
+            showWithoutTime: false,
+            start          : ymdhis(start),
+            duration       : calendarData.prefs.defaultDuration || 'PT1H'
+        });
+
+        item.end = addMinutes(start, 60);
+
+        me.currentCreation = item;
+        me.dayItems.unshift(item);
+        me.drag = {type: 'resize', item, day, anchor: minute, last: null, moved: true, create: true};
+        me.addCls('resizing');
+        me.render()
+    }
+
+    dragMove(data) {
+        let me     = this,
+            drag   = me.drag,
+            column = CalendarView.nodeWith(data, 'day');
+
+        if (!['move', 'resize'].includes(drag.type)) {
+            super.dragMove(data);
+            return
+        }
+
+        if (!column?.rect) {
+            return
+        }
+
+        const item   = drag.item,
+              day    = parseDate(column.data.day),
+              minute = me.minuteAt(data, column),
+              key    = column.data.day + ':' + minute;
+
+        if (key === drag.last) {
+            return
+        }
+
+        drag.last = key;
+
+        // another day: the item moves along
+        const shift = diffDays(drag.day, day);
+
+        if (shift) {
+            item.start = addDays(item.start, shift);
+            item.end   = addDays(item.end, shift);
+            drag.day   = day;
+            drag.moved = true
+        }
+
+        let from, till;
+
+        if (drag.type === 'move') {
+            const length = (item.end - item.start) / 60000;
+            from = minute - drag.grab;
+            till = from + length
+        } else {
+            [from, till] = minute > drag.anchor ? [drag.anchor, minute] : [minute, drag.anchor]
+        }
+
+        if (from === till) {
+            return
+        }
+
+        const start = new Date(day);
+        start.setHours(0, from, 0, 0);
+
+        const end = new Date(day);
+        end.setHours(0, till, 0, 0);
+
+        if (start.getTime() !== item.start.getTime() || end.getTime() !== item.end.getTime()) {
+            item.start = start;
+            item.end   = end;
+            drag.moved = true;
+            me.render()
+        }
     }
 
     /**

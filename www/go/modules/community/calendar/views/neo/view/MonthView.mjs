@@ -176,7 +176,7 @@ class MonthView extends CalendarView {
             })
         }
 
-        return {tag: 'ol', cn: [{tag: 'li', cls: ['events'], cn: lines}, ...days]}
+        return {tag: 'ol', cn: [{tag: 'li', cls: ['events'], 'data-week': ymd(start), 'data-days': String(me.wdays), cn: lines}, ...days]}
     }
 }
 
