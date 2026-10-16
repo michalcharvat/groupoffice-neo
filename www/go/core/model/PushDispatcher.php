@@ -33,7 +33,7 @@ class PushDispatcher
 	/**
 	 * Interval in seconds between every check for changes to push
 	 */
-	private int $CHECK_INTERVAL = 20;
+	private int $CHECK_INTERVAL;
 
 
 	/**
@@ -52,14 +52,27 @@ class PushDispatcher
 
 	public function __construct(array $entities = [])
 	{
+		// the extension may be loaded but disabled (apc.enabled=0, CLI without apc.enable_cli).
 		// 'sseUseApcu' => false: always check the database, e.g. when several app
 		// servers share one database and their APCu counters don't see each other's writes
-		if(function_exists("apcu_fetch") && (go()->getConfig()['sseUseApcu'] ?? true)) {
+		$useApcu = go()->getConfig()['sseUseApcu'] ?? true;
+		if($useApcu && function_exists('apcu_enabled') && apcu_enabled()) {
 			$this->apcuEnabled = true;
-			$this->CHECK_INTERVAL = 1;
-		} else if(isset(go()->getConfig()['sseUseApcu'])) {
-			$this->CHECK_INTERVAL = 2;
+			// share the modseqs between all SSE connections
+			EntityType::$sharedModSeqCache = true;
 		}
+		if (!empty(go()->getConfig()['sseCheckInterval']) && (int)go()->getConfig()['sseCheckInterval'] > 0) {
+			$this->CHECK_INTERVAL = (int)go()->getConfig()['sseCheckInterval'];
+		} else {
+			// APCu switched off on purpose: the database check replaces it, so check often
+			$this->CHECK_INTERVAL = $this->apcuEnabled ? 1 : (!$useApcu ? 2 : 20);
+		}
+
+		go()->getDbConnection()->debug = true;
+
+
+		// spread the checks of all connections
+		$this->recheckDelay = self::MIN_RECHECK_INTERVAL + mt_rand(0, 1000) / 1000;
 
 		// disable default disconnect checks
 		ignore_user_abort(true);
@@ -70,7 +83,7 @@ class PushDispatcher
 		// this lead to lots of User/changes calls per second while we almost never need the user entity to be up to date.
 		// only your own user when checking your account settings.
 		$this->entities = array_filter($entities, function($name) {
-			return $name != "User" && $name != "Search" && $name != 'LogEntry';
+			return $name != "User" && $name != "Search" && $name != 'LogEntry' && EntityType::existsByName($name);
 		});
 
 	}
@@ -92,6 +105,25 @@ class PushDispatcher
 		flush();
 	}
 
+	/**
+	 * Minimum time in seconds between two state checks of the same entity type per connection. A random jitter is added
+	 * per connection. Bulk operations (imports, sync) increment the state counter many times per second. Without
+	 * debouncing every connection would recompute its state on each increment.
+	 */
+	const MIN_RECHECK_INTERVAL = 2;
+
+	/**
+	 * Time of the last state check per entity name
+	 *
+	 * @var float[]
+	 */
+	private array $lastCheck = [];
+
+	/**
+	 * Debounce time for this connection including jitter
+	 */
+	private float $recheckDelay;
+
 	private function shouldCheckDB(string $name): bool
 	{
 		if(!$this->apcuEnabled) {
@@ -100,16 +132,26 @@ class PushDispatcher
 
 		$current = $this->getStateCounter($name);
 
-		$check =  $current !== $this->counters[$name];
+		if($current === $this->counters[$name]) {
+			return false;
+		}
+
+		// Leading edge: the first change is handled immediately. Changes following too soon are postponed. The counter
+		// is not stored when postponing so the check is done on a later tick, which also covers the trailing edge.
+		$now = microtime(true);
+		if($now - ($this->lastCheck[$name] ?? 0) < $this->recheckDelay) {
+			return false;
+		}
 
 		$this->counters[$name] = $current;
+		$this->lastCheck[$name] = $now;
 
-		return $check;
+		return true;
 	}
 
 	private function checkChanges(): array
 	{
-		$closeDb = false;
+		$queriesBefore = EntityType::$modSeqQueries;
 		$state = [];
 		foreach ($this->entities as $name) {
 
@@ -120,16 +162,16 @@ class PushDispatcher
 			}
 
 			if($this->shouldCheckDB($name)) {
-
-				go()->debug('PushDispatcher::checkChanges() on DB for '. $name);
+//				go()->debug('PushDispatcher::checkChanges() on DB for '. $name);
 				/** @var Entity $cls */
 				$entityType->clearCache();
 				$cls = $entityType->getClassName();
 				$state[$name] = $cls::getState();
-
-				$closeDb = true;
 			}
 		}
+
+		// With the shared modseq cache the DB is only used on a cache miss. Don't reconnect when it wasn't.
+		$closeDb = EntityType::$modSeqQueries !== $queriesBefore;
 
 		if($closeDb) {
 			//disconnect and free up memory
@@ -145,8 +187,8 @@ class PushDispatcher
 		return $state;
 	}
 
-	private function getStateCounter(string $name) : int {
-		$cnt =  apcu_fetch(go()->getConfig()['db_name'] . '_state_sse_'. $name);
+	public static function getStateCounter(string $name) : int {
+		$cnt = apcu_fetch(go()->getConfig()['db_name'] . '_state_sse_'. $name);
 		if($cnt === false) {
 			return self::incStateCounter($name);
 		}

@@ -12,7 +12,6 @@ use go\core\validate\ErrorCode;
 
 class OtpAuthenticator extends SecondaryAuthenticator
 {
-
 	public function authenticate(Token $token, array $data): bool
 	{
 

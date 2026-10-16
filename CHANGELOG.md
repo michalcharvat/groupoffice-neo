@@ -1,4 +1,105 @@
+- Core: Update DE translations
+- Core: Optimized SSE Push with more apcu caching
+- Core: Debounce pushing more than once every 2seconds per entity
+- Core: Optimized startup request by closing session writing so they won't wait on eachother
+- ActiveSync: Optimized Z-push push connection with apcu caching
+- Calendar: On initial load wrong categories were displayed
+- Calendar: Calendar is clearable on category edit dialog now
+- Calendar: global category fix
+- Calendar: Month, year and list view also merge events that appear in multiple calendars in the selection
+- Calendar: Fixed "Item not found" error when importing a recurring event via an e-mail
+- Projects3: Fixed severak translation issues
+
+15-10-2026: 26.0.54
+- Core: update cleanup script
+- Core: App passwords use same default domain logic as normal login and last used date and IP properly sync to client
+- ldapauthenticator: Sync imapPassword and smtpPassword from ldap mapping
+- Calendar: Categories of other users where shown in calendar
+- Calendar: Make calendar / category / other selection consistent with other modules
+- Support: add column defaultAddressbookId to settings table as this field was not saved
+- Core: Updated DE translations. Danke, Daniel!
+- Calendar: cosmetic fix in quickHTML hover text for an event
+- Calendar: Improved navigating back from views to calendars with "Close views" button.
+- Calendar: Loaded all event shortly
+- Calendar: Don't capitalize first letter
+- Calendar: category list in edit dialog was not showing all categories
+
+12-10-2026: 26.0.53
+- Calendar: Navigating was broken
+
+12-10-2026: 26.0.52
+- Core: Give users a better error message
+- Calendar: Correct invalid createdBy and modifiedBy in calendar
+- Calendar: optimized performance with new index
+- Core: App passwords
+- projects3: hide finance when no data is there
+- Calendar: Category list didn't update when changing the visible calendars
+- Email: New setting to enable desktop notifications for new e-mail
+- Calendar: Correct resource admin and update resource admin principals on change
+- Calendar: Allow resource management on resources you have manage permission for even without 'mayChangeResources'
+
+05-10-2026: 26.0.51
+- Core: Updated Italian translations. Grazie Mille, Luca P!
+- Calendar: Fixed all day event creation from day or week view where end date was a day before start date.
+- Caldav: When client deletes a calendar or tasklist, it's not deleted anymore but excluded from sync
+- Calendar: Show time when pasting event, fix wrong end date when pasting all day event in week or day view
+- Projects3: NaN bug in resource budget
+- Projects3: Add first comment when creating project
+- Projects3: Migrate projects2 description to first comment
+- Support: set configured email account for support list as outgoing account as well.
+- LDAPAuthenticator: Only try to save OTP data when it is not already available.
+- Core: SSE polling interval is configurable
+- oauth2: workaround MS bug where it returns 404 if http2 is used with alpn Use PHP's stream handler instead of libcurl. 
+  Microsoft returns an empty 404 for some libcurl/OpenSSL builds (curl 8.14 + OpenSSL 3.5) while wget and PHP streams 
+  work fine. This also avoids the old HTTP/2 + ALPN 404 bug that curl's CURLOPT_SSL_ENABLE_ALPN workaround targeted, 
+  which newer Guzzle versions no longer allow in the "curl" option.
+- Files / Finance: PDF preview no longer working because of pdf.js lib update
+- Core: User modseq was not recorded correctly causing resyncs
+- Core: GOUI DataSourceStores avoid unneeded reloads. When the change originates from the bound component, it won't reload but patches the records client side.
+- Calendar: Users without 'mayChangeResources' permissions, may change resources where they have manage permissions and are admin of the group.
+- Calendar: Paste at original time option
+
+05-10-2026: 26.0.50
+- Calender: fix client side error when opening calendar view
+- Calendar: display 'unknown' calender name in event hover when not subscribed to said calendar
+- Core: Added Login throttling to improve securitygit 
+- Catalog: non-US centric money icon for cost fields
+- Finance: When duplicating choose type
+- Finance: Margin rounding issue
+- Finance: Don't link original when duplicating
+- Finance: Fixed error where status couldn't be changed
+- Calendar: view jumped to zoom .8 on full hd screens
+- Core / Calendar: User properties were not fetched for the alternative user when Entity::findFor() was used. This 
+  caused that all users subscribed to a calendar got the default notifications of the user creating the event
+- Calendar: Add categories to tooltip
+- Calendar: Show calendar description when you hover it
+- Calendar: Fixed printing months
+- ldapauthenticator: Retry when error 1020 record has been changed is thrown by mysql during ldap sync
+- WebDAV: throw exception when not having proper delete permissions
+- Calendar: strip out MAILTO: in replyTo mail
+- Calendar: categories can be in a recurrence override too.
+- Calendar: Delete resource group fixed
+
+28-09-2026: 26.0.49
+- Oauth2Client: Don't overwrite IMAP username with the email that authenticates becasue it might be a shared mailbox
+- Catalog: Allow users with manage permissions on the catalog module to alter the catalog.
+- Core: escape background progress param names
+- Core: Escape table name and alias in Connection::lock()
+- Core: more robust path traversal check
+- Otp: rate limiting on otp authentication
+- Core: Fixed: getModified() discards the customFields entry it just built #1574
+- Files: do not create global search for trashed files or folders
+- Comments: make sure text doesn't run through status icon
+- Core: apcu didn't keep values in memory on CLI. This speeds up CLI operations like LDAP sync.
+- Ldapauthenticator: OTP provisioning from LDAP was broken
+- Finance: Fixed "Add from catalog" causeing UI to freeze
+
+21-09-2026: 26.0.48
 - Core: Fixed link loading in link browser
+- Newsletters: fix template upload
+- LDAP Auth: prevent error message when certain mappings are not set
+- Core: updated DE translations, thanks Jörg
+- Core: display foreground and background colors in custom fieldsets details if set
 
 14-09-2026: 26.0.47
 - pdfeditor: rename Upload to upload so class finder doesn't try to load it

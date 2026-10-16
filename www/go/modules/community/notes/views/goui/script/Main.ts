@@ -139,7 +139,7 @@ export class Main extends MainThreeColumnPanel {
 				cls: "scroll",
 				width: 300,
 			},
-			tbar({},
+			tbar({cls: "table-aligned compact"},
 				selectallcheckboxfield({list: this.noteBookGrid}),
 
 				h4(t("Notebooks")),
@@ -161,7 +161,8 @@ export class Main extends MainThreeColumnPanel {
 						dlg.show();
 					}
 				}),
-				this.showCenterButton()
+				this.hideWestButton(),
+				this.closeWestButton()
 			),
 			comp({
 					flex: 1
@@ -215,9 +216,10 @@ export class Main extends MainThreeColumnPanel {
 				cls: "vbox bg-lowest"
 			},
 			this.noteGridToolbar = tbar({
-					cls: "bg-mid border-bottom"
+					cls: "bg-mid border-bottom table-aligned"
 				},
 				this.showWestButton(),
+				this.openWestButton(),
 
 				this.tblTitle = tabletitle({
 					store: this.noteGrid.store,
@@ -326,7 +328,7 @@ export class Main extends MainThreeColumnPanel {
 
 	protected createEast() {
 		const detail = new NoteDetail();
-		detail.toolbar.items.insert(0, this.showCenterButton());
+		detail.toolbar.items.insert(0, this.hideEastButton(), this.closeEastButton());
 		return detail;
 	}
 

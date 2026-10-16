@@ -10,6 +10,7 @@ use go\core\App;
 use go\core\auth\Method;
 use go\core\data\ArrayableInterface;
 use go\core\db\DbException;
+use go\core\db\Expression;
 use go\core\db\Query;
 use go\core\ErrorHandler;
 use go\core\fs\Blob;
@@ -25,6 +26,7 @@ use GO\Files\Model\Folder;
 use InvalidArgumentException;
 use PDO;
 use PDOException;
+use Throwable;
 
 /**
  * The EntityType class
@@ -54,6 +56,24 @@ class EntityType implements ArrayableInterface {
 	protected ?int $highestModSeq;
 
 	private ?int $highestUserModSeq;
+
+	/**
+	 * When true the highest modseqs are cached in APCu and shared between requests. Only used by the SSE
+	 * {@see PushDispatcher} so that it doesn't need DB queries for each connection on each change.
+	 */
+	public static bool $sharedModSeqCache = false;
+
+	/**
+	 * Number of modseq DB queries done. Used by the PushDispatcher to find out if the DB was used.
+	 */
+	public static int $modSeqQueries = 0;
+
+	/**
+	 * Keys of the user modseq cache entries modified in this request. They are invalidated after the commit in {@see push()}
+	 *
+	 * @var string[]
+	 */
+	private static array $dirtyUserModSeqs = [];
 
 	private bool $enabled;
 
@@ -192,6 +212,19 @@ class EntityType implements ArrayableInterface {
 			return $this->highestModSeq;
 		}
 
+		// The state counter is incremented after each commit of changes to this entity type. By including it in the
+		// key the cached value is never older than the counter.
+		$cacheKey = null;
+		if(self::$sharedModSeqCache) {
+			$cacheKey = go()->getConfig()['db_name'] . '_sse_modseq_' . $this->id . '_' . PushDispatcher::getStateCounter($this->getName());
+			$cached = apcu_fetch($cacheKey, $success);
+			if($success) {
+				return $this->highestModSeq = $cached;
+			}
+		}
+
+		self::$modSeqQueries++;
+
 		$stmt = go()->getDbConnection()->getCachedStatment("highestModSeq");
 
 		// create reusable statement
@@ -210,6 +243,10 @@ class EntityType implements ArrayableInterface {
 		$this->highestModSeq = $stmt->fetch();
 
 		$stmt->closeCursor();
+
+		if($cacheKey !== null) {
+			apcu_store($cacheKey, $this->highestModSeq ?? 0, 3600);
+		}
 
 		return $this->highestModSeq ?? 0;
 	}
@@ -379,6 +416,18 @@ class EntityType implements ArrayableInterface {
 			throw new Exception("Entity type with name $name not found");
 		}
 		return $c['models'][$c['name'][$name]];
+	}
+
+	/**
+	 * Check if entity exists
+	 *
+	 * @param string $name
+	 * @return bool
+	 */
+	public static function existsByName(string $name) : bool {
+		$c = self::getCache();
+
+		return isset($c['name'][$name]) && isset($c['models'][$c['name'][$name]]);
 	}
 
 	/**
@@ -555,10 +604,56 @@ class EntityType implements ArrayableInterface {
 
 	private static array $changes = [];
 
+	private static ?array $changesSnapshot = null;
+
 
 	public function undoChanges() : void {
 		$id = $this->getId();
 		self::$changes[$id] = [];
+	}
+
+	/**
+	 * Remembers the currently queued changes so they can be restored with
+	 * {@see rollbackChanges()} if the database transaction that is about to
+	 * start gets rolled back.
+	 *
+	 * Only one snapshot is kept because {@see \go\core\db\Connection} only
+	 * takes it when a top level (non-nested) transaction starts. Nested
+	 * transactions don't have real savepoints so they can't roll back
+	 * independently anyway.
+	 *
+	 * @return void
+	 */
+	public static function snapshotChanges() : void {
+		self::$changesSnapshot = self::$changes;
+	}
+
+	/**
+	 * Discards changes queued since the last {@see snapshotChanges()} call.
+	 *
+	 * Called when a top level database transaction is rolled back. At that
+	 * point nothing that happened during that transaction is persisted, so
+	 * any queued JMAP change from it (including ones queued by nested
+	 * entities that appeared to "commit" at an inner transaction level) is
+	 * no longer valid and must not be written to core_change.
+	 *
+	 * @return void
+	 */
+	public static function rollbackChanges() : void {
+		if(self::$changesSnapshot !== null) {
+			self::$changes = self::$changesSnapshot;
+			self::$changesSnapshot = null;
+		}
+	}
+
+	/**
+	 * Discards the snapshot taken by {@see snapshotChanges()} without
+	 * restoring it. Called when a top level transaction commits successfully.
+	 *
+	 * @return void
+	 */
+	public static function discardChangesSnapshot() : void {
+		self::$changesSnapshot = null;
 	}
 
 
@@ -578,6 +673,8 @@ class EntityType implements ArrayableInterface {
 	public static function push(int $minChanges = 1) {
 
 		if(count(self::$changes) < $minChanges) {
+			// the user modseq was written and committed already
+			self::invalidateUserModSeqs();
 			return;
 		}
 
@@ -592,6 +689,8 @@ class EntityType implements ArrayableInterface {
 		go()->getDbConnection()->beginTransaction();
 		$changedEntities = self::pushRecords();
 		go()->getDbConnection()->commit();
+
+		self::invalidateUserModSeqs();
 
 		foreach($changedEntities as $changedEntity) {
 			PushDispatcher::incStateCounter($changedEntity);
@@ -611,34 +710,45 @@ class EntityType implements ArrayableInterface {
 
 		$changedEntities = [];
 		$now = new DateTime();
-		$allChanges = [];
+
 		foreach(self::$changes as $entityTypeId => $changes) {
 			if(empty($changes)) {
 				continue;
 			}
-			$type = self::findById($entityTypeId);
 
-			$changedEntities[] =$type->getName();
+			// Insert per entity type, and keep everything for this type -
+			// including nextModSeq() - inside the try, so a bad row (eg. an
+			// aclId that no longer exists) for one entity type can't abort
+			// the loop and discard the sync log of unrelated entity types
+			// that are batched in the same push. This assumes a failed insert
+			// (eg. a FK violation) doesn't invalidate the whole transaction,
+			// which holds for InnoDB/MariaDB but not for a deadlock/lock
+			// timeout, which aborts the whole transaction server side.
+			try {
+				$type = self::findById($entityTypeId);
 
-			$modSeq = $type->nextModSeq();
+				$modSeq = $type->nextModSeq();
 
-			$allChanges = array_merge($allChanges, array_map(function($change) use($modSeq, $now, $entityTypeId) {
-				$change['createdAt'] = $now;
-				$change['modSeq'] = $modSeq;
-				$change['entityTypeId'] = $entityTypeId;
-				return $change;
-			}, $changes));
+				$typeChanges = array_values(array_map(function($change) use($modSeq, $now, $entityTypeId) {
+					$change['createdAt'] = $now;
+					$change['modSeq'] = $modSeq;
+					$change['entityTypeId'] = $entityTypeId;
+					return $change;
+				}, $changes));
+
+				go()->debug("Pushing " . count($typeChanges). " JMAP sync changes for " . $type->getName());
+
+				foreach(self::splitRecords($typeChanges) as $chunk) {
+					$stmt = go()->getDbConnection()->insert('core_change', $chunk);
+					$stmt->execute();
+				}
+				$changedEntities[] = $type->getName();
+			} catch(Throwable $e) {
+				ErrorHandler::logException($e);
+				go()->warn("Failed to push JMAP sync changes for entity type " . $entityTypeId . ": " . $e->getMessage());
+			}
 
 			//Notify SSE that there's a change
-		}
-
-		$allChanges = array_values($allChanges);
-
-		go()->debug("Pushing " . count($allChanges). " JMAP sync changes");
-
-		foreach(self::splitRecords($allChanges) as $chunk) {
-			$stmt = go()->getDbConnection()->insert('core_change', $chunk);
-			$stmt->execute();
 		}
 
 		self::$changes = [];
@@ -738,6 +848,19 @@ class EntityType implements ArrayableInterface {
 		$stmt->execute();
 	}
 
+	private function userModSeqCacheKey(): string
+	{
+		return go()->getConfig()['db_name'] . '_sse_usermodseq_' . $this->id . '_' . go()->getUserId();
+	}
+
+	private static function invalidateUserModSeqs(): void
+	{
+		foreach(self::$dirtyUserModSeqs as $key) {
+			apcu_inc($key . '_g');
+		}
+		self::$dirtyUserModSeqs = [];
+	}
+
 	/**
 	 * Get the modSeq for the user specific properties.
 	 *
@@ -746,6 +869,21 @@ class EntityType implements ArrayableInterface {
 	 */
 	public function getHighestUserModSeq() : int {
 		if(!isset($this->highestUserModSeq)) {
+
+			// Cached value is only valid when it was stored with the current generation. The generation is incremented
+			// when the user modseq is changed (see nextUserModSeq() and push()).
+			$valueKey = null;
+			if(self::$sharedModSeqCache) {
+				$base = $this->userModSeqCacheKey();
+				$valueKey = $base . '_v';
+				$generation = (int) apcu_fetch($base . '_g');
+				$cached = apcu_fetch($valueKey, $success);
+				if($success && $cached[0] === $generation) {
+					return $this->highestUserModSeq = $cached[1];
+				}
+			}
+
+			self::$modSeqQueries++;
 
 			// create reusable statement
 			$stmt = go()->getDbConnection()->getCachedStatment("highestUserModSeqStmt");
@@ -764,7 +902,13 @@ class EntityType implements ArrayableInterface {
 			$stmt->bindValue(':userId', go()->getUserId());
 			$stmt->execute();
 
-			$this->highestUserModSeq = $stmt->fetch() ?? 0;
+			go()->debug("Modseqquery for ". go()->getUserId());
+
+			$this->highestUserModSeq = $stmt->fetch() ?: 0;
+
+			if($valueKey !== null) {
+				apcu_store($valueKey, [$generation, $this->highestUserModSeq], 3600);
+			}
 		}
 		return $this->highestUserModSeq;
 	}
@@ -802,6 +946,8 @@ class EntityType implements ArrayableInterface {
 			->query("SELECT LAST_INSERT_ID()")
 			->fetch(PDO::FETCH_COLUMN, 0);
 
+		go()->debug($this->name . " New modseq increased to $modSeq");
+
 		$this->highestModSeq = $modSeq;
 
 		return $modSeq;
@@ -815,15 +961,18 @@ class EntityType implements ArrayableInterface {
 	 */
 	public function nextUserModSeq() : int {
 
-		$stmt = go()->getDbConnection()
-			->update(
-				"core_change_user_modseq",
-				'highestModSeq = LAST_INSERT_ID(highestModSeq  +  1)',
-				Query::normalize([
-					"entityTypeId" => $this->id,
-					"userId" => go()->getUserId()
-				])->tableAlias('entity')
-			);
+		// Upsert: the row may not exist yet. LAST_INSERT_ID(expr) must be evaluated on both paths,
+		// otherwise LAST_INSERT_ID() returns a stale value from earlier on the connection.
+		$stmt = go()->getDbConnection()->insert(
+			"core_change_user_modseq",
+			[
+				"userId" => go()->getUserId(),
+				"entityTypeId" => $this->id,
+				"highestModSeq" => new Expression("LAST_INSERT_ID(1)")
+			],
+			[],
+			["highestModSeq" => new Expression("LAST_INSERT_ID(highestModSeq + 1)")]
+		);
 
 		// on deadlocks retry 10 times
 		for($i = 10; $i > -1; $i--) {
@@ -843,7 +992,16 @@ class EntityType implements ArrayableInterface {
 			->query("SELECT LAST_INSERT_ID()")
 			->fetch(PDO::FETCH_COLUMN, 0);
 
+		go()->debug($this->name . " New user modseq increased to $modSeq");
+
 		$this->highestUserModSeq = $modSeq;
+
+		if(function_exists('apcu_inc') && apcu_enabled()) {
+			// invalidate now and again after the commit in push()
+			$key = $this->userModSeqCacheKey();
+			self::$dirtyUserModSeqs[$key] = $key;
+			apcu_inc($key . '_g');
+		}
 
 		return $modSeq;
 	}
