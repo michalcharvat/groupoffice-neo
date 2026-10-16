@@ -1,0 +1,24 @@
+// address books with groups: the GOUI menucolumn button on each row (like GO.list.CheckList)
+.neo-theme-go .go-addressbook-tree {
+    .go-row-menu {
+        border-radius: 50%;
+        color        : var(--fg-text);
+        cursor       : pointer;
+        flex         : none;
+        font-size    : 2rem;
+        height       : 3.2rem;
+        line-height  : 3.2rem;
+        text-align   : center;
+        visibility   : hidden;
+        width        : 3.2rem;
+
+        &:hover {
+            background-color: var(--bg-hover);
+        }
+    }
+
+    .neo-list-item:hover .go-row-menu,
+    .neo-list-item.neo-selected .go-row-menu {
+        visibility: visible;
+    }
+}
