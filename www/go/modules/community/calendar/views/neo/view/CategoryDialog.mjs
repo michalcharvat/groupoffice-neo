@@ -6,7 +6,7 @@ import TextList      from '../../../../../../../views/neo/src/list/TextList.mjs'
 import {translator}  from '../../../../../../../views/neo/src/Translate.mjs';
 import FormWindow    from '../../../../../../../views/neo/src/view/FormWindow.mjs';
 import calendarData  from '../data.mjs';
-import ColorField    from './field/ColorField.mjs';
+import ColorField    from '../../../../../../../views/neo/src/form/field/ColorField.mjs';
 
 const t = translator('community', 'calendar');
 
@@ -33,6 +33,7 @@ class CategoryDialog extends FormWindow {
             flex         : 'none'
         }, {
             module   : ColorField,
+            palette  : true,
             name     : 'color',
             labelText: t('Color'),
             flex     : 'none'

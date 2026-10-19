@@ -80,6 +80,7 @@ class TaskDialog extends FormWindow {
                 flex         : 4
             }, {
                 module   : ColorField,
+                palette  : true,
                 name     : 'color',
                 labelText: t('Color'),
                 flex     : 1

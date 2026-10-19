@@ -5,7 +5,7 @@ import TextList      from '../../../../../../../views/neo/src/list/TextList.mjs'
 import {translator}  from '../../../../../../../views/neo/src/Translate.mjs';
 import FormWindow    from '../../../../../../../views/neo/src/view/FormWindow.mjs';
 import calendarData  from '../data.mjs';
-import ColorField    from './field/ColorField.mjs';
+import ColorField    from '../../../../../../../views/neo/src/form/field/ColorField.mjs';
 import {addShareCard, CALENDAR_LEVELS} from './shareCard.mjs';
 
 const t = translator('community', 'calendar');
@@ -41,7 +41,7 @@ class ResourceDialog extends FormWindow {
             store        : {keyProperty: 'id', data: calendarData.resourceGroups.map(g => ({id: g.id, name: g.name}))}
         },
         {module: TextField, name: 'name', labelText: t('Name'), labelPosition: 'inline', required: true, flex: 'none'},
-        {module: ColorField, name: 'color', labelText: t('Color'), flex: 'none'},
+        {module: ColorField, name: 'color', labelText: t('Color'), palette: true, flex: 'none'},
         {module: TextArea, name: 'description', labelText: t('Description'), labelPosition: 'inline', flex: 'none'}]
     }
 

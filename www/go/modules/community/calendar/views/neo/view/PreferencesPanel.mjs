@@ -3,7 +3,7 @@ import BoolCheckBox from '../../../../../../../views/neo/src/form/field/BoolChec
 import JmapComboBox from '../../../../../../../views/neo/src/form/field/JmapComboBox.mjs';
 import {fieldset}   from '../../../../../../../views/neo/src/form/fieldset.mjs';
 import {translator} from '../../../../../../../views/neo/src/Translate.mjs';
-import SelectField  from './field/SelectField.mjs';
+import SelectField  from '../../../../../../../views/neo/src/form/field/SelectField.mjs';
 
 const t = translator('community', 'calendar');
 

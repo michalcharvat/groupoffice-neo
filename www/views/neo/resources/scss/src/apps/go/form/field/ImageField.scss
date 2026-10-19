@@ -1,6 +1,6 @@
-// go.form.ImageField: a round photo, click to upload
-.neo-theme-go .go-ab-photofield {
-    // no input box around the photo: the field box padding is asymmetric (room for the label)
+// GO.form.field.ImageField (go.form.ImageField): a round image, click to upload
+.neo-theme-go .go-imagefield {
+    // no input box around the image: the field box padding is asymmetric (room for the label)
     .go-field-box {
         background-color: transparent;
         border          : 0;
@@ -9,7 +9,7 @@
         position        : relative;
     }
 
-    .go-ab-photo {
+    .go-imagefield-image {
         align-items     : center;
         background-color: var(--bg-mid);
         border-radius   : 50%;
@@ -27,16 +27,20 @@
             width     : 100%;
         }
 
+        // .go-icon is a fixed 24px box: the big glyph would overflow it to the bottom right
         .go-icon {
-            font-size: 6rem;
+            font-size  : 6rem;
+            height     : 6rem;
+            line-height: 6rem;
+            width      : 6rem;
         }
     }
 
-    .go-ab-photo-input {
+    .go-imagefield-input {
         display: none;
     }
 
-    .go-ab-photo-clear {
+    .go-imagefield-clear {
         background-color: var(--bg-lowest);
         border-radius   : 50%;
         bottom          : 0;

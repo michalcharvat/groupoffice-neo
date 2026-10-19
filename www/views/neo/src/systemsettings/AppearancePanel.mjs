@@ -61,6 +61,7 @@ class AppearancePanel extends SettingsPanel {
             me.createLogo(logoKey),
             ...COLORS().flatMap(([type, label, cssVar, defaultColor, text]) => [{
                 module         : ColorField,
+                showHexValue   : true,
                 name           : `settings.${type}${suffix}`,
                 labelText      : label,
                 placeholderText: defaultColor,

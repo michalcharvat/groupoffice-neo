@@ -3,7 +3,7 @@ import client        from '../../../../../../../views/neo/src/jmap/Client.mjs';
 import {translator}  from '../../../../../../../views/neo/src/Translate.mjs';
 import FormWindow    from '../../../../../../../views/neo/src/view/FormWindow.mjs';
 import CalendarIdsField from './field/CalendarIdsField.mjs';
-import SelectField   from './field/SelectField.mjs';
+import SelectField   from '../../../../../../../views/neo/src/form/field/SelectField.mjs';
 import {addShareCard, VIEW_LEVELS} from './shareCard.mjs';
 
 const t = translator('community', 'calendar');

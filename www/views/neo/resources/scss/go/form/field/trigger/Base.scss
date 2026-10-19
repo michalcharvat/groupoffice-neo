@@ -12,6 +12,12 @@
         width        : 3.2rem;
     }
 
+    // neo hides the clear trigger (empty field) by width 0: the fixed size above outranks it
+    .neo-input-wrapper .neo-field-trigger.neo-is-hidden {
+        margin: 0;
+        width : 0;
+    }
+
     .neo-input-wrapper .neo-field-trigger:hover {
         background-color: var(--bg-hover);
         color           : var(--fg-text);

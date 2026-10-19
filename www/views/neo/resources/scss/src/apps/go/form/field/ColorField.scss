@@ -1,10 +1,94 @@
-// GO.form.field.ColorField: hex value with a swatch in front (--go-colorfield-color)
-.neo-theme-go .go-colorfield .neo-textfield-input {
-    background-image   : linear-gradient(var(--go-colorfield-color, transparent), var(--go-colorfield-color, transparent));
-    background-position: 1.2rem center;
-    background-repeat  : no-repeat;
-    background-size    : 2rem 2rem;
-    font-family        : monospace;
-    padding-left       : 4.4rem;
-    text-transform     : uppercase;
+@use "../../../../../go/go";
+
+// GO.form.field.ColorField: a swatch with the native colour input lying transparent over
+// it, optionally a hex box and the GOUI palette, and a clear button
+.neo-theme-go .go-colorfield {
+    .go-field-box {
+        gap: go.dp(8);
+    }
+
+    .go-colorfield-swatch {
+        border-radius: go.dp(4);
+        cursor       : pointer;
+        flex         : none;
+        height       : go.dp(24);
+        position     : relative;
+        width        : go.dp(40);
+
+        // no colour: an outlined empty swatch, not a white one
+        &.go-colorfield-empty {
+            outline       : 1px dashed var(--fg-outline);
+            outline-offset: -1px;
+        }
+    }
+
+    .go-colorfield-picker {
+        cursor  : pointer;
+        height  : 100%;
+        inset   : 0;
+        opacity : 0;
+        padding : 0;
+        position: absolute;
+        width   : 100%;
+
+        &:disabled {
+            cursor: default;
+        }
+    }
+
+    // only the swatch: the picker lies over the whole box, a click anywhere opens it
+    &.go-colorfield-plain {
+        .go-field-box {
+            position: relative;
+        }
+
+        .go-colorfield-swatch {
+            position: static;
+        }
+    }
+
+    .go-colorfield-hex {
+        background : transparent;
+        border     : 0;
+        color      : inherit;
+        flex       : 1 1 auto;
+        font-family: monospace;
+        font-size  : inherit;
+        min-width  : 0;
+        outline    : none;
+        padding    : go.dp(11) 0;
+        text-transform: uppercase;
+    }
+
+    .go-colorfield-palette {
+        display  : flex;
+        flex     : 1 1 auto;
+        flex-wrap: wrap;
+        gap      : go.dp(4);
+        padding  : go.dp(8) 0;
+    }
+
+    .go-colorfield-palette-color {
+        border       : 0;
+        border-radius: 50%;
+        cursor       : pointer;
+        height       : go.dp(20);
+        padding      : 0;
+        width        : go.dp(20);
+
+        &[aria-pressed=true] {
+            box-shadow: 0 0 0 2px var(--bg-lowest), 0 0 0 4px var(--fg-text);
+        }
+
+        &:disabled {
+            cursor: default;
+        }
+    }
+
+    .go-colorfield-clear {
+        margin-left: auto;
+        // above the picker of a plain field
+        position   : relative;
+        z-index    : 1;
+    }
 }

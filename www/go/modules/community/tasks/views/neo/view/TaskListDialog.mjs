@@ -60,6 +60,7 @@ class TaskListDialog extends FormWindow {
             flex         : 'none'
         }, {
             module   : ColorField,
+            palette  : true,
             name     : 'color',
             labelText: t('Color'),
             flex     : 'none'

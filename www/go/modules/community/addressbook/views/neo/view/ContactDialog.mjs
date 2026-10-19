@@ -8,8 +8,8 @@ import {fieldset}     from '../../../../../../../views/neo/src/form/fieldset.mjs
 import client         from '../../../../../../../views/neo/src/jmap/Client.mjs';
 import FormWindow     from '../../../../../../../views/neo/src/view/FormWindow.mjs';
 import {t}            from '../util.mjs';
-import ColorField     from './ColorField.mjs';
-import PhotoField     from './PhotoField.mjs';
+import ColorField     from '../../../../../../../views/neo/src/form/field/ColorField.mjs';
+import ImageField     from '../../../../../../../views/neo/src/form/field/ImageField.mjs';
 import {addressList, dateList, emailList, phoneList, select, text, urlList} from './fields.mjs';
 
 const NAME_PARTS = ['firstName', 'middleName', 'lastName'];
@@ -156,7 +156,7 @@ class ContactDialog extends FormWindow {
                         ]
                     }, text('department', t('Department'), {reference: 'departmentField', flex: 'none'})]
                 }, {
-                    module   : PhotoField,
+                    module   : ImageField,
                     name     : 'photoBlobId',
                     reference: 'photoField',
                     flex     : 'none'

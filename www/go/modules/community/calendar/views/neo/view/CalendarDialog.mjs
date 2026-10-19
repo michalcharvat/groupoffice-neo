@@ -7,7 +7,7 @@ import {translator}  from '../../../../../../../views/neo/src/Translate.mjs';
 import FormWindow    from '../../../../../../../views/neo/src/view/FormWindow.mjs';
 import calendarData  from '../data.mjs';
 import AlertField    from './field/AlertField.mjs';
-import ColorField    from './field/ColorField.mjs';
+import ColorField    from '../../../../../../../views/neo/src/form/field/ColorField.mjs';
 import {addShareCard, CALENDAR_LEVELS} from './shareCard.mjs';
 
 const t = translator('community', 'calendar');
@@ -40,6 +40,7 @@ class CalendarDialog extends FormWindow {
             flex         : 'none'
         }, {
             module   : ColorField,
+            palette  : true,
             name     : 'color',
             labelText: t('Color'),
             required : true,

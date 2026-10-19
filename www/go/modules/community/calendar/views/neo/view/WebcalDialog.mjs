@@ -1,7 +1,7 @@
 import TextField     from '../../../../../../../views/neo/node_modules/neo.mjs/src/form/field/Text.mjs';
 import {translator}  from '../../../../../../../views/neo/src/Translate.mjs';
 import FormWindow    from '../../../../../../../views/neo/src/view/FormWindow.mjs';
-import ColorField    from './field/ColorField.mjs';
+import ColorField    from '../../../../../../../views/neo/src/form/field/ColorField.mjs';
 
 const t = translator('community', 'calendar');
 
@@ -28,6 +28,7 @@ class WebcalDialog extends FormWindow {
             flex         : 'none'
         }, {
             module   : ColorField,
+            palette  : true,
             name     : 'color',
             labelText: t('Color'),
             flex     : 'none'

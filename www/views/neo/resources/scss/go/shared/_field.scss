@@ -19,8 +19,9 @@
         color           : var(--fg-text);
         display         : flex;
         gap             : 0 .4rem;
-        min-height      : 4.6rem;
-        padding         : 0 .6rem 0 1.4rem;
+        // as the neo text fields: a dp(46) input inside a 1px border, triggers .4rem from the edge
+        min-height      : calc(4.6rem + 2px);
+        padding         : 0 .4rem 0 1.4rem;
     }
 
     .go-field:focus-within .go-field-box {
@@ -28,8 +29,9 @@
         outline     : 1px solid var(--fg-main);
     }
 
+    // the label covers the border line only: its upper half shows the container behind
     .go-field-label {
-        background-color: var(--bg-input);
+        background: linear-gradient(transparent 50%, var(--bg-input) 50%);
         color           : var(--fg-secondary-text);
         font-size       : 1.2rem;
         left            : 1rem;
@@ -118,5 +120,10 @@
     .go-field.go-readonly .go-field-box,
     .go-field.neo-disabled .go-field-box {
         background-color: var(--bg-low);
+    }
+
+    .go-field.go-readonly .go-field-label,
+    .go-field.neo-disabled .go-field-label {
+        background: linear-gradient(transparent 50%, var(--bg-low) 50%);
     }
 }

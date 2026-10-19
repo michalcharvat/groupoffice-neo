@@ -1,20 +1,22 @@
-import Field  from '../../../../../../../views/neo/src/form/field/Field.mjs';
-import client from '../../../../../../../views/neo/src/jmap/Client.mjs';
-import {notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
-import {escapeHtml} from '../../../../../../../views/neo/src/Format.mjs';
-import {t, thumbUrl} from '../util.mjs';
+import Field         from './Field.mjs';
+import client        from '../../jmap/Client.mjs';
+import {notifyError} from '../../Notify.mjs';
+import {escapeHtml}  from '../../Format.mjs';
+import {t}           from '../../Translate.mjs';
 
 /**
- * go.form.ImageField: the contact's photo (photoBlobId). Click the picture to upload
- * one (JMAP blob), "clear" removes it.
+ * go.form.ImageField: an image as a blob id, e.g. a contact's photoBlobId. Click the
+ * picture to upload one (JMAP blob), "delete" removes it.
+ *
+ *     {module: ImageField, name: 'photoBlobId', placeholderIcon: 'business'}
  */
-class PhotoField extends Field {
+class ImageField extends Field {
     static config = {
-        className: 'GO.addressbook.view.PhotoField',
-        ntype    : 'go-ab-photofield',
-        baseCls  : ['go-field', 'go-ab-photofield'],
+        className: 'GO.form.field.ImageField',
+        ntype    : 'go-imagefield',
+        baseCls  : ['go-field', 'go-imagefield'],
         /**
-         * Material icon without a photo
+         * Material icon without an image
          * @member {String} placeholderIcon_='person'
          */
         placeholderIcon_: 'person'
@@ -26,8 +28,8 @@ class PhotoField extends Field {
         let me = this;
 
         me.addDomListeners([
-            {change: me.onFileChange,  delegate: '.go-ab-photo-input', scope: me},
-            {click : me.onClearClick,  delegate: '.go-ab-photo-clear', scope: me}
+            {change: me.onFileChange,  delegate: '.go-imagefield-input', scope: me},
+            {click : me.onClearClick,  delegate: '.go-imagefield-clear', scope: me}
         ])
     }
 
@@ -45,17 +47,17 @@ class PhotoField extends Field {
 
         return [{
             tag  : 'label',
-            cls  : ['go-ab-photo'],
+            cls  : ['go-imagefield-image'],
             title: t('Upload'),
             cn   : [
                 me.value
-                    ? {tag: 'img', alt: '', src: thumbUrl(me.value, 240)}
+                    ? {tag: 'img', alt: '', src: client.baseUrl + 'api/thumb.php?blob=' + encodeURIComponent(me.value) + '&w=240&h=240&zc=1'}
                     : {tag: 'i', cls: ['go-icon'], text: escapeHtml(me.placeholderIcon)},
-                {tag: 'input', type: 'file', accept: 'image/*', cls: ['go-ab-photo-input'], removeDom: locked}
+                {tag: 'input', type: 'file', accept: 'image/*', cls: ['go-imagefield-input'], removeDom: locked}
             ]
         }, {
             tag      : 'i',
-            cls      : ['go-icon', 'go-ab-photo-clear'],
+            cls      : ['go-icon', 'go-imagefield-clear'],
             text     : 'delete',
             title    : t('Delete'),
             removeDom: !me.value || locked
@@ -83,4 +85,4 @@ class PhotoField extends Field {
     }
 }
 
-export default Neo.setupClass(PhotoField);
+export default Neo.setupClass(ImageField);

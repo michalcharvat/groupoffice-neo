@@ -62,10 +62,12 @@ class OptionDialog extends Dialog {
                 validator    : field => !String(field.value || '').includes(':') || t('Invalid input')
             }, ...me.colors ? [{
                 module   : ColorField,
+                palette  : true,
                 name     : 'foregroundColor',
                 labelText: t('Text color')
             }, {
                 module   : ColorField,
+                palette  : true,
                 name     : 'backgroundColor',
                 labelText: t('Background color')
             }, select('renderMode', t('Render mode'), [['cell', t('Cell')], ['row', t('Row')]], {

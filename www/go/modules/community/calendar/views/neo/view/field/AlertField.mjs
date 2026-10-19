@@ -1,6 +1,6 @@
 import {translator} from '../../../../../../../../views/neo/src/Translate.mjs';
 import {durationText, parseDuration} from '../../util/date.mjs';
-import SelectField  from './SelectField.mjs';
+import SelectField  from '../../../../../../../../views/neo/src/form/field/SelectField.mjs';
 
 const t = translator('community', 'calendar');
 

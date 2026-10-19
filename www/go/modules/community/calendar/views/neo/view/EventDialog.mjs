@@ -19,7 +19,7 @@ import AttachmentsField from './field/AttachmentsField.mjs';
 import CategoryField from './field/CategoryField.mjs';
 import LocationField from './field/LocationField.mjs';
 import ParticipantField from './field/ParticipantField.mjs';
-import SelectField   from './field/SelectField.mjs';
+import SelectField   from '../../../../../../../views/neo/src/form/field/SelectField.mjs';
 
 const t = translator('community', 'calendar');
 

@@ -1,0 +1,23 @@
+@use "../../../../../go/go";
+
+// GO.form.field.SelectField: the selected option's text and an expand trigger,
+// like the neo combo boxes; the options open in a GO menu
+.neo-theme-go .go-selectfield {
+    .go-field-box {
+        cursor: pointer;
+    }
+
+    .go-selectfield-text {
+        flex         : 1 1 auto;
+        line-height  : go.dp(24);
+        min-width    : 0;
+        overflow     : hidden;
+        padding      : go.dp(11) 0;
+        text-overflow: ellipsis;
+        white-space  : nowrap;
+    }
+
+    .go-selectfield-expand .go-icon {
+        font-size: go.dp(24);
+    }
+}

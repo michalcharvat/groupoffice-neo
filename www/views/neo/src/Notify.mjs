@@ -13,7 +13,8 @@ export function notify(component, msg, {title=null, iconCls='fa fa-circle-info',
         iconCls,
         closable,
         maxWidth: 400,
-        position: 'br'
+        // GOUI 26 (.goui-alert): at the top, centred
+        position: 'tc'
     })
 }
 

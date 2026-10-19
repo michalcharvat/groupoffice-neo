@@ -10,7 +10,7 @@ Port of `views/extjs3` (there is no GOUI address book) to the neo webclient
 | `view/AddressBookMain.mjs` | `MainPanel.js`, `ContactGrid.js`, `ContactContextMenu.js` | views (all / starred / organizations / contacts), address books with groups, saved filters, contacts grid (index letter, avatar, all ExtJS columns), detail; right click / more button menus; import, export, labels, duplicates |
 | `view/AddressBookTree.mjs`, `NavList.mjs` | `AddressBookTree.js`, `TreeLoader.js`, `go.NavMenu` | `GO.tree.Tree` with a row menu; address books checkable, groups below |
 | `view/ContactDetail.mjs` | `ContactDetail.js` | name, e-mail, phone, addresses, dates, company, notes, action date (saved at once), custom fields, comments, files, links, history |
-| `view/ContactDialog.mjs`, `fields.mjs`, `ColorField.mjs`, `PhotoField.mjs` | `ContactDialog.js`, `NameField.js`, `*Field.js` | contact / organization form; typed lists shared with the profile card |
+| `view/ContactDialog.mjs`, `fields.mjs` | `ContactDialog.js`, `NameField.js`, `*Field.js` | contact / organization form (core `ColorField`, `ImageField`); typed lists shared with the profile card |
 | `view/AddressBookDialog.mjs`, `GroupDialog.mjs` | same | name, permissions, salutation template / group name |
 | `view/ImportDialog.mjs`, `LabelsDialog.mjs`, `DuplicateDialog.mjs` | `go.util.importFile`, same | vCard/JSON import, PDF labels, duplicates + merge |
 | `view/SettingsPanel.mjs`, `ProfilePanel.mjs`, `SystemSettingsPanel.mjs` | `SettingsPanel.js`, `SettingsProfilePanel.js`, `SystemSettingsPanel.js` | My account (addressBookSettings, profile) and System settings (needs `src/systemsettings/` of the "system settings" card) |
