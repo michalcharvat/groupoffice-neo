@@ -57,6 +57,27 @@ class User extends AclItemEntity {
 	const ID_SUPER_ADMIN = 1;
 
 	/**
+	 * The only properties somebody who registers themselves may set
+	 *
+	 * @see filterRegistrationValues()
+	 */
+	const REGISTRATION_PROPERTIES = ['username', 'displayName', 'email', 'password', 'recoveryEmail', 'language', 'timezone'];
+
+	/**
+	 * Strip everything that a user who registers themselves may not choose, like "groups" and "enabled".
+	 *
+	 * Saving an entity doesn't check permissions. That's done by the JMAP controller. Registration doesn't use that so
+	 * the input must be limited here.
+	 *
+	 * @param array $values Input as supplied by the client
+	 * @return array
+	 */
+	public static function filterRegistrationValues(array $values): array
+	{
+		return array_intersect_key($values, array_flip(self::REGISTRATION_PROPERTIES));
+	}
+
+	/**
 	 * Fires when the password is verified during login via the web only.
 	 * Login might not be complete.
 	 *
@@ -945,6 +966,10 @@ public function historyLog(): bool|array
 
 		if($this->isModified(['password'])) {
 			Token::destroyOtherSessons($this->id);
+		}
+
+		if($this->isModified(['enabled']) && !$this->enabled) {
+			Token::destroyAllSessions($this->id);
 		}
 
 		return true;

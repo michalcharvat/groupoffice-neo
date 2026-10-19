@@ -1,6 +1,6 @@
 - Core: Update DE translations
 - Core: Optimized SSE Push with more apcu caching
-- Core: Debounce pushing more than once every 2seconds per entity
+- Core: Debounce pushing more than once every 2 seconds per entity
 - Core: Optimized startup request by closing session writing so they won't wait on eachother
 - ActiveSync: Optimized Z-push push connection with apcu caching
 - Calendar: On initial load wrong categories were displayed
@@ -8,7 +8,22 @@
 - Calendar: global category fix
 - Calendar: Month, year and list view also merge events that appear in multiple calendars in the selection
 - Calendar: Fixed "Item not found" error when importing a recurring event via an e-mail
-- Projects3: Fixed severak translation issues
+- Projects3: Fixed several translation issues
+- Calendar: Send cancellation to removed participants (resource and individual), also remove events from local calendars immediately
+- Core: New "background" parameter to export in the background. This way CLI exports can still work like before.
+- DAVaccounts: ownerId field because the accounts are personal and not system wide.
+- Core: Sanitize uploaded file names and temp file names, safer Content-Disposition headers for downloads, nosniff on blob downloads, size limits on thumbnails
+- Core: several bug fixes in Active Record export
+- Core: Check if tokens are expired and if users were disabled when using them from cache.
+- Core: Fix query filters with two or more possible search strings
+- Core: The client IP address is read from $_SERVER['REMOTE_ADDR']. The X-Forwarded-For header is only used for the proxies in the new "trustedProxies" config option, so it can't be faked to get around login throttling and IP restrictions. When using a reverse proxy, set $config['trustedProxies'] or the real IP in your web server. See the "HTTP Proxy" page in the manual.
+- Core: Registration (when "Allow registration" is enabled) only accepts username, displayName, email, password, recoveryEmail, language and timezone. Other properties, like groups, are ignored.
+- Core: Controllers in a "cli" namespace, like core/cli/System, can no longer be called through the JMAP API. They are only available on the command line.
+- Core: Set secure flag on remember me cookie
+- Core: Remember me, refreshing a token and OpenID Connect / OAuth2 logins now also apply the rules of a password login: disabled users, IP address restrictions of groups and maintenance mode.
+- Core: The client secret of OAuth2 connections is no longer sent to the browser. Leave it empty when editing a connection to keep the current secret.
+- Core: Requests for a password recovery message are throttled per e-mail address and per IP address, so the lost password form can't be used to flood a mailbox.
+- Dev: The debugger (Debugger/get) is only available to users who are logged in.
 
 15-10-2026: 26.0.54
 - Core: update cleanup script
