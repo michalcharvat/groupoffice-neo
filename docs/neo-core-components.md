@@ -66,7 +66,7 @@ Status: **neo** = neo.mjs 13.2 ships it, usable as is (maybe GO styling);
 | Global search | GO.neo (`GlobalSearch`) |
 | FormWindow (entity dialog: load, save, validation, links, custom fields) | GO.neo (`view/FormWindow.mjs`) |
 | PrincipalCombo, GroupCombo | GO.neo (`form/field/PrincipalCombo`, `GroupCombo`, `PrincipalList`) |
-| links/ (LinkBrowser, CreateLinkButton/Field, LinkDetail, SelectSearch) | GO.neo (`src/link/`: browse/add links on saved entities); **missing: CreateLinkButton/Field** (link while creating; FormWindow `linkSlot` is empty) |
+| links/ (LinkBrowser, CreateLinkButton/Field, LinkDetail, SelectSearch) | GO.neo (`src/link/`: browse/add links on saved entities; `CreateLinkButton`/`CreateLinkField` collect links for a new entity, FormWindow `hasLinks` creates them after the first save, `addLinkOnSave()`) |
 | customfields/ (FormFieldset, DetailFieldset, Types, admin) | GO.neo (`src/customfields/`) |
 | permissions/SharePanel (ACL) | GO.neo (`permissions/SharePanel.mjs`) |
 | RecurrenceField, RecurrencePicker | GO.neo (`GO.form.field.RecurrenceField`: presets menu + "Customize" dialog) |
@@ -84,7 +84,7 @@ administration, e-mail and PDF templates, blob upload (`UploadButton`, `BlobFiel
 
 1. ~~**Notes Markdown + image zoom**~~ — done: `MarkdownField`, `src/Markdown.mjs`, `ImageWindow`.
 2. **Grid export + batch edit** — a reusable export (only `UsersPanel.exportUsers()` exists today) and editing several selected records.
-   **Create link while creating** an entity (CreateLinkButton in FormWindow `linkSlot`).
+   ~~**Create link while creating**~~ — done: `CreateLinkButton` in FormWindow (notes, tasks, contacts, calendar events).
 3. **Upload with progress** (`Uploader`) — large files, several at once.
 4. **HtmlField mentions** and **RecipientPicker** — comments mentions, mail.
 5. **Drag and drop** — tree nodes, rows to containers, sortable lists.
