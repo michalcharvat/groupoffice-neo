@@ -34,7 +34,8 @@ class ClientDialog extends FormWindow {
                 listeners : {change: ({value}) => this.syncProjectLabel(value)}
             }),
             field(TextField, 'clientId', t('Client Id'), {required: true}),
-            field(PasswordField, 'clientSecret', t('Client Secret'), {required: true, autoComplete: 'new-password'}),
+            // The secret is never sent to the browser: when editing, an empty field keeps the current secret
+            field(PasswordField, 'clientSecret', t('Client Secret'), {required: !this.entityId, autoComplete: 'new-password'}),
             field(TextField, 'projectId', t('API Project Id'), {required: true, reference: 'projectId'}),
             {module: BoolCheckBox, name: 'openId', valueLabel: t('Use this connection for single signon with OpenID Connect')}
         ]

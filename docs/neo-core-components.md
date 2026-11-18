@@ -1,7 +1,7 @@
-# Core UI components: GO vs neo.mjs (2026-10-15)
+# Core UI components: GO vs neo.mjs (updated 2026-11-18)
 
-What the neo webclient (`www/views/neo`) has to provide before more modules than
-Notes can move. Reference is GOUI (`views/goui/goui/script` = base library,
+What the neo webclient (`www/views/neo`) has to provide to replace the GOUI/ExtJS
+webclient. The live per-component status is the Dev module (`src/dev/menu.mjs`, `status`). Reference is GOUI (`views/goui/goui/script` = base library,
 `views/goui/groupoffice-core/script` = GO core), plus ExtJS-only core parts
 (`go/core/views/extjs3`).
 
@@ -33,7 +33,7 @@ Status: **neo** = neo.mjs 13.2 ships it, usable as is (maybe GO styling);
 | Notifier | component/Toast | GO.neo (`Notify.mjs`) |
 | Router | util/HashHistory | GO.neo (`MainView`, module `route()`) |
 | State | state/Provider | GO.neo (`State.mjs`, GOUI state keys) |
-| **Translate (`t()`)** | – | **missing: the neo UI is English-only, no GO language files** |
+| Translate (`t()`) | – | GO.neo (`Translate.mjs`, `translator(package, module)`, GO language files) |
 | Format, DateTime | util/Date (basic) | partial (`Format.mjs`: user date formats) |
 
 ### Form fields
@@ -42,11 +42,11 @@ Status: **neo** = neo.mjs 13.2 ships it, usable as is (maybe GO styling);
 |---|---|---|
 | Text, Textarea, Number, Password, Hidden, Display | form/field/* | neo |
 | Checkbox, Radio, Color, Range, Time, Date | form/field/* | neo (`GO.component.CheckBox`) |
-| ComboBox, Select | form/field/ComboBox | neo; **missing JMAP-backed remote combo** (query as you type) |
+| ComboBox, Select | form/field/ComboBox | GO.neo (`JmapComboBox` remote, `LocalCombo`, `SelectField`) |
 | Fieldset, Form | form/Fieldset, form/Container | neo |
-| **DataSourceForm** (load/save an entity) | – | **missing: generic entity form** (NoteDialog does it by hand) |
+| DataSourceForm (load/save an entity) | – | GO.neo (`GO.form.DataSourceForm`) |
 | DateField, DateTimeField, DateRangeField, DurationField | form/field/Date (native input + picker) | GO.neo (`GO.form.field.*`; DateRangeField: custom range/from/until in a dialog instead of picker submenus) |
-| **HtmlField** (rich text) | – | **missing, large**: editor must live on the main thread (addon + worker bridge); notes use a textarea |
+| HtmlField (rich text) | – | GO.neo (`HtmlField`, main-thread addon); **missing: mentions plugin, Markdown editor** (Notes got Markdown + image zoom in master 2026-11) |
 | ChipsField, AutocompleteChips, AutocompleteField | form/field/Chip (basic) | ChipsField: GO.neo (`GO.form.field.ChipsField`, async textInputToValue/chipRenderer); AutocompleteChips: GO.neo (`GO.form.field.AutocompleteChips`, entity ids, ▾ menu; tasks categories); AutocompleteField: missing |
 | ArrayField, ContainerField, MapField, ListField | – | ArrayField, ContainerField: GO.neo (`src/form/nestedFields.mjs`); MapField, ListField: missing |
 | CheckboxGroup | – | missing (small) |
@@ -57,35 +57,34 @@ Status: **neo** = neo.mjs 13.2 ships it, usable as is (maybe GO styling);
 | GOUI | Status |
 |---|---|
 | JMAP client, Entities, Modules | GO.neo (`jmap/Client`, `JmapStore`, `ModuleRegistry`) |
-| auth/Login | GO.neo; **missing 2FA, lost password, register** |
+| auth/Login | GO.neo (`apps/go/view/LoginView.mjs`: forgot credentials, 2FA via `loginPanels`) |
 | MainThreeColumnPanel, TableTitle | GO.neo |
 | DetailPanel | GO.neo (`detail/Card` + panels) |
 | Comments, Files (legacy files), History | GO.neo (`CommentsPanel`, `FilesPanel`, `HistoryPanel` + `HistoryDetailDialog`) |
 | FilterPanel (saved EntityFilters) | GO.neo (`FilterPanel`, `FilterDialog`) |
 | Global search | GO.neo (`GlobalSearch`) |
-| **FormWindow** (entity dialog: load, save, validation, links, custom fields) | **missing** — base for every module's edit dialog |
-| **PrincipalCombo, GroupCombo** | **missing** (user/group pickers) |
-| **links/** (LinkBrowser, CreateLinkButton/Field, LinkDetail, SelectSearch) | **missing** — links panel in every detail |
-| **customfields/** (FormFieldset, DetailFieldset, Types, TreeSelectField) | **missing** — every entity with custom fields |
-| **permissions/SharePanel** (ACL) | **missing** — sharing notebooks, address books, … |
+| FormWindow (entity dialog: load, save, validation, links, custom fields) | GO.neo (`view/FormWindow.mjs`) |
+| PrincipalCombo, GroupCombo | GO.neo (`form/field/PrincipalCombo`, `GroupCombo`, `PrincipalList`) |
+| links/ (LinkBrowser, CreateLinkButton/Field, LinkDetail, SelectSearch) | GO.neo (`src/link/`: browse/add links on saved entities); **missing: CreateLinkButton/Field** (link while creating; FormWindow `linkSlot` is empty) |
+| customfields/ (FormFieldset, DetailFieldset, Types, admin) | GO.neo (`src/customfields/`) |
+| permissions/SharePanel (ACL) | GO.neo (`permissions/SharePanel.mjs`) |
 | RecurrenceField, RecurrencePicker | GO.neo (`GO.form.field.RecurrenceField`: presets menu + "Customize" dialog) |
 | RecipientPicker, HtmlFieldMentionPlugin | missing (mail, comments mentions) |
 | EntityTypeTable | missing |
-| chart | missing (neo has no chart component; would need a library) |
+| chart | missing in GO (neo ships `component/wrapper/AmChart` + `main/addon/AmCharts`, not wired) |
 
 ## ExtJS-only core (not in GOUI yet)
 
-Import/export, batch edit, e-mail and PDF templates, system settings and module
-settings, user/group administration, upload with progress (`Uploader`),
-alerts/notifications (`Alert.js`), session activity watcher. All missing in neo;
-needed only when the corresponding screens move.
+Done in neo: import (`src/import/`), system and module settings, user/group
+administration, e-mail and PDF templates, blob upload (`UploadButton`, `BlobField`).
 
-## What to add first
+## Left to build (2026-11-18)
 
-1. **Translate** — every string goes through GO's language files.
-2. **FormWindow + DataSourceForm** — generic entity dialog (load/save/validation/dirty).
-3. **Remote combo, PrincipalCombo/GroupCombo** — needed by almost every form.
-4. **Links** and **custom fields** (form + detail) — present in nearly every module.
-5. **SharePanel** — needed as soon as containers (note books, address books) are edited.
-6. **HtmlField** — rich text (notes, comments, mail); largest single item.
-7. ~~DateTime/DateRange/Duration fields, Chips, ArrayField, Tree, DescriptionList, multi-select toolbar, RecurrenceField~~ (2026-10-16, demos in the Dev module); left: autocomplete chips, MapField, tree drag and drop.
+1. **Notes Markdown + image zoom** — parity with the GOUI NoteDialog from master.
+2. **Grid export + batch edit** — a reusable export (only `UsersPanel.exportUsers()` exists today) and editing several selected records.
+   **Create link while creating** an entity (CreateLinkButton in FormWindow `linkSlot`).
+3. **Upload with progress** (`Uploader`) — large files, several at once.
+4. **HtmlField mentions** and **RecipientPicker** — comments mentions, mail.
+5. **Drag and drop** — tree nodes, rows to containers, sortable lists.
+6. Small fields: AutocompleteField, MapField, ListField, CheckboxGroup, ColorMenu, Month/WeekPicker.
+7. Chart, EntityTypeTable, alerts/notifications, session activity watcher.
