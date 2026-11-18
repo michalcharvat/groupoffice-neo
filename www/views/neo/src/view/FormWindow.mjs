@@ -112,6 +112,18 @@ class FormWindow extends Dialog {
      */
     formReady = false
 
+    /**
+     * Link creation of the last save (onFormSave()), awaited by submit()
+     * @member {Promise|null} afterSavePromise=null
+     */
+    afterSavePromise = null
+
+    /**
+     * addLinkOnSave() targets without a create link button
+     * @member {Object[]} pendingLinkTargets=[]
+     */
+    pendingLinkTargets = []
+
     construct(config) {
         super.construct(config);
 
@@ -237,10 +249,6 @@ class FormWindow extends Dialog {
     addLinkOnSave(entity, entityId) {
         let me = this;
 
-        if (!me.pendingLinkTargets) {
-            me.pendingLinkTargets = []
-        }
-
         if (me.createLinkButton) {
             me.createLinkButton.addLink(entity, entityId)
         } else {
@@ -365,7 +373,8 @@ class FormWindow extends Dialog {
               create = me.createLinkButton,
               browse = me.getReference('browseLinksButton');
 
-        create.hidden = !!id;
+        // failed links of a saved entity stay until they are created
+        create.hidden = !!id && !create.links.length;
         browse.hidden = !id;
         id && browse.setEntity(me.entityName, id);
         me.linkSlot.hidden = false
@@ -387,22 +396,44 @@ class FormWindow extends Dialog {
     /**
      * Creates the links collected for a new entity
      * @param {String|Number} id of the saved entity
-     * @returns {Promise<void>}
+     * @returns {Promise<Boolean>} false when a link failed (the error is shown)
      * @protected
      */
     async createPendingLinks(id) {
         let me      = this,
             targets = me.pendingLinkTargets || [];
 
-        me.pendingLinkTargets = [];
-
         try {
             await me.createLinkButton?.createLinksFor(me.entityName, id);
-            targets.length && await createLinks(me.entityName, id, targets)
+
+            if (targets.length) {
+                await createLinks(me.entityName, id, targets).catch(e => {
+                    // keep the targets that failed for another save
+                    const done = new Set((e.created || []).map(to => to.entity + ':' + to.entityId));
+                    me.pendingLinkTargets = targets.filter(to => !done.has(to.entity + ':' + to.entityId));
+                    throw e
+                });
+                me.pendingLinkTargets = []
+            }
+
+            return true
         } catch (e) {
-            // the entity is saved: report, but do not keep the window open
-            notifyError(me, e)
+            if (!me.isDestroyed) {
+                notifyError(me, e);
+                me.showError(e.message || String(e))
+            }
+
+            return false
         }
+    }
+
+    /**
+     * Links still to create: kept when a link failed, created by the next save
+     * @returns {Boolean}
+     * @protected
+     */
+    hasPendingLinks() {
+        return !!(this.createLinkButton?.links.length || this.pendingLinkTargets?.length)
     }
 
     /**
@@ -426,7 +457,12 @@ class FormWindow extends Dialog {
             const fields = await me.form.getFields();
             await Promise.all(fields.filter(field => typeof field.flush === 'function').map(field => field.flush()));
 
-            return await me.form.submit()
+            me.afterSavePromise = null;
+
+            const result = await me.form.submit();
+            // links of a new entity (onFormSave())
+            await me.afterSavePromise;
+            return result
         } finally {
             if (!me.isDestroyed) {
                 me.isLoading    = false;
@@ -439,21 +475,35 @@ class FormWindow extends Dialog {
      * @param {Object} data {data, isNew}
      * @protected
      */
-    async onFormSave(data) {
-        let me = this;
+    onFormSave(data) {
+        // submit() waits for it: no second save while the links are created
+        return this.afterSavePromise = this.afterSave(data)
+    }
 
-        if (data.isNew && data.data?.id) {
-            await me.createPendingLinks(data.data.id);
+    /**
+     * Saved: creates the collected links, fires `save`, closes. A failed link keeps
+     * the window open with the failed targets; the next save creates them.
+     * @param {Object} data {data, isNew}
+     * @returns {Promise<void>}
+     * @protected
+     */
+    async afterSave(data) {
+        let me = this,
+            id = data.data?.id,
+            linked = true;
+
+        if (id && (data.isNew || me.hasPendingLinks())) {
+            linked = await me.createPendingLinks(id);
 
             if (me.isDestroyed) {
                 return
             }
 
-            me.closeOnSave || me.updateLinkButtons()
+            me.updateLinkButtons()
         }
 
         me.fire('save', data);
-        me.closeOnSave && me.close()
+        me.closeOnSave && linked && me.close()
     }
 
     /**

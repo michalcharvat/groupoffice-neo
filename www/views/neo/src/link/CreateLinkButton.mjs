@@ -1,5 +1,6 @@
 import Container from '../../node_modules/neo.mjs/src/container/Base.mjs';
 import Button from '../button/Button.mjs';
+import ChipsField from '../form/field/ChipsField.mjs';
 import {t} from '../Translate.mjs';
 import CreateLinkField from './CreateLinkField.mjs';
 import {createLinks} from './links.mjs';
@@ -126,27 +127,43 @@ class CreateLinkButton extends Container {
     }
 
     /**
-     * Creates the pending links from the saved entity and clears them
+     * Creates the pending links from the saved entity. Linked targets leave the
+     * field; failed ones stay for another try. Targets added while the request runs
+     * are kept.
      * @param {String} entity
      * @param {String|Number} entityId
      * @returns {Promise<Number>} number of links created
      */
     async createLinksFor(entity, entityId) {
         let me    = this,
-            links = me.links;
+            links = me.links,
+            created, error;
 
-        if (!links.length) {
-            return 0
+        try {
+            created = await createLinks(entity, entityId, links)
+        } catch (e) {
+            created = e.created || [];
+            error   = e
         }
-
-        await createLinks(entity, entityId, links);
 
         if (!me.isDestroyed) {
-            me.field.reset([]);
-            me.open = false
+            const done = new Set(created.map(v => ChipsField.key(v))),
+                  left = me.links.filter(v => !done.has(ChipsField.key(v)));
+
+            if (left.length) {
+                done.size && (me.field.value = left)
+            } else {
+                // saved: nothing pending, no unsaved change
+                me.field.reset([]);
+                me.open = false
+            }
         }
 
-        return links.length
+        if (error) {
+            throw error
+        }
+
+        return created.length
     }
 }
 

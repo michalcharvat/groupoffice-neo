@@ -14,6 +14,9 @@ import {linkGroup, linkType, resolveRoute} from './linkTypes.mjs';
  * `to: {path: "toSearchId", dataSource: searchDS}`.
  */
 
+/** go\core\validate\ErrorCode::UNIQUE */
+const ERROR_UNIQUE = 11;
+
 const SEARCH_PROPERTIES = ['id', 'name', 'description', 'entity', 'entityId', 'filter', 'modifiedAt'];
 
 /**
@@ -53,11 +56,12 @@ export async function countLinks(entity, entityId) {
  * @param {String} fromEntity
  * @param {String|Number} fromId
  * @param {Object[]} targets Search records ({entity, entityId})
- * @returns {Promise<void>}
+ * @returns {Promise<Object[]>} the targets linked (also those that were linked already)
+ * @throws {Error} when a link failed; `error.created` holds the targets that were linked
  */
 export async function createLinks(fromEntity, fromId, targets) {
     if (!targets.length) {
-        return
+        return []
     }
 
     const create = {};
@@ -66,7 +70,20 @@ export async function createLinks(fromEntity, fromId, targets) {
         create['link' + i] = {fromEntity, fromId, toEntity: to.entity, toId: to.entityId}
     });
 
-    await client.set('Link', {create})
+    const response   = await client.call('Link/set', {create}),
+          notCreated = response.notCreated || {},
+          // the unique key (from, to) refused it: the items are linked already
+          exists     = error => error?.validationErrors?.toId?.code === ERROR_UNIQUE,
+          created    = targets.filter((to, i) => response.created?.['link' + i] || exists(notCreated['link' + i])),
+          failed     = Object.values(notCreated).find(error => !exists(error));
+
+    if (failed) {
+        const error = new Error(client.constructor.describeSetError(failed));
+        error.created = created;
+        throw error
+    }
+
+    return created
 }
 
 /**
