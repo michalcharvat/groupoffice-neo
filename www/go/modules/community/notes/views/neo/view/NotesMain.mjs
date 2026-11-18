@@ -187,7 +187,7 @@ class NotesMain extends MainThreeColumnPanel {
                     sortProperties: {createdBy: 'creator', modifiedBy: 'modifier'},
                     // shows the header's sort arrow; JmapStore sends it to the server
                     sorters   : [{property: 'name', direction: 'ASC'}],
-                    properties: ['id', 'name', 'content', 'noteBookId', 'createdAt', 'modifiedAt',
+                    properties: ['id', 'name', 'content', 'type', 'noteBookId', 'createdAt', 'modifiedAt',
                                  'createdBy', 'modifiedBy', 'password', 'permissionLevel', 'filesFolderId']
                 },
                 // GOUI NoteGrid columns; right click on the header shows/hides them
@@ -628,8 +628,18 @@ class NotesMain extends MainThreeColumnPanel {
         this.getReference('tableTitle').subtitle = `${total} ${total === 1 ? 'note' : 'notes'}`
     }
 
-    onNew() {
-        this.openDialog(null)
+    async onNew() {
+        let me = this;
+
+        // the default editor may have changed in My account since the view loaded
+        const [user] = await client.get('User', [client.user.id], ['notesSettings']).catch(() => []);
+
+        if (me.isDestroyed) {
+            return
+        }
+
+        user?.notesSettings && (me.notesSettings = user.notesSettings);
+        me.openDialog(null)
     }
 
     /**
@@ -657,6 +667,7 @@ class NotesMain extends MainThreeColumnPanel {
             windowId : me.windowId,
             noteId   : note?.id || null,
             noteBooks: note ? books : writable,
+            defaultType: me.notesSettings?.defaultType || 'html',
             values   : note
                 ? {name: note.name, noteBookId: note.noteBookId, content: note.content}
                 : {name: '', noteBookId: defaultId, content: ''}

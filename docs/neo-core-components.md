@@ -46,7 +46,8 @@ Status: **neo** = neo.mjs 13.2 ships it, usable as is (maybe GO styling);
 | Fieldset, Form | form/Fieldset, form/Container | neo |
 | DataSourceForm (load/save an entity) | – | GO.neo (`GO.form.DataSourceForm`) |
 | DateField, DateTimeField, DateRangeField, DurationField | form/field/Date (native input + picker) | GO.neo (`GO.form.field.*`; DateRangeField: custom range/from/until in a dialog instead of picker submenus) |
-| HtmlField (rich text) | – | GO.neo (`HtmlField`, main-thread addon); **missing: mentions plugin, Markdown editor** (Notes got Markdown + image zoom in master 2026-11) |
+| HtmlField (rich text) | – | GO.neo (`HtmlField`, main-thread addon); **missing: mentions plugin** |
+| MarkdownField | – | GO.neo (`MarkdownField`: textarea + main-thread addon `MarkdownEditor`, toolbar, preview, image paste / drop / upload; `src/Markdown.mjs` renders with `marked` + `Format.sanitizeHtml()`; no EasyMDE/CodeMirror) |
 | ChipsField, AutocompleteChips, AutocompleteField | form/field/Chip (basic) | ChipsField: GO.neo (`GO.form.field.ChipsField`, async textInputToValue/chipRenderer); AutocompleteChips: GO.neo (`GO.form.field.AutocompleteChips`, entity ids, ▾ menu; tasks categories); AutocompleteField: missing |
 | ArrayField, ContainerField, MapField, ListField | – | ArrayField, ContainerField: GO.neo (`src/form/nestedFields.mjs`); MapField, ListField: missing |
 | CheckboxGroup | – | missing (small) |
@@ -69,6 +70,7 @@ Status: **neo** = neo.mjs 13.2 ships it, usable as is (maybe GO styling);
 | customfields/ (FormFieldset, DetailFieldset, Types, admin) | GO.neo (`src/customfields/`) |
 | permissions/SharePanel (ACL) | GO.neo (`permissions/SharePanel.mjs`) |
 | RecurrenceField, RecurrencePicker | GO.neo (`GO.form.field.RecurrenceField`: presets menu + "Customize" dialog) |
+| Image (blob images, zoom) | GO.neo (`view/ImageWindow.mjs`: `enableImageZoom()` + addon `WS/ImageZoom`, `ImageWindow.show()`; images load by URL with the session cookie, no `getBlobURL()` needed) |
 | RecipientPicker, HtmlFieldMentionPlugin | missing (mail, comments mentions) |
 | EntityTypeTable | missing |
 | chart | missing in GO (neo ships `component/wrapper/AmChart` + `main/addon/AmCharts`, not wired) |
@@ -80,7 +82,7 @@ administration, e-mail and PDF templates, blob upload (`UploadButton`, `BlobFiel
 
 ## Left to build (2026-11-18)
 
-1. **Notes Markdown + image zoom** — parity with the GOUI NoteDialog from master.
+1. ~~**Notes Markdown + image zoom**~~ — done: `MarkdownField`, `src/Markdown.mjs`, `ImageWindow`.
 2. **Grid export + batch edit** — a reusable export (only `UsersPanel.exportUsers()` exists today) and editing several selected records.
    **Create link while creating** an entity (CreateLinkButton in FormWindow `linkSlot`).
 3. **Upload with progress** (`Uploader`) — large files, several at once.

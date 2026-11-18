@@ -188,7 +188,7 @@ export function avatarHtml(name, cls=[]) {
 }
 
 const SAFE_TAGS = new Set(['a', 'b', 'blockquote', 'br', 'code', 'div', 'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-                           'hr', 'i', 'img', 'li', 'ol', 'p', 'pre', 's', 'small', 'span', 'strike', 'strong',
+                           'del', 'hr', 'i', 'img', 'li', 'ol', 'p', 'pre', 's', 'small', 'span', 'strike', 'strong',
                            'sub', 'sup', 'table', 'tbody', 'td', 'th', 'thead', 'tr', 'u', 'ul']),
       VOID_TAGS = new Set(['br', 'hr', 'img']),
       // relative URLs (GO's api/download.php?blob=...), http(s) and mailto only
@@ -198,7 +198,7 @@ const SAFE_TAGS = new Set(['a', 'b', 'blockquote', 'br', 'code', 'div', 'em', 'h
  * Allowlist HTML sanitiser for HTML from other users (comments), defence in depth on
  * top of the server's XSS check. Runs in the worker (no DOM): the output is rebuilt
  * from tokens, so nothing of the input passes unescaped. Keeps formatting tags, drops
- * every attribute except a[href] and img[src] with a safe URL, drops <script>/<style>
+ * every attribute except a[href] and img[src] with a safe URL (and img[alt]), drops <script>/<style>
  * with their content and escapes everything else.
  * @param {String} html
  * @returns {String}
@@ -206,16 +206,18 @@ const SAFE_TAGS = new Set(['a', 'b', 'blockquote', 'br', 'code', 'div', 'em', 'h
 export function sanitizeHtml(html) {
     // keep existing entities, escape the rest of the text
     const text = s => s.replace(/&(?!(#\d+|#x[0-9a-f]+|[a-z][a-z0-9]*);)/gi, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'),
-          attr = (attrs, name) => {
+          // invalid code points become U+FFFD like in a browser (fromCodePoint() would throw)
+          codePoint = n => String.fromCodePoint(n > 0 && n <= 0x10FFFF && !(n >= 0xD800 && n <= 0xDFFF) ? n : 0xFFFD),
+          // decoded attribute value: what a browser decodes in an attribute ("javascript&colon;", "&#58;")
+          rawAttr = (attrs, name) => {
               const m = attrs.match(new RegExp(`\\b${name}\\s*=\\s*("([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i'));
-              // decode what a browser decodes in an attribute ("javascript&colon;", "&#58;"),
-              // then drop control characters and whitespace: the URL check sees the real value
               return m ? (m[2] ?? m[3] ?? m[4] ?? '')
-                  .replace(/&#x([0-9a-f]+);?/gi, (x, h) => String.fromCodePoint(parseInt(h, 16)))
-                  .replace(/&#(\d+);?/g, (x, d) => String.fromCodePoint(Number(d)))
-                  .replace(/&(colon|tab|newline|amp);?/gi, (x, n) => ({colon: ':', tab: '\t', newline: '\n', amp: '&'})[n.toLowerCase()])
-                  .replace(/[\u0000-\u0020]/g, '') : null
-          };
+                  .replace(/&#x([0-9a-f]+);?/gi, (x, h) => codePoint(parseInt(h, 16)))
+                  .replace(/&#(\d+);?/g, (x, d) => codePoint(Number(d)))
+                  .replace(/&(colon|tab|newline|amp|quot|lt|gt);?/gi, (x, n) => ({colon: ':', tab: '\t', newline: '\n', amp: '&', quot: '"', lt: '<', gt: '>'})[n.toLowerCase()]) : null
+          },
+          // URL attribute: also drop control characters and whitespace, the URL check sees the real value
+          attr = (attrs, name) => rawAttr(attrs, name)?.replace(/[\u0000-\u0020]/g, '') ?? null;
 
     let out = '';
 
@@ -250,7 +252,7 @@ export function sanitizeHtml(html) {
                     : '<a>'
             } else if (name === 'img') {
                 const src = attr(attrs, 'src');
-                src && SAFE_URL.test(src) && (out += `<img src="${escapeHtml(src)}" alt="">`)
+                src && SAFE_URL.test(src) && (out += `<img src="${escapeHtml(src)}" alt="${escapeHtml(rawAttr(attrs, 'alt') || '')}">`)
             } else {
                 out += `<${name}>`
             }

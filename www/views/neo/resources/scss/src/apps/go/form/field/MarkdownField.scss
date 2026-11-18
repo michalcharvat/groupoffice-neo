@@ -1,0 +1,56 @@
+// GO.form.field.MarkdownField: the HtmlField frame (HtmlField.scss) with a textarea
+// instead of the contenteditable editor, a preview and a status bar
+.neo-theme-go {
+    .go-markdownfield-editor {
+        flex       : 1;
+        min-height : 8rem;
+        padding    : .8rem 1.2rem;
+        border     : 0;
+        outline    : none;
+        resize     : none;
+        background : transparent;
+        color      : var(--fg-text);
+        font-family: monospace;
+        font-size  : 1.4rem;
+        line-height: 1.5;
+    }
+
+    .go-markdownfield-preview {
+        flex      : 1;
+        min-height: 8rem;
+        padding   : .8rem 1.2rem;
+        overflow  : auto;
+        color     : var(--fg-text);
+    }
+
+    // the textarea stays in the DOM while previewing: the addon holds it
+    .go-markdownfield.go-preview .go-markdownfield-editor {
+        display: none;
+    }
+
+    // only the preview button works while previewing
+    .go-markdownfield.go-preview .go-htmlfield-btn:not(.go-markdownfield-previewbtn) {
+        opacity       : .38;
+        pointer-events: none;
+    }
+
+    .go-markdownfield-previewbtn[aria-pressed="true"] {
+        background: var(--bg-mid);
+        color     : var(--fg-main);
+    }
+
+    .go-markdownfield-file {
+        display: none;
+    }
+
+    .go-markdownfield-status {
+        padding   : .4rem 1.2rem;
+        border-top: 1px solid var(--fg-line);
+        color     : var(--fg-secondary-text);
+        font-size : 1.2rem;
+    }
+
+    .go-markdownfield.go-readonly .go-markdownfield-status {
+        display: none;
+    }
+}

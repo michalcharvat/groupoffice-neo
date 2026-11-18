@@ -8,6 +8,7 @@ class Note extends Model {
             {name: 'id',              type: 'String'},
             {name: 'name',            type: 'String'},
             {name: 'content',         type: 'String'},
+            {name: 'type',            type: 'String'},
             {name: 'noteBookId',      type: 'String'},
             {name: 'createdAt',       type: 'String'},
             {name: 'modifiedAt',      type: 'String'},

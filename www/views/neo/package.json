@@ -5,6 +5,7 @@
   "description": "neo.mjs webclient for Group Office (spike)",
   "type": "module",
   "dependencies": {
+    "marked": "^18.2.1",
     "neo.mjs": "13.2.0"
   },
   "devDependencies": {

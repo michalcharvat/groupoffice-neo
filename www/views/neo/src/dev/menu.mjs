@@ -30,6 +30,7 @@ export default [
     {id: 'form/DateTime',        text: 'Date and time',      level: 2, status: 'done', demo: 'DateTime', neo: 'GO.form.field.DateField, DateTimeField, DateRangeField, DurationField', goui: 'form/DateTimePage.ts'},
     {id: 'form/DisplayField',    text: 'DisplayField',       level: 2, status: 'neo',  neo: 'neo form/field/Display',  goui: 'form/DisplayFieldPage.ts'},
     {id: 'form/HtmlField',       text: 'HtmlField',          level: 2, status: 'done', demo: 'HtmlField', neo: 'GO.form.field.HtmlField', goui: 'form/HtmlFieldPage.ts'},
+    {id: 'form/MarkdownField',   text: 'MarkdownField',      level: 2, status: 'done', demo: 'MarkdownField', neo: 'GO.form.field.MarkdownField, src/Markdown.mjs', goui: 'groupoffice-core/script/components/form/MarkdownField.ts'},
     {id: 'form/MapField',        text: 'MapField',           level: 2, status: 'todo', goui: 'form/MapFieldPage.ts'},
     {id: 'form/NumberField',     text: 'NumberField',        level: 2, status: 'neo',  neo: 'neo form/field/Number',   goui: 'form/NumberFieldPage.ts'},
     {id: 'form/Select',          text: 'Select fields',      level: 2, status: 'done', demo: 'JmapCombo', neo: 'GO.form.field.JmapComboBox, PrincipalCombo, GroupCombo', goui: 'form/SelectPage.ts'},
@@ -52,5 +53,6 @@ export default [
     {id: 'core/SharePanel',   text: 'SharePanel',        level: 1, status: 'done', demo: 'SharePanel',   neo: 'GO.permissions.SharePanel',    goui: 'groupoffice-core/script/permissions/SharePanel.ts'},
     {id: 'core/Templates',    text: 'E-mail / PDF templates', level: 1, status: 'done', demo: 'Templates', neo: 'GO.emailtemplate.EmailTemplateGrid, GO.pdftemplate.PdfTemplateGrid', goui: 'ExtJS go.emailtemplate, go.pdftemplate'},
     {id: 'core/Recurrence',   text: 'RecurrenceField',   level: 1, status: 'done', demo: 'Recurrence', neo: 'GO.form.field.RecurrenceField', goui: 'groupoffice-core/script/components/form/RecurrenceField.ts'},
+    {id: 'core/Image',        text: 'Image zoom',        level: 1, status: 'done', demo: 'MarkdownField', neo: 'GO.view.ImageWindow, enableImageZoom()', goui: 'groupoffice-core/script/jmap/Image.ts'},
     {id: 'core/Recipients',   text: 'RecipientPicker',   level: 1, status: 'todo', goui: 'goui-docs/script/components/RecipientsField.ts'}
 ];
