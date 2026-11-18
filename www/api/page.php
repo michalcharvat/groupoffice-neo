@@ -64,13 +64,13 @@ try {
 		$method = "page" . array_shift($parts);
 
 		//left over are params
-		$ctrlCls = "go\\modules\\" . $package . "\\" . $module . "\\Module";
+		checkPathInput($package . '/' . $module);
 
-		checkPathInput($ctrlCls);
-
-		if (!class_exists($ctrlCls)) {
+		// only installed and enabled modules
+		$ctrlCls = \go\core\Module::findClassForRequest((string) $package, (string) $module);
+		if (!isset($ctrlCls)) {
 			http_response_code(404);
-			exit("Class '$ctrlCls' not found");
+			exit("Not found");
 		}
 
 		$c = $ctrlCls::get();
@@ -91,9 +91,11 @@ try {
 
 	echo"<h1>" . get_class($e) ."</h1>";
 
-	if(go()->getDebugger()->enabled) {
-		echo "<pre>";
+	// The entries have queries, parameters and traces: not for anonymous users of this public endpoint.
+	if(go()->getDebugger()->mayOutputToClient()) {
+		// they contain request data, so it must be escaped
+		ob_start();
 		go()->getDebugger()->printEntries();
-		echo "</pre>";
+		echo "<pre>" . htmlspecialchars(ob_get_clean()) . "</pre>";
 	}
 }

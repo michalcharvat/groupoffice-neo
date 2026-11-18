@@ -42,8 +42,38 @@ abstract class Module extends Singleton {
 	const STATUS_DEPRECATED = "deprecated";
 
 	/**
+	 * Find the module class for a request to its download or page methods (api/download.php and api/page.php)
+	 *
+	 * Only installed and enabled modules are returned. The files of other modules may be present, but their methods may
+	 * not be used.
+	 *
+	 * @param string $package
+	 * @param string $name
+	 * @return class-string<Module>|null Null when the package or name is invalid, the class doesn't exist or the module
+	 *  isn't installed and enabled
+	 */
+	public static function findClassForRequest(string $package, string $name): ?string
+	{
+		// they end up in a class name: allow identifiers only (no namespace separators)
+		if (!preg_match('/^\w+$/', $package) || !preg_match('/^\w+$/', $name)) {
+			return null;
+		}
+
+		$cls = "go\\modules\\" . $package . "\\" . $name . "\\Module";
+		if (!class_exists($cls) || !is_subclass_of($cls, self::class)) {
+			return null;
+		}
+
+		if (!model\Module::isInstalled($package, $name, true)) {
+			return null;
+		}
+
+		return $cls;
+	}
+
+	/**
 	 * Find module class file by name
-	 * 
+	 *
 	 * @param string $moduleName
 	 * @return ?self
 	 */
@@ -811,11 +841,18 @@ abstract class Module extends Singleton {
 	 */
 	public function getModel(array $props = []): ?model\Module
 	{
-		if(!$this->model) {
-			$this->model = model\Module::findByName($this->getPackage(), $this->getName(), null, $props);
+		if($this->model) {
+			return $this->model;
 		}
 
-		return $this->model;
+		$model = model\Module::findByName($this->getPackage(), $this->getName(), null, $props);
+
+		// Only cache a fully loaded model. A partial one (e.g. ['id']) would be returned to later callers that need all props.
+		if(empty($props)) {
+			$this->model = $model;
+		}
+
+		return $model;
 	}
 
 	/**

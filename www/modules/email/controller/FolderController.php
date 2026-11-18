@@ -40,6 +40,7 @@ class FolderController extends \GO\Base\Controller\AbstractController {
 	protected function actionSubscribe(array $params)
 	{
 		$account = \GO\Email\Model\Account::model()->findByPk($params['account_id']);
+		$account->requirePermissionLevel(\GO\Base\Model\Acl::CREATE_PERMISSION);
 		$response = array();
 
 		$rawMail = json_decode($params["mailboxs"]);
@@ -74,6 +75,7 @@ class FolderController extends \GO\Base\Controller\AbstractController {
 	protected function actionUnsubscribe(array $params): array
 	{
 		$account = \GO\Email\Model\Account::model()->findByPk($params['account_id']);
+		$account->requirePermissionLevel(\GO\Base\Model\Acl::CREATE_PERMISSION);
 
 		$response = array();
 		$rawMail = json_decode($params["mailboxs"]);
@@ -101,6 +103,9 @@ class FolderController extends \GO\Base\Controller\AbstractController {
 	}
 	
 	protected function actionDelete($params){
+
+		\GO::session()->closeWriting();
+
 		$msg = '';
 		$account = \GO\Email\Model\Account::model()->findByPk($params['account_id']);
 
@@ -148,7 +153,10 @@ class FolderController extends \GO\Base\Controller\AbstractController {
 
 
 	protected function actionTruncate($params){
+		\GO::session()->closeWriting();
+
 		$account = \GO\Email\Model\Account::model()->findByPk($params['account_id']);
+		$account->requirePermissionLevel(\GO\Base\Model\Acl::CREATE_PERMISSION);
 
 		$mailbox = new \GO\Email\Model\ImapMailbox($account, array("name" => $params["mailbox"]));
 
@@ -166,6 +174,7 @@ class FolderController extends \GO\Base\Controller\AbstractController {
 	
 	protected function actionMarkAsRead($params){
 		$account = \GO\Email\Model\Account::model()->findByPk($params['account_id']);
+		$account->requirePermissionLevel(\GO\Email\Model\Account::ACL_DELEGATED_PERMISSION);
 				
 		/* @var $imap \GO\Base\Mail\Imap */	
 		
@@ -177,6 +186,7 @@ class FolderController extends \GO\Base\Controller\AbstractController {
 	}
 	
 	protected function actionMove($params){
+		\GO::session()->closeWriting();
 		
 		$account = \GO\Email\Model\Account::model()->findByPk($params['account_id']);
 				
@@ -216,7 +226,7 @@ class FolderController extends \GO\Base\Controller\AbstractController {
 		// Dirty hack. OAuth2 accounts that are not fully configured should not retrieve mailboxes
 		$bfetchMailboxes = true;
 		if(go()->getModule('community', 'oauth2client')) {
-			$acct = \go\modules\community\email\model\Account::findById($params['account_id']);
+			$acct = \go\modules\community\email\model\Account::findById($params['account_id']); // nosemgrep: go-entity-from-params-without-acl -- only decides whether to fetch mailboxes; findByPk() below checks read permission before anything is returned
 			$clt = $acct->oauth2_account;
 			if($clt && ! $clt->token) {
 				$bfetchMailboxes = false;
@@ -237,8 +247,11 @@ class FolderController extends \GO\Base\Controller\AbstractController {
 	
 	
 	protected function actionAclStore($params) {
+		\GO::session()->closeWriting();
 		
 		$account = \GO\Email\Model\Account::model()->findByPk($params['account_id']);
+		// Sharing folders on the mail server is managing the account
+		$account->requirePermissionLevel(\GO\Base\Model\Acl::MANAGE_PERMISSION);
 		$imap = $account->openImapConnection($params['mailbox']);
 		
 		if (isset($params['delete_keys'])) {
@@ -271,6 +284,7 @@ class FolderController extends \GO\Base\Controller\AbstractController {
 	
 	protected function actionSetAcl($params) {
 		$account = \GO\Email\Model\Account::model()->findByPk($params['account_id']);
+		$account->requirePermissionLevel(\GO\Base\Model\Acl::MANAGE_PERMISSION);
 		$imap = $account->openImapConnection($params['mailbox']);
 
 		$perms = '';
@@ -304,6 +318,7 @@ class FolderController extends \GO\Base\Controller\AbstractController {
 	}
 	
 	protected function actionLoad($params) {
+		\GO::session()->closeWriting();
 		$response = array( 'success'=>true, 'data'=>array() );
 		
 		$mailboxPath = $params['mailboxPath'];
@@ -321,6 +336,7 @@ class FolderController extends \GO\Base\Controller\AbstractController {
 	}
 	
 	protected function actionSubmit($params) {
+		\GO::session()->closeWriting();
 		$response = array( 'success' => true, 'id' => $params['accountId'] );
 		
 		$mailboxPath = $params['mailboxPath'];

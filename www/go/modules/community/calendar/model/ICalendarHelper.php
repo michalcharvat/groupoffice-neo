@@ -13,6 +13,7 @@ use Generator;
 use go\core\db\Expression;
 use go\core\ErrorHandler;
 use go\core\exception\JsonPointerException;
+use go\core\exception\NotFound;
 use go\core\fs\Blob;
 use go\core\model\Principal;
 use go\core\util\DateTime;
@@ -349,7 +350,12 @@ class ICalendarHelper {
 	static function calendarEventFromFile(string $blobId, array|null $values = null): Generator
 	{
 		$groups = []; // uid => [vevent strings]
-		foreach(self::veventSplitter(Blob::buildPath($blobId)) as $uid => $vevent) {
+		// Find the blob so the ID can't be used to read another file
+		$blob = Blob::findById($blobId);
+		if(!$blob) {
+			throw new NotFound("Blob not found");
+		}
+		foreach(self::veventSplitter($blob->getFile()->getPath()) as $uid => $vevent) {
 			$groups[$uid][] = $vevent;
 		}
 
@@ -520,11 +526,22 @@ class ICalendarHelper {
 				$event->setRecurrenceRule(self::parseRrule($vevent->RRULE, $event));
 				if(!empty($vevent->EXDATE)) {
 					foreach ($vevent->EXDATE as $exdate) {
-						$rId = $exdate->getDateTime()->format('Y-m-d\TH:i:s');
-						if(!isset($event->recurrenceOverrides[$rId])) {
-							$event->recurrenceOverrides[$rId] = new RecurrenceOverride($event);
+						// Some clients send an empty "EXDATE;TZID=Europe/Berlin:" which sabre can't parse
+						if(trim((string)$exdate) === '') {
+							continue;
 						}
-						$event->recurrenceOverrides[$rId]->setValues(['excluded'=>true]);
+						try {
+							$exdates = $exdate->getDateTimes(); // one EXDATE can hold multiple comma separated dates
+						} catch (VObject\InvalidDataException $e) {
+							continue;
+						}
+						foreach($exdates as $dt) {
+							$rId = $dt->format('Y-m-d\TH:i:s');
+							if(!isset($event->recurrenceOverrides[$rId])) {
+								$event->recurrenceOverrides[$rId] = new RecurrenceOverride($event);
+							}
+							$event->recurrenceOverrides[$rId]->setValues(['excluded'=>true]);
+						}
 					}
 				}
 			}
@@ -533,20 +550,7 @@ class ICalendarHelper {
 				if(!empty($names))
 					$event->categoryIdsByName($names);
 			}
-			if(isset($vevent->VALARM)) {
-				$event->alerts = [];
-				foreach ($vevent->VALARM as $valarm) {
-					$a = (new Alert($event))->setValues([
-						'action' => (string)$valarm->ACTION,
-						'trigger' => ('DATE-TIME' === (string) $valarm->TRIGGER['VALUE']) ?
-							['when' => $valarm->TRIGGER->getDateTime()] : // non-relative trigger
-							['offset' => (string)$valarm->TRIGGER, 'relativeTo' => 'start']
-					]);
-					if(isset($valarm->ACKNOWLEDGED))
-						$a->acknowledged = $valarm->ACKNOWLEDGED->getDateTime();
-					$event->alerts[] = $a;
-				}
-			}
+			self::parseAlerts($vevent, $event);
 		}
 		//Attach exceptions found in VCALENDAR
 		foreach($exceptions as $props) {
@@ -585,6 +589,45 @@ class ICalendarHelper {
 		}
 
 		return $blob;
+	}
+
+	/**
+	 * Replace the alerts of the event with the VALARM components of the VEVENT. Alerts are per user. When the VEVENT has
+	 * no VALARM, the alerts are left as they are.
+	 *
+	 * @param VEvent $vevent
+	 * @param CalendarEvent $event
+	 */
+	static function parseAlerts(VEvent $vevent, CalendarEvent $event): void
+	{
+		if(!isset($vevent->VALARM)) {
+			return;
+		}
+		$event->alerts = [];
+		foreach ($vevent->VALARM as $valarm) {
+			$a = (new Alert($event))->setValues([
+				'action' => (string)$valarm->ACTION,
+				'trigger' => ('DATE-TIME' === (string) $valarm->TRIGGER['VALUE']) ?
+					['when' => $valarm->TRIGGER->getDateTime()] : // non-relative trigger
+					['offset' => (string)$valarm->TRIGGER, 'relativeTo' => 'start']
+			]);
+			if(isset($valarm->ACKNOWLEDGED))
+				$a->acknowledged = $valarm->ACKNOWLEDGED->getDateTime();
+			$event->alerts[] = $a;
+		}
+	}
+
+	/**
+	 * The free / busy status from the TRANSP property of a VEVENT. Busy when it's not transparent.
+	 *
+	 * @param VEvent $vevent
+	 * @return string
+	 */
+	static function parseFreeBusyStatus(VEvent $vevent): string
+	{
+		$transp = $vevent->select('TRANSP');
+		return !empty($transp) && strtoupper((string)$transp[0]) === 'TRANSPARENT' ?
+			CalendarEvent::FREEBUSY_FREE : CalendarEvent::FREEBUSY_BUSY;
 	}
 
 	static private function parseAttendee($vattendee) {
@@ -644,6 +687,9 @@ class ICalendarHelper {
 		}
 		if(!empty($vevent->CLASS)) $props->privacy = array_flip(self::$privacyMap)[(string)$vevent->CLASS] ?? 'public';
 		if(!empty($vevent->COLOR)) $props->color = (string)$vevent->COLOR;
+		if(isset($vevent->TRANSP)) {
+			$props->freeBusyStatus = self::parseFreeBusyStatus($vevent);
+		}
 		if(!empty($vevent->DURATION)) {
 			$props->duration = (string)$vevent->DURATION;
 		} else if (!empty($vevent->DTEND) && !empty($props->start)) {

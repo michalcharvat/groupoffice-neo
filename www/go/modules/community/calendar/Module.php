@@ -168,18 +168,7 @@ class Module extends core\Module
 		header('Content-Type: text/calendar; charset=UTF-8; component=vcalendar');
 		header('Content-Disposition: ' . \go\core\http\Response::contentDisposition('attachment', $calendar->name.' ('.$calendar->id.') '.date('Y-m-d').'.ics'));
 
-		echo "BEGIN:VCALENDAR\r\n";
-		echo "VERSION:2.0\r\n";
-		echo "PRODID:".str_replace('{VERSION}', go()->getVersion(),CalendarEvent::PROD)."\r\n";
-		echo "METHOD:PUBLISH\r\n";
-
-		if ($calendar->timeZone) {
-			echo "X-WR-TIMEZONE:" . $calendar->timeZone . "\r\n";
-			$tz = new model\VTimezone($calendar->timeZone);
-			echo $tz->serialize();
-		}
-
-		if($calendar->description) echo "X-WR-CALDESC:". $calendar->description. "\r\n";
+		echo self::icsHeader($calendar);
 		ob_end_flush();
 
 		foreach($events as $ev) {
@@ -190,6 +179,37 @@ class Module extends core\Module
 			flush();
 		}
 		echo "END:VCALENDAR\r\n";
+	}
+
+	/**
+	 * The start of an iCalendar export of a calendar, up to the events
+	 *
+	 * The properties are escaped by VObject, so a description with a line break or ";" can't add properties or events.
+	 *
+	 * @param Calendar $calendar
+	 * @return string
+	 */
+	private static function icsHeader(Calendar $calendar): string
+	{
+		$vcalendar = new \Sabre\VObject\Component\VCalendar();
+
+		$ics = "BEGIN:VCALENDAR\r\n";
+		$ics .= "VERSION:2.0\r\n";
+		$ics .= "PRODID:".str_replace('{VERSION}', go()->getVersion(),CalendarEvent::PROD)."\r\n";
+		$ics .= "METHOD:PUBLISH\r\n";
+
+		if ($calendar->timeZone) {
+			// throws an exception for an invalid time zone
+			$tz = new model\VTimezone($calendar->timeZone);
+			$ics .= $vcalendar->createProperty("X-WR-TIMEZONE", $calendar->timeZone)->serialize();
+			$ics .= $tz->serialize();
+		}
+
+		if($calendar->description) {
+			$ics .= $vcalendar->createProperty("X-WR-CALDESC", $calendar->description)->serialize();
+		}
+
+		return $ics;
 	}
 
 	// https://uri/path/api/page.php/community/calendar/ics/key
@@ -213,14 +233,27 @@ class Module extends core\Module
 		echo $ev->toVObject();
 	}
 
-	public function pagePrint($type,$date) {
+	/**
+	 * The calendars of the logged in user that are shown in the calendar. For the print pages, which are loaded
+	 * directly by the browser through api/page.php, so nothing has checked the login before they run.
+	 *
+	 * @return string[]
+	 * @throws Forbidden when not logged in
+	 */
+	private function visibleCalendarIds(): array
+	{
 		go()->setAuthState(new core\jmap\State());
 		if(!go()->getAuthState()->isAuthenticated()) {
 			throw new Forbidden();
 		}
-		$calendarIds = Calendar::find()->selectSingleValue('calendar_calendar.id')
+
+		return Calendar::find()->selectSingleValue('calendar_calendar.id')
 			//->join('calendar_calendar_user', 'cu','cu.userId = '.go()->getUserId().' AND cu.calendarId = t.id')
 			->where('caluser.isVisible', '=',1)->andWhere('caluser.isSubscribed','=', true)->all();
+	}
+
+	public function pagePrint($type,$date) {
+		$calendarIds = $this->visibleCalendarIds();
 		//$calendarIds = json_decode($calendars);
 		switch($type) {
 			case 'day': $this->printDay(new \DateTime($date), $calendarIds); break;
@@ -232,19 +265,14 @@ class Module extends core\Module
 	}
 
 	public function pagePrintRange($type,$days, $date) {
-		go()->setAuthState(new core\jmap\State());
-		$calendarIds = Calendar::find()->selectSingleValue('calendar_calendar.id')
-			->where('caluser.isVisible', '=',1)->andWhere('caluser.isSubscribed','=', true)->all();
+		$calendarIds = $this->visibleCalendarIds();
 
 		$this->printWeeks(new \DateTime($date),$days, $calendarIds);
 	}
 
 	public function pagePrintList($start, $end) {
 
-		go()->setAuthState(new core\jmap\State());
-
-		$calendarIds = Calendar::find()->selectSingleValue('calendar_calendar.id')
-			->where('caluser.isVisible', '=',1)->andWhere('caluser.isSubscribed','=', true)->all();
+		$calendarIds = $this->visibleCalendarIds();
 
 		$report = new reports\ListView();
 		$report->day = new DateTime($start);;

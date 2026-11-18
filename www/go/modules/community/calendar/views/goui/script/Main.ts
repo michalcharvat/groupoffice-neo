@@ -19,7 +19,7 @@ import {WeekView} from "./WeekView.js";
 import {adapter, CalendarEvent, calendarStore, categoryStore, t, ValidTimeSpan, viewStore} from "./Index.js";
 import {YearView} from "./YearView.js";
 import {SplitView} from "./SplitView.js";
-import {client, filterpanel, JmapDataSource, jmapds, modules, principalDS, userDS} from "@intermesh/groupoffice-core";
+import {client, filterpanel, JmapDataSource, jmapds, modules, principalDS, RecurrenceField, userDS} from "@intermesh/groupoffice-core";
 import {CalendarView} from "./CalendarView.js";
 import {CategoryWindow} from "./CategoryWindow.js";
 import {ResourcesWindow} from "./ResourcesWindow.js";
@@ -238,8 +238,9 @@ export class Main extends Component {
 									};
 								return [
 									comp({cls:'pad'},
-										comp({html:'<i style="color:#'+item.color+'">&bull;</i> <strong>'+r.title+'</strong><br><small>'+(owner?.name ?? owner?.email ?? t('Unknown owner'))+'</small>' }),
-										h3({html: item.start.format('D j M')+' '+t('at')+' '+Format.time(item.start)}),
+										comp({html:'<i style="color:#'+item.color.htmlEncode()+'">&bull;</i> <strong>'+r.title.htmlEncode()+'</strong><br><small>'+(owner?.name ?? owner?.email ?? t('Unknown owner')).htmlEncode()+'</small>' }),
+										h3({text: item.compactDate}),
+										comp({tagName: 'small', hidden: !item.isRecurring, text: item.isRecurring ? RecurrenceField.toText(r.recurrenceRule, item.start) : ''}),
 									comp({cls:'group'},
 										btn({itemId: 'accepted', text:t('Accept'), handler:b=>press(b,'accepted')}),
 										btn({itemId: 'tentative', text:t('Maybe'), handler:b=>press(b,'tentative')}),
@@ -333,6 +334,24 @@ export class Main extends Component {
 			)
 		);
 
+		CalendarItem.showCategoryColor = !!client.user.calendarPreferences?.showCategoryColor;
+		const onUserChange = async ({target, changes}: any) => {
+			if(!changes.updated || changes.updated.indexOf(client.user.id) === -1) {
+				return;
+			}
+			// read the value from the fetched user, client.user might not be updated yet
+			const user = await target.single(client.user.id),
+				showCategoryColor = !!user?.calendarPreferences?.showCategoryColor;
+			if(showCategoryColor !== CalendarItem.showCategoryColor) {
+				CalendarItem.showCategoryColor = showCategoryColor;
+				if(this.calendarsApplied) {
+					this.view.update();
+				}
+			}
+		};
+		userDS.on('change', onUserChange);
+		this.on('remove', () => userDS.un('change', onUserChange));
+
 		this.date = new DateTime();
 		// NOPE:router will call setSpan and render
 		// calendar store load will call first view update
@@ -376,6 +395,7 @@ export class Main extends Component {
 
 	private applyCalendars(ids: string[]) {
 		this.calendarsApplied = true;
+		CalendarItem.visibleCalendarCount = ids.length;
 		this.applyInCalendarFilter(ids);
 		this.updateView();
 
@@ -383,7 +403,12 @@ export class Main extends Component {
 		// instead of letting the server use the stored (stale) isVisible values.
 		categoryStore.setFilter('inCalendars', {operator: "OR", conditions: [{inCalendars: ids}, {mine: true}]});
 		// Never run two loads at once. A slow, older response could otherwise replace the newer filtered one.
-		this.categoryLoad = this.categoryLoad.catch(() => {}).then(() => categoryStore.load()).then(() => {});
+		this.categoryLoad = this.categoryLoad.catch(() => {}).then(() => categoryStore.load()).then(() => {
+			if(CalendarItem.showCategoryColor) {
+				// items resolve their category when rendered. Render again so the category color is applied.
+				this.view.update();
+			}
+		});
 	}
 
 	private enterView(view: any) {
@@ -475,6 +500,9 @@ export class Main extends Component {
 			window.open(client.pageUrl('community/calendar/printList/' + start.format('Y-m-d') + "/" + end.format('Y-m-d')));
 		} else if(['day', 'month', 'list'].includes(type)) {
 			window.open(client.pageUrl('community/calendar/print/' + type + '/'+ this.date.format('Y-m-d')));
+		} else if(['week', 'days'].includes(type) && client.user.calendarPreferences?.printWeekInGrid) {
+			start.setDay(DateTime.firstWeekDay);
+			window.open(client.pageUrl('community/calendar/print/' + type + '/' + start.format('Y-m-d')));
 		} else if(type ==='week') {
 			start.setDay(DateTime.firstWeekDay);
 			window.open(client.pageUrl('community/calendar/printRange/week/7/' + start.format('Y-m-d')));

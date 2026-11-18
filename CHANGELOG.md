@@ -1,3 +1,139 @@
+- Tasks: fix icon in main panel
+- Core: turning on maintenance mode could fail with "Record has changed since last read" when another request was using a login token at the same moment. Logging out the other users is now retried after a short wait.
+- Core: the global search and the links panel could hang for many minutes on large installations, filling up the database server with slow queries.
+- Core: the global search, the link search and the search fields of the modules start searching automatically from 3 characters. Press enter to search for shorter text.
+- Core: the database stops a search or links query that takes longer than 10 seconds, so slow searches can no longer pile up on the database server. The user is asked to search with a longer text. Change the limit with $config['searchMaxExecutionTime'] in config.php (in seconds, 0 for no limit).
+- Calendar: resource calendars can be exported to an .ics file. Like other calendars, this needs manage permission on the resource. #38305
+- Calendar: the contact and user lists of the Newsletters module can be selected when adding participants to an event, like in the e-mail composer. #38301
+
+16-11-2026: 26.0.61
+- Email: the upgrade failed while rebuilding the cache on servers without the SourceGuardian loader, because the e-mail module loaded the encoded MCP server class.
+
+16-11-2026: 26.0.60
+- Calendar: the printed month view shows the start and end time of an event in front of its title, with leading zeros (09:00-10:30).
+- Core: with a 12-hour clock, time fields saved "12:30 am" as 12:30 in the afternoon and didn't correct hours above 12. They now save 0:30, and an hour above 12 becomes 12.
+- Core: time fields move on from the hours to the minutes while typing, like date fields do, as soon as the hour can't get another digit (for example "14", or "8" which becomes 08). With a 12-hour clock the minutes move on to am/pm.
+- Finance: fixed the error "Cannot assign null to property FinanceDocumentItem::$priceEntryMode" when adding articles with "Add from catalog".
+- Finance: a book has options to show or hide "Reverse charge VAT", the delivery date and the execution date in its documents. New books hide the dates; existing books keep showing them. A hidden field still shows when a document has a value for it.
+- Finance: sales invoices can be put "On hold" in the invoice dialog or, for invoices that are already sent, in the menu of the invoice. No reminders are sent for an invoice on hold and it is left out of the customer's statement.
+- Tasks: the permission "Change lists" is now only needed to create and delete task lists. Users with manage permission on a list can change its name and permissions; write permission is no longer enough for that.
+- Maildomains: a domain has mailbox defaults for auto expunge and full text search, grouped with the default quota. New mailboxes get these settings.
+- Calendar: a new event now selects the calendar's default reminder, also after switching "All day" on or off, instead of "Default".
+- Addressbook: the organizations field of a contact and of the profile in your account settings shows the address book of each organization, so organizations with the same name in different (personal) address books can be told apart.
+- MCP: AI assistants can't send e-mail, also not calendar invitations or replies to support tickets. Text written by others, like an e-mail the assistant reads, could otherwise make it send your data to someone. Colleagues still see meetings in their calendar; you send invitations to others and support replies yourself.
+- Email: security: the API returned the passwords (encrypted) and the OAuth tokens of an e-mail account to every user who may read the account, for example a colleague a mailbox is shared with. With the OAuth tokens they could open the mailbox at the mail provider (Google, Microsoft). They are no longer returned. Mailboxes that use OAuth and were shared with others: disconnect and connect the account again, so new tokens are issued.
+- MCP: AI assistants can search and read e-mail and write drafts in the e-mail accounts you pick per connection. They never send: you check and send the draft yourself. Shared mailboxes are only included when you pick them.
+- MCP: New beta MCP module. AI assistants can communicate via MCP with GroupOffice
+- Core: files added to an item through the API ("attachments") now show up in its files folder right away, count towards the disk quota and require write permission on the folder. An invalid file name, a full quota or a missing permission now returns an error on "attachments". Creating an item with attachments no longer fails. #1367
+- Core: uploading or storing a file with the same content as an existing file, for example someone else's attachment, renamed that existing file, for example when files of an item were used in a template. The existing file now keeps its name.
+- Calendar: the API failed with "Cannot use object of type stdClass as array" when one CalendarEvent/get asked for a recurring event's occurrence and other events, and the leave days module was installed.
+- Files: when a file or folder can't be moved into a folder, an error is now returned instead of adding an entry for something that isn't there.
+- Core: the API now returns an "invalidArguments" error when a filter gets a value of the wrong type, for example true for a user ID, instead of returning wrong results.
+- Projects: the project filter "isResource" is renamed to "forUser". It takes a user ID or a list of user IDs. API clients that use "isResource" must change it.
+- Core: relative times like "5 minutes ago" read naturally in other languages, like "vor 5 Minuten" and "il y a 5 minutes".
+- Core: Several translation errors fixed
+- Core: imported CSV files with only a few accented characters could get garbled characters, like "ﾃ､" instead of "ä".
+- Core: the API documentation at /api/doc.php now shows the parameters and response of all methods, the standard ones like Foo/get, Foo/query and Foo/set and the custom ones of each entity.
+- Calendar: events you participate in another calendar now count as busy in your availability.
+- Core: the API documentation at /api/doc.php now lists the methods of every entity, the type of each property including nested types like addresses, which properties are read only, and the filters with their value type, description and default. The entities are in a searchable menu on the left.
+- Core: the "Created by" and "Modified by" filters now work with a mix of user IDs and names. Filtering on links to two different items at the same time now returns the right results.
+- Calendar: new preference "Show event in category color". When enabled, an event is shown in the color of its category if one calendar is selected and the event has exactly one category.
+- Newsletters: users with only read permission on a list can no longer use the add and delete recipient buttons. A failed change now shows an error instead of doing nothing.
+- Security: this release fixes a large number of security issues that were found in an extensive security review. Some were critical. We advise everyone to update. Please check the points below after updating.
+- Core: If debugging was enabled, remove old debug logs (data/log/debug.log), because they could contain IMAP passwords.
+- OpenID Connect, OAuth2 client: logins are now linked to the user ID at the identity provider. Users who logged in this way before keep working. Other existing users are only linked automatically when the provider says their e-mail address is verified and they are not an administrator and have no GroupOffice password. An administrator can link other users by adding a row with the user ID and client ID to the table "oidc_user" or "oauth2client_openid_user", or by removing the user's password. Microsoft Entra doesn't say whether an address is verified, so this applies to all its users who didn't log in before.
+- OpenID Connect server: the issuer is now the host of the URL in the system settings. Make sure that URL uses the host name that the connected applications use.
+- DAV client: servers in your own network or on localhost are refused. If users sync with such a server, add "$config['davclientAllowInternal'] = true;" to config.php.
+- DAV: syncing calendars, task lists and address books through /dav/ now requires access to the calendar, tasks and CardDAV module.
+- Email: in a shared e-mail account, sending, moving and deleting mail and changing folders require the "Use account" permission, and filters, the out of office reply and sharing folders require "Manage".
+- Multi instance: update the server manager together with its instances.
+- Site, Tickets: "Remember me" on websites made with the site module is removed. Users who used it on a shared computer should change their password.
+- Other changes users may notice: changing your own e-mail or recovery e-mail address asks for the current password, API key tokens are only shown when the key is created, text in CSV exports that starts like a formula gets a ' in front, HTML, SVG and XML files are downloaded instead of shown in the browser, project reports require the finance permission, payment pages only return to pages of the GroupOffice server, OnlyOffice "Save as" no longer overwrites an existing file, and the unused request "files/folder/getURL" is removed (link to "#folder/<id>" instead).
+- Maildomains: Fixed alias and mailbox table scrolling and configuring columns
+
+09-11-2026: 26.0.59
+- Calendar: remove scheduling objects as it was causing loops in caldav with thunderbird
+- Email: Logging in via IMAP/ActiveSync no longer records unchanged passwords in the account history, and the SMTP password is now masked in the history instead of storing its encrypted value
+- Calendar: an invitation from an organizer outside Group-Office that was accepted in a CalDAV client (for example Thunderbird) was treated as the attendee's own event: a cancellation from the organizer was ignored and the attendee could change it for the other local attendees. Updates from the organizer are still applied.
+- Calendar: CalDAV clients could not create a new calendar without a component set or a task list; the server reported success but nothing was created
+- Calendar: when an event was in more than one calendar, a CalDAV client of one user could change the file name of the event for the others, so their clients could no longer find it. Every calendar now keeps its own name for the event.
+- Core: Block user agent AppleExchangeWebServices with 404 as macos users who attempted to setup GroupOffice as an Exchange server hammered on the server with lots of requests
+- Calendar: Security: CalDAV free/busy requests could include busy times of calendars that the requesting user may not see, and other users' calendar lists were filtered with the wrong user's permissions. Free/busy now uses the same rules as the availability in the web interface. No configuration changes are needed.
+- Calendar: CalDAV clients now get an error instead of a success response when saving an event, task or calendar fails
+- Calendar: Security: over CalDAV a user with read-only access to a shared calendar or task list could add, change and delete its events and tasks and rename the calendar. Read-only calendars are now read-only in CalDAV clients. No configuration changes are needed.
+- Calendar: Security: over CalDAV a user who knew the UID of an event (it's in every invitation e-mail) could add that event to their own calendar and change it for everyone, also without access to it. Attendees could change the title, time and participants of an invitation from their CalDAV client. Now only the organizer or users with write access can change an event; attendees can only change their own participation status, reminders and free/busy setting. No configuration changes are needed.
+- Calendar: CalDAV no longer delivers invitations to the schedule inbox of local users. Invitations still appear in the attendee's calendar and are sent by e-mail.
+- Email: Security: a logged-in user with read-only access to a shared email account could run any IMAP command on that account, for example to delete messages or folders, by putting a line break in the message search query. No configuration changes are needed.
+- Files: Security: any logged in user could upload a file to any path the web server can write to, outside their own folder and outside file_storage_path, by putting "../" in the file name or sub folder name of an upload. If a directory served by the web server was writable, this could be used to run arbitrary PHP code on the server.
+- Core: Security: language overrides are no longer loaded. These were PHP files in the admin's home folder (<file_storage_path>/users/admin/language/<package>/<module>/<lang>.php) that the server executed, so anyone who could write to that folder, for example through a share or WebDAV, could run code on the server. If you used them to change texts, those changes are no longer applied and the files can be deleted.
+- Calendar: sort same-time events more consistently when start time is the same
+- Calendar: the invitations panel now shows the date in the user's date and time format, including the year, end time and recurrence of a series
+- Calendar: Security: the title of an invitation was shown as HTML in the invitations panel, so the sender of an invitation could inject HTML or script into the recipient's Group-Office. No configuration changes are needed.
+- Calendar: invitations from an organizer who can't see the invited user (who added them as a contact) did not show in the invitations panel
+- projects2: Fixed permissions error on adding expenses, budgets and income
+- Core: in case of AclOwnerEntity, only allow destroying entities if user has manage permissions
+- Tasks / Support: disable delete button if user has no manage permissions for task / support list.
+
+06-11-2026: 26.0.58
+- Core: On installations created since March 2024 the admin user had no principal, so actions of the admin that create an alert, such as an import or export, failed with a database error. The installer now creates it and the upgrade adds it where it's missing.
+- Core: JSON export created an invalid file because the closing bracket was missing, and a JSON or CSV import could stop at an invalid item while reporting success. Invalid items are now reported as errors and the rest is imported. Imported items no longer get the permissions stored in the JSON file, because those group IDs can point to other groups on the importing system; they get the default permissions with the importing user as owner.
+- Email: Security: a logged in user with access to the e-mail module could write an e-mail message to any path in the data directory (file_storage_path, usually /var/lib/groupoffice), overwriting files of other users. This came from an old, unused "save to file" function in the e-mail composer, which has been removed. No configuration changes are needed.
+- Core: The install/clearcache.php and install/clearapcu.php scripts can no longer be called anonymously. Only the CLI can    
+  trigger them.
+- Core: Security: anyone who could reach /install/ could run the database upgrade again, for example to disable modules that are not covered by the license, or change the license setting. When the database is already up to date, install/upgrade.php and install/license.php now require you to be logged in as an administrator. When an upgrade is pending it can still be started without logging in. The installer now logs in the new administrator before showing the license page.
+- Maildomains: Added script to correct Maildir path if they are still in the old way where home and maildir is the same.
+- Calendar: add '30 minutes before' as a reminder option
+- Email: Security: Check write permission when saving file to folder. Only read permission was checked.
+- Files: Security: Check read permission when reading file meta data
+- Calendar: Security: Check write permissions before reloading an external calendar
+- File: Security: Check write permission in replace() method before overwriting data on disk
+- Forms: Security: Missing ACL check on download spreadsheet.
+- Email: Security: Stored XSS fixed
+
+02-11-2026: 26.0.57
+- Calendar: Deleting an invitation from your calendar now declines it instead of removing it, so opening the invitation again does not add it back in. Declined invitations can still be deleted when "Show events that you have declined" is on.
+- Calendar: When a participant deleted an invitation, for example from a phone via CalDAV or with "Save only", the organizer still saw "needs action" for that participant. Deleting it now sets the participant to declined in the organizer's event.
+- Core: Security: files and folders created by GroupOffice in the data directory (/var/lib/groupoffice), such as ActiveSync state, cached scripts and user files, could be world-writable (0666/0777) because Group-Office set the umask to 0. Other local accounts on the server could modify them. Group-Office now uses the umask of the web server or PHP-FPM (usually 0022). file_create_mode and folder_create_mode in config.php still apply to the files module. Existing files keep their permissions; fix them with: find /var/lib/groupoffice -xdev -perm -o+w ! -type l -exec chmod o-w {} +
+- Core: west panel flyout had incorrect background color in dark mode
+- Finance: require document to be "Sent" (sentAt != null) to be included in statements
+- Finance: Add customer filter to payments
+- Notes: Write notes in Markdown. New notes can switch between the HTML and Markdown editor and the default editor can be set in the notes settings. Existing notes keep their type.
+- Notes: Zoom images when clicked
+- API keys: mask access token in the history log
+- Projects3: Only show projects2 migrate button to admin users
+- Calendar: Fixed EXCEPTION: ErrorException: Uninitialized string offset 0 in vendor/sabre/vobject/lib/DateTimeParser.php
+- Core: Fixed security issue where static methods could be called from the web
+- Core: fix Entity/export with ids exports records the user may not read
+- Core: Security: on installations that log in users with LDAP, anyone who knew a username could log in as that user over CalDAV, CardDAV and WebDAV with an empty password if the LDAP server allows "unauthenticated binds". This gave access to the user's calendars, address books and files, also when the user has two-factor authentication. Active Directory may allow these binds by default; OpenLDAP doesn't unless configured to. The web login and ActiveSync were not affected. Empty passwords are now always rejected. We also recommend disabling unauthenticated binds on your LDAP server. If you can't update right away, enable "Force app passwords" in System settings > Authentication to block this.
+- Core: Don't use eval() in export columns
+- Core: Security: a logged-in user could use batch edit, merge and link requests, to change records that have no permissions of their own. Batch edit is now limited to records that are protected by permissions, except for admins.
+- Site: Security: a user with access to the site module could run PHP code on the server by giving site content a crafted title.
+- Pr2analyzer: Security: a user with access to the project time report could run PHP code on the server.
+- Billing: Security: a user with access to billing could run PHP code on the server when adding products as items.
+- Legacy calendar time tracking: Security: a user who can name projects or tasks could run PHP code on the server when time tracking of an event was opened.
+- Savemailas: Security: a logged-in user could download any folder on the server as a zip file, including other users' files, through the "zip of attachments" link of a saved e-mail. Attachment names starting with "-" could also be passed to the zip command as options.
+- Core: Security: file names starting with "-", like e-mail attachment names, could be passed to the zip command as options when PHP's ZipArchive is not installed.
+- Core: Security: templates (labels, e-mail, PDF and newsletter templates) could read any database table, including password hashes, and could show items the user has no permission to see. The "selectTable", "select" and "where" template filters have been removed, so templates that use them must be changed. "find", "entity" and "findEntity" now only return items the user may read.
+- Core: Security: exports and saved exports accepted any PHP class name from the client, so a logged-in user could make the server create objects of any class.
+- Core: Security: legacy forms accepted an unused "importController" option that a logged-in user could use to run other controllers, for example to start a projects migration.
+- Site: Security: removed file uploads on the website ticket pages. The upload address was open to anyone without logging in.
+- Core: Security: legacy imports could read and change any file on the server that the web server may write, for example other users' files. Over the web only uploaded files can be imported now.
+- Core: Security: the JMAP API could call constructors and classes that are not API controllers, in some cases without logging in.
+- Documenttemplates: Security: file names inside an uploaded template could be passed to the zip command as options.
+- Core: zipping a folder left out hidden files in subfolders when PHP's ZipArchive was used.
+- Calendar: Improved month print view
+
+26-10-2026: 26.0.56
+- Core: Security: CardDAV/CalDAV clients that search the user directory (like eM Client) were shown names and e-mail addresses of all users that are visible to them for any search text, and also of matching users they have no permission to see. eM Client showed these as recipient suggestions.
+- Files: Fixed security issue where logged in user could read any contact name
+- Core: permissionLevel filter: the admin-only guard on permissionLevelUserId / permissionLevelGroups never fires #1593
+- Mollie: Fixed deadlock and possible duplicate payment when the webhook and return page run simultaneously
+- Core: SSE connections of closed or hidden browser tabs are released within a few seconds instead of lingering and holding a PHP worker
+- Calendar: Caldav didn't import free or busy status. Causing it always to become busy after a change.
+- Calendar: prevent load error when opening link details from Ext modules
+
+20-10-2026: 26.0.55
+- Calendar: Fixed "Column entityId cannot be null" error and a "forbidden" error on the accept link in the invitation e-mail when moving a single occurrence of a recurring event with participants.
 - Core: Update DE translations
 - Core: Optimized SSE Push with more apcu caching
 - Core: Debounce pushing more than once every 2 seconds per entity
@@ -24,6 +160,12 @@
 - Core: The client secret of OAuth2 connections is no longer sent to the browser. Leave it empty when editing a connection to keep the current secret.
 - Core: Requests for a password recovery message are throttled per e-mail address and per IP address, so the lost password form can't be used to flood a mailbox.
 - Dev: The debugger (Debugger/get) is only available to users who are logged in.
+- Core: The OAuth2 / OpenID Connect server uses a random encryption key for each installation instead of a fixed key in the source, authorization codes can only be used once, and refresh tokens are stored, replaced every time they are used and revoked when the user is disabled or changes the password. Applications that use GroupOffice as login provider have to log in again after this update because tokens that were issued before it are no longer valid.
+- Core: removed debugger output for anonymous users
+- Core: The whole username must consist of the allowed characters (a-z, 0-9, -, _, ., @). Before, one allowed character was enough. This also applies to accounts that are created by OpenID Connect, LDAP or IMAP logins. Existing users are not affected until their username is changed.
+- Core: clear token cache when user deletes clients
+- Core: Fixed duplicate update requests when switching back to a tab that had been open for a while
+- Calendar: fixed TypeError when replying via the invite link
 
 15-10-2026: 26.0.54
 - Core: update cleanup script

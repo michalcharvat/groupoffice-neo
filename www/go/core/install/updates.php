@@ -1868,3 +1868,38 @@ $updates['202610021331'][] = "CREATE TABLE `core_app_password_scope`
 $updates['202610021331'][] = "ALTER TABLE `core_app_password` MODIFY `lastUsedIp` VARCHAR(45) NULL;";
 
 $updates['202610021331'][] = "ALTER TABLE `core_app_password_scope` ADD UNIQUE KEY `appPasswordId_protocol` (`appPasswordId`, `protocol`);";
+
+// Refresh tokens of the OAuth2 server can be revoked now. Refresh tokens that were issued before this update are not in
+// this table so they are no longer valid. The clients have to log in again.
+$updates['202610191400'][] = "CREATE TABLE `core_oauth_refresh_token` (
+  `identifier` varchar(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `expiryDateTime` datetime NOT NULL,
+  `userIdentifier` int(11) NOT NULL,
+  `clientId` int(11) NOT NULL,
+  PRIMARY KEY (`identifier`),
+  KEY `userIdentifier` (`userIdentifier`),
+  KEY `clientId` (`clientId`),
+  CONSTRAINT `core_oauth_refresh_token_core_user` FOREIGN KEY (`userIdentifier`) REFERENCES `core_user` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `core_oauth_refresh_token_core_oauth_client` FOREIGN KEY (`clientId`) REFERENCES `core_oauth_client` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
+// Installations since March 2024 have no principal for the admin user created by the installer, so alerts created by
+// the admin (e.g. import and export progress) failed. Add principals for all users that don't have one.
+$updates['202611061200'][] = "INSERT INTO core_principal (id, name, email, type, description, timeZone, entityTypeId, avatarId, entityId, aclId)
+SELECT u.id, u.displayName, u.email, 'individual', u.username, u.timezone, e.id, u.avatarId, u.id, g.aclId
+FROM core_user u
+INNER JOIN core_group g ON g.isUserGroupFor = u.id
+INNER JOIN core_entity e ON e.name = 'User' AND e.moduleId = (SELECT id FROM core_module WHERE name = 'core' AND package = 'core')
+WHERE NOT EXISTS (SELECT 1 FROM core_principal p WHERE CAST(p.id AS BINARY) = CAST(u.id AS BINARY) OR (p.entityTypeId = e.id AND p.entityId = u.id));";
+
+
+$updates['202611091340'][] = "ALTER TABLE core_change
+  ADD INDEX aclId_entityTypeId_modSeq (aclId, entityTypeId, modSeq, entityId, destroyed);";
+
+$updates['202611091340'][] = "ALTER TABLE core_change_user
+  ADD INDEX userId_entityTypeId_modSeq (userId, entityTypeId, modSeq, entityId)";
+
+// OAuth clients that registered themselves, like AI assistants, need the user's consent
+$updates['202611131400'][] = "ALTER TABLE core_oauth_client ADD registration VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NULL DEFAULT NULL";
+
+// A client ID metadata document is fetched again a day after it was saved
+$updates['202611131500'][] = "ALTER TABLE core_oauth_client ADD modifiedAt DATETIME NULL DEFAULT NULL";

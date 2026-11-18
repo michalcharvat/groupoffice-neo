@@ -50,10 +50,10 @@ class CoreController extends \GO\Base\Controller\AbstractController {
 
 		foreach ($fromLinks as $fromLink) {
 			
-			$fromModel = GO::getModel($fromLink['model_name'])->findByPk($fromLink['model_id']);
+			$fromModel = $this->getRequestedModel($fromLink['model_name'])->findByPk($fromLink['model_id']);
 
 			foreach ($toLinks as $toLink) {
-				$model = GO::getModel($toLink['model_name'])->findByPk($toLink['model_id']);
+				$model = $this->getRequestedModel($toLink['model_name'])->findByPk($toLink['model_id']);
 				$fromModel->link($model, $params['description'], $from_folder_id, $to_folder_id);
 			}
 		}
@@ -64,16 +64,16 @@ class CoreController extends \GO\Base\Controller\AbstractController {
 	}
 	
 	protected function actionUnlink($params){
-		$linkedModel1 = GO::getModel($params['model_name1'])->findByPk($params['id1']);				
-		$linkedModel2 = GO::getModel($params['model_name2'])->findByPk($params['id2']);			
+		$linkedModel1 = $this->getRequestedModel($params['model_name1'])->findByPk($params['id1']);
+		$linkedModel2 = $this->getRequestedModel($params['model_name2'])->findByPk($params['id2']);
 		$linkedModel1->unlink($linkedModel2);	
 		
 		return array('success'=>true);
 	}
 	
 	protected function actionUpdateLink($params){
-		$model1 = GO::getModel($params['model_name1'])->findByPk($params['model_id1']);
-		$model2 = GO::getModel($params['model_name2'])->findByPk($params['model_id2']);
+		$model1 = $this->getRequestedModel($params['model_name1'])->findByPk($params['model_id1']);
+		$model2 = $this->getRequestedModel($params['model_name2'])->findByPk($params['model_id2']);
 		$model1->updateLink($model2, array('description'=>$params['description']));
 		$model2->updateLink($model1, array('description'=>$params['description']));
 		
@@ -238,12 +238,31 @@ class CoreController extends \GO\Base\Controller\AbstractController {
 		}
 	}
 
+	/**
+	 * A thumbnail shows the content of the file, so the user must be allowed to read it. The permissions of a file are
+	 * those of the folder it's in. Files that are not in the files module can't be shown either, because there's
+	 * nothing to check their permissions against. It's the same answer for both so it doesn't tell if a path exists.
+	 *
+	 * @param string $relativePath Relative to the file storage path
+	 * @throws \GO\Base\Exception\AccessDenied
+	 */
+	private function checkThumbFilePermission(string $relativePath): void
+	{
+		$fileModel = \GO\Files\Model\File::model()->findByPath($relativePath);
+
+		if (!$fileModel || !$fileModel->checkPermissionLevel(\GO\Base\Model\Acl::READ_PERMISSION)) {
+			throw new \GO\Base\Exception\AccessDenied();
+		}
+	}
+
 	protected function actionThumb($params) {
 
 		GO::session()->closeWriting();
 
 		$dir = GO::config()->root_path . 'views/Extjs3/themes/Paper/img/filetype/';
 		$url = GO::config()->host . 'views/Extjs3/themes/Paper/img/filetype/';
+		// GO\Base\Fs\File rejects ".." in paths and the file is only read after checkThumbFilePermission().
+		// nosemgrep: go-path-from-request
 		$file = new \GO\Base\Fs\File(GO::config()->file_storage_path . $params['src']);
 		
 		
@@ -268,6 +287,10 @@ class CoreController extends \GO\Base\Controller\AbstractController {
 				case 'xmind':
 				case 'heic':
 				case 'heif':
+					// This is the only branch that outputs the content of a file from the file storage. The other
+					// branches only use the extension to pick an icon.
+					$this->checkThumbFilePermission($params['src']);
+
 					$src = GO::config()->file_storage_path . $params['src'];
 					break;
 
@@ -322,6 +345,8 @@ class CoreController extends \GO\Base\Controller\AbstractController {
 			}
 		}
 
+		// A file checked with checkThumbFilePermission() or a fixed icon.
+		// nosemgrep: go-path-from-request
 		$file = new \GO\Base\Fs\File($src);
 		
 		if($file->size() > \GO::config()->max_thumbnail_size*1024*1024){
@@ -374,6 +399,8 @@ class CoreController extends \GO\Base\Controller\AbstractController {
 		}
 
 		$cacheFilename = 't_'. $w . '_' . $h . '_' . $lw . '_' . $ph. '_' . $pw . '_' . $lw;
+		// A file checked with checkThumbFilePermission() or a fixed icon.
+		// nosemgrep: go-path-from-request
 		$cacheDir = new \GO\Base\Fs\Folder(GO::config()->orig_tmpdir . 'thumbcache/'.$file->parent()->stripFileStoragePath());
 		$cacheDir->create();
 		
@@ -442,6 +469,8 @@ class CoreController extends \GO\Base\Controller\AbstractController {
 				header('Content-Disposition: inline; filename="' . $cacheFilename . '"');
 				header('Content-Transfer-Encoding: binary');
 
+		// A file checked with checkThumbFilePermission() or a fixed icon.
+		// nosemgrep: go-path-from-request
 		readfile($readfile);
 
 
@@ -508,6 +537,8 @@ class CoreController extends \GO\Base\Controller\AbstractController {
 		
 		$inline = !isset($params['inline']) || !empty($params['inline']);
 		
+		// The temporary folder is per user and GO\Base\Fs\File rejects ".." in paths.
+		// nosemgrep: go-path-from-request
 		$file = new \GO\Base\Fs\File(GO::config()->tmpdir.$params['path']);
 		if($file->exists()){
 			\GO\Base\Util\Http::outputDownloadHeaders($file, $inline, !empty($params['cache']));
@@ -526,6 +557,8 @@ class CoreController extends \GO\Base\Controller\AbstractController {
 	 * @param String $path 
 	 */
 	protected function actionDownloadPublicFile($params){
+		// The public folder is public and GO\Base\Fs\File rejects ".." in paths.
+		// nosemgrep: go-path-from-request
 		$file = new \GO\Base\Fs\File(GO::config()->file_storage_path.'public/'.$params['path']);
 		
 		if($file->exists()){
@@ -547,9 +580,15 @@ class CoreController extends \GO\Base\Controller\AbstractController {
 
 			$requests = json_decode($params['requests'], true);
 			if(is_array($requests)){
+				// A sub request must never run with the permissions that a previous sub request left behind
+				$ignoreAcl = GO::$ignoreAclPermissions;
 				foreach($requests as $responseIndex=>$requestParams){
 					ob_start();				
-					GO::router()->runController($requestParams);
+					try {
+						GO::router()->runController($requestParams);
+					} finally {
+						GO::setIgnoreAclPermissions($ignoreAcl);
+					}
 					echo "\n".'"'.$responseIndex.'" : '.ob_get_clean().",\n";
 				}
 			}
@@ -616,8 +655,17 @@ class CoreController extends \GO\Base\Controller\AbstractController {
 		
 		if(isset($params['addFileStorageFiles'])){
 			$files = json_decode($params['addFileStorageFiles'],true);
-			foreach($files as $filepath)
-				GO::session()->values['files']['uploadqueue'][]=GO::config()->file_storage_path.$filepath;
+			if(!is_array($files) || !GO::modules()->isInstalled('files')) {
+				throw new \GO\Base\Exception\AccessDenied();
+			}
+			// Check all paths first so the queue is not changed when one of them may not be read
+			$paths = [];
+			foreach($files as $filepath) {
+				$paths[] = \GO\Files\Model\File::model()->findReadableByPath($filepath)->fsFile->path();
+			}
+			foreach($paths as $path) {
+				GO::session()->values['files']['uploadqueue'][] = $path;
+			}
 		}
 		
 		$response['results']=array();
@@ -830,63 +878,40 @@ class CoreController extends \GO\Base\Controller\AbstractController {
 	
 	
 	
-	public function actionPasteUpload($model_id, $model_name, $filename, $filetype){
-		
-		$site = GO::getModel($model_name)->findByPk($model_id);
-		
-		
-		$type = explode('/', $filetype);
-		$extension=$type[1];
-		
-		
-		$_FILES['pastedFile']['name']=$filename.'.'.$extension;
-		
-		$file = $site->filesFolder->addUploadedFile($_FILES["pastedFile"]);	
-			
-		
-		$response = new \GO\Base\Data\JsonResponse(array(
-				'success'=>true,
-				'file_id'=>$file->id,
-				'path'=>substr($file->path,strlen($site->filesFolder->path)+1)
-		));
-		
-		echo $response;
-		
-		
-	}
-	
-	public function actionPasteUploadTemporary($filename, $filetype){
-		
-		
-		$type = explode('/', $filetype);
-		$extension=$type[1];
-		
-		
-		$_FILES['pastedFile']['name']=$filename.'.'.$extension;
-		
-		
-		$file = new GO\Base\Fs\File($_FILES['pastedFile']['tmp_name']);
-		
-		$file->move(GO::config()->getTempFolder(), $filename.'.'.$extension, true);
-			
-		
-		$response = new \GO\Base\Data\JsonResponse(array(
-				'success'=>true,
-				'data'=>array(
-						'tmp_file'=>$file->stripTempPath(),
-						'name'=>$file->name(),
-						'size'=>$file->size(), 
-						'type'=>$file->mimeType(),
-						'extension'=>$file->extension(),
-						'human_size'=>$file->humanSize(),
-						'from_file_storage'=>false						
-						)
-		));
-		
-		echo $response;
-		
-		
-	}
+//	public function actionPasteUpload($model_id, $model_name, $filename, $filetype){
+//
+//		$site = $this->getRequestedModel($model_name)->findByPk($model_id);
+//		if(!$site) {
+//			throw new \GO\Base\Exception\NotFound();
+//		}
+//
+//		// Check before the file is moved into the folder
+//		$folder = $site->filesFolder;
+//		if(!$folder || !$folder->checkPermissionLevel(\GO\Base\Model\Acl::CREATE_PERMISSION)) {
+//			throw new \GO\Base\Exception\AccessDenied();
+//		}
+//		if(!isset($_FILES['pastedFile']['tmp_name']) || !is_uploaded_file($_FILES['pastedFile']['tmp_name'])) {
+//			throw new \Exception("No file was uploaded");
+//		}
+//
+//		// The name and type come from the client. Strip path characters so the file stays in the folder.
+//		$type = explode('/', $filetype);
+//		$extension = \GO\Base\Fs\File::stripInvalidChars($type[1] ?? '');
+//		$_FILES['pastedFile']['name'] = \GO\Base\Fs\File::stripInvalidChars($filename) . '.' . $extension;
+//
+//		$file = $folder->addUploadedFile($_FILES["pastedFile"]);
+//
+//
+//		$response = new \GO\Base\Data\JsonResponse(array(
+//				'success'=>true,
+//				'file_id'=>$file->id,
+//				'path'=>substr($file->path,strlen($site->filesFolder->path)+1)
+//		));
+//
+//		echo $response;
+//
+//
+//	}
 	
 	/**
 	 * Create an url to the given model with the given id.
@@ -902,63 +927,6 @@ class CoreController extends \GO\Base\Controller\AbstractController {
 		
 		echo $response;
 	}
-	
-	/**
-	 * Send an email
-	 * 
-	 * @param string $email
-	 * @param string $subject
-	 * @param string $body
-	 * @param array $attachments Array like this: (The given className needs to implement the GO\Base\Mail\AttachableInterface)
-	 *	array(
-	 *		array(
-	 *			'className'=>'GO\Files\Model\File',
-	 *			'pk'=>3',
-	 *			'altName'=>'New attachment name'
-	 *		),
-	 *		array(
-	 *			'className'=>'GO\Files\Model\File',
-	 *			'pk'=>4',
-	 *			'altName'=>'New attachment name2'
-	 *		)
-	 *	)
-	 */
-	public function actionSendSystemEmail($email, $subject, $body, $attachments=array()){
-		
-		$response = array('success'=>false);
-		
-		//Build system email and mail with the given files
-		$systemMessage = new GO\Base\Mail\SystemMessage($subject,$body);
-		
-		foreach($attachments as $attachmentSpec) {
-			
-			if(!empty($attachmentSpec['className']) &&  !empty($attachmentSpec['pk'])){
-				
-				$className = $attachmentSpec['className'];
-				$record = $className::model()->findByPk($attachmentSpec['pk']);
-				
-				if($record){
-					
-					$altName = null;
-					if(!empty($attachmentSpec['altName'])){
-						$altName = $attachmentSpec['altName'];
-					}
 
-					$attachment = $record->getAttachment($altName);
-					
-					if($attachment !== false){
-						$systemMessage->attach($attachment);
-					}
-				}
-			}			
-		}
-
-		$systemMessage->send();
-
-		$response['success'] = true;
-
-		echo new \GO\Base\Data\JsonResponse($response);
-	}
-	
 	
 }

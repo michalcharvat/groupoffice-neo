@@ -37,8 +37,13 @@ class Wopi extends Controller
       throw new \Exception("No access_token query parameter given");
     }
 
-    $token = model\Token::find()->where(['token' => $accessToken])->single();
-    if (!$token || $token->isExpired()) {
+    // The token is only valid for the file it was issued for. All WOPI routes are /files/{fileId}[/contents]
+    if (!preg_match('/files\/([0-9]+)(\/contents)?$/', Request::get()->getPath(), $matches)) {
+      throw new Forbidden();
+    }
+
+    $token = model\Token::findValid((string) $accessToken, (int) $matches[1]);
+    if (!$token) {
       throw new Forbidden();
     }
 
@@ -46,9 +51,16 @@ class Wopi extends Controller
 
     $s = new TemporaryState();
     $s->setUserId($token->userId);
-    go()->setAuthState($s);    
+    go()->setAuthState($s);
 
-    
+    // Checks if the user still has access to the wopi module
+    parent::authenticate();
+
+    // The user's access to the service may have been revoked after the token was issued
+    $service = $this->getService();
+    if(!$service || !$service->hasPermissionLevel(Acl::LEVEL_READ)) {
+      throw new Forbidden();
+    }
   }
 
   const CAPABILITIES = [
@@ -72,6 +84,10 @@ class Wopi extends Controller
    */
   private function findFile($fileId)
   {
+    if((int) $fileId !== (int) $this->token->fileId) {
+      throw new Forbidden();
+    }
+
     $file = File::model()->findByPk($fileId);
     if (!$file) {
       throw new NotFound("File not found");
@@ -82,12 +98,21 @@ class Wopi extends Controller
     return $file;
   }
 
+  /**
+   * Output the contents of the file (WOPI GetFile)
+   *
+   * @apiPermission A WOPI access token for this file (authenticate() and findFile()) and read permission on the file.
+   */
   public function getFile($fileId)
   {
     $file = $this->findFile($fileId);
 
-		if($file->fsFile->isLink())
+		// also refuses a link in one of the parent folders
+		try {
+			$file->fsFile->checkFileStoragePath();
+		} catch (\GO\Base\Exception\AccessDenied $e) {
 			throw new Forbidden("Symlinks are forbidden");
+		}
 
     if(!$file->checkPermissionLevel(Acl::LEVEL_READ)) {
       throw new Forbidden();
@@ -105,14 +130,12 @@ class Wopi extends Controller
 		$file->fsFile->output();
   }
 
-  private function checkLock($fileId, $requireLock = true) {
+  private function checkLock(File $file, $requireLock = true) {
 
-		go()->debug("checkLock($fileId, " . var_export($requireLock, true).")");
+		go()->debug("checkLock(" . $file->id . ", " . var_export($requireLock, true).")");
 
     $lockID = Request::get()->getHeader("X-WOPI-Lock");
 		go()->debug("X-WOPI-Lock: " . $lockID);
-
-		$file = $this->findFile($fileId);
 
 		go()->debug("File lock: " . $file->locked_user_id ." / ". $file->lock_id . " / " . date("c", $file->lock_expires_at) . '/ '. date("c",time()));
 
@@ -151,15 +174,40 @@ class Wopi extends Controller
     return $this->service;
   }
 
+  /**
+   * Check if the file may be changed through this WOPI service. Both the user's file permissions and the service
+   * permissions must allow it.
+   *
+   * @param File $file
+   * @return bool
+   */
+  private function canWrite(File $file): bool
+  {
+    return $file->checkPermissionLevel(Acl::LEVEL_WRITE) && !$file->isTempFile() && $this->getService()->hasPermissionLevel(Acl::LEVEL_WRITE);
+  }
+
+  /**
+   * @throws Forbidden
+   */
+  private function requireWrite(File $file): void
+  {
+    if(!$this->canWrite($file)) {
+      throw new Forbidden();
+    }
+  }
+
+  /**
+   * Replace the contents of the file (WOPI PutFile)
+   *
+   * @apiPermission A WOPI access token for this file, and write permission on the file and on the WOPI service.
+   */
   public function putFile($fileId)
   {
     $file = $this->findFile($fileId);
 
-    if(!$file->checkPermissionLevel(Acl::LEVEL_WRITE)) {
-      throw new Forbidden();
-    }
+    $this->requireWrite($file);
 
-    $this->checkLock($fileId);
+    $this->checkLock($file);
 
     $content = fopen('php://input', 'rb');
 
@@ -177,6 +225,11 @@ class Wopi extends Controller
 		return $this->checkFileInfo($fileId);
   }
 
+  /**
+   * Get the properties of the file (WOPI CheckFileInfo)
+   *
+   * @apiPermission A WOPI access token for this file and read permission on the file.
+   */
   public function checkFileInfo($fileId)
   {
 
@@ -188,7 +241,7 @@ class Wopi extends Controller
       throw new Forbidden();
     }
 
-    $canWrite = $file->checkPermissionLevel(Acl::LEVEL_WRITE) && !$file->isTempFile() && $this->getService()->hasPermissionLevel(Acl::LEVEL_WRITE);
+    $canWrite = $this->canWrite($file);
     $user = go()->getAuthState()->getUser(['displayName', 'username']);
 
 
@@ -232,6 +285,11 @@ class Wopi extends Controller
   }
 
   // TODO lock in GO and webdav too!
+  /**
+   * Lock the file (WOPI Lock)
+   *
+   * @apiPermission A WOPI access token for this file (authenticate() and findFile()) and read permission on the file (File::findByPk()).
+   */
   public function lock($fileId)
   {
 		$file = $this->findFile($fileId);
@@ -272,6 +330,11 @@ class Wopi extends Controller
 		Response::get()->setHeader("X-WOPI-Lock",$file->lock_id);
   }
 
+  /**
+   * Get the lock of the file (WOPI GetLock)
+   *
+   * @apiPermission A WOPI access token for this file (authenticate() and findFile()) and read permission on the file (File::findByPk()).
+   */
   public function getLock($fileId)
   { 
     $file = $this->findFile($fileId);
@@ -289,6 +352,11 @@ class Wopi extends Controller
     }     
   }
 
+  /**
+   * Refresh the lock of the file (WOPI RefreshLock)
+   *
+   * @apiPermission A WOPI access token for this file (authenticate() and findFile()) and read permission on the file (File::findByPk()).
+   */
   public function refreshLock($fileId)
   {
 		go()->debug("WOPI: refreshLock($fileId)");
@@ -310,6 +378,11 @@ class Wopi extends Controller
 
   }
 
+  /**
+   * Unlock the file (WOPI Unlock)
+   *
+   * @apiPermission A WOPI access token for this file (authenticate() and findFile()) and read permission on the file (File::findByPk()).
+   */
   public function unlock($fileId)
   { 
     $file = $this->findFile($fileId);
@@ -336,11 +409,19 @@ class Wopi extends Controller
 
   }
 
+  /**
+   * Save the contents as a new file in the folder of the file (WOPI PutRelativeFile)
+   *
+   * @apiPermission A WOPI access token for the base file, and write permission on it and on the WOPI service. Overwriting an existing file also requires write permission on that file.
+   */
   public function putRelative($fileId)
   {
 
 		go()->debug("putRelative($fileId)");
-    $baseFile = $this->findFile($fileId);   
+    $baseFile = $this->findFile($fileId);
+
+    // The new file is created in the folder of the base file
+    $this->requireWrite($baseFile);
 
     $filename = Request::get()->getHeader("X-WOPI-SuggestedTarget");
     
@@ -382,11 +463,13 @@ class Wopi extends Controller
       $file = File::model()->findSingleByAttributes(['folder_id'=> $baseFile->folder_id, 'name' => $filename]);
 
       if($file) {
-        $this->checkLock($file->id, false);
+        $this->checkLock($file, false);
 
         if(!$overWrite) {        
           throw new Exception(409, "File already exists");
         }
+
+        $this->requireWrite($file);
       } else {
         $file = new File();
         $file->folder_id = $baseFile->folder_id;
@@ -412,7 +495,8 @@ class Wopi extends Controller
 
     $response = [
       'Name' => $file->name,
-      'Url' => $this->getService()->autoWopiClientUri() . "files/" . $file->id .'?access_token=' . Request::get()->getQueryParam('access_token'),
+      // The token is bound to a file, so the client gets a new one for the new file
+      'Url' => $this->getService()->autoWopiClientUri() . "files/" . $file->id .'?access_token=' . model\Token::get((int) $this->token->serviceId, (int) $this->token->userId, (int) $file->id)->getToken(),
       'HostEditUrl' => Request::get()->getBaseUrl() . "/wopi/edit/" . $this->token->serviceId . "/". $file->id,
       'HostViewUrl' => Request::get()->getBaseUrl() . "/wopi/edit/" . $this->token->serviceId . "/". $file->id
     ];
@@ -420,11 +504,18 @@ class Wopi extends Controller
     return $response;
   }
 
+  /**
+   * Rename the file (WOPI RenameFile)
+   *
+   * @apiPermission A WOPI access token for this file, and write permission on the file and on the WOPI service.
+   */
   public function renameFile($fileId)
   { 
-    $this->checkLock($fileId);
+    $file = $this->findFile($fileId);
 
-    $file = $this->findFile($fileId);    
+    $this->requireWrite($file);
+
+    $this->checkLock($file);
 
     $name = Request::get()->getHeader("X-WOPI-RequestedName");
     $name = mb_convert_encoding($name, "UTF-8", "UTF-7");
@@ -435,15 +526,22 @@ class Wopi extends Controller
     }    
   }
 
+  /**
+   * Delete the file (WOPI DeleteFile)
+   *
+   * @apiPermission A WOPI access token for this file, write and delete permission on the file, and write permission on the WOPI service.
+   */
   public function delete($fileId)
   {
-    $this->checkLock($fileId, false);
-
     $file = $this->findFile($fileId);
-    
+
+    $this->requireWrite($file);
+
     if(!$file->checkPermissionLevel(Acl::LEVEL_DELETE)) {
       throw new Forbidden();
     }
+
+    $this->checkLock($file, false);
 
     $success = $file->delete();
     if(!$success) {
@@ -451,6 +549,11 @@ class Wopi extends Controller
     }
    }
 
+  /**
+   * Store user information (WOPI PutUserInfo). Not implemented.
+   *
+   * @apiPermission Module access: not implemented, it always returns HTTP status 501. Wopi::authenticate() requires a WOPI access token.
+   */
   public function putUserInfo($fileId)
   { 
     throw new Exception(501);

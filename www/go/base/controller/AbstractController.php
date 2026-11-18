@@ -40,6 +40,7 @@ namespace GO\Base\Controller;
 use Exception;
 use GO;
 use GO\Base\Data\JsonResponse;
+use GO\Base\Db\ActiveRecord;
 use GO\Base\Exception\AccessDenied;
 use GO\Base\Exception\CliOnly;
 use GO\Base\Exception\MissingParameter;
@@ -187,15 +188,24 @@ abstract class AbstractController extends Observable {
 	 */
 	protected function checkSecurityToken()
 	{
-		// When using JMAP API requests without cookies don't check CSRF
+		// Requests that authenticate with an "Authorization: Bearer" header can't be made by other websites, so they
+		// don't need the token. When the JMAP state isn't authenticated, for example because its CSRF check failed, a
+		// session user that came from an access token still needs it.
 		$state = go()->getAuthState();
-		$usingCookies = (!($state instanceof State) || $state->isAuthenticatedUsingCookie());
+		if ($state instanceof State) {
+			$usingCookies = !$state->isAuthenticatedUsingHeader() &&
+				($state->isAuthenticatedUsingCookie() || !empty(GO::session()->values['accessToken']));
+		} else {
+			$usingCookies = true;
+		}
+		$requestToken = $_REQUEST['security_token'] ?? null;
+		$sessionToken = GO::session()->values['security_token'] ?? null;
 		if (
       $usingCookies &&
 			!GO::config()->debug &&
 			!GO::config()->disable_security_token_check &&
 			!empty($_REQUEST['r']) &&
-			(!isset($_REQUEST['security_token']) || $_REQUEST['security_token'] != GO::session()->values['security_token'])
+			(!is_string($requestToken) || !is_string($sessionToken) || !hash_equals($sessionToken, $requestToken))
 		) {
 			throw new SecurityTokenMismatch();
 		} else {
@@ -267,8 +277,37 @@ abstract class AbstractController extends Observable {
 	}
 	
 	
-	
-	
+
+	/**
+	 * Get the model for a class name given by the client.
+	 *
+	 * Only models protected by an ACL may be used. Models without an ACL pass every permission check in
+	 * ActiveRecord, so only admins may use them.
+	 *
+	 * @param string $modelName Class name or entity name
+	 * @return ActiveRecord
+	 * @throws AccessDenied
+	 */
+	protected function getRequestedModel(string $modelName): ActiveRecord {
+		if(!class_exists($modelName)) {
+			$entityType = \go\core\orm\EntityType::findByName($modelName);
+			if($entityType) {
+				$modelName = $entityType->getClassName();
+			}
+		}
+
+		if(!class_exists($modelName) || !is_subclass_of($modelName, ActiveRecord::class)) {
+			throw new AccessDenied();
+		}
+
+		$model = $modelName::model();
+		if(!$model->aclField() && !GO::user()->isAdmin()) {
+			throw new AccessDenied();
+		}
+
+		return $model;
+	}
+
 	/**
 	 * Checks if a user is logged in, if the user has permission to the module and if the user has access to a specific action.
 	 * 
@@ -284,12 +323,12 @@ abstract class AbstractController extends Observable {
 			if(!GO::user()){					
 				return false;	
 			}
+			
+			$this->checkSecurityToken();
 
 			if(GO::user()->isAdmin()) {
 				return true;
 			}
-			
-			$this->checkSecurityToken();
 			
 			//check module permission
 			$allowWithoutModuleAccess = $this->allowWithoutModuleAccess();
@@ -356,6 +395,7 @@ abstract class AbstractController extends Observable {
 		if(!method_exists($this, $methodName))
 			throw new NotFound();
 		
+		$oldIgnore = null;
 		try {
 			if($checkPermissions && !$this->_checkPermission($action)){
 				$cls = get_class($this);
@@ -395,10 +435,6 @@ abstract class AbstractController extends Observable {
 			
 			if($render && isset($response))
 				$this->render($action, $response);
-			
-			//restore old value for acl permissions if this method was allowed for guests.
-			if(isset($oldIgnore))
-				GO::setIgnoreAclPermissions($oldIgnore);
 
 			return $response;
 			
@@ -466,6 +502,11 @@ abstract class AbstractController extends Observable {
 			}
 
 			$this->view->render('Exception', array('response'=>$response));
+		}
+		finally {
+			//restore old value for acl permissions if this method was allowed for guests, also when the action failed.
+			if(isset($oldIgnore))
+				GO::setIgnoreAclPermissions($oldIgnore);
 		}
 	}
 	
