@@ -250,28 +250,68 @@ class Client {
     }
 
     /**
-     * Uploads a file as a JMAP blob (api/upload.php)
+     * Uploads a file as a JMAP blob (api/upload.php). XMLHttpRequest, not fetch: only XHR
+     * reports upload progress. GO.jmap.Uploader adds the queue, size limit and progress UI.
      * @param {File|Blob} file
+     * @param {Object} [options]
+     * @param {Function} [options.onProgress] called with (loaded, total) bytes
+     * @param {AbortSignal} [options.signal] aborts the upload, the promise rejects with an AbortError
      * @returns {Promise<Object>} {blobId, name, size, type}
      */
-    async upload(file) {
-        const response = await fetch(this.apiUrl + 'upload.php', {
-            method     : 'POST',
-            credentials: 'same-origin',
-            headers    : {
-                ...this.#headers(),
-                'Content-Type': file.type || 'application/octet-stream',
-                // RFC 5987, decoded by Request::headerDecode()
-                'X-File-Name' : "UTF-8''" + encodeURIComponent(file.name || 'file')
-            },
-            body: file
-        });
+    upload(file, {onProgress, signal}={}) {
+        return new Promise((resolve, reject) => {
+            const xhr     = new XMLHttpRequest(),
+                  headers = {
+                      ...this.#headers(),
+                      'Content-Type': file.type || 'application/octet-stream',
+                      // RFC 5987, decoded by Request::headerDecode()
+                      'X-File-Name' : "UTF-8''" + encodeURIComponent(file.name || 'file')
+                  },
+                  abort = () => xhr.abort();
 
-        if (!response.ok) {
-            throw new Error(`Upload failed: ${response.status} ${response.statusText}`)
-        }
+            if (signal?.aborted) {
+                reject(new DOMException('Upload aborted', 'AbortError'));
+                return
+            }
 
-        return response.json()
+            file.lastModified && (headers['X-File-LastModified'] = String(Math.round(file.lastModified / 1000)));
+
+            xhr.open('POST', this.apiUrl + 'upload.php');
+            xhr.withCredentials = true;
+            Object.entries(headers).forEach(([name, value]) => xhr.setRequestHeader(name, value));
+
+            onProgress && xhr.upload.addEventListener('progress', e => {
+                onProgress(e.loaded, e.lengthComputable ? e.total : file.size)
+            });
+
+            signal?.addEventListener('abort', abort, {once: true});
+
+            xhr.addEventListener('loadend', () => {
+                signal?.removeEventListener('abort', abort)
+            });
+
+            xhr.addEventListener('load', () => {
+                let body = null;
+
+                try {
+                    body = JSON.parse(xhr.responseText)
+                } catch (e) {
+                    // an HTML error page
+                }
+
+                if (xhr.status >= 200 && xhr.status < 300 && body) {
+                    resolve(body)
+                } else {
+                    // upload.php answers 413 with {error: "File exceeds maximum size of … bytes"}
+                    reject(new Error(t('Upload failed') + ': ' + (body?.error || `${xhr.status} ${xhr.statusText}`)))
+                }
+            });
+
+            xhr.addEventListener('error', () => reject(new Error(t('Upload failed'))));
+            xhr.addEventListener('abort', () => reject(new DOMException('Upload aborted', 'AbortError')));
+
+            xhr.send(file)
+        })
     }
 
     /**
