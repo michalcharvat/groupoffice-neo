@@ -52,21 +52,14 @@
         display: none;
     }
 
-    /* "open in new window" icon right after its module tab */
-    .go-topbar .neo-button.go-module-popout,
+    /* close icon right after its module tab ("open in new window" is in the tab's context menu) */
     .go-topbar .neo-button.go-module-close {
         margin-left : -.8rem;
         padding     : 0 .6rem;
     }
 
-    .go-topbar .go-module-popout .neo-button-glyph,
     .go-topbar .go-module-close .neo-button-glyph {
         font-size: calc(1.1rem * var(--font-scale));
-    }
-
-    /* a gap to the popout icon: no closing by a near miss */
-    .go-topbar .neo-button.go-module-close {
-        margin-left: .4rem;
     }
 
     .go-topbar.neo-toolbar .neo-button:hover,
@@ -151,7 +144,6 @@
         }
 
         .go-topbar .go-brand,
-        .go-topbar .neo-button.go-module-popout,
         .go-topbar .neo-button.go-module-close,
         .go-topbar .neo-button.go-module-button:not(.pressed) {
             display: none;

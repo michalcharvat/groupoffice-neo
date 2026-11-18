@@ -19,7 +19,7 @@ Small modules, 2FA login, module hooks: `docs/neo-small-modules.md`.
 
 | Path | What |
 |---|---|
-| `apps/go/` | shell app: `app.mjs`, Viewport (loading / login / main), LoginView (GO login: "Login required" window, language menu, forgot credentials card), MainView (module tabs with popout and close ×, right click: close / close others / close all; a closed tab returns when the module is opened again; hash routing) |
+| `apps/go/` | shell app: `app.mjs`, Viewport (loading / login / main), LoginView (GO login: "Login required" window, language menu, forgot credentials card), MainView (module tabs with close ×, right click: open in new window / close / close others / close all; a closed tab returns when the module is opened again; hash routing) |
 | `src/jmap/Client.mjs` | JMAP client in the App worker: cookie + `X-CSRF-Token`, batching, fetch-based SSE |
 | `src/data/JmapStore.mjs` | `Neo.data.Store` over `Entity/query`+`get`; reloads the page on push |
 | `src/data/backgroundJob.mjs` | `Entity/export`/`import` run in the background and end in a core Alert: `lastAlertId()`, `waitForFinishedAlert()`, `alertBlobId()` (address book export/import) |

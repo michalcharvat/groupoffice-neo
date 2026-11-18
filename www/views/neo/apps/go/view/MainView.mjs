@@ -100,13 +100,6 @@ class MainView extends Container {
             text     : m.title
         }, {
             module   : Button,
-            cls      : ['go-module-popout'],
-            iconCls  : 'fa fa-up-right-from-square',
-            reference: 'popout-' + m.name,
-            tooltip  : t('Open in new window'),
-            handler  : () => me.popOutModule(m.name)
-        }, {
-            module   : Button,
             cls      : ['go-module-close'],
             iconCls  : 'fa fa-xmark',
             reference: 'close-' + m.name,
@@ -365,7 +358,6 @@ class MainView extends Container {
         }
 
         entry.popup = {name: null};
-        me.setPopoutDisabled(name, true);
 
         const popupName = await openPopup({
             id      : entry.view.id,
@@ -375,8 +367,7 @@ class MainView extends Container {
             onAdopt : popupView => me.moveModuleToWindow(name, popupView),
             onClose : popupView => me.dockModule(name, popupView),
             onFailed: () => {
-                entry.popup = null;
-                me.isDestroyed || me.setPopoutDisabled(name, false)
+                entry.popup = null
             }
         });
 
@@ -384,7 +375,6 @@ class MainView extends Container {
             entry.popup.name = popupName
         } else {
             entry.popup = null;
-            me.setPopoutDisabled(name, false);
             console.warn('GO.view.MainView: popup window was blocked')
         }
     }
@@ -451,9 +441,7 @@ class MainView extends Container {
         cards.remove(entry.placeholder);
         entry.placeholder = null;
 
-        me.syncActiveCard();
-
-        me.setPopoutDisabled(name, false)
+        me.syncActiveCard()
     }
 
     /**
@@ -541,6 +529,12 @@ class MainView extends Container {
             target  : button.id,
             windowId: me.windowId,
             items   : [{
+                text    : t('Open in new window'),
+                icon    : 'open_in_new',
+                // already in its own window
+                disabled: !!me.openModules[name]?.popup,
+                handler : () => me.popOutModule(name)
+            }, {
                 text   : t('Close'),
                 icon   : 'close',
                 handler: () => me.closeModule(name)
@@ -557,12 +551,12 @@ class MainView extends Container {
     }
 
     /**
-     * Shows or hides a module's tab with its popout and close buttons
+     * Shows or hides a module's tab with its close button
      * @param {String} name
      * @param {Boolean} visible
      */
     setTabVisible(name, visible) {
-        ['module-', 'popout-', 'close-'].forEach(prefix => {
+        ['module-', 'close-'].forEach(prefix => {
             const button = this.getReference(prefix + name);
 
             if (button && button.hidden === visible) {
@@ -588,17 +582,6 @@ class MainView extends Container {
         }
     }
 
-    /**
-     * @param {String} name module
-     * @param {Boolean} disabled
-     */
-    setPopoutDisabled(name, disabled) {
-        const button = this.getReference('popout-' + name);
-
-        if (button) {
-            button.disabled = disabled
-        }
-    }
 }
 
 export default Neo.setupClass(MainView);
