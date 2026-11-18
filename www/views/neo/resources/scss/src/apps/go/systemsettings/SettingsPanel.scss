@@ -25,6 +25,9 @@
 // GO.systemsettings.AppearancePanel: light and dark side by side, one column on narrow screens
 .neo-theme-go {
     .go-systemsettings-columns {
+        // a shorter column (Dark has no hints) keeps its own height: stretched, its
+        // fieldset spreads the fields out and the logo moves down
+        align-items          : start;
         column-gap           : 3.2rem;
         display              : grid;
         grid-template-columns: repeat(auto-fit, minmax(30rem, 1fr));
