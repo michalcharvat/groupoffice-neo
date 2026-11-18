@@ -41,10 +41,6 @@ const COMMANDS = {
     removeFormat       : {icon: 'format_clear',           title: 'Remove formatting'}
 };
 
-const ADDON = 'WS/HtmlEditor';
-
-/** proxy of the main thread addon in this worker */
-const editor = () => Neo.ns('GO.main.addon.HtmlEditor');
 
 class HtmlField extends Field {
     static config = {
@@ -106,6 +102,24 @@ class HtmlField extends Field {
      */
     #valueSource = null
 
+    /**
+     * Main thread addon that runs the editor, see Neo.Main.importAddon()
+     * @returns {String}
+     */
+    get addonName() {return 'WS/HtmlEditor'}
+
+    /**
+     * Proxy of the main thread addon in this worker
+     * @returns {Object}
+     */
+    get addon() {return Neo.ns('GO.main.addon.HtmlEditor')}
+
+    /**
+     * Window of the main thread editor, null while there is none
+     * @returns {String|null}
+     */
+    get editorWindowId() {return this.#editorWindowId}
+
     get labelNode()   {return this.vdom.cn[0]}
     get toolbarNode() {return this.vdom.cn[1]}
     get linkBarNode() {return this.vdom.cn[2]}
@@ -117,7 +131,8 @@ class HtmlField extends Field {
         let me = this;
 
         me.toolbarNode.id = me.id + '__toolbar';
-        me.linkBarNode.id = me.id + '__linkbar';
+        // subclasses without a link bar return null
+        me.linkBarNode && (me.linkBarNode.id = me.id + '__linkbar');
         me.editorNode.id  = me.id + '__editor';
         me.toolbarNode['aria-label'] = t('Formatting');
         me.renderToolbar();
@@ -128,6 +143,25 @@ class HtmlField extends Field {
         })
     }
 
+    /**
+     * Translated texts the addon shows itself
+     * @returns {Object}
+     */
+    getEditorLabels() {
+        return {
+            cancel: t('Cancel'),
+            ok    : t('Ok'),
+            unlink: t('Remove link'),
+            url   : t('URL')
+        }
+    }
+
+    /**
+     * Toolbar command → {icon, title, color}
+     * @returns {Object}
+     */
+    get commands() {return COMMANDS}
+
     renderToolbar() {
         let me = this;
 
@@ -136,7 +170,7 @@ class HtmlField extends Field {
                 return {cls: ['go-htmlfield-separator']}
             }
 
-            const {icon, title, color} = COMMANDS[cmd],
+            const {icon, title, color} = me.commands[cmd],
                   text                 = t(title),
                   iconNode             = {tag: 'span', cls: ['go-icon'], 'aria-hidden': 'true', text: icon};
 
@@ -191,7 +225,7 @@ class HtmlField extends Field {
 
         // typed in that editor: it has the value already
         if (windowId && windowId !== me.#valueSource) {
-            editor().setValue({id: me.id, value: value || '', windowId}).catch(() => {})
+            me.addon.setValue({id: me.id, value: value || '', windowId}).catch(() => {})
         }
 
         me.validateCls()
@@ -234,7 +268,7 @@ class HtmlField extends Field {
         try {
             // not Neo.currentWorker.getAddon(): it caches per windowId, and a reloaded
             // tab keeps its windowId but not its addons. importAddon() is idempotent.
-            await Neo.Main.importAddon({name: ADDON, windowId});
+            await Neo.Main.importAddon({name: me.addonName, windowId});
 
             if (me.isDestroyed || !me.mounted || me.windowId !== windowId || generation !== me.#generation) {
                 return
@@ -242,14 +276,9 @@ class HtmlField extends Field {
 
             const sent = me.value || '';
 
-            await editor().createInstance({
+            await me.addon.createInstance({
                 id    : me.id,
-                labels: {
-                    cancel: t('Cancel'),
-                    ok    : t('Ok'),
-                    unlink: t('Remove link'),
-                    url   : t('URL')
-                },
+                labels: me.getEditorLabels(),
                 token : generation,
                 value : sent,
                 windowId
@@ -259,11 +288,11 @@ class HtmlField extends Field {
                 me.#editorWindowId = windowId;
 
                 // value set while the editor was being created
-                (me.value || '') !== sent && editor().setValue({id: me.id, value: me.value || '', windowId}).catch(() => {})
+                (me.value || '') !== sent && me.addon.setValue({id: me.id, value: me.value || '', windowId}).catch(() => {})
             } else {
                 // unmounted, moved or destroyed meanwhile: destroyEditor() did not know
                 // this instance yet, remove it from its window
-                editor().destroyInstance({id: me.id, token: generation, windowId}).catch(() => {})
+                me.addon.destroyInstance({id: me.id, token: generation, windowId}).catch(() => {})
             }
         } catch (e) {
             e !== Neo.isDestroyed && console.error('HtmlField: editor failed', e)
@@ -283,7 +312,7 @@ class HtmlField extends Field {
 
         me.#editorWindowId = null;
 
-        editor().destroyInstance({id: me.id, windowId}).then(html => {
+        me.addon.destroyInstance({id: me.id, windowId}).then(html => {
             typeof html === 'string' && !me.isDestroyed && me.applyEditorValue(html, windowId)
         }).catch(() => {})
     }
@@ -327,7 +356,7 @@ class HtmlField extends Field {
     focus() {
         let {windowId} = this;
 
-        this.#editorWindowId && editor().focus({id: this.id, windowId}).catch(() => {})
+        this.#editorWindowId && this.addon.focus({id: this.id, windowId}).catch(() => {})
     }
 
     /**
@@ -340,7 +369,7 @@ class HtmlField extends Field {
             windowId = me.#editorWindowId;
 
         if (windowId) {
-            const html = await editor().getValue({id: me.id, windowId}).catch(() => null);
+            const html = await me.addon.getValue({id: me.id, windowId}).catch(() => null);
 
             typeof html === 'string' && me.applyEditorValue(html, windowId)
         }

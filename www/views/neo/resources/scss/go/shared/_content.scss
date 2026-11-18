@@ -1,0 +1,42 @@
+// Rendered user content: Markdown (GO.form.field.MarkdownField preview, note detail).
+.neo-theme-go {
+    .go-markdown {
+        line-height: 1.5;
+
+        > :first-child {
+            margin-top: 0;
+        }
+
+        img {
+            max-width: 100%;
+            height   : auto;
+        }
+
+        pre {
+            padding      : .8rem 1.2rem;
+            overflow     : auto;
+            border-radius: .4rem;
+            background   : var(--bg-mid);
+        }
+
+        code {
+            font-family: monospace;
+        }
+
+        blockquote {
+            margin      : .8rem 0;
+            padding-left: 1.2rem;
+            border-left : .4rem solid var(--fg-line);
+            color       : var(--fg-secondary-text);
+        }
+
+        table {
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: .4rem .8rem;
+            border : 1px solid var(--fg-line);
+        }
+    }
+}

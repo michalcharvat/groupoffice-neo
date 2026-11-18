@@ -3,3 +3,9 @@
 .go-notes .go-card .go-icon {
     vertical-align: middle;
 }
+
+/* NoteDialog: name, note book and the editor switch in one row (GOUI "hbox gap wrap") */
+.go-notes-dialog-head {
+    flex-wrap: wrap;
+    gap      : .8rem;
+}
