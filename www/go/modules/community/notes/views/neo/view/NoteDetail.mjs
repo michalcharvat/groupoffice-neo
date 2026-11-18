@@ -3,6 +3,8 @@ import Toolbar   from '../../../../../../../views/neo/node_modules/neo.mjs/src/t
 import {LEVEL_DELETE, LEVEL_WRITE} from '../../../../../../../views/neo/src/Acl.mjs';
 import Button      from '../../../../../../../views/neo/src/button/Button.mjs';
 import {escapeHtml} from '../../../../../../../views/neo/src/Format.mjs';
+import {contentToHtml} from '../../../../../../../views/neo/src/Markdown.mjs';
+import ImageWindow, {zoomableImages} from '../../../../../../../views/neo/src/view/ImageWindow.mjs';
 import CommentsPanel from '../../../../../../../views/neo/src/detail/CommentsPanel.mjs';
 import FilesPanel    from '../../../../../../../views/neo/src/detail/FilesPanel.mjs';
 import HistoryPanel  from '../../../../../../../views/neo/src/detail/HistoryPanel.mjs';
@@ -18,8 +20,10 @@ const t = translator('community', 'notes');
  * Right pane: the selected note, like the GOUI NoteDetail (toolbar with edit and a
  * more menu, the note in a card on the app background).
  *
- * Content is HTML sanitised by the server on write (Note::cleanContent). It is
- * rendered with innerHTML, which does not run <script> elements.
+ * HTML content is sanitised by the server on write (Note::internalValidate()) and
+ * rendered with innerHTML, which does not run <script> elements. Markdown content is
+ * not sanitised by the server: contentToHtml() renders and sanitises it. Clicking an
+ * image opens it large (GOUI Image.enableZoom()).
  */
 class NoteDetail extends Container {
     static config = {
@@ -97,10 +101,33 @@ class NoteDetail extends Container {
      */
     note = null
 
+    /**
+     * Images of the shown content, by their data-zoom index: {src, alt}
+     * @member {Object[]} images=[]
+     */
+    images = []
+
     onConstructed() {
         super.onConstructed();
 
-        this.getReference('moreButton').menu = [{text: t('Delete'), icon: 'delete', handler: () => this.onDelete()}]
+        let me = this;
+
+        me.getReference('moreButton').menu = [{text: t('Delete'), icon: 'delete', handler: () => me.onDelete()}];
+
+        me.getReference('body').addDomListeners({
+            click   : me.onImageClick,
+            delegate: '.go-zoomable',
+            scope   : me
+        })
+    }
+
+    /**
+     * @param {Object} data click event
+     */
+    onImageClick(data) {
+        const image = this.images[data.target?.data?.zoom];
+
+        image && ImageWindow.show({appName: this.appName, windowId: this.windowId, ...image})
     }
 
     /**
@@ -143,19 +170,22 @@ class NoteDetail extends Container {
         });
 
         if (!note) {
+            me.images = [];
             body.html = '';
             return
         }
 
-        const content = note.password
-            ? '<p class="go-empty"><i class="go-icon">lock</i> This note is encrypted. Open it in the classic UI to decrypt.</p>'
-            : (note.content || '');
+        const {html, images} = note.password
+            ? {html: '<p class="go-empty"><i class="go-icon">lock</i> This note is encrypted. Open it in the classic UI to decrypt.</p>', images: []}
+            : zoomableImages(contentToHtml(note.content, note.type));
+
+        me.images = images;
 
         body.html = `
             <div class="go-card go-pad">
                 <h3>${escapeHtml(note.name)}</h3>
                 <br>
-                ${content}
+                <div class="go-image-zoom${note.type === 'markdown' ? ' go-markdown' : ''}">${html}</div>
             </div>`
     }
 

@@ -1,4 +1,5 @@
-// Rendered user content: Markdown (GO.form.field.MarkdownField preview, note detail).
+// Rendered user content: Markdown (GO.form.field.MarkdownField preview, note detail) and
+// images that open large on click (GOUI Image.enableZoom()).
 .neo-theme-go {
     .go-markdown {
         line-height: 1.5;
@@ -37,6 +38,24 @@
         th, td {
             padding: .4rem .8rem;
             border : 1px solid var(--fg-line);
+        }
+    }
+
+    .go-image-zoom .go-zoomable {
+        cursor: zoom-in;
+    }
+
+    // GO.view.ImageWindow: the image fits the window
+    .go-image-window-body {
+        display        : flex;
+        align-items    : center;
+        justify-content: center;
+        overflow       : hidden;
+
+        img {
+            width     : 100%;
+            height    : 100%;
+            object-fit: contain;
         }
     }
 }
