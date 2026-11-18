@@ -21,6 +21,7 @@ Small modules, 2FA login, module hooks: `docs/neo-small-modules.md`.
 |---|---|
 | `apps/go/` | shell app: `app.mjs`, Viewport (loading / login / main), LoginView (GO login: "Login required" window, language menu, forgot credentials card), MainView (module tabs with popout and close ×, right click: close / close others / close all; a closed tab returns when the module is opened again; hash routing) |
 | `src/jmap/Client.mjs` | JMAP client in the App worker: cookie + `X-CSRF-Token`, batching, fetch-based SSE |
+| `src/jmap/Uploader.mjs` | Blob uploads (`uploader.upload()`, `uploadMany()`): XHR progress, queue, `maxSizeUpload`, abort (AbortError, `notifyError()` ignores it); progress in `component/UploadPanel` |
 | `src/data/JmapStore.mjs` | `Neo.data.Store` over `Entity/query`+`get`; reloads the page on push |
 | `src/data/backgroundJob.mjs` | `Entity/export`/`import` run in the background and end in a core Alert: `lastAlertId()`, `waitForFinishedAlert()`, `alertBlobId()` (address book export/import) |
 | `src/ModuleRegistry.mjs` | modules register `{name, title, iconCls, capability, mainView}`, optional `userSettings` / `systemSettings: {title, iconCls, panel}` (cards in My account / System settings, one or an array; `loadSettingsPanels(key)`) and `onLogin()` (awaited after login before the main view is built, may register more modules); a registration without `mainView` only adds settings cards |

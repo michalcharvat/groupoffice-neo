@@ -58,6 +58,7 @@ Status: **neo** = neo.mjs 13.2 ships it, usable as is (maybe GO styling);
 | GOUI | Status |
 |---|---|
 | JMAP client, Entities, Modules | GO.neo (`jmap/Client`, `JmapStore`, `ModuleRegistry`) |
+| Upload (`client.upload()`, ExtJS `go.Uploader`) | GO.neo (`jmap/Uploader.mjs`: XHR with progress, queue of `maxConcurrentUpload`, `maxSizeUpload` check, abort; `component/UploadPanel.mjs` shows the uploads of a window bottom right; used by `UploadButton` `autoUpload`, `BlobField`, `AttachmentsField`, `ImageField`, `MarkdownField`, `FilesPanel`, imports; demo `#dev/core/Upload`) |
 | auth/Login | GO.neo (`apps/go/view/LoginView.mjs`: forgot credentials, 2FA via `loginPanels`) |
 | MainThreeColumnPanel, TableTitle | GO.neo |
 | DetailPanel | GO.neo (`detail/Card` + panels) |
@@ -78,14 +79,14 @@ Status: **neo** = neo.mjs 13.2 ships it, usable as is (maybe GO styling);
 ## ExtJS-only core (not in GOUI yet)
 
 Done in neo: import (`src/import/`), system and module settings, user/group
-administration, e-mail and PDF templates, blob upload (`UploadButton`, `BlobField`).
+administration, e-mail and PDF templates, blob upload with progress (`Uploader`, `UploadPanel`, `UploadButton`, `BlobField`).
 
-## Left to build (2026-11-18)
+## Left to build (2026-11-19)
 
 1. ~~**Notes Markdown + image zoom**~~ — done: `MarkdownField`, `src/Markdown.mjs`, `ImageWindow`.
 2. **Grid export + batch edit** — a reusable export (only `UsersPanel.exportUsers()` exists today) and editing several selected records.
    ~~**Create link while creating**~~ — done: `CreateLinkButton` in FormWindow (notes, tasks, contacts, calendar events).
-3. **Upload with progress** (`Uploader`) — large files, several at once.
+3. ~~**Upload with progress**~~ — done: `jmap/Uploader.mjs` + `UploadPanel` (progress, abort, size limit).
 4. **HtmlField mentions** and **RecipientPicker** — comments mentions, mail.
 5. **Drag and drop** — tree nodes, rows to containers, sortable lists.
 6. Small fields: AutocompleteField, MapField, ListField, CheckboxGroup, ColorMenu, Month/WeekPicker.
