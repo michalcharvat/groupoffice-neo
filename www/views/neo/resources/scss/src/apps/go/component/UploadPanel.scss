@@ -1,0 +1,144 @@
+// GO.component.UploadPanel: running uploads, bottom right above the page
+.neo-theme-go .go-upload-panel {
+    background-color: var(--bg-low);
+    border          : 1px solid var(--fg-line);
+    border-radius   : .8rem;
+    bottom          : 1.6rem;
+    box-shadow      : 0 4px 12px rgba(0, 0, 0, .16);
+    color           : var(--fg-text);
+    display         : flex;
+    flex-direction  : column;
+    max-height      : 40vh;
+    max-width       : calc(100vw - 3.2rem);
+    position        : fixed;
+    right           : 1.6rem;
+    width           : 36rem;
+    z-index         : 9000;
+
+    .go-icon {
+        font-family: 'Material Symbols Rounded';
+        font-size  : 2rem;
+    }
+
+    .go-upload-panel-header {
+        align-items: center;
+        display    : flex;
+        gap        : 1.2rem;
+        padding    : 1.2rem 1.2rem 0 1.6rem;
+    }
+
+    .go-upload-panel-text {
+        display       : flex;
+        flex          : 1;
+        flex-direction: column;
+        min-width     : 0;
+    }
+
+    .go-upload-panel-title {
+        font-weight: 500;
+    }
+
+    .go-upload-panel-count {
+        color    : var(--fg-secondary-text);
+        font-size: 1.2rem;
+    }
+
+    .go-upload-panel-abort-all {
+        background   : none;
+        border       : 0;
+        border-radius: .4rem;
+        color        : var(--c-primary);
+        cursor       : pointer;
+        flex         : none;
+        font         : inherit;
+        padding      : .6rem .8rem;
+
+        &:hover {
+            background-color: var(--bg-hover);
+        }
+    }
+
+    .go-upload-panel-progress {
+        appearance      : none;
+        background-color: var(--fg-line);
+        border          : 0;
+        border-radius   : .2rem;
+        flex            : none;
+        height          : .4rem;
+        margin          : 1.2rem 1.6rem .4rem;
+        overflow        : hidden;
+        width           : calc(100% - 3.2rem);
+
+        &::-webkit-progress-bar {
+            background-color: transparent;
+        }
+
+        &::-webkit-progress-value {
+            background-color: var(--c-primary);
+            transition      : width .2s;
+        }
+
+        &::-moz-progress-bar {
+            background-color: var(--c-primary);
+        }
+    }
+
+    .go-upload-panel-list {
+        overflow-y: auto;
+        padding   : .4rem 0 .8rem;
+    }
+
+    .go-upload-panel-item {
+        align-items: center;
+        display    : flex;
+        gap        : .8rem;
+        min-height : 3.2rem;
+        padding    : 0 .8rem 0 1.6rem;
+    }
+
+    .go-upload-panel-name {
+        flex         : 1;
+        min-width    : 0;
+        overflow     : hidden;
+        text-overflow: ellipsis;
+        white-space  : nowrap;
+    }
+
+    .go-upload-panel-size {
+        color      : var(--fg-secondary-text);
+        flex       : none;
+        font-size  : 1.2rem;
+        white-space: nowrap;
+    }
+
+    .go-upload-panel-done .go-upload-panel-name {
+        color: var(--fg-secondary-text);
+    }
+
+    .go-upload-panel-failed .go-upload-panel-size {
+        color: var(--fg-error);
+    }
+
+    .go-upload-panel-abort {
+        align-items    : center;
+        background     : none;
+        border         : 0;
+        border-radius  : 50%;
+        color          : var(--fg-text);
+        cursor         : pointer;
+        display        : inline-flex;
+        flex           : none;
+        height         : 2.8rem;
+        justify-content: center;
+        padding        : 0;
+        width          : 2.8rem;
+
+        &:hover {
+            background-color: var(--bg-hover);
+        }
+
+        .go-icon {
+            font-size: 1.8rem;
+        }
+    }
+}

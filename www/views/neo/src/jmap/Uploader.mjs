@@ -1,10 +1,8 @@
 import client       from './Client.mjs';
+import UploadPanel  from '../component/UploadPanel.mjs';
 import {fileSize}   from '../Format.mjs';
 import {notifyError} from '../Notify.mjs';
 import {t}          from '../Translate.mjs';
-
-/** JMAP core capability with maxSizeUpload and maxConcurrentUpload */
-const CORE = 'urn:ietf:params:jmap:core';
 
 let nextId = 0;
 
@@ -34,11 +32,10 @@ export class Uploader {
      */
     hideDelay = 800
     /**
-     * Class of the progress panel, set by GO.component.UploadPanel (no import: the panel
-     * imports the uploader)
-     * @member {Function|null} panelClass=null
+     * Class of the progress panel, null for none
+     * @member {Function|null} panelClass=GO.component.UploadPanel
      */
-    panelClass = null
+    panelClass = UploadPanel
 
     /** items waiting for a free slot */
     #queue = []
@@ -59,14 +56,15 @@ export class Uploader {
      * @returns {Number}
      */
     get maxSizeUpload() {
-        return client.session?.capabilities?.[CORE]?.maxSizeUpload || 0
+        // GO puts the JMAP core limits (go\core\jmap\Capabilities) directly in session.capabilities
+        return client.session?.capabilities?.maxSizeUpload || 0
     }
 
     /**
      * @returns {Number}
      */
     get maxConcurrentUpload() {
-        return client.session?.capabilities?.[CORE]?.maxConcurrentUpload || 4
+        return client.session?.capabilities?.maxConcurrentUpload || 4
     }
 
     /**
@@ -212,7 +210,7 @@ export class Uploader {
 
             setTimeout(() => {
                 batch.refreshScheduled = false;
-                batch.panel?.isDestroyed === false && batch.panel.refresh()
+                batch.panel && !batch.panel.isDestroyed && batch.panel.refresh()
             }, 100)
         }
     }
