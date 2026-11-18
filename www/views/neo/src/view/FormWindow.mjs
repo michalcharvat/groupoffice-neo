@@ -1,11 +1,15 @@
 import Button         from '../button/Button.mjs';
 import ConfirmDialog  from './ConfirmDialog.mjs';
+import CreateLinkButton from '../link/CreateLinkButton.mjs';
+import LinkBrowseButton from '../link/LinkBrowseButton.mjs';
 import Container      from '../../node_modules/neo.mjs/src/container/Base.mjs';
 import DataSourceForm from '../form/DataSourceForm.mjs';
 import Dialog         from './Dialog.mjs';
 import TabContainer   from '../../node_modules/neo.mjs/src/tab/Container.mjs';
 import Toolbar        from '../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import {addCustomFieldsTo} from '../customfields/form.mjs';
+import {notifyError}  from '../Notify.mjs';
+import {createLinks}  from '../link/links.mjs';
 import {t}            from '../Translate.mjs';
 
 /**
@@ -28,7 +32,9 @@ import {t}            from '../Translate.mjs';
  * Extension points for later core parts:
  * - addCustomFields(): custom field fieldsets (general tab or own cards)
  * - addSharePanel():   permissions card for ACL entities
- * - hasLinks + linkSlot: "create link" button for new / "browse links" for existing entities
+ * - hasLinks: CreateLinkButton for new entities (links created after the first
+ *   save), LinkBrowseButton for existing ones; both live in linkSlot.
+ *   addLinkOnSave() links a new entity to the item it is created from.
  * - addCard(config):   any extra card
  *
  * Events:
@@ -78,7 +84,7 @@ class FormWindow extends Dialog {
          */
         closeOnSave: true,
         /**
-         * Linkable entity: shows the link button(s) in linkSlot (links, core item 4)
+         * Linkable entity: "create links" for a new, "browse links" for an existing entity
          * @member {Boolean} hasLinks=false
          */
         hasLinks: false,
@@ -145,14 +151,24 @@ class FormWindow extends Dialog {
             cls   : ['go-dialog-buttons', 'go-form-window-buttons'],
             flex  : 'none',
             items : [{
-                // link buttons (core item 4) go here
                 module   : Container,
                 reference: 'linkSlot',
                 cls      : ['go-form-link-slot'],
                 flex     : 'none',
                 hidden   : true,
                 layout   : {ntype: 'hbox', align: 'center'},
-                items    : []
+                items    : me.hasLinks ? [{
+                    module   : CreateLinkButton,
+                    reference: 'createLinkButton',
+                    hidden   : true,
+                    listeners: {
+                        openChange: ({open}) => me.onCreateLinkOpen(open)
+                    }
+                }, {
+                    module   : LinkBrowseButton,
+                    reference: 'browseLinksButton',
+                    hidden   : true
+                }] : []
             }, {
                 ntype    : 'component',
                 cls      : ['go-form-error'],
@@ -202,6 +218,36 @@ class FormWindow extends Dialog {
      */
     get linkSlot() {
         return this.getReference('linkSlot')
+    }
+
+    /**
+     * @returns {GO.link.CreateLinkButton|null} pending links of a new entity (hasLinks)
+     */
+    get createLinkButton() {
+        return this.getReference('createLinkButton') || null
+    }
+
+    /**
+     * Links the new entity to an item once it is saved (GOUI addLinkOnSave()),
+     * e.g. a task created from a contact. Shown in the create link button.
+     * Without hasLinks the link is created on save all the same.
+     * @param {String} entity
+     * @param {String|Number} entityId
+     */
+    addLinkOnSave(entity, entityId) {
+        let me = this;
+
+        if (!me.pendingLinkTargets) {
+            me.pendingLinkTargets = []
+        }
+
+        if (me.createLinkButton) {
+            me.createLinkButton.addLink(entity, entityId)
+        } else {
+            me.pendingLinkTargets.push({entity, entityId: String(entityId)})
+        }
+
+        me.fire('addlink', {entity, entityId})
     }
 
     /**
@@ -297,13 +343,66 @@ class FormWindow extends Dialog {
     }
 
     /**
-     * Form loaded or prepared. Shows the link slot for linkable entities.
+     * Form loaded or prepared. Shows the link buttons of linkable entities.
      * @protected
      */
     onReady() {
-        const me = this;
+        this.updateLinkButtons()
+    }
 
-        me.hasLinks && me.linkSlot.items.length && (me.linkSlot.hidden = false)
+    /**
+     * New entity: create links, saved one: browse its links
+     * @protected
+     */
+    updateLinkButtons() {
+        let me = this;
+
+        if (!me.hasLinks) {
+            return
+        }
+
+        const id     = me.form.currentId,
+              create = me.createLinkButton,
+              browse = me.getReference('browseLinksButton');
+
+        create.hidden = !!id;
+        browse.hidden = !id;
+        id && browse.setEntity(me.entityName, id);
+        me.linkSlot.hidden = false
+    }
+
+    /**
+     * Like GOUI's OverlayToolbarButton: the open link field takes the whole button bar
+     * @param {Boolean} open
+     * @protected
+     */
+    onCreateLinkOpen(open) {
+        let me = this;
+
+        // neo's flex layout reads `flex` once, when it adds the item
+        me.linkSlot.style = {...me.linkSlot.style, flex: open ? '1 1 0%' : '0 0 auto'};
+        me.linkSlot.parent.toggleCls('go-create-link-active', open)
+    }
+
+    /**
+     * Creates the links collected for a new entity
+     * @param {String|Number} id of the saved entity
+     * @returns {Promise<void>}
+     * @protected
+     */
+    async createPendingLinks(id) {
+        let me      = this,
+            targets = me.pendingLinkTargets || [];
+
+        me.pendingLinkTargets = [];
+
+        try {
+            await me.createLinkButton?.createLinksFor(me.entityName, id);
+            targets.length && await createLinks(me.entityName, id, targets)
+        } catch (e) {
+            // the entity is saved: report, but do not keep the window open
+            notifyError(me, e)
+        }
     }
 
     /**
@@ -340,8 +439,18 @@ class FormWindow extends Dialog {
      * @param {Object} data {data, isNew}
      * @protected
      */
-    onFormSave(data) {
+    async onFormSave(data) {
         let me = this;
+
+        if (data.isNew && data.data?.id) {
+            await me.createPendingLinks(data.data.id);
+
+            if (me.isDestroyed) {
+                return
+            }
+
+            me.closeOnSave || me.updateLinkButtons()
+        }
 
         me.fire('save', data);
         me.closeOnSave && me.close()
@@ -397,8 +506,8 @@ class FormWindow extends Dialog {
      * Unsaved changes, asked before closing. Subclasses add state that is no form value.
      * @returns {Promise<Boolean>}
      */
-    isModified() {
-        return this.form.isModified()
+    async isModified() {
+        return !!this.createLinkButton?.isModified || await this.form.isModified()
     }
 
     /**
