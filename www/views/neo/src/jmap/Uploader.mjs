@@ -72,7 +72,7 @@ export class Uploader {
      * @param {File|Blob} file
      * @param {Object} [options]
      * @param {Neo.component.Base} [options.component] shows the progress in its window
-     * @returns {Promise<Object>} {blobId, name, size, type}
+     * @returns {Promise<Object>} the blob {blobId, id, name, size, type, …}, name = the file's name
      */
     upload(file, {component}={}) {
         const max = this.maxSizeUpload;
@@ -237,7 +237,8 @@ export class Uploader {
                 }
             });
 
-            this.#settle(item, 'done', blob)
+            // a blob with the same content keeps the name it was first uploaded with
+            this.#settle(item, 'done', item.file.name ? {...blob, name: item.file.name} : blob)
         } catch (e) {
             this.#settle(item, Uploader.isAbort(e) ? 'aborted' : 'failed', null, e)
         } finally {

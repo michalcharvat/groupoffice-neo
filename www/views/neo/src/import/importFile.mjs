@@ -1,4 +1,5 @@
-import client from '../jmap/Client.mjs';
+import client   from '../jmap/Client.mjs';
+import uploader from '../jmap/Uploader.mjs';
 
 /**
  * CSV and Excel files need a column mapping, other formats (vCard, JSON, iCalendar) import directly
@@ -24,7 +25,7 @@ export function needsMapping(name) {
  * @returns {Promise<Object>} {mapping: the dialog} for CSV / Excel, {response} of Entity/import otherwise
  */
 export async function importFile(component, file, entity, values = {}, options = {}) {
-    const blob = await client.upload(file);
+    const blob = await uploader.upload(file, {component});
 
     if (needsMapping(file.name)) {
         const {default: CsvMappingDialog} = await import('./CsvMappingDialog.mjs');

@@ -7,6 +7,7 @@ import DateTimeField from '../../../../../../../views/neo/src/form/field/DateTim
 import LocalCombo    from '../../../../../../../views/neo/src/form/field/LocalCombo.mjs';
 import RecurrenceField from '../../../../../../../views/neo/src/form/field/RecurrenceField.mjs';
 import client        from '../../../../../../../views/neo/src/jmap/Client.mjs';
+import uploader      from '../../../../../../../views/neo/src/jmap/Uploader.mjs';
 import ModuleRegistry from '../../../../../../../views/neo/src/ModuleRegistry.mjs';
 import TextList      from '../../../../../../../views/neo/src/list/TextList.mjs';
 import {translator}  from '../../../../../../../views/neo/src/Translate.mjs';
@@ -501,9 +502,10 @@ class EventDialog extends FormWindow {
         me.isLoading = t('Uploading...');
 
         try {
-            for (const file of files) {
-                field.addBlob({...(await client.upload(file)), name: file.name, size: file.size, type: file.type})
-            }
+            // failed uploads are reported, the others are added
+            const blobs = await uploader.uploadMany(files, {component: me});
+
+            me.isDestroyed || blobs.forEach(blob => field.addBlob(blob))
         } catch (e) {
             CalendarItem.ui.error(e)
         } finally {

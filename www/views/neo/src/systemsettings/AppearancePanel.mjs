@@ -5,6 +5,7 @@ import UploadButton  from '../component/UploadButton.mjs';
 import ColorField    from '../form/field/ColorField.mjs';
 import {fieldset}    from '../form/fieldset.mjs';
 import client        from '../jmap/Client.mjs';
+import uploader      from '../jmap/Uploader.mjs';
 import {notifyError} from '../Notify.mjs';
 import {setBodyStyle} from '../Preferences.mjs';
 import {t}           from '../Translate.mjs';
@@ -134,7 +135,7 @@ class AppearancePanel extends SettingsPanel {
         }
 
         try {
-            const {blobId} = await client.upload(file);
+            const {blobId} = await uploader.upload(file, {component: me});
             me.isDestroyed || (me.getReference(key).value = blobId)
         } catch (e) {
             notifyError(me, e)

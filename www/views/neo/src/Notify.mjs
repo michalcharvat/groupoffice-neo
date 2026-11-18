@@ -18,7 +18,14 @@ export function notify(component, msg, {title=null, iconCls='fa fa-circle-info',
     })
 }
 
+/**
+ * Shows an error. An AbortError (an upload or request the user aborted) is not an error to report.
+ */
 export function notifyError(component, error) {
+    if (error?.name === 'AbortError') {
+        return
+    }
+
     console.error(error);
     notify(component, error?.message || String(error), {title: t('Error'), iconCls: 'fa fa-triangle-exclamation', closable: true})
 }

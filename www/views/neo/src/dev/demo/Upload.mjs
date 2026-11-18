@@ -26,6 +26,7 @@ class UploadDemo extends Container {
             items : [{
                 module    : UploadButton,
                 reference : 'choose',
+                autoUpload: true,
                 buttonText: 'Choose files'
             }, {
                 module   : Button,
@@ -55,7 +56,8 @@ class UploadDemo extends Container {
 
         let me = this;
 
-        me.getReference('choose').on('files', ({files}) => me.uploadFiles(files));
+        // autoUpload: the button uploads, the demo only lists the blobs
+        me.getReference('choose').on('upload', ({blobs}) => me.addResults(blobs.map(UploadDemo.blobText)));
         me.getReference('one').handler      = () => me.uploadFiles([UploadDemo.generate('generated-200mb.bin', 200)]);
         me.getReference('six').handler      = () => me.uploadFiles([1, 2, 3, 4, 5, 6].map(n => UploadDemo.generate(`generated-${n}.bin`, 40)));
         me.getReference('tooLarge').handler = () => me.uploadTooLarge();
@@ -79,7 +81,11 @@ class UploadDemo extends Container {
 
     async uploadFiles(files) {
         const blobs = await uploader.uploadMany(files, {component: this});
-        this.addResults(blobs.map(blob => `${blob.name} (${fileSize(blob.size)}): ${blob.blobId}`))
+        this.addResults(blobs.map(UploadDemo.blobText))
+    }
+
+    static blobText(blob) {
+        return `${blob.name} (${fileSize(blob.size)}): ${blob.blobId}`
     }
 
     async uploadTooLarge() {
