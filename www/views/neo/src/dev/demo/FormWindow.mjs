@@ -12,6 +12,7 @@ class DemoNoteWindow extends FormWindow {
     static config = {
         className : 'GO.dev.DemoNoteWindow',
         entityName: 'Note',
+        hasLinks  : true,
         properties: ['id', 'name', 'noteBookId', 'content'],
         title     : 'FormWindow demo: Note'
     }
@@ -48,7 +49,7 @@ class FormWindowDemo extends Container {
 
         me.items = [{
             ntype: 'component',
-            text : 'Opens GO.view.FormWindow for a Note (id below, empty = new note in the first writable note book).'
+            text : 'Opens GO.view.FormWindow for a Note (id below, empty = new note in the first writable note book). A new note collects links with the link button and creates them after saving; an existing one shows its links.'
         }, {
             module   : TextField,
             reference: 'noteId',

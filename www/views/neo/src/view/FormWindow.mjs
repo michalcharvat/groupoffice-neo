@@ -1,11 +1,15 @@
 import Button         from '../button/Button.mjs';
 import ConfirmDialog  from './ConfirmDialog.mjs';
+import CreateLinkButton from '../link/CreateLinkButton.mjs';
+import LinkBrowseButton from '../link/LinkBrowseButton.mjs';
 import Container      from '../../node_modules/neo.mjs/src/container/Base.mjs';
 import DataSourceForm from '../form/DataSourceForm.mjs';
 import Dialog         from './Dialog.mjs';
 import TabContainer   from '../../node_modules/neo.mjs/src/tab/Container.mjs';
 import Toolbar        from '../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import {addCustomFieldsTo} from '../customfields/form.mjs';
+import {notifyError}  from '../Notify.mjs';
+import {createLinks}  from '../link/links.mjs';
 import {t}            from '../Translate.mjs';
 
 /**
@@ -28,7 +32,9 @@ import {t}            from '../Translate.mjs';
  * Extension points for later core parts:
  * - addCustomFields(): custom field fieldsets (general tab or own cards)
  * - addSharePanel():   permissions card for ACL entities
- * - hasLinks + linkSlot: "create link" button for new / "browse links" for existing entities
+ * - hasLinks: CreateLinkButton for new entities (links created after the first
+ *   save), LinkBrowseButton for existing ones; both live in linkSlot.
+ *   addLinkOnSave() links a new entity to the item it is created from.
  * - addCard(config):   any extra card
  *
  * Events:
@@ -78,7 +84,7 @@ class FormWindow extends Dialog {
          */
         closeOnSave: true,
         /**
-         * Linkable entity: shows the link button(s) in linkSlot (links, core item 4)
+         * Linkable entity: "create links" for a new, "browse links" for an existing entity
          * @member {Boolean} hasLinks=false
          */
         hasLinks: false,
@@ -105,6 +111,18 @@ class FormWindow extends Dialog {
      * @member {Boolean} formReady=false
      */
     formReady = false
+
+    /**
+     * Link creation of the last save (onFormSave()), awaited by submit()
+     * @member {Promise|null} afterSavePromise=null
+     */
+    afterSavePromise = null
+
+    /**
+     * addLinkOnSave() targets without a create link button
+     * @member {Object[]} pendingLinkTargets=[]
+     */
+    pendingLinkTargets = []
 
     construct(config) {
         super.construct(config);
@@ -145,14 +163,24 @@ class FormWindow extends Dialog {
             cls   : ['go-dialog-buttons', 'go-form-window-buttons'],
             flex  : 'none',
             items : [{
-                // link buttons (core item 4) go here
                 module   : Container,
                 reference: 'linkSlot',
                 cls      : ['go-form-link-slot'],
                 flex     : 'none',
                 hidden   : true,
                 layout   : {ntype: 'hbox', align: 'center'},
-                items    : []
+                items    : me.hasLinks ? [{
+                    module   : CreateLinkButton,
+                    reference: 'createLinkButton',
+                    hidden   : true,
+                    listeners: {
+                        openChange: ({open}) => me.onCreateLinkOpen(open)
+                    }
+                }, {
+                    module   : LinkBrowseButton,
+                    reference: 'browseLinksButton',
+                    hidden   : true
+                }] : []
             }, {
                 ntype    : 'component',
                 cls      : ['go-form-error'],
@@ -202,6 +230,32 @@ class FormWindow extends Dialog {
      */
     get linkSlot() {
         return this.getReference('linkSlot')
+    }
+
+    /**
+     * @returns {GO.link.CreateLinkButton|null} pending links of a new entity (hasLinks)
+     */
+    get createLinkButton() {
+        return this.getReference('createLinkButton') || null
+    }
+
+    /**
+     * Links the new entity to an item once it is saved (GOUI addLinkOnSave()),
+     * e.g. a task created from a contact. Shown in the create link button.
+     * Without hasLinks the link is created on save all the same.
+     * @param {String} entity
+     * @param {String|Number} entityId
+     */
+    addLinkOnSave(entity, entityId) {
+        let me = this;
+
+        if (me.createLinkButton) {
+            me.createLinkButton.addLink(entity, entityId)
+        } else {
+            me.pendingLinkTargets.push({entity, entityId: String(entityId)})
+        }
+
+        me.fire('addlink', {entity, entityId})
     }
 
     /**
@@ -297,13 +351,89 @@ class FormWindow extends Dialog {
     }
 
     /**
-     * Form loaded or prepared. Shows the link slot for linkable entities.
+     * Form loaded or prepared. Shows the link buttons of linkable entities.
      * @protected
      */
     onReady() {
-        const me = this;
+        this.updateLinkButtons()
+    }
 
-        me.hasLinks && me.linkSlot.items.length && (me.linkSlot.hidden = false)
+    /**
+     * New entity: create links, saved one: browse its links
+     * @protected
+     */
+    updateLinkButtons() {
+        let me = this;
+
+        if (!me.hasLinks) {
+            return
+        }
+
+        const id     = me.form.currentId,
+              create = me.createLinkButton,
+              browse = me.getReference('browseLinksButton');
+
+        // failed links of a saved entity stay until they are created
+        create.hidden = !!id && !create.links.length;
+        browse.hidden = !id;
+        id && browse.setEntity(me.entityName, id);
+        me.linkSlot.hidden = false
+    }
+
+    /**
+     * Like GOUI's OverlayToolbarButton: the open link field takes the whole button bar
+     * @param {Boolean} open
+     * @protected
+     */
+    onCreateLinkOpen(open) {
+        let me = this;
+
+        // neo's flex layout reads `flex` once, when it adds the item
+        me.linkSlot.style = {...me.linkSlot.style, flex: open ? '1 1 0%' : '0 0 auto'};
+        me.linkSlot.parent.toggleCls('go-create-link-active', open)
+    }
+
+    /**
+     * Creates the links collected for a new entity
+     * @param {String|Number} id of the saved entity
+     * @returns {Promise<Boolean>} false when a link failed (the error is shown)
+     * @protected
+     */
+    async createPendingLinks(id) {
+        let me      = this,
+            targets = me.pendingLinkTargets || [];
+
+        try {
+            await me.createLinkButton?.createLinksFor(me.entityName, id);
+
+            if (targets.length) {
+                await createLinks(me.entityName, id, targets).catch(e => {
+                    // keep the targets that failed for another save
+                    const done = new Set((e.created || []).map(to => to.entity + ':' + to.entityId));
+                    me.pendingLinkTargets = targets.filter(to => !done.has(to.entity + ':' + to.entityId));
+                    throw e
+                });
+                me.pendingLinkTargets = []
+            }
+
+            return true
+        } catch (e) {
+            if (!me.isDestroyed) {
+                notifyError(me, e);
+                me.showError(e.message || String(e))
+            }
+
+            return false
+        }
+    }
+
+    /**
+     * Links still to create: kept when a link failed, created by the next save
+     * @returns {Boolean}
+     * @protected
+     */
+    hasPendingLinks() {
+        return !!(this.createLinkButton?.links.length || this.pendingLinkTargets?.length)
     }
 
     /**
@@ -327,7 +457,12 @@ class FormWindow extends Dialog {
             const fields = await me.form.getFields();
             await Promise.all(fields.filter(field => typeof field.flush === 'function').map(field => field.flush()));
 
-            return await me.form.submit()
+            me.afterSavePromise = null;
+
+            const result = await me.form.submit();
+            // links of a new entity (onFormSave())
+            await me.afterSavePromise;
+            return result
         } finally {
             if (!me.isDestroyed) {
                 me.isLoading    = false;
@@ -341,10 +476,34 @@ class FormWindow extends Dialog {
      * @protected
      */
     onFormSave(data) {
-        let me = this;
+        // submit() waits for it: no second save while the links are created
+        return this.afterSavePromise = this.afterSave(data)
+    }
+
+    /**
+     * Saved: creates the collected links, fires `save`, closes. A failed link keeps
+     * the window open with the failed targets; the next save creates them.
+     * @param {Object} data {data, isNew}
+     * @returns {Promise<void>}
+     * @protected
+     */
+    async afterSave(data) {
+        let me = this,
+            id = data.data?.id,
+            linked = true;
+
+        if (id && (data.isNew || me.hasPendingLinks())) {
+            linked = await me.createPendingLinks(id);
+
+            if (me.isDestroyed) {
+                return
+            }
+
+            me.updateLinkButtons()
+        }
 
         me.fire('save', data);
-        me.closeOnSave && me.close()
+        me.closeOnSave && linked && me.close()
     }
 
     /**
@@ -397,8 +556,8 @@ class FormWindow extends Dialog {
      * Unsaved changes, asked before closing. Subclasses add state that is no form value.
      * @returns {Promise<Boolean>}
      */
-    isModified() {
-        return this.form.isModified()
+    async isModified() {
+        return !!this.createLinkButton?.isModified || await this.form.isModified()
     }
 
     /**

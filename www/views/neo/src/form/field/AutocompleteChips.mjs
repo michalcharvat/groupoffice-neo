@@ -40,7 +40,12 @@ class AutocompleteChips extends ChipsField {
          * Entries in the menu
          * @member {Number} limit=50
          */
-        limit: 50
+        limit: 50,
+        /**
+         * (record) => value of a picked entity, null: its id (GOUI pickerRecordToValue)
+         * @member {Function|null} pickerRecordToValue=null
+         */
+        pickerRecordToValue: null
     }
 
     /** @member {GO.menu.List|null} menu=null */
@@ -64,9 +69,20 @@ class AutocompleteChips extends ChipsField {
                 return null
             }
 
-            me.chipTexts.set(ChipsField.key(records[0].id), String(records[0][me.displayField] ?? ''));
-            return records[0].id
+            const value = me.recordToValue(records[0]);
+
+            me.chipTexts.set(ChipsField.key(value), String(records[0][me.displayField] ?? ''));
+            return value
         }
+    }
+
+    /**
+     * @param {Object} record
+     * @returns {*} the value of a picked entity
+     * @protected
+     */
+    recordToValue(record) {
+        return this.pickerRecordToValue ? this.pickerRecordToValue(record) : record.id
     }
 
     /** bumped by setJmapFilter() and every showMenu(): only the latest query shows */
@@ -169,16 +185,17 @@ class AutocompleteChips extends ChipsField {
 
         me.closeMenu();
 
-        const selected = new Set((me.value || []).map(String)),
+        const selected = new Set((me.value || []).map(v => me.valueKey(v))),
               items    = records.map(record => {
-                  const text = String(record[me.displayField] ?? '');
+                  const text  = String(record[me.displayField] ?? ''),
+                        value = me.recordToValue(record);
 
-                  me.chipTexts.set(ChipsField.key(record.id), text);
+                  me.chipTexts.set(ChipsField.key(value), text);
 
                   return {
                       text,
-                      icon   : selected.has(String(record.id)) ? 'check_box' : 'check_box_outline_blank',
-                      handler: () => me.toggle(record.id)
+                      icon   : selected.has(me.valueKey(value)) ? 'check_box' : 'check_box_outline_blank',
+                      handler: () => me.toggle(value)
                   }
               });
 
@@ -192,15 +209,26 @@ class AutocompleteChips extends ChipsField {
     }
 
     /**
-     * Adds or removes an id
-     * @param {String|Number} id
+     * Compare key of a value: ids as strings, objects as JSON
+     * @param {*} value
+     * @returns {String}
+     * @protected
      */
-    toggle(id) {
+    valueKey(value) {
+        return value !== null && typeof value === 'object' ? ChipsField.key(value) : String(value)
+    }
+
+    /**
+     * Adds or removes a value (an id, or what pickerRecordToValue returns)
+     * @param {*} value
+     */
+    toggle(value) {
         let me      = this,
             current = me.value || [],
-            exists  = current.some(v => String(v) === String(id));
+            key     = me.valueKey(value),
+            exists  = current.some(v => me.valueKey(v) === key);
 
-        me.userChange(exists ? current.filter(v => String(v) !== String(id)) : [...current, id])
+        me.userChange(exists ? current.filter(v => me.valueKey(v) !== key) : [...current, value])
     }
 }
 

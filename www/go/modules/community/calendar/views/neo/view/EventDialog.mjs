@@ -38,6 +38,7 @@ class EventDialog extends FormWindow {
         className : 'GO.calendar.EventDialog',
         cls       : ['go-form-window', 'go-cal-event-dialog'],
         entityName: 'CalendarEvent',
+        hasLinks  : true,
         title     : t('Event'),
         wrapperStyle: {height: '85vh', left: 'calc(50vw - 310px)', top: '7vh', width: '620px'},
         /**
@@ -608,7 +609,11 @@ class EventDialog extends FormWindow {
                 const answer = await item.confirmScheduleMessage(data);
 
                 if (answer) {
-                    await CalendarItem.set({create: {e: item.data}}, answer.send);
+                    const response = await CalendarItem.set({create: {e: item.data}}, answer.send),
+                          id       = response.created?.e?.id;
+
+                    // saved outside the form: create the collected links here
+                    id && await me.createPendingLinks(id);
                     done()
                 }
             } else if (item.isRecurring) {

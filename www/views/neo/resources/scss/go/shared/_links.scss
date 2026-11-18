@@ -102,3 +102,30 @@
         color: var(--fg-secondary-text);
     }
 }
+
+// GO.link.CreateLinkButton: like GOUI's OverlayToolbarButton the open field takes the
+// whole button bar of the FormWindow (FormWindow.onCreateLinkOpen()). No absolute
+// overlay: neo's align then hides the field's menu as soon as it gets focus.
+.neo-theme-go {
+    .go-create-link {
+        gap: .4rem;
+    }
+
+    .go-form-window-buttons.go-create-link-active > :not(.go-form-link-slot) {
+        display: none;
+    }
+
+    .go-form-link-slot,
+    .go-create-link {
+        min-width: 0;
+    }
+
+    .go-createlinkfield {
+        min-width: 0;
+
+        .go-field-box {
+            max-height: 8rem;
+            overflow-y: auto;
+        }
+    }
+}
