@@ -69,7 +69,11 @@ class Dialog extends BaseDialog {
         // finds it as ".neo-modal" puts the mask below it, and the mask outlives it
         // (page stays grey). Drop the class first; deltas apply in order, so once
         // this one is applied the sync only sees the remaining modals.
-        const unmasked = modal && Neo.applyDeltas(windowId, {id: me.vdom.id || id, cls: {remove: ['neo-modal']}});
+        // Hide it in the same delta: the mask goes first, and a dialog still on screen for a
+        // frame without it flashes its border and shadow.
+        // (Not when animating to an animateTarget: the dialog has to stay visible for that.)
+        const animate  = args[0] ?? !!me.animateTargetId,
+              unmasked = modal && Neo.applyDeltas(windowId, {id: me.vdom.id || id, cls: {remove: ['neo-modal']}, ...(animate ? {} : {style: {visibility: 'hidden'}})});
 
         super.close(...args);
 
@@ -104,6 +108,26 @@ class Dialog extends BaseDialog {
 
     closeOrHide() {
         this.close()
+    }
+
+    /**
+     * A dialog opened from a menu (avatar menu → My account) took the focus from a menu
+     * item of a floating menu that unmounted on the click. Giving it back mounts the menu
+     * again: it flashes at its button. Keep neo's focus return for everything else.
+     */
+    revertFocus() {
+        const target = this.focusEnterData?.relatedTarget,
+              // a list item's id is "<list id>__<record id>"
+              cmp    = target?.id && (Neo.getComponent(target.id) || Neo.getComponent(target.id.split('__')[0]));
+
+        const menu = cmp && (cmp.ntype === 'menu-list' ? cmp : cmp.up?.('menu-list'));
+
+        // only a dismissed (unmounted) menu: an embedded or still open menu keeps its focus
+        if (menu && (!menu.mounted || menu.hidden)) {
+            return
+        }
+
+        super.revertFocus()
     }
 
     onKeyDownEscape() {

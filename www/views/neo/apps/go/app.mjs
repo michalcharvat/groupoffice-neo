@@ -1,5 +1,6 @@
 import client from '../../src/jmap/Client.mjs';
 import {load}  from '../../src/Translate.mjs';
+import '../../src/form/field/textAutoComplete.mjs';
 
 client.baseUrl = Neo.config.goBaseUrl || '/';
 
