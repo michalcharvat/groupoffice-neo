@@ -42,6 +42,8 @@ Small modules, 2FA login, module hooks: `docs/neo-small-modules.md`.
 | `src/Translate.mjs` | `t()`, `translator(pkg, module)`, `fmt()` over GO's language files (see [Translations](#translations)) |
 | `src/form/field/JmapComboBox.mjs`, `PrincipalCombo.mjs`, `GroupCombo.mjs` | remote combo over `Entity/query` (filter as you type, `loadMore` on scroll); value = id, display text fetched for a preset id |
 | `src/form/field/HtmlField.mjs` + `src/main/addon/HtmlEditor.mjs` | rich text field; the editor and its commands live in the main-thread addon (`WS/HtmlEditor`, loaded with `Neo.Main.importAddon` on mount) |
+| `src/form/field/MarkdownField.mjs` + `src/main/addon/MarkdownEditor.mjs`, `src/Markdown.mjs` | Markdown field (HtmlField subclass: textarea in the `WS/MarkdownEditor` addon, toolbar, preview, image paste / drop / upload); `markdownToHtml()` = `marked` (npm dependency of views/neo: run `npm install`) + `Format.sanitizeHtml()` |
+| `src/view/ImageWindow.mjs` | image zoom: `zoomableImages(html)` marks the images, `ImageWindow.show({src, alt})` |
 | `src/link/` | links: `LinkDetail` card, `LinkBrowser`, `AddLinkButton`, `LinkBrowseButton`, `SelectSearchDialog` (core `Search`), `linkTypes` (entity icons, `resolveRoute`) |
 | `src/permissions/SharePanel.mjs` | ACL editor as one form field (`name: 'acl'`, value `{groupId: level}`), GOUI layout: all groups/users with a level each, ACL members first |
 | `src/form/field/Field.mjs` + `DateField`, `DateTimeField`, `DateRangeField`, `DurationField`, `ChipsField`, `RecurrenceField` | GOUI fields: `GO.form.field.Field` is the outlined box with the label in its border (`go/shared/_field.scss`), hint/error below, `required`, `validator`; subclasses render their inputs in `createControl()` |
