@@ -175,7 +175,9 @@
         min-width: 30rem;
     }
 
-    .go-md-dialog-form {
+    // as a form container it has to beat the theme-wide padding reset (same specificity)
+    .go-md-dialog-form,
+    .go-md-dialog-form.neo-form-container {
         gap    : 2rem;
         padding: go.dp(16);
     }

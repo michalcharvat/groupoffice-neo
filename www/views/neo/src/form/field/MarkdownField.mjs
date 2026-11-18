@@ -160,7 +160,17 @@ class MarkdownField extends HtmlField {
 
         me.editorNode.readonly = value || null;
         me.update();
-        me.toggleCls('go-readonly', value)
+        me.toggleCls('go-readonly', value);
+        me.syncReadOnly()
+    }
+
+    /**
+     * The addon sets the textarea's readOnly (the vdom attribute alone does not reach it)
+     */
+    syncReadOnly() {
+        const me = this, windowId = me.editorWindowId;
+
+        windowId && me.addon.setReadOnly({id: me.id, value: me.readOnly, windowId}).catch(() => {})
     }
 
     afterSetValue(value, oldValue) {

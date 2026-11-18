@@ -39,6 +39,7 @@ class MarkdownEditor extends Base {
                 'focus',
                 'getValue',
                 'insertText',
+                'setReadOnly',
                 'setValue'
             ]
         }
@@ -150,6 +151,19 @@ class MarkdownEditor extends Base {
             clearTimeout(item.timer);
             item.editor.value = value || ''
         }
+    }
+
+    /**
+     * The textarea's readonly flag: a vdom attribute change does not reach the node this
+     * addon holds, and toolbar commands, paste and drop check editor.readOnly
+     * @param {Object} data
+     * @param {String} data.id
+     * @param {Boolean} data.value
+     */
+    setReadOnly({id, value}) {
+        const item = this.map[id];
+
+        item && (item.editor.readOnly = !!value)
     }
 
     /**

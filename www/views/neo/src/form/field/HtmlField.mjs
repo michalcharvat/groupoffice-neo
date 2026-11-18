@@ -286,6 +286,8 @@ class HtmlField extends Field {
 
             if (generation === me.#generation && !me.isDestroyed) {
                 me.#editorWindowId = windowId;
+                // subclasses whose editor node needs the readOnly flag from the addon
+                me.syncReadOnly?.();
 
                 // value set while the editor was being created
                 (me.value || '') !== sent && me.addon.setValue({id: me.id, value: me.value || '', windowId}).catch(() => {})

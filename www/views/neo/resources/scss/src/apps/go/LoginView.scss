@@ -60,11 +60,9 @@
         padding    : go.dp(18) go.dp(18) go.dp(8);
     }
 
-    // neo's form container adds 20px padding and a 10px margin under each child, its fields
-    // 5px margins: the window's own paddings and the dp(16) gap space it, as in GO
+    // neo's form container adds a 10px margin under each child, its fields 5px margins:
+    // the window's own paddings and the dp(16) gap space it, as in GO
     .go-login-window .neo-form-container {
-        padding: 0;
-
         > * {
             margin: 0;
         }

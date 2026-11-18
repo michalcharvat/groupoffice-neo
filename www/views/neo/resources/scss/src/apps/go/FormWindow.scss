@@ -21,12 +21,7 @@
         text-overflow: ellipsis;
     }
 
-    /* GOUI: one dp(16) padding (the card's); neo's form container adds 20px and its
-       tab body a 1px border */
-    .neo-dialog.go-form-window .neo-form-container {
-        padding: 0;
-    }
-
+    /* GOUI: one dp(16) padding (the card's); neo's tab body adds a 1px border */
     .neo-dialog.go-form-window .go-form-cards > .neo-tab-body-container {
         border: 0;
     }
