@@ -1,5 +1,6 @@
 import Field  from '../../../node_modules/neo.mjs/src/form/field/Base.mjs';
 import client from '../../jmap/Client.mjs';
+import uploader from '../../jmap/Uploader.mjs';
 import {notifyError} from '../../Notify.mjs';
 import {t}    from '../../Translate.mjs';
 
@@ -111,7 +112,7 @@ class BlobField extends Field {
             return
         }
 
-        const upload = client.upload(file);
+        const upload = uploader.upload(file, {component: me});
 
         me.uploads.add(upload);
 

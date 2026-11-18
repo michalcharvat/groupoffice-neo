@@ -1,5 +1,5 @@
 import Field  from '../../../../../../../views/neo/src/form/field/Field.mjs';
-import client from '../../../../../../../views/neo/src/jmap/Client.mjs';
+import uploader from '../../../../../../../views/neo/src/jmap/Uploader.mjs';
 import {notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
 import {logoUrl, t} from '../util.mjs';
 
@@ -50,7 +50,7 @@ class LogoField extends Field {
         }
 
         try {
-            const blob = await client.upload(file);
+            const blob = await uploader.upload(file, {component: me});
             me.isDestroyed || me.userChange(blob.blobId || blob.id)
         } catch (e) {
             me.isDestroyed || notifyError(me, e)

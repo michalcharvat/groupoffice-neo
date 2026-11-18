@@ -4,6 +4,7 @@ import Button       from '../../../../../../../views/neo/src/button/Button.mjs';
 import UploadButton from '../../../../../../../views/neo/src/component/UploadButton.mjs';
 import {escapeHtml} from '../../../../../../../views/neo/src/Format.mjs';
 import client       from '../../../../../../../views/neo/src/jmap/Client.mjs';
+import uploader, {Uploader} from '../../../../../../../views/neo/src/jmap/Uploader.mjs';
 import {translator} from '../../../../../../../views/neo/src/Translate.mjs';
 import Dialog, {headerTools} from '../../../../../../../views/neo/src/view/Dialog.mjs';
 
@@ -101,7 +102,7 @@ class ImportDialog extends Dialog {
         me.isLoading = t('Importing...');
 
         try {
-            const blob = await client.upload(me.file),
+            const blob = await uploader.upload(me.file, {component: me}),
                   r    = await client.call('CalendarEvent/import', {blobIds: [blob.blobId || blob.id], calendarId: me.calendar.id, ignoreUid: me.ignoreUid}),
                   rows = [];
 
@@ -116,7 +117,9 @@ class ImportDialog extends Dialog {
             me.renderBody(rows.length ? rows : [{tag: 'p', text: t('Done')}]);
             me.fire('imported', {})
         } catch (e) {
-            me.renderBody([{tag: 'p', cls: ['red'], text: t('ICS file could not be imported, error: ') + (e.message || e)}])
+            me.renderBody(Uploader.isAbort(e)
+                ? [{tag: 'p', text: t('Cancelled')}]
+                : [{tag: 'p', cls: ['red'], text: t('ICS file could not be imported, error: ') + (e.message || e)}])
         } finally {
             me.isDestroyed || (me.isLoading = false)
         }

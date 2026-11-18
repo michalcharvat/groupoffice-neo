@@ -1,5 +1,6 @@
 import HtmlField                       from './HtmlField.mjs';
 import client                          from '../../jmap/Client.mjs';
+import uploader, {Uploader}            from '../../jmap/Uploader.mjs';
 import {addImageSize, markdownToHtml}  from '../../Markdown.mjs';
 import {notifyError}                   from '../../Notify.mjs';
 import {t}                             from '../../Translate.mjs';
@@ -272,13 +273,17 @@ class MarkdownField extends HtmlField {
         let me = this;
 
         try {
-            const [blob, size] = await Promise.all([client.upload(file), MarkdownField.getImageSize(file)]);
+            const [blob, size] = await Promise.all([uploader.upload(file, {component: me}), MarkdownField.getImageSize(file)]);
             let url = client.apiUrl + 'download.php?blob=' + encodeURIComponent(blob.blobId || blob.id);
 
             size && (url = addImageSize(url, size.width, size.height));
 
             return `![${String(file.name || '').replace(/[[\]\\]/g, '')}](${url})`
         } catch (e) {
+            if (Uploader.isAbort(e)) {
+                return null
+            }
+
             console.error(e);
             me.isDestroyed || notifyError(me, new Error(t('Failed to upload {name}').replace('{name}', file.name)));
             return null

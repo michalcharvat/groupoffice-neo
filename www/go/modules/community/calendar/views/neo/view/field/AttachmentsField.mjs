@@ -10,6 +10,8 @@ const t = translator('community', 'calendar');
  *
  * Value: {key: {title, size, contentType, blobId}}
  */
+let nextKey = 0;
+
 class AttachmentsField extends Field {
     static config = {
         className: 'GO.calendar.field.AttachmentsField',
@@ -72,7 +74,8 @@ class AttachmentsField extends Field {
     addBlob(blob) {
         this.userChange({
             ...(this.value || {}),
-            ['n' + Date.now() + Math.floor(Math.random() * 1000)]: {
+            // a counter: several blobs are added in the same millisecond
+            ['n' + Date.now() + '-' + (++nextKey)]: {
                 blobId     : blob.blobId || blob.id,
                 title      : blob.name,
                 size       : blob.size,

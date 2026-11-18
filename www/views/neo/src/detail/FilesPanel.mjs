@@ -1,5 +1,6 @@
 import UploadButton from '../component/UploadButton.mjs';
 import client       from '../jmap/Client.mjs';
+import uploader     from '../jmap/Uploader.mjs';
 import {escapeHtml, formatUserDateTime, smartDateTime} from '../Format.mjs';
 import Card         from './Card.mjs';
 import {t} from '../Translate.mjs';
@@ -119,14 +120,20 @@ class FilesPanel extends Card {
                 me.current === current && (me.folderId = files_folder_id)
             }
 
-            const blobs    = await Promise.all(files.map(file => client.upload(file))),
-                  response = await client.legacy('files/folder/processUploadQueue', {
-                      upload               : 1,
-                      command              : 'ask',
-                      overwrite            : 'ask',
-                      destination_folder_id: folderId,
-                      blobs                : JSON.stringify(blobs)
-                  });
+            // failed uploads are reported, the others are stored
+            const blobs = await uploader.uploadMany(files, {component: me});
+
+            if (!blobs.length) {
+                return
+            }
+
+            const response = await client.legacy('files/folder/processUploadQueue', {
+                upload               : 1,
+                command              : 'ask',
+                overwrite            : 'ask',
+                destination_folder_id: folderId,
+                blobs                : JSON.stringify(blobs)
+            });
 
             if (me.isDestroyed || me.current !== current) {
                 return

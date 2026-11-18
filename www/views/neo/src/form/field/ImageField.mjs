@@ -1,5 +1,6 @@
 import Field         from './Field.mjs';
 import client        from '../../jmap/Client.mjs';
+import uploader      from '../../jmap/Uploader.mjs';
 import {notifyError} from '../../Notify.mjs';
 import {escapeHtml}  from '../../Format.mjs';
 import {t}           from '../../Translate.mjs';
@@ -73,7 +74,7 @@ class ImageField extends Field {
         }
 
         try {
-            const blob = await client.upload(file);
+            const blob = await uploader.upload(file, {component: me});
             me.isDestroyed || me.userChange(blob.blobId || blob.id)
         } catch (e) {
             notifyError(me, e)

@@ -5,6 +5,7 @@ import UploadButton from '../../../../../../../views/neo/src/component/UploadBut
 import {dismissAlert, runBackgroundJob} from '../../../../../../../views/neo/src/data/backgroundJob.mjs';
 import JmapComboBox from '../../../../../../../views/neo/src/form/field/JmapComboBox.mjs';
 import client       from '../../../../../../../views/neo/src/jmap/Client.mjs';
+import uploader     from '../../../../../../../views/neo/src/jmap/Uploader.mjs';
 import {notify, notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
 import {importFile, needsMapping} from '../../../../../../../views/neo/src/import/importFile.mjs';
 import {contactImportOptions} from './importOptions.mjs';
@@ -117,7 +118,7 @@ class ImportDialog extends Dialog {
         try {
             me.setStatus(t('Uploading...'));
 
-            const blob = await client.upload(file);
+            const blob = await uploader.upload(file, {component: me});
 
             me.setStatus(t('Importing...'));
 

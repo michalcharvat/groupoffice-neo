@@ -1,12 +1,15 @@
 import Component from '../../node_modules/neo.mjs/src/component/Base.mjs';
+import uploader from '../jmap/Uploader.mjs';
 import {t} from '../Translate.mjs';
 
 /**
  * A button that opens the browser's file chooser: a <label> around a hidden
  * <input type="file">. neo's DOM events carry the chosen File objects into the
- * App worker; the component fires `files` with them.
+ * App worker; the component fires `files` with them. With `autoUpload` it uploads them
+ * through GO.jmap.Uploader (progress panel, abort) and fires `upload` with the blobs.
  *
  *     {module: UploadButton, buttonText: 'Upload', accept: '.json', listeners: {files: ({files}) => ...}}
+ *     {module: UploadButton, autoUpload: true, listeners: {upload: ({blobs}) => ...}}
  */
 class UploadButton extends Component {
     static config = {
@@ -16,6 +19,11 @@ class UploadButton extends Component {
          * @member {Boolean} multiple=true
          */
         multiple: true,
+        /**
+         * Upload the chosen files and fire `upload` with their blobs (failures are notified)
+         * @member {Boolean} autoUpload=false
+         */
+        autoUpload: false,
         /**
          * File types the chooser offers, e.g. '.json' or '.csv,.xlsx'
          * @member {String|null} accept=null
@@ -52,8 +60,20 @@ class UploadButton extends Component {
         this.update()
     }
 
-    onInputChange({files}) {
-        files?.length && this.fire('files', {files: [...files]})
+    async onInputChange({files}) {
+        let me = this;
+
+        if (!files?.length) {
+            return
+        }
+
+        files = [...files];
+        me.fire('files', {files});
+
+        if (me.autoUpload) {
+            const blobs = await uploader.uploadMany(files, {component: me});
+            blobs.length && !me.isDestroyed && me.fire('upload', {blobs})
+        }
     }
 }
 

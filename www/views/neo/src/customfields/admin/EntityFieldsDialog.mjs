@@ -3,6 +3,7 @@ import {LEVEL_DELETE, LEVEL_WRITE} from '../../Acl.mjs';
 import Button        from '../../button/Button.mjs';
 import UploadButton  from '../../component/UploadButton.mjs';
 import client        from '../../jmap/Client.mjs';
+import uploader      from '../../jmap/Uploader.mjs';
 import ActionTable   from '../../list/ActionTable.mjs';
 import MenuList      from '../../menu/List.mjs';
 import {notify, notifyError} from '../../Notify.mjs';
@@ -400,7 +401,7 @@ class EntityFieldsDialog extends Dialog {
         button.disabled = true;
 
         try {
-            const {blobId}   = await client.upload(file),
+            const {blobId}   = await uploader.upload(file, {component: me}),
                   {feedback} = await client.call('FieldSet/importFromJson', {entity: me.forEntity, blobId});
 
             // the toast shows text: one message per line of the feedback, joined

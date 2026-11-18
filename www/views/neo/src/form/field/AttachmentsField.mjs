@@ -1,5 +1,6 @@
 import Field  from '../../../node_modules/neo.mjs/src/form/field/Base.mjs';
 import client from '../../jmap/Client.mjs';
+import uploader from '../../jmap/Uploader.mjs';
 import {notifyError} from '../../Notify.mjs';
 import {t}    from '../../Translate.mjs';
 
@@ -110,14 +111,15 @@ class AttachmentsField extends Field {
             return
         }
 
-        const upload = Promise.all([...files].map(file => client.upload(file)));
+        // failed uploads are reported, the others are added
+        const upload = uploader.uploadMany(files, {component: me});
 
         me.uploads.add(upload);
 
         try {
             const blobs = await upload;
 
-            if (me.isDestroyed) {
+            if (me.isDestroyed || !blobs.length) {
                 return
             }
 
