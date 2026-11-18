@@ -206,12 +206,14 @@ const SAFE_TAGS = new Set(['a', 'b', 'blockquote', 'br', 'code', 'div', 'em', 'h
 export function sanitizeHtml(html) {
     // keep existing entities, escape the rest of the text
     const text = s => s.replace(/&(?!(#\d+|#x[0-9a-f]+|[a-z][a-z0-9]*);)/gi, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'),
+          // invalid code points become U+FFFD like in a browser (fromCodePoint() would throw)
+          codePoint = n => String.fromCodePoint(n > 0 && n <= 0x10FFFF && !(n >= 0xD800 && n <= 0xDFFF) ? n : 0xFFFD),
           // decoded attribute value: what a browser decodes in an attribute ("javascript&colon;", "&#58;")
           rawAttr = (attrs, name) => {
               const m = attrs.match(new RegExp(`\\b${name}\\s*=\\s*("([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i'));
               return m ? (m[2] ?? m[3] ?? m[4] ?? '')
-                  .replace(/&#x([0-9a-f]+);?/gi, (x, h) => String.fromCodePoint(parseInt(h, 16)))
-                  .replace(/&#(\d+);?/g, (x, d) => String.fromCodePoint(Number(d)))
+                  .replace(/&#x([0-9a-f]+);?/gi, (x, h) => codePoint(parseInt(h, 16)))
+                  .replace(/&#(\d+);?/g, (x, d) => codePoint(Number(d)))
                   .replace(/&(colon|tab|newline|amp|quot|lt|gt);?/gi, (x, n) => ({colon: ':', tab: '\t', newline: '\n', amp: '&', quot: '"', lt: '<', gt: '>'})[n.toLowerCase()]) : null
           },
           // URL attribute: also drop control characters and whitespace, the URL check sees the real value

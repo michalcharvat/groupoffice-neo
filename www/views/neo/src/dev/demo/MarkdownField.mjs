@@ -3,7 +3,7 @@ import Container     from '../../../node_modules/neo.mjs/src/container/Base.mjs'
 import MarkdownField from '../../form/field/MarkdownField.mjs';
 import Toolbar       from '../../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import {markdownToHtml}                from '../../Markdown.mjs';
-import ImageWindow, {zoomableImages} from '../../view/ImageWindow.mjs';
+import {enableImageZoom}  from '../../view/ImageWindow.mjs';
 
 const escape = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'})[c]);
 
@@ -17,8 +17,6 @@ class MarkdownFieldDemo extends Container {
         layout   : {ntype: 'vbox', align: 'stretch'},
         style    : {padding: '16px', gap: '12px'}
     }
-
-    images = []
 
     construct(config) {
         super.construct(config);
@@ -59,28 +57,16 @@ class MarkdownFieldDemo extends Container {
         }];
     }
 
-    onConstructed() {
-        super.onConstructed();
-
-        this.getReference('output').addDomListeners({
-            click   : data => {
-                const image = this.images[data.target?.data?.zoom];
-                image && ImageWindow.show({appName: this.appName, windowId: this.windowId, ...image})
-            },
-            delegate: '.go-zoomable'
-        })
-    }
-
     async onGetValue() {
         const value = await this.getReference('field').flush();
         this.getReference('output').html = `<pre>${escape(value) || '(empty)'}</pre>`
     }
 
     async onRender() {
-        const {html, images} = zoomableImages(markdownToHtml(await this.getReference('field').flush()));
+        const output = this.getReference('output');
 
-        this.images = images;
-        this.getReference('output').html = html
+        output.html = markdownToHtml(await this.getReference('field').flush());
+        enableImageZoom(output)
     }
 
     onReadOnly() {

@@ -4,7 +4,7 @@ import {t}                   from '../Translate.mjs';
 
 /**
  * Large image in a modal window (GOUI Image.showWindow()), opened by clicking an image
- * of zoomable content, see zoomableImages().
+ * of zoomable content, see enableImageZoom().
  *
  *     ImageWindow.show({appName, windowId, src, alt})
  */
@@ -55,33 +55,37 @@ class ImageWindow extends Dialog {
 
 export default Neo.setupClass(ImageWindow);
 
+/** components that listen to imageZoom already */
+const zoomComponents = new WeakSet();
+
 /**
- * Makes the images of (sanitised) HTML zoomable: each <img> gets the class
- * "go-zoomable" and data-zoom = its index in the returned list. Listen to clicks with
- * delegate '.go-zoomable' and open ImageWindow.show({...images[data.target.data.zoom]}).
- * @param {String} html sanitised HTML
- * @returns {{html: String, images: {src: String, alt: String}[]}}
+ * Images inside an element with the class "go-image-zoom" in the component's HTML open
+ * large on click (GOUI Image.enableZoom()). The main thread addon WS/ImageZoom finds the
+ * clicked image, so the HTML is not changed. Call it again after the component moved
+ * to another window (the addon is loaded per window).
+ *
+ *     body.html = `<div class="go-image-zoom">${html}</div>`;
+ *     enableImageZoom(body)
+ * @param {Neo.component.Base} component
+ * @returns {Promise<void>}
  */
-export function zoomableImages(html) {
-    const images = [],
-          // decoded attribute value of a sanitised tag
-          attr   = (tag, name) => {
-              const m = tag.match(new RegExp(`\\s${name}\\s*=\\s*("([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i'));
-              return m ? (m[2] ?? m[3] ?? m[4] ?? '')
-                  .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&') : ''
-          };
+export async function enableImageZoom(component) {
+    if (!zoomComponents.has(component)) {
+        zoomComponents.add(component);
 
-    html = String(html || '').replace(/<img\b[^>]*>/gi, tag => {
-        const src = attr(tag, 'src');
+        component.addDomListeners({
+            imageZoom: data => ImageWindow.show({
+                alt     : String(data.alt || ''),
+                appName : component.appName,
+                src     : String(data.src || ''),
+                windowId: component.windowId
+            })
+        })
+    }
 
-        if (!src) {
-            return tag
-        }
-
-        // the HTML parser keeps the first of duplicate attributes: these win over existing ones
-        images.push({src, alt: attr(tag, 'alt')});
-        return tag.replace(/^<img\b/i, `<img class="go-zoomable" data-zoom="${images.length - 1}"`)
-    });
-
-    return {html, images}
+    try {
+        await Neo.Main.importAddon({name: 'WS/ImageZoom', windowId: component.windowId})
+    } catch (e) {
+        console.error('Image zoom', e)
+    }
 }

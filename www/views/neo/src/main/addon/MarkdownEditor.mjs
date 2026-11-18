@@ -24,6 +24,7 @@ const SYNC_DELAY = 300;
 /** keyboard shortcuts with Ctrl / Cmd */
 const SHORTCUTS = {b: 'bold', i: 'italic', k: 'link'};
 
+/** EasyMDE's table template (not translated there either) */
 const TABLE = '| Column 1 | Column 2 | Column 3 |\n| -------- | -------- | -------- |\n| Text     | Text     | Text     |';
 
 class MarkdownEditor extends Base {
@@ -274,12 +275,12 @@ class MarkdownEditor extends Base {
     }
 
     /**
-     * Toggles inline markup around the selection, e.g. **bold**
+     * Toggles inline markup around the selection, e.g. **bold**. Without a selection
+     * the cursor goes between the marks (EasyMDE).
      * @param {Object} item
      * @param {String} mark
-     * @param {String} placeholder text when nothing is selected
      */
-    toggleInline(item, mark, placeholder) {
+    toggleInline(item, mark) {
         const {editor}                       = item,
               {selectionStart: s, selectionEnd: e, value} = editor,
               n                              = mark.length;
@@ -290,8 +291,25 @@ class MarkdownEditor extends Base {
             return
         }
 
-        const text = value.slice(s, e) || placeholder;
+        const text = value.slice(s, e);
         this.replace(item, s, e, mark + text + mark, n, n + text.length)
+    }
+
+    /**
+     * Range of the lines with the selection. A selection that ends right after a line
+     * break (e.g. a whole line selected by triple click) does not take the next line.
+     * @param {Object} item
+     * @returns {{start: Number, end: Number}}
+     */
+    lineRange(item) {
+        const {selectionStart: s, value} = item.editor;
+        let   {selectionEnd: e}          = item.editor;
+
+        e > s && value[e - 1] === '\n' && e--;
+
+        const endBreak = value.indexOf('\n', e);
+
+        return {start: value.lastIndexOf('\n', s - 1) + 1, end: endBreak === -1 ? value.length : endBreak}
     }
 
     /**
@@ -300,13 +318,9 @@ class MarkdownEditor extends Base {
      * @param {Function} fn (line, index, lines) → new line
      */
     mapLines(item, fn) {
-        const {editor}                                   = item,
-              {selectionStart: s, selectionEnd: e, value} = editor,
-              start                                      = value.lastIndexOf('\n', s - 1) + 1,
-              endBreak                                   = value.indexOf('\n', e),
-              end                                        = endBreak === -1 ? value.length : endBreak,
-              lines                                      = value.slice(start, end).split('\n'),
-              text                                       = lines.map(fn).join('\n');
+        const {selectionStart: s, selectionEnd: e, value} = item.editor,
+              {start, end}                               = this.lineRange(item),
+              text                                       = value.slice(start, end).split('\n').map(fn).join('\n');
 
         // a selection stays selected, a cursor goes to the end of the changed line(s)
         this.replace(item, start, end, text, s === e ? text.length : 0, text.length)
@@ -319,10 +333,8 @@ class MarkdownEditor extends Base {
      * @param {Function} prefix (index) → prefix
      */
     toggleLinePrefix(item, test, prefix) {
-        const {selectionStart: s, selectionEnd: e, value} = item.editor,
-              start = value.lastIndexOf('\n', s - 1) + 1,
-              end   = value.indexOf('\n', e) === -1 ? value.length : value.indexOf('\n', e),
-              all   = value.slice(start, end).split('\n').every(line => test.test(line));
+        const {start, end} = this.lineRange(item),
+              all          = item.editor.value.slice(start, end).split('\n').every(line => test.test(line));
 
         this.mapLines(item, (line, i) => all ? line.replace(test, '') : prefix(i) + line)
     }
@@ -345,13 +357,13 @@ class MarkdownEditor extends Base {
 
         switch (cmd) {
             case 'bold':
-                this.toggleInline(item, '**', 'bold');
+                this.toggleInline(item, '**');
                 break;
             case 'italic':
-                this.toggleInline(item, '*', 'italic');
+                this.toggleInline(item, '*');
                 break;
             case 'strikethrough':
-                this.toggleInline(item, '~~', 'strikethrough');
+                this.toggleInline(item, '~~');
                 break;
             case 'heading':
                 // EasyMDE toggleHeadingSmaller: # → ## → … → ###### → none
@@ -377,11 +389,12 @@ class MarkdownEditor extends Base {
                     const text = '```\n' + selected + '\n```';
                     this.replace(item, s, e, text, 4, 4 + selected.length)
                 } else {
-                    this.toggleInline(item, '`', 'code')
+                    this.toggleInline(item, '`')
                 }
                 break;
             case 'link': {
-                const text = selected || 'link',
+                // EasyMDE: [selection](https://)
+                const text = selected,
                       url  = 'https://';
                 // the URL is selected to type over
                 this.replace(item, s, e, `[${text}](${url})`, text.length + 3, text.length + 3 + url.length);

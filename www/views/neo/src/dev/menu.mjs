@@ -53,6 +53,6 @@ export default [
     {id: 'core/SharePanel',   text: 'SharePanel',        level: 1, status: 'done', demo: 'SharePanel',   neo: 'GO.permissions.SharePanel',    goui: 'groupoffice-core/script/permissions/SharePanel.ts'},
     {id: 'core/Templates',    text: 'E-mail / PDF templates', level: 1, status: 'done', demo: 'Templates', neo: 'GO.emailtemplate.EmailTemplateGrid, GO.pdftemplate.PdfTemplateGrid', goui: 'ExtJS go.emailtemplate, go.pdftemplate'},
     {id: 'core/Recurrence',   text: 'RecurrenceField',   level: 1, status: 'done', demo: 'Recurrence', neo: 'GO.form.field.RecurrenceField', goui: 'groupoffice-core/script/components/form/RecurrenceField.ts'},
-    {id: 'core/Image',        text: 'Image zoom',        level: 1, status: 'done', demo: 'MarkdownField', neo: 'GO.view.ImageWindow, zoomableImages()', goui: 'groupoffice-core/script/jmap/Image.ts'},
+    {id: 'core/Image',        text: 'Image zoom',        level: 1, status: 'done', demo: 'MarkdownField', neo: 'GO.view.ImageWindow, enableImageZoom()', goui: 'groupoffice-core/script/jmap/Image.ts'},
     {id: 'core/Recipients',   text: 'RecipientPicker',   level: 1, status: 'todo', goui: 'goui-docs/script/components/RecipientsField.ts'}
 ];

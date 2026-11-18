@@ -70,7 +70,7 @@ Status: **neo** = neo.mjs 13.2 ships it, usable as is (maybe GO styling);
 | customfields/ (FormFieldset, DetailFieldset, Types, admin) | GO.neo (`src/customfields/`) |
 | permissions/SharePanel (ACL) | GO.neo (`permissions/SharePanel.mjs`) |
 | RecurrenceField, RecurrencePicker | GO.neo (`GO.form.field.RecurrenceField`: presets menu + "Customize" dialog) |
-| Image (blob images, zoom) | GO.neo (`view/ImageWindow.mjs`: `zoomableImages()` + `ImageWindow.show()`; images load by URL with the session cookie, no `getBlobURL()` needed) |
+| Image (blob images, zoom) | GO.neo (`view/ImageWindow.mjs`: `enableImageZoom()` + addon `WS/ImageZoom`, `ImageWindow.show()`; images load by URL with the session cookie, no `getBlobURL()` needed) |
 | RecipientPicker, HtmlFieldMentionPlugin | missing (mail, comments mentions) |
 | EntityTypeTable | missing |
 | chart | missing in GO (neo ships `component/wrapper/AmChart` + `main/addon/AmCharts`, not wired) |
