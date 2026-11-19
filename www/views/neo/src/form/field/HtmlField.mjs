@@ -373,6 +373,17 @@ class HtmlField extends Field {
     }
 
     /**
+     * Inserts plain text at the caret (ExtJS insertAtCursor), e.g. a template tag
+     * @param {String} text
+     * @returns {Promise<void>}
+     */
+    async insertText(text) {
+        let windowId = this.#editorWindowId;
+
+        windowId && await this.addon.insertText({id: this.id, text, windowId}).catch(() => {})
+    }
+
+    /**
      * Latest HTML straight from the editor, including typing the debounced sync
      * has not sent yet. Use before saving.
      * @returns {Promise<String>}

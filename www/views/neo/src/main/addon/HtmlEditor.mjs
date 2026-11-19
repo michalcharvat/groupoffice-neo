@@ -68,6 +68,7 @@ class HtmlEditor extends Base {
                 'destroyInstance',
                 'focus',
                 'getValue',
+                'insertText',
                 'setValue',
                 'showMentions'
             ]
@@ -193,6 +194,34 @@ class HtmlEditor extends Base {
     getValue({id}) {
         const item = this.map[id];
         return item ? this.readValue(item) : null
+    }
+
+    /**
+     * Inserts plain text at the last caret position (ExtJS HtmlEditor insertAtCursor), at the
+     * end when the editor never had the caret
+     * @param {Object} data
+     * @param {String} data.id
+     * @param {String} data.text
+     */
+    insertText({id, text}) {
+        const item = this.map[id];
+
+        if (!item) {
+            return
+        }
+
+        this.restoreRange(item);
+
+        if (!item.range) {
+            const selection = getSelection();
+            selection.selectAllChildren(item.editor);
+            selection.collapseToEnd()
+        }
+
+        // insertText keeps the browser's undo stack
+        document.execCommand('insertText', false, String(text ?? ''));
+        this.saveRange(item);
+        this.sync(id)
     }
 
     /**
