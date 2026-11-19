@@ -5,14 +5,21 @@ import TableTitle   from '../../../../../views/neo/src/component/TableTitle.mjs'
 import Grid         from '../../../../../views/neo/src/grid/Grid.mjs';
 import {selectRow}  from '../../../../../views/neo/src/grid/selectRow.mjs';
 import client       from '../../../../../views/neo/src/jmap/Client.mjs';
-import {escapeHtml, fileSize} from '../../../../../views/neo/src/Format.mjs';
+import {escapeHtml, fileSize, formatUserDateTime, smartDateTime} from '../../../../../views/neo/src/Format.mjs';
 import {notifyError} from '../../../../../views/neo/src/Notify.mjs';
 import Tree         from '../../../../../views/neo/src/tree/Tree.mjs';
+import UploadButton from '../../../../../views/neo/src/component/UploadButton.mjs';
+import {enableDragDrop} from '../../../../../views/neo/src/component/dragDrop.mjs';
+import uploader     from '../../../../../views/neo/src/jmap/Uploader.mjs';
+import MenuList     from '../../../../../views/neo/src/menu/List.mjs';
+import ConfirmDialog from '../../../../../views/neo/src/view/ConfirmDialog.mjs';
+import TextPrompt   from '../../../../../views/neo/src/view/TextPrompt.mjs';
 import MainThreeColumnPanel from '../../../../../views/neo/src/view/MainThreeColumnPanel.mjs';
 import {fmt, translator} from '../../../../../views/neo/src/Translate.mjs';
 import FolderStore  from '../data/FolderStore.mjs';
-import {decodeEntities, fileIcon, isFolder, treeIcon} from '../util.mjs';
+import {decodeEntities, fileIcon, isFolder, isValidName, treeIcon} from '../util.mjs';
 import FileDetail   from './FileDetail.mjs';
+import OverwriteDialog from './OverwriteDialog.mjs';
 
 const t = translator('legacy', 'files');
 
@@ -20,6 +27,12 @@ const t = translator('legacy', 'files');
 export const LEVEL_READ = 10, LEVEL_CREATE = 20, LEVEL_WRITE = 30, LEVEL_DELETE = 40, LEVEL_MANAGE = 50;
 
 const dateRenderer = ({value}) => escapeHtml(value || '');
+
+/**
+ * Cut or copied items, shared by all file browsers of the App worker (ExtJS
+ * GO.files.pasteSelections): {mode: 'cut'|'copy', typeIds: ['d:1', 'f:2']}
+ */
+const clipboard = {mode: null, typeIds: []};
 
 /**
  * Files main panel (ExtJS GO.files.FileBrowser): folder tree | folder contents | detail.
@@ -121,6 +134,38 @@ class FilesMain extends MainThreeColumnPanel {
                         module   : SearchButton,
                         reference: 'searchButton',
                         listeners: {search: ({text}) => this.onSearch(text)}
+                    }, {
+                        module    : UploadButton,
+                        reference : 'uploadButton',
+                        buttonText: t('Upload'),
+                        listeners : {files: ({files}) => this.upload(files, this.folderId)}
+                    }, {
+                        module   : Button,
+                        icon     : 'restore_from_trash',
+                        reference: 'restoreButton',
+                        tooltip  : t('Restore'),
+                        hidden   : true,
+                        handler  : 'up.onRestore'
+                    }, {
+                        module   : Button,
+                        icon     : 'delete_forever',
+                        reference: 'deleteForeverButton',
+                        tooltip  : t('Delete permanently'),
+                        hidden   : true,
+                        handler  : 'up.onDeleteFromTrash'
+                    }, {
+                        module   : Button,
+                        icon     : 'create_new_folder',
+                        ui       : 'primary',
+                        reference: 'newFolderButton',
+                        tooltip  : t('New folder'),
+                        handler  : 'up.onNewFolder'
+                    }, {
+                        module   : Button,
+                        icon     : 'more_vert',
+                        reference: 'moreButton',
+                        tooltip  : t('More'),
+                        handler  : 'up.onMoreButton'
                     }]
                 }]
             }, {
@@ -185,6 +230,40 @@ class FilesMain extends MainThreeColumnPanel {
                     width    : 80,
                     hidden   : true
                 }]
+            }, {
+                // ExtJS GO.files.TrashGrid (folder "trash")
+                module     : Grid,
+                reference  : 'trashGrid',
+                cls        : ['go-files-grid'],
+                flex       : 1,
+                hidden     : true,
+                multiSelect: true,
+                store      : {module: FolderStore, keyProperty: 'id', defaultSort: {property: 'deletedAt', direction: 'DESC'}},
+                stateId    : 'files-trash-grid',
+                columns    : [{
+                    // fixed widths: the grid is created hidden, a flex column would get none
+                    dataField: 'name',
+                    text     : t('Name'),
+                    width    : 280,
+                    hideable : false,
+                    renderer : ({record}) => `<i class="go-icon go-files-icon">${record.entity === 'd' ? 'folder' : fileIcon({extension: String(record.name).split('.').pop()})}</i><span class="go-files-name">${escapeHtml(decodeEntities(record.name))}</span>`
+                }, {
+                    dataField: 'fullPath',
+                    text     : t('Location'),
+                    width    : 240,
+                    renderer : ({value}) => escapeHtml(decodeEntities(value))
+                }, {
+                    dataField: 'deletedByUser',
+                    text     : t('Deleted by'),
+                    width    : 160,
+                    renderer : ({value}) => escapeHtml(value || '')
+                }, {
+                    dataField: 'deletedAt',
+                    text     : t('Deleted at'),
+                    width    : 150,
+                    cellAlign: 'right',
+                    renderer : ({value}) => value ? `<span title="${escapeHtml(formatUserDateTime(value))}">${escapeHtml(smartDateTime(value))}</span>` : ''
+                }]
             }]
         }
     }
@@ -221,7 +300,10 @@ class FilesMain extends MainThreeColumnPanel {
             detail = me.getReference('detail');
 
         tree.on('itemClick', ({record}) => record && me.openFolder(record.id, {fromTree: true}));
-        tree.on('load', () => me.syncTreeSelection());
+        tree.on('load', () => {
+            me.resolveHomeFolder();
+            me.syncTreeSelection()
+        });
 
         grid.view.selectionModel.on('selectionChange', me.onSelectionChange, me);
         grid.on('rowDoubleClick', ({record}) => record && me.onOpenRecord(record));
@@ -238,6 +320,15 @@ class FilesMain extends MainThreeColumnPanel {
 
         detail.getReference('toolbar').insert(0, me.showCenterButton());
         detail.on('action', event => me.onDetailAction(event));
+
+        const trashGrid = me.getReference('trashGrid');
+        trashGrid.store.on('load', () => me.onTrashLoad());
+        trashGrid.store.on('loadError', ({error}) => me.showError(error));
+        trashGrid.body.on('scrollEdge', () => trashGrid.store.loadMore().catch(() => {}));
+        trashGrid.view.selectionModel.on('selectionChange', () => me.updateButtons());
+
+        me.initContextMenus();
+        me.initDragDrop();
 
         // the home folder, like ExtJS (folder_id '' lists it)
         me.initialLoad = me.openFolder('', {})
@@ -283,6 +374,21 @@ class FilesMain extends MainThreeColumnPanel {
     }
 
     /**
+     * The home folder is listed as folder_id '': its id is the tree's first root (whichever
+     * of the list and the tree answers last sets it)
+     */
+    resolveHomeFolder() {
+        let me   = this,
+            home = me.getReference('tree').roots[0];
+
+        if (me.folderId === '' && home && /^\d+$/.test(home.id) && me.getReference('grid').store.isLoaded) {
+            me.folderId = home.id;
+            me.getReference('grid').store.folderId = home.id;
+            me.updateButtons()
+        }
+    }
+
+    /**
      * Selects the shown folder in the tree when it is a node there
      */
     syncTreeSelection() {
@@ -308,7 +414,8 @@ class FilesMain extends MainThreeColumnPanel {
     async openFolder(folderId, {fromTree=false, select=null}={}) {
         let me    = this,
             grid  = me.getReference('grid'),
-            store = grid.store;
+            store = grid.store,
+            trash = String(folderId) === 'trash';
 
         me.pendingTypeId = select;
         me.folderId      = String(folderId);
@@ -316,8 +423,15 @@ class FilesMain extends MainThreeColumnPanel {
         grid.view.selectionModel.clear?.();
         me.getReference('detail').setRecord(null);
 
+        // ExtJS: the trash is a grid of its own (card 2) with Restore / Delete permanently
+        grid.hidden = trash;
+        me.getReference('trashGrid').hidden = !trash;
+        me.updateButtons();
+
         try {
-            await store.loadFolder(me.folderId)
+            trash
+                ? await me.getReference('trashGrid').store.loadFolder('trash')
+                : await store.loadFolder(me.folderId)
         } catch (e) {
             return // loadError shows it
         }
@@ -328,7 +442,7 @@ class FilesMain extends MainThreeColumnPanel {
 
         // home folder ('') answers with its id
         !fromTree && me.syncTreeSelection();
-        fromTree || me.activatePanel('center');
+        me.activatePanel('center');
 
         me.moduleName && /^\d+$/.test(me.folderId) && !select &&
             Neo.Main.setRoute({value: `${me.moduleName}/folder/${me.folderId}`, windowId: me.windowId})
@@ -345,11 +459,7 @@ class FilesMain extends MainThreeColumnPanel {
             name  = me.folderId === 'shared' ? t('Shared') : me.folderId === 'trash' ? t('Trash') : (path.split('/').pop() || t('Files')),
             node  = me.getReference('tree').getNode(me.folderId);
 
-        // the home folder was asked for as ''
-        if (me.folderId === '' && meta.parent_id !== undefined) {
-            const home = me.getReference('tree').roots[0];
-            home && (me.folderId = home.id)
-        }
+        me.resolveHomeFolder();
 
         me.getReference('tableTitle').set({
             title   : store.query ? fmt(t('Search results in {folder}'), {folder: node?.text || name}) : (node?.text || name),
@@ -360,7 +470,8 @@ class FilesMain extends MainThreeColumnPanel {
         const topLevel = me.getReference('tree').roots.some(r => r.id === String(me.folderId));
         me.getReference('upButton').disabled = !meta.parent_id || topLevel || !/^\d+$/.test(String(me.folderId)) || !!store.query;
 
-        me.updateQuota(meta)
+        me.updateQuota(meta);
+        me.updateButtons()
     }
 
     onFolderLoad() {
@@ -548,6 +659,673 @@ class FilesMain extends MainThreeColumnPanel {
 
         me.expandFolderId = folderId;
         tree.reload().catch(e => me.showError(e)).finally(() => {me.expandFolderId = null})
+    }
+
+
+    /**
+     * Permission level of the shown folder (0 while searching, like ExtJS setWritePermission())
+     * @returns {Number}
+     */
+    folderLevel() {
+        const store = this.getReference('grid').store;
+        return store.query ? 0 : (+store.meta.permission_level || 0)
+    }
+
+    /**
+     * Enables the toolbar for the shown folder and selection (ExtJS setWritePermission())
+     */
+    updateButtons() {
+        let me    = this,
+            trash = me.folderId === 'trash',
+            level = me.folderLevel(),
+            real  = /^\d+$/.test(String(me.folderId));
+
+        me.getReference('uploadButton').hidden       = trash;
+        me.getReference('uploadButton').disabled     = !real || level < LEVEL_CREATE;
+        me.getReference('newFolderButton').hidden    = trash;
+        me.getReference('newFolderButton').disabled  = !real || level < LEVEL_CREATE;
+        me.getReference('moreButton').hidden         = trash;
+        me.getReference('searchButton').hidden       = trash;
+        me.getReference('restoreButton').hidden      = !trash;
+        me.getReference('deleteForeverButton').hidden = !trash;
+
+        if (trash) {
+            const none = !me.getReference('trashGrid').getSelectedRecords().length;
+            me.getReference('restoreButton').disabled       = none;
+            me.getReference('deleteForeverButton').disabled = none
+        }
+    }
+
+    onTrashLoad() {
+        let me    = this,
+            store = me.getReference('trashGrid').store;
+
+        if (me.isDestroyed) {
+            return
+        }
+
+        me.getReference('tableTitle').set({
+            title   : t('Trash'),
+            subtitle: fmt(t('{count} items'), {count: store.totalCount || 0})
+        });
+        me.getReference('upButton').disabled = true;
+        me.updateButtons()
+    }
+
+    /**
+     * @returns {Object[]} selected grid records
+     */
+    getSelected() {
+        return this.getReference('grid').getSelectedRecords()
+    }
+
+    /**
+     * Right click on a row or a tree node: the ExtJS GO.files.FilesContextMenu
+     */
+    initContextMenus() {
+        let me   = this,
+            grid = me.getReference('grid'),
+            tree = me.getReference('tree');
+
+        Neo.main.DomEvents.registerPreventDefaultTargets({name: 'contextmenu', cls: ['go-files-grid'], windowId: me.windowId});
+        Neo.main.DomEvents.registerPreventDefaultTargets({name: 'contextmenu', cls: ['go-files-tree'], windowId: me.windowId});
+
+        grid.addDomListeners({contextmenu: data => me.onGridContextMenu(data), scope: me});
+        tree.addDomListeners({contextmenu: data => me.onTreeContextMenu(data), scope: me})
+    }
+
+    onGridContextMenu(data) {
+        let me     = this,
+            grid   = me.getReference('grid'),
+            row    = data.path.find(node => node.cls?.includes('neo-grid-row') && node.data?.recordId),
+            record = row && grid.store.get(row.data.recordId);
+
+        if (!record) {
+            return
+        }
+
+        const selected = me.getSelected(),
+              records  = selected.includes(record) ? selected : [record];
+
+        if (!selected.includes(record)) {
+            selectRow(grid, record.type_id);
+            me.getReference('detail').setRecord(record)
+        }
+
+        me.showItemMenu(records, data.path[0]?.id || row.id)
+    }
+
+    onTreeContextMenu(data) {
+        let me   = this,
+            tree = me.getReference('tree'),
+            item = data.path.find(node => node.cls?.includes('neo-list-item')),
+            id   = item && tree.getItemRecordId(item.id),
+            node = id !== undefined && id !== null && tree.getNode(id);
+
+        if (!node || !/^\d+$/.test(node.id)) {
+            return
+        }
+
+        const record = {type_id: 'd:' + node.id, id: node.id, name: node.text, extension: 'folder', readonly: node.readonly};
+
+        MenuList.showAt({
+            appName : me.appName,
+            windowId: me.windowId,
+            target  : data.path[0]?.id || item.id,
+            items   : [{
+                text   : t('New folder'),
+                icon   : 'create_new_folder',
+                handler: () => me.newFolder(node.id)
+            }, {
+                text    : t('Paste'),
+                icon    : 'content_paste',
+                disabled: !clipboard.typeIds.length,
+                handler : () => me.paste(node.id)
+            }, {separator: true}, ...me.editItems([record], {tree: true})]
+        })
+    }
+
+    /**
+     * Rename, cut, copy, trash, delete of items
+     * @param {Object[]} records
+     * @param {Object} [opts]
+     * @param {Boolean} [opts.tree] a tree node (no cut / copy)
+     * @returns {Object[]} menu items
+     */
+    editItems(records, {tree=false}={}) {
+        let me     = this,
+            single = records.length === 1 ? records[0] : null,
+            system = records.some(r => isFolder(r) && +r.readonly);
+
+        return [{
+            text    : t('Rename'),
+            icon    : 'drive_file_rename_outline',
+            disabled: !single || system,
+            handler : () => me.rename(single)
+        }, ...(tree ? [] : [{
+            text   : t('Cut'),
+            icon   : 'content_cut',
+            handler: () => me.setClipboard('cut', records)
+        }, {
+            text   : t('Copy'),
+            icon   : 'content_copy',
+            handler: () => me.setClipboard('copy', records)
+        }]), {separator: true}, {
+            text    : t('Move to Trash'),
+            icon    : 'delete',
+            disabled: system,
+            handler : () => me.moveToTrash(records)
+        }, {
+            text    : t('Delete permanently'),
+            icon    : 'delete_forever',
+            disabled: system,
+            handler : () => me.deleteRecords(records)
+        }]
+    }
+
+    /**
+     * @param {Object[]} records
+     * @param {String} target DOM id to align the menu to
+     */
+    showItemMenu(records, target) {
+        let me     = this,
+            single = records.length === 1 ? records[0] : null,
+            folder = single && isFolder(single),
+            items  = [];
+
+        if (single && !folder) {
+            items.push({text: t('Open'), icon: 'open_in_new', handler: () => me.openFile(single)},
+                       {text: t('Download'), icon: 'download', handler: () => me.downloadFile(single)});
+        } else if (folder) {
+            items.push({text: t('Open'), icon: 'folder_open', handler: () => me.openFolder(single.id)});
+
+            clipboard.typeIds.length && items.push({text: t('Paste'), icon: 'content_paste', handler: () => me.paste(single.id)})
+        }
+
+        items.length && items.push({separator: true});
+        items.push(...me.editItems(records));
+
+        MenuList.showAt({appName: me.appName, windowId: me.windowId, target, items})
+    }
+
+    /**
+     * The toolbar's ⋮: cut / copy / paste / trash of the selection, refresh
+     * @param {Object} data button event
+     */
+    onMoreButton(data) {
+        let me       = this,
+            records  = me.getSelected(),
+            level    = me.folderLevel(),
+            none     = !records.length;
+
+        MenuList.showAt({
+            appName : me.appName,
+            windowId: me.windowId,
+            target  : data.component.id,
+            items   : [{
+                text    : t('Cut'),
+                icon    : 'content_cut',
+                disabled: none || level < LEVEL_DELETE,
+                handler : () => me.setClipboard('cut', records)
+            }, {
+                text    : t('Copy'),
+                icon    : 'content_copy',
+                disabled: none,
+                handler : () => me.setClipboard('copy', records)
+            }, {
+                text    : t('Paste'),
+                icon    : 'content_paste',
+                disabled: !clipboard.typeIds.length || level < LEVEL_WRITE,
+                handler : () => me.paste(me.folderId)
+            }, {separator: true}, {
+                text    : t('Move to Trash'),
+                icon    : 'delete',
+                disabled: none || level < LEVEL_DELETE,
+                handler : () => me.moveToTrash(records)
+            }, {separator: true}, {
+                // ExtJS refresh(true): sync the folder with the file system
+                text   : t('Refresh'),
+                icon   : 'refresh',
+                handler: () => me.refresh(true)
+            }]
+        })
+    }
+
+    /**
+     * Drag and drop (ExtJS ddGroup "FilesDD"): rows onto folder rows or tree nodes move them,
+     * ctrl / alt copies; desktop files onto the grid or a folder upload there
+     */
+    initDragDrop() {
+        let me   = this,
+            grid = me.getReference('grid'),
+            tree = me.getReference('tree');
+
+        // folder rows are drop targets
+        const getRowClass = grid.body.getRowClass.bind(grid.body);
+        grid.body.getRowClass = (record, rowIndex) => {
+            const cls = getRowClass(record, rowIndex);
+            return isFolder(record) ? [...cls, 'go-drop-folder'] : cls
+        };
+
+        enableDragDrop(grid, {
+            drag  : '.neo-grid-row',
+            drop  : '.go-drop-folder',
+            group : 'files',
+            files : true,
+            onDrop: event => me.onDrop(event, () => {
+                const record = event.targetRecordId && grid.store.get(event.targetRecordId);
+                return record && isFolder(record) ? String(record.id) : me.folderId
+            })
+        }).catch(e => console.error('Files drag and drop', e));
+
+        enableDragDrop(tree, {
+            drag  : '.neo-list-item',
+            drop  : '.neo-list-item',
+            group : 'files',
+            files : true,
+            onDrop: event => me.onDrop(event, () => {
+                const id = tree.getItemRecordId(event.targetId);
+                return id === undefined || id === null ? null : String(id)
+            })
+        }).catch(e => console.error('Files drag and drop', e))
+    }
+
+    /**
+     * @param {Object} event goDrop of WS/DragDrop
+     * @param {Function} destination () => folder id, "trash" or null
+     */
+    async onDrop(event, destination) {
+        let me     = this,
+            destId = destination();
+
+        if (!destId || destId === 'shared') {
+            return
+        }
+
+        if (event.files?.length) {
+            destId === 'trash' || me.upload(event.files, destId);
+            return
+        }
+
+        const typeIds = me.draggedTypeIds(event.source);
+
+        if (!typeIds.length || typeIds.includes('d:' + destId)) {
+            return
+        }
+
+        if (destId === 'trash') {
+            me.moveToTrash(typeIds.map(typeId => ({type_id: typeId, name: ''})));
+            return
+        }
+
+        // go.User.confirmOnMove
+        if (!event.copy && client.user?.confirmOnMove) {
+            const ok = await ConfirmDialog.ask({appName: me.appName, windowId: me.windowId,
+                message: fmt(t('Are you sure you want to move {count} items?'), {count: typeIds.length})});
+
+            if (!ok) {
+                return
+            }
+        }
+
+        me.pasteInto(destId, typeIds, event.copy ? 'copy' : 'cut')
+    }
+
+    /**
+     * @param {Object} source {rootId, itemId, recordId} of WS/DragDrop
+     * @returns {String[]} type ids: the selection when a selected row was dragged
+     */
+    draggedTypeIds(source) {
+        let me   = this,
+            grid = me.getReference('grid'),
+            tree = me.getReference('tree');
+
+        if (!source) {
+            return []
+        }
+
+        if (source.rootId === tree.id) {
+            const id = tree.getItemRecordId(source.itemId);
+            return /^\d+$/.test(String(id)) && tree.getNode(id)?.draggable ? ['d:' + id] : []
+        }
+
+        const record   = source.recordId && grid.store.get(source.recordId),
+              selected = me.getSelected();
+
+        if (!record) {
+            return []
+        }
+
+        return (selected.includes(record) ? selected : [record]).map(r => r.type_id)
+    }
+
+    /**
+     * Reloads the folder (and the tree: folders may have been added, renamed or moved)
+     * @param {Boolean} [sync=false] sync the folder with the file system first
+     */
+    async refresh(sync=false) {
+        let me   = this,
+            grid = me.folderId === 'trash' ? me.getReference('trashGrid') : me.getReference('grid');
+
+        try {
+            await Promise.all([
+                grid.store.load({keepCount: true, params: sync ? {} : {skip_fs_sync: 1}}),
+                me.getReference('tree').reload()
+            ])
+        } catch (e) {
+            // loadError shows a store error
+            e && !grid.store.isLoading && me.showError(e)
+        }
+    }
+
+    /**
+     * Header "+" menu
+     */
+    async onQuickAdd() {
+        await this.initialLoad;
+        this.isDestroyed || this.onNewFolder()
+    }
+
+    onNewFolder() {
+        /^\d+$/.test(String(this.folderId)) && this.newFolder(this.folderId)
+    }
+
+    /**
+     * ExtJS NewFolderDialog
+     * @param {String} parentId
+     */
+    async newFolder(parentId) {
+        let me   = this;
+
+        const name = await TextPrompt.ask({
+            appName  : me.appName,
+            windowId : me.windowId,
+            title    : t('New folder'),
+            label    : t('Name'),
+            value    : t('New folder'),
+            validator: value => isValidName(value) ? null : t('Invalid file or folder name')
+        });
+
+        if (!name || me.isDestroyed) {
+            return
+        }
+
+        try {
+            const response = await client.legacy('files/folder/submit', {parent_id: parentId, name});
+
+            await me.refresh();
+
+            // the new folder is selected when it is in the shown folder
+            response.id && String(parentId) === String(me.folderId) && selectRow(me.getReference('grid'), 'd:' + response.id)
+        } catch (e) {
+            me.showError(e)
+        }
+    }
+
+    /**
+     * @param {Object} record list record or tree folder
+     */
+    async rename(record) {
+        let me     = this,
+            folder = isFolder(record),
+            old    = decodeEntities(record.name);
+
+        const name = await TextPrompt.ask({
+            appName  : me.appName,
+            windowId : me.windowId,
+            title    : t('Rename'),
+            label    : t('Name'),
+            value    : old,
+            select   : folder ? 'all' : 'name',
+            validator: value => isValidName(value) ? null : t('Invalid file or folder name')
+        });
+
+        if (!name || name === old || me.isDestroyed) {
+            return
+        }
+
+        try {
+            if (folder) {
+                await client.legacy('files/folder/submit', {id: record.id, name})
+            } else {
+                // file/submit joins name and extension
+                const dot = name.lastIndexOf('.');
+                await client.legacy('files/file/submit', {
+                    id       : record.id,
+                    name     : dot > 0 ? name.slice(0, dot) : name,
+                    extension: dot > 0 ? name.slice(dot + 1) : ''
+                })
+            }
+
+            await me.refresh();
+            me.getReference('detail').refresh()
+        } catch (e) {
+            me.showError(e)
+        }
+    }
+
+    /**
+     * @param {String} mode 'cut' or 'copy'
+     * @param {Object[]} records
+     */
+    setClipboard(mode, records) {
+        clipboard.mode    = mode;
+        clipboard.typeIds = records.map(r => r.type_id)
+    }
+
+    /**
+     * Pastes the clipboard into a folder
+     * @param {String} destId
+     */
+    async paste(destId) {
+        if (!clipboard.typeIds.length) {
+            return
+        }
+
+        const {mode, typeIds} = clipboard;
+
+        // cut items move once
+        mode === 'cut' && (clipboard.typeIds = []);
+
+        await this.pasteInto(destId, typeIds, mode)
+    }
+
+    /**
+     * files/folder/paste with the overwrite question (the server keeps the queue in the session)
+     * @param {String} destId
+     * @param {String[]} typeIds
+     * @param {String} mode 'cut' or 'copy'
+     */
+    async pasteInto(destId, typeIds, mode) {
+        let me        = this,
+            overwrite = 'ask';
+
+        try {
+            for (;;) {
+                const response = await client.legacy('files/folder/paste', {
+                    ids                  : JSON.stringify(typeIds),
+                    destination_folder_id: destId,
+                    paste_mode           : mode,
+                    id                   : me.folderId,
+                    overwrite
+                });
+
+                if (!response.fileExists) {
+                    break
+                }
+
+                overwrite = await OverwriteDialog.ask({appName: me.appName, windowId: me.windowId, file: decodeEntities(response.fileExists)});
+
+                if (!overwrite || me.isDestroyed) {
+                    break
+                }
+            }
+        } catch (e) {
+            me.showError(e)
+        }
+
+        me.isDestroyed || me.refresh()
+    }
+
+    /**
+     * Moves items to the trash (ExtJS: list reload with trash_keys)
+     * @param {Object[]} records
+     */
+    async moveToTrash(records) {
+        await this.deleteWith('trash_keys', records, t('Are you sure you want to move the selected items to the trash?'))
+    }
+
+    /**
+     * Deletes items permanently (ExtJS ctrl + Delete: delete_keys)
+     * @param {Object[]} records
+     */
+    async deleteRecords(records) {
+        await this.deleteWith('delete_keys', records, t('Are you sure you want to permanently delete the selected items?'))
+    }
+
+    /**
+     * @param {String} key 'trash_keys' or 'delete_keys'
+     * @param {Object[]} records
+     * @param {String} question
+     */
+    async deleteWith(key, records, question) {
+        let me    = this,
+            store = me.getReference('grid').store;
+
+        if (!records.length) {
+            return
+        }
+
+        const confirmed = await ConfirmDialog.ask({
+            appName : me.appName,
+            windowId: me.windowId,
+            message : records.length === 1 && records[0].name
+                ? fmt(t("Are you sure you want to delete '{item}'?"), {item: decodeEntities(records[0].name)})
+                : question
+        });
+
+        if (!confirmed || me.isDestroyed) {
+            return
+        }
+
+        try {
+            await store.load({keepCount: true, params: {[key]: JSON.stringify(records.map(r => r.type_id)), skip_fs_sync: 1}});
+
+            store.meta.deleteSuccess === false && me.showError(new Error(store.meta.deleteFeedback || t('Delete failed')));
+
+            me.getReference('grid').view.selectionModel.clear?.();
+            me.getReference('detail').setRecord(null);
+            // deleted folders leave the tree
+            records.some(isFolder) && me.getReference('tree').reload().catch(e => me.showError(e))
+        } catch (e) {
+            // loadError shows it
+        }
+    }
+
+    async onRestore() {
+        let me      = this,
+            grid    = me.getReference('trashGrid'),
+            records = grid.getSelectedRecords();
+
+        if (!records.length) {
+            return
+        }
+
+        try {
+            await client.legacy('files/folder/restore', {ids: records.map(r => r.id).join(',')});
+            grid.view.selectionModel.clear?.();
+            await me.refresh()
+        } catch (e) {
+            me.showError(e)
+        }
+    }
+
+    async onDeleteFromTrash() {
+        let me      = this,
+            grid    = me.getReference('trashGrid'),
+            records = grid.getSelectedRecords();
+
+        if (!records.length) {
+            return
+        }
+
+        const confirmed = await ConfirmDialog.ask({
+            appName : me.appName,
+            windowId: me.windowId,
+            message : t('Are you sure you want to permanently delete the selected items?')
+        });
+
+        if (!confirmed || me.isDestroyed) {
+            return
+        }
+
+        try {
+            await client.legacy('files/folder/deleteFromTrash', {ids: records.map(r => r.id).join(',')});
+            grid.view.selectionModel.clear?.();
+            await grid.store.load({keepCount: true})
+        } catch (e) {
+            me.showError(e)
+        }
+    }
+
+    /**
+     * Uploads files into a folder: JMAP blobs (progress in the UploadPanel), then
+     * files/folder/processUploadQueue one blob at a time, so an overwrite answer applies to
+     * that file only ("Yes to all" / "No to all" to the rest)
+     * @param {File[]} files
+     * @param {String} destId
+     */
+    async upload(files, destId) {
+        let me = this;
+
+        if (!files?.length || !/^\d+$/.test(String(destId))) {
+            return
+        }
+
+        const blobs = await uploader.uploadMany(files, {component: me});
+
+        if (!blobs.length || me.isDestroyed) {
+            return
+        }
+
+        let all = null; // 'yestoall' / 'notoall'
+
+        try {
+            for (const blob of blobs) {
+                let overwrite = all || 'ask';
+
+                for (;;) {
+                    const response = await client.legacy('files/folder/processUploadQueue', {
+                        upload               : 1,
+                        destination_folder_id: destId,
+                        overwrite,
+                        blobs                : JSON.stringify([{id: blob.id || blob.blobId, name: blob.name}])
+                    });
+
+                    if (!response.fileExists || overwrite !== 'ask') {
+                        break
+                    }
+
+                    const answer = await OverwriteDialog.ask({appName: me.appName, windowId: me.windowId, file: decodeEntities(response.fileExists)});
+
+                    if (!answer || me.isDestroyed) {
+                        // cancelled: the rest is not stored
+                        return
+                    }
+
+                    overwrite = answer;
+                    answer.endsWith('toall') && (all = answer);
+
+                    if (answer === 'no' || answer === 'notoall') {
+                        break
+                    }
+                }
+            }
+        } catch (e) {
+            me.showError(e)
+        } finally {
+            me.isDestroyed || me.refresh()
+        }
     }
 
     /**
