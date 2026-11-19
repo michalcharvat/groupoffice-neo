@@ -1,5 +1,6 @@
-// e-mail card of System settings (stub of card 1; card 5 replaces it)
-.neo-theme-go .go-email-system-settings .go-email-stub {
-    color  : var(--fg-secondary-text);
-    padding: 1.6rem;
+// GO.email.settings.SystemSettingsPanel: e-mail card of System settings, padded like the
+// other cards (GO.systemsettings.SettingsPanel); the templates fill it
+.neo-theme-go .go-email-system-settings {
+    gap    : 1.2rem;
+    padding: 2.4rem;
 }

@@ -1,0 +1,10 @@
+// GO.email.settings.EmailTemplateDialog: the body takes the free height
+.neo-theme-go .go-email-template-dialog {
+    .go-email-template-toolbar {
+        padding: 0;
+    }
+
+    .go-email-template-body {
+        min-height: 20rem;
+    }
+}

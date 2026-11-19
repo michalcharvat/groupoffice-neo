@@ -1,5 +1,18 @@
-// e-mail card of My account (stub of card 1; card 5 replaces it)
-.neo-theme-go .go-email-settings .go-email-stub {
-    color  : var(--fg-secondary-text);
-    padding: 1.6rem;
+// GO.email.settings.UserSettingsPanel: e-mail card of My account, options in two columns, then the templates
+.neo-theme-go .go-email-settings {
+    overflow-y: auto;
+
+    .go-email-settings-options {
+        column-gap: 2.4rem;
+        columns   : 2 26rem;
+
+        > * {
+            break-inside: avoid;
+        }
+    }
+
+    // the card scrolls: the templates get a fixed height
+    .go-email-settings-templates {
+        height: 32rem;
+    }
 }

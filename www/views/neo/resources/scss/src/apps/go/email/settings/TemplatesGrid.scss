@@ -1,0 +1,14 @@
+// GO.email.settings.TemplatesGrid: toolbar and the templates (My account, System settings)
+.neo-theme-go .go-email-templates {
+    min-height: 24rem;
+
+    > .go-email-templates-grid {
+        border       : 1px solid var(--fg-outline);
+        border-radius: .8rem;
+    }
+
+    .go-email-template-lock {
+        color    : var(--fg-secondary-text);
+        font-size: 1.8rem;
+    }
+}
