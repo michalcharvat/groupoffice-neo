@@ -24,6 +24,7 @@ export default [
     {id: 'form',          text: 'Form',           level: 1, status: 'neo',  neo: 'GO.form.DataSourceForm',         goui: 'Form.ts'},
 
     {id: 'form/ArrayField',      text: 'ArrayField',         level: 2, status: 'done', demo: 'ArrayField', neo: 'GO.form.field.ArrayField', goui: 'form/ArrayFieldPage.ts'},
+    {id: 'form/Autocomplete',    text: 'AutocompleteField',  level: 2, status: 'done', demo: 'Autocomplete', neo: 'GO.form.field.AutocompleteField', goui: 'goui/script/component/form/AutocompleteField.ts'},
     {id: 'form/ChecksAndRadios', text: 'Checks and Radios',  level: 2, status: 'neo',  neo: 'GO.component.CheckBox, neo Radio', goui: 'form/ChecksAndRadios.ts'},
     {id: 'form/ChipsField',      text: 'ChipsField',         level: 2, status: 'done', demo: 'Chips', neo: 'GO.form.field.ChipsField', goui: 'form/ChipsFieldPage.ts'},
     {id: 'form/ContainerField',  text: 'ContainerField',     level: 2, status: 'done', demo: 'ArrayField', neo: 'GO.form.field.ContainerField', goui: 'form/ContainerFieldPage.ts'},
