@@ -1,0 +1,12 @@
+// e-mail favorites in the account tree (ExtJS EmailClientOverride favoritesGrid): a star in the
+// primary colour and a line between the favourites and the accounts. Loaded by
+// view/favorites.mjs nodes() with insertThemeFiles('GO.emailfavorites.Favorites').
+.neo-theme-go .go-email-tree {
+    .go-emailfavorites-node .go-tree-icon {
+        color: var(--c-primary);
+    }
+
+    .go-emailfavorites-last {
+        border-bottom: 1px solid var(--fg-line);
+    }
+}
