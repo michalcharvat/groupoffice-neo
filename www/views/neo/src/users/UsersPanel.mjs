@@ -84,6 +84,7 @@ class UsersPanel extends Container {
             module   : Grid,
             reference: 'grid',
             cls      : ['go-users-grid'],
+            multiSelect: true,
             rowLines : 2, // avatar, name + user name
             flex     : 1,
             stateId  : 'users-grid',
@@ -126,6 +127,8 @@ class UsersPanel extends Container {
             grid = me.grid;
 
         grid.on('rowDoubleClick', ({record}) => record && me.edit(record.id));
+        grid.on('enterKey', ({records}) => records.length === 1 && me.edit(records[0].id));
+        grid.on('deleteKey', ({records}) => me.remove(records[0]));
         grid.body.on('scrollEdge', () => grid.store.loadMore().catch(() => {}));
         grid.store.on('loadError', ({error}) => notifyError(me, error));
 
@@ -349,16 +352,26 @@ class UsersPanel extends Container {
     }
 
     /**
+     * Deletes the user, or all selected users when the user is one of them (ExtJS grid
+     * delete of the selection). The own account is left out.
      * @param {Object} user
      */
     async remove(user) {
-        let me = this;
+        let me       = this,
+            selected = me.grid.getSelectedRecords(),
+            users    = (selected.includes(user) ? selected : [user]).filter(u => String(u.id) !== String(client.user?.id));
+
+        if (!users.length) {
+            return
+        }
 
         const yes = await ConfirmDialog.ask({
             appName : me.appName,
             windowId: me.windowId,
             title   : t('Confirm delete'),
-            message : fmt(t("Are you sure you want to delete '{item}'?"), {item: user.displayName || user.username})
+            message : users.length === 1
+                ? fmt(t("Are you sure you want to delete '{item}'?"), {item: users[0].displayName || users[0].username})
+                : fmt(t('Are you sure you want to delete the {count} items?'), {count: users.length})
         });
 
         if (!yes || me.isDestroyed) {
@@ -366,7 +379,8 @@ class UsersPanel extends Container {
         }
 
         try {
-            await client.set('User', {destroy: [user.id]});
+            await client.set('User', {destroy: users.map(u => u.id)});
+            me.grid.view.selectionModel.clear();
             me.reload()
         } catch (e) {
             notifyError(me, e)
