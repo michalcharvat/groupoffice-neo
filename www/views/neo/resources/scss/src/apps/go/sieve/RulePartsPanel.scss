@@ -1,0 +1,15 @@
+// GO.sieve.RulePartsPanel: the conditions or the actions of a rule
+.neo-theme-go .go-sieve-rule-parts {
+    border       : 1px solid var(--fg-border);
+    border-radius: .4rem;
+    margin-top   : 1.2rem;
+
+    .go-sieve-rule-parts-bar {
+        align-items: center;
+        padding    : .4rem .4rem .4rem .8rem;
+    }
+
+    .go-sieve-rule-parts-title {
+        font-weight: 600;
+    }
+}
