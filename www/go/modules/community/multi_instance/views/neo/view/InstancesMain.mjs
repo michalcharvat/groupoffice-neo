@@ -10,6 +10,7 @@ import ConfirmDialog from '../../../../../../../views/neo/src/view/ConfirmDialog
 import {escapeHtml, formatUserDateTime, smartDateTime} from '../../../../../../../views/neo/src/Format.mjs';
 import {fmt, t as coreT, translator} from '../../../../../../../views/neo/src/Translate.mjs';
 import {searchFilter} from '../../../../../../../views/neo/src/view/filterTypes.mjs';
+import {postForm}     from '../../../../../../../views/neo/src/postForm.mjs';
 import InstanceDialog from './InstanceDialog.mjs';
 
 const t = translator('community', 'multi_instance');
@@ -57,7 +58,7 @@ function fileSize(bytes) {
 /**
  * Multi instance module (multi_instance MainPanel): the GO instances this server hosts.
  * Toolbar filters (disabled, trials), search, add; the selected instances can be edited,
- * (de)activated, deleted or e-mailed.
+ * logged in to as administrator, (de)activated, deleted or e-mailed.
  */
 class InstancesMain extends Container {
     static config = {
@@ -100,6 +101,13 @@ class InstancesMain extends Container {
                 tooltip  : coreT('Edit'),
                 disabled : true,
                 handler  : () => me.edit(me.getSelected()[0]?.id)
+            }, {
+                module   : Button,
+                reference: 'loginButton',
+                icon     : 'lock_open',
+                tooltip  : t('Login as administrator'),
+                disabled : true,
+                handler  : () => me.loginAsAdmin()
             }, {
                 module   : Button,
                 reference: 'activateButton',
@@ -208,6 +216,7 @@ class InstancesMain extends Container {
             one      = selected.length === 1;
 
         me.getReference('editButton').disabled     = !one;
+        me.getReference('loginButton').disabled    = !one || !!me.loginPending;
         me.getReference('activateButton').disabled = !one;
         me.getReference('emailButton').disabled    = !selected.length;
         me.getReference('deleteButton').disabled   = !selected.length;
@@ -257,6 +266,51 @@ class InstancesMain extends Container {
             dialog = Neo.create(InstanceDialog, {appName: me.appName, windowId: me.windowId, entityId: id || null});
 
         dialog.on('save', () => me.getReference('grid').store.load({keepCount: true}).catch(() => {}))
+    }
+
+    /**
+     * ExtJS "Login as administrator": Instance/login creates an access token for the instance's
+     * admin, which is POSTed to the instance in the "groupoffice_instance" window, so it stays
+     * out of the URL. The instance runs on this server: same protocol and port.
+     */
+    async loginAsAdmin() {
+        let me       = this,
+            [record] = me.getSelected();
+
+        if (!record || me.loginPending) {
+            return
+        }
+
+        // check the address before a token exists: an invalid hostname leaves URL.hostname
+        // unchanged, which would send the token to this server
+        const url = new URL(client.baseUrl, self.location.href);
+
+        url.hostname = record.hostname;
+        url.pathname = '/';
+        url.search   = '';
+        url.hash     = '';
+
+        if (url.hostname !== String(record.hostname).toLowerCase()) {
+            notifyError(me, new Error(t('The hostname was malformed') + ': ' + escapeHtml(record.hostname)));
+            return
+        }
+
+        // one login at a time: a late answer must not replace the instance picked after it
+        me.loginPending = true;
+        me.onSelectionChange();
+
+        try {
+            const {accessToken} = await client.call('community/multi_instance/Instance/login', {id: record.id}),
+                  sent          = await postForm(me.windowId, url.href, {accessToken}, 'groupoffice_instance');
+
+            sent || notifyError(me, new Error(fmt(coreT('Your browser is blocking a popup from {product_name}. Please disable the popup blocker for this site'),
+                {product_name: Neo.config.goTitle || 'GroupOffice'})))
+        } catch (e) {
+            notifyError(me, e)
+        } finally {
+            me.loginPending = false;
+            me.isDestroyed || me.onSelectionChange()
+        }
     }
 
     async toggleEnabled() {

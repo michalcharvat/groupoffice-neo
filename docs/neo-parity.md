@@ -146,7 +146,7 @@ No gaps: dokuwiki, imapauthenticator, ldapauthenticator, jitsimeet, otp, pwned, 
 | history, comments, files | Detail cards | Cards only for users with the module | goui/script/*Panel.ts (module check) | shown to everyone, "Forbidden" for users without the module | fixed (`capability` config of `www/views/neo/src/detail/Card.mjs`) |
 | maildomains | Domain dialog | Mailbox defaults `defaultFts`, `defaultAutoExpunge` | goui/script/DomainDialog.ts:85-101 | missing | fixed |
 | maildomains | Mailbox dialog | Minimum length message `{min}` | goui/script/MailboxDialog.ts:80 | key with `{max}`, never translated | fixed |
-| multi_instance | Row menu | Login as administrator (token POSTed in a popup) | extjs3/MainPanel.js:250-295 | missing | card "neo-ui: multi_instance login as administrator" |
+| multi_instance | Row menu | Login as administrator (token POSTed in a popup) | extjs3/MainPanel.js:250-295 | done | toolbar button, `src/postForm.mjs` + addon `WS/PostForm` |
 | multi_instance | Search | `name:value` field filters | extjs3/Module.js:8-58 | text only | fixed |
 | oauth2client | Login | "Sign in with {name}" buttons for OpenID clients | Module.php:60-90 | missing | fixed |
 | oidc | Client dialog | Redirect URI label translated, copy button | goui/script/OIDConnectClientDialog.ts:45 | hardcoded label, no copy | fixed |
