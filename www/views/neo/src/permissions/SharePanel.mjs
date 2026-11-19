@@ -2,6 +2,7 @@ import Field  from '../../node_modules/neo.mjs/src/form/field/Base.mjs';
 import client from '../jmap/Client.mjs';
 import {avatarColor, initials} from '../Format.mjs';
 import {fmt, t} from '../Translate.mjs';
+import GroupMemberDialog from '../groups/GroupMemberDialog.mjs';
 import {LEVEL_CREATE, LEVEL_DELETE, LEVEL_MANAGE, LEVEL_READ, LEVEL_WRITE} from '../Acl.mjs';
 
 const PAGE_SIZE = 40;
@@ -93,6 +94,7 @@ class SharePanel extends Field {
         me.addDomListeners([
             {change: me.onLevelChange,   delegate: '.go-sharepanel-level',  scope: me},
             {click : me.onSegmentClick,  delegate: '.go-sharepanel-segment', scope: me},
+            {click : me.onMembersClick,  delegate: '.go-sharepanel-members', scope: me},
             {input : me.onSearchInput,   delegate: '.go-sharepanel-search', scope: me},
             {scroll: me.onListScroll,    delegate: '.go-sharepanel-list',   scope: me}
         ])
@@ -344,6 +346,15 @@ class SharePanel extends Field {
                         {tag: 'small', text: members}
                     ]
                 }, {
+                    // ExtJS SharePanel: the people icon opens go.groups.GroupMemberWindow
+                    tag            : 'button',
+                    type           : 'button',
+                    cls            : ['go-sharepanel-members'],
+                    title          : t('View members'),
+                    'aria-label'   : fmt('{0}: {1}', [t('View members'), name]),
+                    'data-group-id': String(group.id),
+                    cn             : [{tag: 'i', cls: ['go-icon'], text: 'people'}]
+                }, {
                     // the wrapper draws the GO chevron instead of the native one
                     cls: ['go-sharepanel-level-wrap'],
                     cn : [{
@@ -450,6 +461,19 @@ class SharePanel extends Field {
 
         me.value = {...(me.value || {}), [groupId]: level};
         me.fireUserChangeEvent(me.value, oldValue)
+    }
+
+    onMembersClick(data) {
+        let me      = this,
+            groupId = data.path?.find(node => node.data?.groupId)?.data.groupId,
+            group   = groupId && me.groups.find(g => String(g.id) === groupId);
+
+        group && GroupMemberDialog.show({
+            appName  : me.appName,
+            windowId : me.windowId,
+            groupId  : group.id,
+            groupName: String(group.name ?? '')
+        })
     }
 
     onSegmentClick(data) {

@@ -65,6 +65,15 @@
         }
     }
 
+    // checkable: false, a list to look at (GO.groups.GroupMemberDialog)
+    .go-entitychecklist-plain .go-entitychecklist-row {
+        cursor: default;
+
+        &:hover {
+            background: none;
+        }
+    }
+
     .go-entitychecklist-text {
         display       : flex;
         flex          : 1;
