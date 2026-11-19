@@ -1,5 +1,5 @@
 import Toolbar       from '../../../../../../../views/neo/node_modules/neo.mjs/src/toolbar/Base.mjs';
-import {LEVEL_DELETE, LEVEL_MANAGE, LEVEL_WRITE} from '../../../../../../../views/neo/src/Acl.mjs';
+import {LEVEL_CREATE, LEVEL_DELETE, LEVEL_MANAGE, LEVEL_WRITE} from '../../../../../../../views/neo/src/Acl.mjs';
 import Button        from '../../../../../../../views/neo/src/button/Button.mjs';
 import SearchButton  from '../../../../../../../views/neo/src/button/SearchButton.mjs';
 import CheckBox      from '../../../../../../../views/neo/src/component/CheckBox.mjs';
@@ -1206,7 +1206,25 @@ class TasksMain extends MainThreeColumnPanel {
     }
 
     /**
-     * ⋮ of the grid toolbar: export what the grid shows (GOUI Main "Export" menu)
+     * GOUI Main "Import": an iCalendar or CSV file into a chosen list (ImportTaskDialog)
+     */
+    async openImport() {
+        const {default: ImportTaskDialog} = await import('./ImportTaskDialog.mjs');
+
+        let me    = this,
+            store = me.getReference('taskListList').store,
+            // the first list checked in the west panel that the user may add tasks to
+            id    = me.getCheckedListIds().find(id => store.get(id)?.permissionLevel >= LEVEL_CREATE);
+
+        Neo.create(ImportTaskDialog, {
+            appName   : me.appName,
+            windowId  : me.windowId,
+            tasklistId: id || null
+        })
+    }
+
+    /**
+     * ⋮ of the grid toolbar: import, export what the grid shows (GOUI Main more menu)
      */
     showMoreMenu() {
         let me = this;
@@ -1215,7 +1233,11 @@ class TasksMain extends MainThreeColumnPanel {
             appName : me.appName,
             windowId: me.windowId,
             target  : me.getReference('moreButton').id,
-            items   : [me.exportMenuItem({entity: 'Task', store: me.getReference('grid').store, formats: ['ics', 'xlsx', 'csv', 'html', 'json']})]
+            items   : [{
+                text   : t('Import'),
+                icon   : 'cloud_upload',
+                handler: () => me.openImport()
+            }, me.exportMenuItem({entity: 'Task', store: me.getReference('grid').store, formats: ['ics', 'xlsx', 'csv', 'html', 'json']})]
         })
     }
 }

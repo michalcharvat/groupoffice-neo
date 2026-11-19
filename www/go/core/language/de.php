@@ -2348,4 +2348,5 @@ Sollten Sie kein neues Kennwort angefordert haben, können Sie diese Nachricht e
   'Move to the other column' => 'In die andere Spalte verschieben',
   'Saved' => 'Gespeichert',
   'Open in new window' => 'In neuem Fenster öffnen',
+  'Choose a file to import' => 'Wählen Sie eine Datei zum Importieren',
 );

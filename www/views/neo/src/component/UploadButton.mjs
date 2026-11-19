@@ -55,6 +55,18 @@ class UploadButton extends Component {
         }])
     }
 
+    /**
+     * A disabled label still opens the chooser: disable the input too
+     * @param {Boolean} value
+     * @param {Boolean} oldValue
+     */
+    afterSetDisabled(value, oldValue) {
+        super.afterSetDisabled(value, oldValue);
+
+        this.vdom.cn[0].disabled = value || null;
+        this.update()
+    }
+
     afterSetButtonText(value) {
         this.vdom.cn[1].text = value;
         this.update()

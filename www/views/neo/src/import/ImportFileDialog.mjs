@@ -47,6 +47,12 @@ class ImportFileDialog extends Dialog {
         message: null
     }
 
+    /**
+     * A file is being uploaded or imported: Import stays disabled
+     * @member {Boolean} uploading=false
+     */
+    uploading = false
+
     construct(config) {
         super.construct(config);
 
@@ -59,7 +65,7 @@ class ImportFileDialog extends Dialog {
             cls      : ['go-import-file-text'],
             flex     : 'none',
             text     : me.message || t('Choose a file to import') + (me.accept ? ' (' + me.accept + ')' : '')
-        }, {
+        }, ...me.createExtraItems(), {
             module: Toolbar,
             cls   : ['go-dialog-buttons'],
             flex  : 'none',
@@ -72,10 +78,45 @@ class ImportFileDialog extends Dialog {
                 reference : 'upload',
                 multiple  : false,
                 accept    : me.accept,
+                disabled  : !me.canUpload(),
                 buttonText: t('Import'),
                 listeners : {files: ({files}) => me.onFile(files[0])}
             }]
         }]
+    }
+
+    /**
+     * Items between the text and the buttons, e.g. a container picker of a subclass
+     * @returns {Object[]}
+     */
+    createExtraItems() {
+        return []
+    }
+
+    /**
+     * Values of every imported item; a subclass adds what its extra items chose
+     * @returns {Object}
+     */
+    getImportValues() {
+        return this.values
+    }
+
+    /**
+     * Whether Import may open the file chooser; a subclass checks its extra items
+     * (its references may not exist yet while the dialog is constructed)
+     * @returns {Boolean}
+     */
+    canUpload() {
+        return true
+    }
+
+    /**
+     * Enables Import as canUpload() says; a subclass calls it when its extra items change
+     */
+    syncUpload() {
+        const upload = this.getReference('upload');
+
+        upload && (upload.disabled = this.uploading || !this.canUpload())
     }
 
     async onFile(file) {
@@ -86,11 +127,12 @@ class ImportFileDialog extends Dialog {
             return
         }
 
+        me.uploading    = true;
         upload.disabled = true;
         me.getReference('status').text = t('Uploading...');
 
         try {
-            const {mapping} = await importFile(me, file, me.entity, me.values, me.options);
+            const {mapping} = await importFile(me, file, me.entity, me.getImportValues(), me.options);
 
             if (!mapping) {
                 notify(me, t('Importing is in progress in the background. You will be kept informed about progress via notifications.'), {title: t('Success')})
@@ -101,7 +143,8 @@ class ImportFileDialog extends Dialog {
             notifyError(me, e);
             me.isDestroyed || (me.getReference('status').text = '')
         } finally {
-            me.isDestroyed || (upload.disabled = false)
+            me.uploading = false;
+            me.isDestroyed || me.syncUpload()
         }
     }
 }
