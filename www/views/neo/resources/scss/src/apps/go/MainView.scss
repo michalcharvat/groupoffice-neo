@@ -155,6 +155,13 @@
             overflow  : hidden;
         }
 
+        /* the active tab clips its content: the count follows the title */
+        .neo-button.go-module-button .neo-button-badge {
+            flex-shrink: 0;
+            margin-left: go.dp(6);
+            position   : static;
+        }
+
         .go-topbar .go-module-button .neo-button-text {
             font-size    : go.sp(18);
             overflow     : hidden;
@@ -165,5 +172,37 @@
         .go-topbar.neo-toolbar .neo-button.go-header-button {
             margin: 0;
         }
+    }
+}
+
+// module counts (src/Badges.mjs): GO .go-tab-notification, a round sp(13) count at the
+// tab's top right on the danger colour
+.neo-theme-go {
+    .go-topbar .go-module-button .neo-button-badge {
+        background-color: var(--c-danger, #c62828);
+        border-radius   : go.dp(10.5);
+        color           : rgba(255, 255, 255, .87);
+        font-size       : go.sp(13);
+        font-weight     : 600;
+        height          : go.dp(21);
+        line-height     : go.dp(21);
+        min-width       : go.dp(21);
+        padding         : 0 go.dp(4);
+        right           : go.dp(-8);
+        text-align      : center;
+        top             : go.dp(8);
+    }
+
+    // a closed module has a count: a dot on the main menu button
+    .go-topbar .neo-button.go-main-menu-button.go-badge-dot::after {
+        background-color: var(--c-danger, #c62828);
+        border          : 2px solid var(--c-header-bg);
+        border-radius   : 50%;
+        content         : '';
+        height          : go.dp(10);
+        position        : absolute;
+        right           : go.dp(4);
+        top             : go.dp(4);
+        width           : go.dp(10);
     }
 }

@@ -57,7 +57,7 @@ Status: **neo** = neo.mjs 13.4 ships it, usable as is (maybe GO styling);
 
 | GOUI | Status |
 |---|---|
-| JMAP client, Entities, Modules | GO.neo (`jmap/Client`, `JmapStore`, `ModuleRegistry`; module hooks `onMainView`, `onCreateUserDialog`, `fileHandlers`, see `docs/neo-small-modules.md`) |
+| JMAP client, Entities, Modules | GO.neo (`jmap/Client`, `JmapStore`, `ModuleRegistry`; module hooks `onMainView`, `onCreateUserDialog`, `fileHandlers`, see `docs/neo-small-modules.md`; `Badges.mjs`: counts on the module tab and main menu item (GO.mainLayout.setNotification()), registry key `badge: {entities, count}` recounted on push, or `badges.set(name, count)`; a dot on the main menu button while a closed module has one; calendar invitations, tasks due) |
 | Upload (`client.upload()`, ExtJS `go.Uploader`) | GO.neo (`jmap/Uploader.mjs`: XHR with progress, queue of `maxConcurrentUpload`, `maxSizeUpload` check, abort; `component/UploadPanel.mjs` shows the uploads of a window bottom right; used by `UploadButton` `autoUpload`, `BlobField`, `AttachmentsField`, `ImageField`, `MarkdownField`, `FilesPanel`, imports; demo `#dev/core/Upload`) |
 | auth/Login | GO.neo (`apps/go/view/LoginView.mjs`: forgot credentials, 2FA via `loginPanels`) |
 | MainThreeColumnPanel, TableTitle | GO.neo |
@@ -117,7 +117,7 @@ Bookmarks has no grid and no `Bookmark/export`, so neither applies there.
 5. **Drag and drop** — rows and tree nodes onto targets and desktop files: done (`enableDragDrop()`, used by the files module and `FilesPanel`); sortable lists still missing.
 6. Small fields: AutocompleteField, MapField, ListField, CheckboxGroup, ColorMenu, Month/WeekPicker.
 7. Chart, EntityTypeTable. ~~Alerts/notifications, reminders, session activity watcher, start page~~ — done: `src/alerts/`, module `alerts` renderers (calendar invitations, tasks), `modules/summary/views/neo` (the files portlet waits for that module; e-mail has `portlet-email`).
-8. ~~**E-mail client**~~ — done: `www/modules/email/views/neo` + sieve, smime, emailfavorites, core `src/Mail.mjs`. Left: module tab badge (the shell has no badge API), files ↔ e-mail (E-mail files, Save to personal folder), unknown recipients dialog, message drag and drop; see `docs/neo-email-module.md` → Status.
+8. ~~**E-mail client**~~ — done: `www/modules/email/views/neo` + sieve, smime, emailfavorites, core `src/Mail.mjs`. Left: module tab badge (core API: `badges.set('email', unseen)` from `src/Badges.mjs`), files ↔ e-mail (E-mail files, Save to personal folder), unknown recipients dialog, message drag and drop; see `docs/neo-email-module.md` → Status.
 
 ## Gotchas from the parity audit (2026-11-19)
 

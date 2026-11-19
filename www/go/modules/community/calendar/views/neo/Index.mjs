@@ -1,3 +1,4 @@
+import client         from '../../../../../../views/neo/src/jmap/Client.mjs';
 import ModuleRegistry from '../../../../../../views/neo/src/ModuleRegistry.mjs';
 import {translator}  from '../../../../../../views/neo/src/Translate.mjs';
 
@@ -15,6 +16,8 @@ ModuleRegistry.register({
     quickAdd  : {text: t('Event'), icon: 'event'},
     // header search results and notifications: entity → route below "#calendar/"
     routes    : {CalendarEvent: id => 'event/' + id},
+    // count on the module tab and main menu item (src/Badges.mjs): open invitations (GOUI showBadge())
+    badge     : {entities: ['CalendarEvent'], count: () => client.call('CalendarEvent/countMine')},
     mainView  : () => import('./view/CalendarMain.mjs'),
     // notification area: invitations and reminders (src/alerts/Alerts.mjs)
     alerts    : args => import('./alerts.mjs').then(m => m.default(args)),

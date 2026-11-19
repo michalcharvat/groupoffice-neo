@@ -8,6 +8,7 @@ import {avatarColor, initials} from '../../../src/Format.mjs';
 import client         from '../../../src/jmap/Client.mjs';
 import GlobalSearch   from '../../../src/view/GlobalSearch.mjs';
 import ModuleRegistry from '../../../src/ModuleRegistry.mjs';
+import badges         from '../../../src/Badges.mjs';
 import activityWatcher    from '../../../src/alerts/ActivityWatcher.mjs';
 import alerts             from '../../../src/alerts/Alerts.mjs';
 import notificationCenter from '../../../src/alerts/NotificationCenter.mjs';
@@ -104,6 +105,8 @@ class MainView extends Container {
             cls      : ['go-module-button'],
             iconCls  : m.iconCls,
             reference: 'module-' + m.name,
+            // the module's count (src/Badges.mjs), GO.mainLayout.setNotification()
+            badgeText: badges.text(m.name) || null,
             // not route: neo renders it as <a href="#name">, which <base href> turns
             // into views/neo/apps/go/#name
             handler  : () => Neo.Main.setRoute({value: m.name, windowId: me.windowId}),
@@ -144,13 +147,15 @@ class MainView extends Container {
                 handler: () => me.quickAdd(m)
             }))}
         }, {
-            module : GoButton,
-            icon   : 'apps',
-            cls    : ['go-header-button'],
-            tooltip: t('Main menu'),
-            menu   : {align: RIGHT, items: available.map(m => ({
+            module   : GoButton,
+            icon     : 'apps',
+            cls      : ['go-header-button', 'go-main-menu-button'],
+            reference: 'mainMenuButton',
+            tooltip  : t('Main menu'),
+            menu     : {align: RIGHT, items: available.map(m => ({
                 text   : m.title,
                 icon   : m.icon || 'apps',
+                badge  : badges.text(m.name) || null,
                 handler: () => Neo.Main.setRoute({value: m.name, windowId: me.windowId})
             }))}
         }, {
@@ -224,6 +229,11 @@ class MainView extends Container {
         me.updateNotificationButton(notificationCenter.messages, false);
         alerts.start();
         reminders.start();
+
+        // counts on the module tabs and main menu items
+        me.removeBadgeListener = badges.onChange(({name}) => me.updateBadge(name));
+        badges.start();
+        me.updateMainMenuDot();
         activityWatcher.register(me.windowId);
 
         // a click outside the notification area closes it (the ExtJS east panel slides in)
@@ -316,6 +326,7 @@ class MainView extends Container {
     destroy(...args) {
         HashHistory.un('change', this.hashListenerId);
         this.removeNotificationListener?.();
+        this.removeBadgeListener?.();
         notificationCenter.detach(this.windowId);
         activityWatcher.unregister(this.windowId);
         super.destroy(...args)
@@ -624,7 +635,50 @@ class MainView extends Container {
             if (button && button.hidden === visible) {
                 button.hidden = !visible
             }
-        })
+        });
+
+        this.updateMainMenuDot()
+    }
+
+    /**
+     * Shows a module's count (src/Badges.mjs) on its tab and main menu item
+     * @param {String} name module name
+     */
+    async updateBadge(name) {
+        let me     = this,
+            text   = badges.text(name) || null,
+            tab    = me.getReference('module-' + name),
+            button = me.getReference('mainMenuButton'),
+            index  = ModuleRegistry.getAvailable().findIndex(m => m.name === name);
+
+        if (me.isDestroyed) {
+            return
+        }
+
+        tab && tab.badgeText !== text && (tab.badgeText = text);
+        me.updateMainMenuDot();
+
+        if (index > -1 && button) {
+            // neo creates the menu list on demand
+            await button.menuListReady;
+            me.isDestroyed || button.menuList?.setItemBadge(index, text)
+        }
+    }
+
+    /**
+     * A dot on the main menu button while a module without a visible tab has a count
+     */
+    updateMainMenuDot() {
+        let me     = this,
+            button = me.getReference('mainMenuButton');
+
+        if (!button || me.isDestroyed) {
+            return
+        }
+
+        const show = ModuleRegistry.getAvailable().some(m => badges.get(m.name) && me.getReference('module-' + m.name)?.hidden !== false);
+
+        button.toggleCls('go-badge-dot', show)
     }
 
     /**
