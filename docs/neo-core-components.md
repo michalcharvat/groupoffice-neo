@@ -84,7 +84,9 @@ Status: **neo** = neo.mjs 13.2 ships it, usable as is (maybe GO styling);
 
 ## ExtJS-only core (not in GOUI yet)
 
-Done in neo: import (`src/import/`), system and module settings, user/group
+Done in neo: import (`src/import/`; `ImportFileDialog` asks for the file, a subclass adds fields
+between text and buttons with `createExtraItems()`, `getImportValues()` and `canUpload()` /
+`syncUpload()`, like the tasks `ImportTaskDialog` with its list combo), system and module settings, user/group
 administration, e-mail and PDF templates, blob upload with progress (`Uploader`, `UploadPanel`, `UploadButton`, `BlobField`),
 grid export (`src/export/exportEntities.mjs`: `exportMenuItem()` / `exportEntities()`,
 `MainThreeColumnPanel.exportMenuItem()`; Users, notes, tasks, address book) and batch edit
