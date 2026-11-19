@@ -180,8 +180,8 @@ Groups, Custom fields, Default permissions, Modules, module cards.
 | Area | 26.x feature | 26.x ref | neo | Status |
 |---|---|---|---|---|
 | Tools | System check, database check, rebuild search index, principals, duplicates, file system / search sync, holiday cache | x/systemsettings/Dialog.js:135; x/tools/SystemSettingsTools.js | systemsettings/ToolsPanel.mjs | done (holiday cache not ported: needs the legacy calendar module, which 26.x no longer registers, so 26.x never shows it either) |
-| OAuth | OAuth 2.0 clients | x/oauth/SystemSettingsPanel.js | missing | card "neo-ui: System settings OAuth 2.0 clients and cron tabs" |
-| Cron | Task scheduler (grid, dialog with parameters) | x/cron/SystemSettingsCronGrid.js, CronDialog.js | missing | card "neo-ui: System settings OAuth 2.0 clients and cron tabs" |
+| OAuth | OAuth 2.0 clients | x/oauth/SystemSettingsPanel.js | `src/systemsettings/OauthClientsPanel.mjs`, `OauthClientDialog.mjs` | done (redirect URIs one per line: several are saved as an array like self-registered clients; an empty secret keeps the current one) |
+| Cron | Task scheduler (grid, dialog with parameters) | x/cron/SystemSettingsCronGrid.js, CronDialog.js | `src/systemsettings/CronPanel.mjs`, `CronJobDialog.mjs` (legacy jobs), `CronScheduleDialog.mjs` (CronJobSchedule rows "new:<id>", edit only) | done (Users/Groups tabs not ported: no 26.x job enables them and their cron/cronUser controllers are gone) |
 | Modules | Trial license dialog | x/modules/SystemSettingsModuleGrid.js:69, x/license/LicenseDialog.js | present | fixed (`src/license/LicenseDialog.mjs`: "Trial license" in Modules while `has_license` is false, "Register" in the user menu for admins) |
 | Modules | Module sort order | x/modules/ModuleSortWindow.js | present | fixed (`src/systemsettings/ModuleSortDialog.mjs`: drag rows or up/down, saves `sort_order` right away) |
 | Authentication | "Force app passwords" | x/systemsettings/AuthenticationPanel.js:49 | present | fixed (checkbox in `src/systemsettings/AuthenticationPanel.mjs`) |

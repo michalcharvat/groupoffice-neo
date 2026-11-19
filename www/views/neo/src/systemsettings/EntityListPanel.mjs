@@ -24,8 +24,9 @@ import ConfirmDialog from '../view/ConfirmDialog.mjs';
  *         }
  *     }
  *
- * Subclasses may override prepareRecords(list) (e.g. names of ids) and onAction(action, record)
- * for extra `actions`.
+ * Subclasses may override prepareRecords(list) (e.g. names of ids), onAction(action, record)
+ * for extra `actions`, and mayEdit(record) / mayDelete(record) to hide a row's buttons,
+ * createHeaderItems() / createToolbarItems() / createExtraItems() for more items.
  */
 class EntityListPanel extends Container {
     static config = {
@@ -100,11 +101,11 @@ class EntityListPanel extends Container {
             cls  : ['go-systemsettings-text'],
             flex : 'none',
             text : me.intro
-        }] : [], {
+        }] : [], ...me.createHeaderItems(), {
             module: Toolbar,
             cls   : ['go-systemsettings-grid-tbar'],
             flex  : 'none',
-            items : ['->', {
+            items : [...me.createToolbarItems(), '->', {
                 module   : Button,
                 reference: 'addButton',
                 icon     : 'add',
@@ -120,14 +121,30 @@ class EntityListPanel extends Container {
             columns  : me.columns,
             actions  : [
                 ...me.actions,
-                ...me.editable ? [{action: 'edit', icon: 'edit', tooltip: t('Edit')}] : [],
-                {action: 'delete', icon: 'delete', tooltip: t('Delete')}
+                ...me.editable ? [{action: 'edit', icon: 'edit', tooltip: t('Edit'), hidden: record => !me.mayEdit(record)}] : [],
+                {action: 'delete', icon: 'delete', tooltip: t('Delete'), hidden: record => !me.mayDelete(record)}
             ],
             listeners: {
                 action        : ({action, record}) => me.onAction(action, record),
-                rowDoubleClick: ({record}) => me.editable && me.edit(record.id)
+                rowDoubleClick: ({record}) => me.editable && me.mayEdit(record) && me.edit(record.id)
             }
         }, ...me.createExtraItems()]
+    }
+
+    /**
+     * Items between the intro and the toolbar
+     * @returns {Object[]}
+     */
+    createHeaderItems() {
+        return []
+    }
+
+    /**
+     * Toolbar items left of the add button
+     * @returns {Object[]}
+     */
+    createToolbarItems() {
+        return []
     }
 
     /**
@@ -161,6 +178,24 @@ class EntityListPanel extends Container {
      */
     async prepareRecords(list) {
         return list
+    }
+
+    /**
+     * Whether a row shows the edit button (and opens on double click)
+     * @param {Object} record
+     * @returns {Boolean}
+     */
+    mayEdit(record) {
+        return true
+    }
+
+    /**
+     * Whether a row shows the delete button
+     * @param {Object} record
+     * @returns {Boolean}
+     */
+    mayDelete(record) {
+        return true
     }
 
     /**
