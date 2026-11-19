@@ -20,4 +20,5 @@ return array (
   'Project Id' => 'ID del proyecto',
   'Request or update a refresh token in a separate window.' => 'Solicitar o actualizar un token de actualización en una ventana aparte.',
   'to close this window.' => 'para cerrar esta ventana.',
+  'Refresh token' => 'Actualizar token',
 );

@@ -162,4 +162,5 @@ return array (
   'Please select at least two items to merge.' => 'Seleziona almeno due elementi da fondere',
   'vCard importer' => 'Importazione vCard',
   'Please select a company' => 'Seleziona un\'azienda',
+  'Send e-mail' => 'Invia e-mail',
 );

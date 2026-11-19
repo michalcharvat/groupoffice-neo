@@ -83,4 +83,5 @@ return array (
   'Last selected address book' => 'Последно избрана адресна книга',
   'URL\'s' => 'Адреси (url)',
   'Upcoming birthdays' => 'Предстоящи рождени дни',
+  'Send e-mail' => 'Изпрати имейл',
 );

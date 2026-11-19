@@ -14,4 +14,5 @@ return array (
   'clientId' => 'ID Cliente',
   'clientSecret' => 'Segredo Cliente',
   'projectId' => 'ID Projeto',
+  'Refresh token' => 'Atualizar token',
 );

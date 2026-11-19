@@ -7,4 +7,5 @@ return array (
   'Job title' => 'Denumirea funcției',
   'Add e-mail address' => 'Adăugați o adresă de e-mail',
   'salutationTemplate' => 'Dear [if {{contact.prefixes}}]{{contact.prefixes}}[else][if !{{contact.gender}}]Ms./Mr.[else][if {{contact.gender}}=="M"]Mr.[else]Ms.[/if][/if][/if][if {{contact.middleName}}] {{contact.middleName}}[/if] {{contact.lastName}}',
+  'Send e-mail' => 'Trimiteți e-mail',
 );

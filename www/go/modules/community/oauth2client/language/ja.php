@@ -16,4 +16,5 @@ return array (
   'Please press the button Refresh token" to finish the OAuth2 connection"' => 'Refresh token"ボタンを押すことでOAuth2接続を完了できます"',
   'Project Id' => 'プロジェクトID',
   'Use this connection for single signon with OpenID Connect' => 'この接続で、OpenID接続によるシングルサインオンを行う',
+  'Refresh token' => 'トークンを更新',
 );

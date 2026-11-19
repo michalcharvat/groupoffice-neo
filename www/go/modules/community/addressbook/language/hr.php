@@ -103,4 +103,5 @@ return array (
   'Add group' => 'Dodaj grupu',
   'First' => 'Ime',
   'Last' => 'Prezime',
+  'Send e-mail' => 'Pošalji e-poštu',
 );

@@ -21,4 +21,5 @@ return array (
   'OAuth2 connection' => 'OAuth2-Verbindung',
   'Request or update a refresh token in a separate window.' => 'Ein Refresh-Token in einem separaten Fenster anfordern oder aktualisieren.',
   'to close this window.' => 'um dieses Fenster zu schließen.',
+  'Refresh token' => 'Token aktualisieren',
 );

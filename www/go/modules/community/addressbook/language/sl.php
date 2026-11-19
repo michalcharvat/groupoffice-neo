@@ -121,4 +121,5 @@ return array (
   'Multiple Contacts' => 'Več stikov',
   'Show' => 'Prikaži',
   'Allow new' => 'Dovoli novo',
+  'Send e-mail' => 'Pošlji e-pošto',
 );

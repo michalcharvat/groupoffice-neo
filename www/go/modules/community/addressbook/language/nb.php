@@ -135,4 +135,5 @@ return array (
   'Allow new' => 'Tillat nye',
   'Importing...' => 'Importerer...',
   'Filter duplicates' => 'Filtrer duplikater',
+  'Send e-mail' => 'Send e-post',
 );
