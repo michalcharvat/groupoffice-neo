@@ -74,3 +74,17 @@
     outline       : .2rem dashed var(--c-primary);
     outline-offset: -.2rem;
 }
+
+/* SelectFolderDialog / SelectFilesDialog: name field and error below the tree */
+.go-files-select-dialog .neo-form-container.go-files-select-name {
+    padding: .8rem 1.6rem 0;
+}
+
+.go-files-select-dialog .go-form-error:not(:empty) {
+    padding: 0 1.6rem;
+}
+
+/* DownloadLinkDialog */
+.go-files-link-dialog .neo-form-container.go-files-link-form {
+    padding: .8rem 1.6rem 0;
+}

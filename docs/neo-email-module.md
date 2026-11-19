@@ -267,13 +267,12 @@ images, drafts with auto save, attachments from disk / blobs / forwarded message
 accounts / aliases / filters / labels / subscriptions / folder properties / IMAP ACL / move old mail,
 user and system settings, templates, start page portlet, emailfavorites, sieve filters and out of
 office, S/MIME (sign, encrypt, decrypt, verify, certificates), ITIP, OAuth2 accounts, compose from
-other modules.
+other modules. Files ↔ e-mail: "Save (all) to personal folder" in the attachment menus
+(`saveToFolder()` in `view/message/attachments.mjs`) with the files module's folder picker
+(ModuleRegistry `selectFolder`); "Email files" / "Email download link" live in the files module.
 
 Left (board backlog cards, parent 20261119-011401-neo-ui-email-module):
 
-- **Files ↔ e-mail**: "E-mail files" and "E-mail download link" in the neo files module
-  (`showComposer()` with `afterLoad` / `loadUrl: 'files/file/emailDownloadLink'`), and "Save (all) to
-  personal folder" in the attachment menus (waits for a neo files folder picker).
 - **savemailas / LinkedEmail** is not in this repository: no "Save as" menu, message links stay
   empty; `AddLinkButton` "E-mail" only shows with capability `go:legacy:savemailas`.
 - **Attached e-mails** (eml in eml): zip, save to item and vcf/ics import are hidden (the routes would

@@ -17,5 +17,11 @@ ModuleRegistry.register({
     routes    : {File: id => 'file/' + id, Folder: id => 'folder/' + id},
     mainView  : () => import('./view/FilesMain.mjs'),
     // files in detail panels (GO.detail.FilesPanel) open with the user's file handler
-    openFile  : (file, component) => import('./fileHandlers.mjs').then(m => m.openFile(file, component))
+    openFile  : (file, component) => import('./fileHandlers.mjs').then(m => m.openFile(file, component)),
+    /**
+     * Folder picker for other modules (ExtJS GO.files.SelectFolderDialog / SaveAsDialog):
+     * ModuleRegistry.getConfigs('selectFolder')[0]({appName, windowId, title?, fileName?})
+     * resolves to {id, path, fileName?} or null when cancelled
+     */
+    selectFolder: config => import('./view/SelectFolderDialog.mjs').then(m => m.default.ask(config))
 });

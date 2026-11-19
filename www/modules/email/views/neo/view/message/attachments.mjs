@@ -131,9 +131,9 @@ export function attachmentMenuItems(panel, attachment) {
         {text: coreT('Download'), icon: 'download', handler: () => downloadAttachment(panel, attachment)}
     ];
 
-    // "Save to personal folder" needs a folder picker, the neo files module has none yet
     if (hasModule('files') && panel.message?.uid && !panel.message.attachment) {
-        items.push({text: t('Save to item'), icon: 'drive_folder_upload', handler: () => saveToItem(panel, attachment)})
+        items.push({text: t('Save to personal folder'), icon: 'save', handler: () => saveToFolder(panel, attachment)},
+                   {text: t('Save to item'), icon: 'drive_folder_upload', handler: () => saveToItem(panel, attachment)})
     }
 
     return items.concat(panel.pluginItems('attachmentMenuItems', attachment))
@@ -158,6 +158,10 @@ export function allAttachmentsMenuItems(panel) {
     });
 
     count > 1 && hasModule('files') && saved && items.push({
+        text   : t('Save all to personal folder'),
+        icon   : 'save',
+        handler: () => saveToFolder(panel, null)
+    }, {
         text   : t('Save all to item'),
         icon   : 'drive_folder_upload',
         handler: () => saveToItem(panel, null)
@@ -171,6 +175,43 @@ export function allAttachmentsMenuItems(panel) {
     });
 
     return items.length ? items : [{text: coreT('Download'), icon: 'download', disabled: !count, handler: () => count && downloadAttachment(panel, data.attachments[0])}]
+}
+
+/**
+ * ExtJS GO.email.saveAttachment (GO.files.SaveAsDialog) and GO.email.saveAllAttachments
+ * (GO.files.SelectFolderDialog): pick a files folder (and the file name of one attachment)
+ * with the files module's picker, then save there. The server needs write permission on it.
+ * @param {GO.email.message.MessagePanel} panel
+ * @param {Object|null} attachment null: all attachments
+ * @returns {Promise<void>}
+ */
+export async function saveToFolder(panel, attachment) {
+    const pick    = ModuleRegistry.getConfigs('selectFolder')[0],
+          message = messageOf(panel);
+
+    if (!pick) {
+        return
+    }
+
+    try {
+        const folder = await pick({
+            appName : panel.appName,
+            windowId: panel.windowId,
+            ...attachment ? {title: t('Save to personal folder'), fileName: attachment.name || ''} : {title: t('Save all to personal folder')}
+        });
+
+        if (!folder || panel.isDestroyed) {
+            return
+        }
+
+        attachment
+            ? await messageApi.saveAttachment(message, attachment, folder.id, folder.fileName)
+            : await messageApi.saveAllAttachments(message, folder.id);
+
+        panel.isDestroyed || notify(panel, coreT('Saved'))
+    } catch (e) {
+        panel.isDestroyed || notifyError(panel, e)
+    }
 }
 
 /**

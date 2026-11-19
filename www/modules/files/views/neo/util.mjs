@@ -39,7 +39,8 @@ export function fileIcon(record) {
 }
 
 // moved to core: the legacy controllers of other modules encode their values too
-export {decodeEntities} from '../../../../views/neo/src/Format.mjs';
+import {decodeEntities} from '../../../../views/neo/src/Format.mjs';
+export {decodeEntities};
 
 /**
  * Material icon of a tree node from its ExtJS iconCls
@@ -53,6 +54,46 @@ export function treeIcon(iconCls) {
         'ic-delete'       : 'delete',
         'ic-folder'       : 'folder'
     }[iconCls] || 'folder'
+}
+
+/**
+ * A node of the legacy tree controller (files/folder/tree) as GO.tree.Tree node. With
+ * showFiles the controller adds file nodes (leaf, checked): their ids would collide with
+ * folder ids, so they become "f:<id>".
+ * @param {Object} n ExtJS tree node
+ * @returns {Object} GO.tree.Tree node
+ */
+export function toTreeNode(n) {
+    const children = Array.isArray(n.children) ? n.children.map(c => toTreeNode(c)) : undefined;
+
+    // file nodes carry raw names and paths (_addFileNodes()), unlike the folder nodes
+    if (n.leaf) {
+        return {
+            id       : 'f:' + n.id,
+            fileId   : String(n.id),
+            text     : String(n.text ?? ''),
+            icon     : fileIcon(n),
+            children : [],
+            check    : false,
+            path     : n.path,
+            size     : n.size,
+            extension: n.extension,
+            draggable: false
+        }
+    }
+
+    return {
+        id       : String(n.id),
+        text     : decodeEntities(n.text),
+        icon     : treeIcon(n.iconCls),
+        children,
+        expanded : !!n.expanded && !!children?.length,
+        path     : n.path,
+        parentId : n.parent_id,
+        readonly : !!n.readonly,
+        allowDrop: n.allowDrop !== false,
+        draggable: !!n.draggable
+    }
 }
 
 /**
