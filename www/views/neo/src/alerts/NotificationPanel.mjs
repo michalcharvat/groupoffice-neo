@@ -1,6 +1,7 @@
 import Container from '../../node_modules/neo.mjs/src/container/Base.mjs';
 import Button    from '../button/Button.mjs';
 import {escapeHtml, smartDateTime} from '../Format.mjs';
+import {notifyError} from '../Notify.mjs';
 import {t} from '../Translate.mjs';
 import ConfirmDialog from '../view/ConfirmDialog.mjs';
 import notificationCenter from './NotificationCenter.mjs';
@@ -188,7 +189,7 @@ class NotificationPanel extends Container {
                 text  : t('Snooze'),
                 menu  : snoozeTimes().map(({text, seconds}) => ({
                     text,
-                    handler: () => notificationCenter.snooze(message.id, seconds).catch(e => console.warn('Snooze failed', e))
+                    handler: () => notificationCenter.snooze(message.id, seconds).catch(e => notifyError(me, e))
                 }))
             });
             buttons.push({

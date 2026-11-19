@@ -137,6 +137,8 @@ class NotificationCenter {
         try {
             await message.onDismiss?.()
         } catch (e) {
+            // back in the list: the source would not show it again while it is unchanged
+            me.#messages.has(id) || me.add(message);
             console.warn('Dismissing notification failed', e)
         }
     }
@@ -166,7 +168,15 @@ class NotificationCenter {
         me.remove(id);
         // shown again later: notify again
         me.#notified.delete(id);
-        await message.snooze(seconds)
+
+        try {
+            await message.snooze(seconds)
+        } catch (e) {
+            // back as it was, without a second desktop notification
+            me.#notified.add(id);
+            me.#messages.has(id) || me.add(message);
+            throw e
+        }
     }
 
     /**

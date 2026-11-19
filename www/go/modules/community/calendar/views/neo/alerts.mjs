@@ -80,19 +80,26 @@ async function reply(alert, event, status, message, view) {
     try {
         await calendarData.init();
 
-        // the calendar module's dialogs when it isn't open (CalendarMain.createUi())
-        CalendarItem.ui ||= {
-            choose : config => ChoiceDialog.ask({...base, ...config}),
-            confirm: text => ConfirmDialog.ask({...base, message: text}),
-            error  : e => notifyError(view, e),
-            mask   : () => {},
-            unmask : () => {}
-        };
-
         const [current] = await client.get('CalendarEvent', [event.id]),
-              item      = new CalendarItem({key: String(event.id), data: current || event, recurrenceId: alert.recurrenceId || undefined});
+              item      = new CalendarItem({key: String(event.id), data: current || event, recurrenceId: alert.recurrenceId || undefined}),
+              previous  = CalendarItem.ui,
+              // the questions open in this notification area's window, not in a calendar view of another one
+              ui        = {
+                  choose : config => ChoiceDialog.ask({...base, ...config}),
+                  confirm: text => ConfirmDialog.ask({...base, message: text}),
+                  error  : e => notifyError(view, e),
+                  mask   : () => {},
+                  unmask : () => {}
+              };
 
-        await item.updateParticipation(status, () => notificationCenter.dismiss(message.id))
+        CalendarItem.ui = ui;
+
+        try {
+            await item.updateParticipation(status, () => notificationCenter.dismiss(message.id))
+        } finally {
+            // a calendar view opened or closed meanwhile sets its own
+            CalendarItem.ui === ui && (CalendarItem.ui = previous)
+        }
     } catch (e) {
         notifyError(view, e)
     }

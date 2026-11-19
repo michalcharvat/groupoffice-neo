@@ -71,7 +71,10 @@ class NotePortlet extends Container {
 
         try {
             await client.legacy('summary/note/submit', {text});
-            me.saved = text
+            me.saved = text;
+
+            // changed while saving, maybe back to the text before this save
+            !me.isDestroyed && String(me.getReference('text').value ?? '') !== text && me.save()
         } catch (e) {
             notifyError(me, e)
         }

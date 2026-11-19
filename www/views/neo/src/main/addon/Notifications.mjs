@@ -181,10 +181,12 @@ class Notifications extends Base {
             }
         };
 
-        // a debounced write, like the ExtJS DelayedTask of 1 s
+        // at most one write per second; a debounce would never write while the user keeps moving
         const onActivity = () => {
-            clearTimeout(timer);
-            timer = setTimeout(record, 1000)
+            timer ??= setTimeout(() => {
+                timer = null;
+                record()
+            }, 1000)
         };
 
         record();
