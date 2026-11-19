@@ -40,7 +40,7 @@ function userCell(user) {
  * (admins), archives or deletes them. The ⋮ of the toolbar has the user defaults and
  * the export. Changes are saved right away, not with the dialog's Save.
  *
- * Not ported: import (CSV / JSON / XLSX mapping) and the permissions overview.
+ * The permissions overview (admins) opens GO.permissions.AclOverviewDialog.
  */
 class UsersPanel extends Container {
     static config = {
@@ -238,8 +238,23 @@ class UsersPanel extends Container {
                 icon    : 'cloud_upload',
                 disabled: !client.mayChangeUsers,
                 handler : () => me.openImport()
-            }, exportMenuItem(me, {entity: 'User', store: me.grid.store, formats: ['xlsx', 'csv', 'json']})]
+            }, exportMenuItem(me, {entity: 'User', store: me.grid.store, formats: ['xlsx', 'csv', 'json']}), {
+                separator: true
+            }, {
+                text    : t('Permissions overview'),
+                icon    : 'share',
+                disabled: !client.isAdmin, // Acl/overview: admins only
+                handler : () => me.openAclOverview()
+            }]
         })
+    }
+
+    async openAclOverview() {
+        let me = this;
+
+        const {default: AclOverviewDialog} = await import('../permissions/AclOverviewDialog.mjs');
+
+        me.isDestroyed || AclOverviewDialog.show({appName: me.appName, windowId: me.windowId})
     }
 
     /**

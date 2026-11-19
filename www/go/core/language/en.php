@@ -473,4 +473,5 @@ If you did not request a new password please delete this mail.',
   'Open in new window' => 'Open in new window',
   'Failed to delete' => 'Failed to delete',
   'Choose a file to import' => 'Choose a file to import',
+  '2000-row limit reached: use the filters to show the names' => '2000-row limit reached: use the filters to show the names',
 );

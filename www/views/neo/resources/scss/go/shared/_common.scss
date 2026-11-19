@@ -109,3 +109,19 @@
         margin-top: -1.2rem;
     }
 }
+
+// segmented buttons (ExtJS buttongroup with toggleGroup): a container .go-segments of
+// Buttons .go-segment, the active one pressed: true (ModulesPanel, AclOverviewDialog)
+.neo-theme-go .go-segments {
+    border       : 1px solid var(--fg-outline);
+    border-radius: 1.8rem;
+    overflow     : hidden;
+
+    .go-segment {
+        border-radius: 0;
+
+        &.pressed {
+            background-color: var(--bg-selected);
+        }
+    }
+}

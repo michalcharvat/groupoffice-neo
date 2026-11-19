@@ -1,0 +1,14 @@
+// GO.permissions.AclOverviewDialog (go.permissions.AclOverviewGrid): filters above the grid
+.neo-theme-go .go-acloverview-dialog {
+    .go-acloverview-tbar {
+        border-bottom: 1px solid var(--fg-outline);
+        flex-wrap    : wrap;
+        gap          : .8rem;
+        padding      : .8rem 1.6rem;
+    }
+
+    .go-acloverview-hint {
+        color    : var(--fg-secondary-text);
+        font-size: 1.2rem;
+    }
+}

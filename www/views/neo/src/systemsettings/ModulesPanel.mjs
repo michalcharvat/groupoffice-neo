@@ -72,7 +72,8 @@ class ModulesPanel extends Container {
                 items : FILTERS().map(([value, text]) => ({
                     module   : Button,
                     reference: 'filter-' + value,
-                    cls      : ['go-segment', ...value === null ? ['pressed'] : []],
+                    cls      : ['go-segment'],
+                    pressed  : value === null, // a 'pressed' cls is dropped by Button.afterSetPressed()
                     text,
                     handler  : () => me.setInstalledFilter(value)
                 }))
@@ -132,7 +133,7 @@ class ModulesPanel extends Container {
         let me = this;
 
         me.installedFilter = value;
-        FILTERS().forEach(([v]) => me.getReference('filter-' + v)[v === value ? 'addCls' : 'removeCls']('pressed'));
+        FILTERS().forEach(([v]) => {me.getReference('filter-' + v).pressed = v === value});
         me.load()
     }
 
