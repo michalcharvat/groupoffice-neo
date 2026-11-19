@@ -1,16 +1,282 @@
-// message view (stub of card 1; card 2 replaces it)
+// message view (ExtJS GO.email.MessagePanel): header with sender, recipients, labels,
+// warnings, attachments, plugin parts and the sanitised body
 .neo-theme-go .go-email-message-panel {
+    container-type: inline-size;
+
+    // a narrow panel shows the toolbar's icons only
+    @container (max-width: 520px) {
+        .go-email-message-toolbar .neo-button-text {
+            display: none;
+        }
+    }
+
+    .go-email-message-scroll {
+        overflow-y: auto;
+    }
+
+    .go-email-message-loading {
+        color  : var(--fg-secondary-text);
+        padding: 1.6rem;
+    }
+
+    a.go-email-address,
+    a.go-email-mailto,
+    a.go-email-unblock,
+    a.go-email-filterxss,
+    a.go-email-fullbody,
+    a.go-email-notspam,
+    a.go-email-msglink {
+        color : var(--c-primary);
+        cursor: pointer;
+
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+
+    .go-email-message-header {
+        border-bottom: 1px solid var(--fg-line);
+        padding      : 1.6rem 1.6rem 1.2rem;
+    }
+
+    .go-email-message-sender {
+        align-items: center;
+        display    : flex;
+        gap        : 1.2rem;
+    }
+
+    .go-email-avatar {
+        cursor     : pointer;
+        flex       : none;
+        height     : 4rem;
+        width      : 4rem;
+
+        img,
+        .go-avatar {
+            border-radius: 50%;
+            height       : 4rem;
+            line-height  : 4rem;
+            object-fit   : cover;
+            width        : 4rem;
+        }
+
+        > .go-icon {
+            background-color: var(--bg-mid);
+            border-radius   : 50%;
+            color           : var(--fg-secondary-text);
+            display         : flex;
+            align-items     : center;
+            justify-content : center;
+            height          : 4rem;
+            width           : 4rem;
+        }
+    }
+
+    .go-email-message-sender-text {
+        flex     : 1;
+        min-width: 0;
+    }
+
+    .go-email-message-from {
+        font-weight  : 600;
+        overflow     : hidden;
+        text-overflow: ellipsis;
+        white-space  : nowrap;
+    }
+
+    .go-email-address-mail,
+    .go-email-message-date,
+    .go-email-message-recipients-label {
+        color      : var(--fg-secondary-text);
+        font-weight: normal;
+    }
+
+    .go-email-message-date {
+        font-size: 1.2rem;
+    }
+
+    .go-email-priority-high {
+        color: var(--hue-red);
+    }
+
+    .go-email-priority-low {
+        color: var(--fg-secondary-text);
+    }
+
+    .go-email-message-subject {
+        font-size  : 1.8rem;
+        font-weight: 500;
+        margin     : 1.2rem 0 .8rem;
+        word-break : break-word;
+    }
+
+    .go-email-message-recipients {
+        font-size : 1.3rem;
+        margin    : .2rem 0;
+        word-break: break-word;
+    }
+
+    .go-email-message-labels,
+    .go-email-message-links {
+        display  : flex;
+        flex-wrap: wrap;
+        gap      : .4rem .8rem;
+        margin-top: .8rem;
+    }
+
+    .go-email-label,
+    .go-email-msglink {
+        align-items     : center;
+        background-color: var(--bg-mid);
+        border-radius   : 1.2rem;
+        display         : inline-flex;
+        font-size       : 1.2rem;
+        gap             : .4rem;
+        padding         : .2rem .8rem;
+
+        .go-icon {
+            font-size: 1.6rem;
+        }
+    }
+
+    .go-email-msglink-static {
+        color : var(--fg-text);
+        cursor: default;
+    }
+
+    .go-email-warning,
+    .go-email-spambar {
+        align-items     : center;
+        background-color: var(--bg-low);
+        border-bottom   : 1px solid var(--fg-line);
+        display         : flex;
+        gap             : .8rem;
+        padding         : .8rem 1.6rem;
+
+        > .go-icon {
+            color: var(--fg-warning);
+        }
+    }
+
+    .go-email-xss > .go-icon,
+    .go-email-spambar > .go-icon {
+        color: var(--fg-error);
+    }
+
+    .go-email-attachments {
+        border-bottom: 1px solid var(--fg-line);
+        padding      : .8rem 1.6rem 1.2rem;
+    }
+
+    .go-email-attachments-header {
+        align-items: center;
+        color      : var(--fg-secondary-text);
+        display    : flex;
+        gap        : .8rem;
+        margin-bottom: .6rem;
+
+        span {
+            flex: 1;
+        }
+    }
+
+    .go-email-attachments-more,
+    .go-email-attachment-more {
+        border-radius: 50%;
+        color        : var(--fg-secondary-text);
+        cursor       : pointer;
+        padding      : .2rem;
+
+        &:hover {
+            background-color: var(--bg-hover);
+        }
+    }
+
+    .go-email-attachment-list {
+        display  : flex;
+        flex-wrap: wrap;
+        gap      : .6rem;
+    }
+
+    .go-email-attachment {
+        align-items  : center;
+        border       : 1px solid var(--fg-line);
+        border-radius: .6rem;
+        cursor       : pointer;
+        display      : flex;
+        gap          : .6rem;
+        max-width    : 100%;
+        padding      : .4rem .4rem .4rem .8rem;
+
+        &:hover {
+            background-color: var(--bg-hover);
+        }
+    }
+
+    .go-email-attachment-icon {
+        color: var(--c-primary);
+    }
+
+    .go-email-attachment-name {
+        overflow     : hidden;
+        text-overflow: ellipsis;
+        white-space  : nowrap;
+    }
+
+    .go-email-attachment-size {
+        color      : var(--fg-secondary-text);
+        white-space: nowrap;
+    }
+
+    .go-email-message-parts > * {
+        border-bottom: 1px solid var(--fg-line);
+    }
+
     .go-email-message-body {
         padding: 1.6rem;
     }
 
-    .go-email-message-subject {
-        margin: 0 0 .8rem;
+    // e-mail HTML loses its own styles in sanitizeHtml(): keep it readable
+    .go-email-message-content {
+        overflow-wrap: anywhere;
+
+        img {
+            height   : auto;
+            max-width: 100%;
+        }
+
+        table {
+            border-collapse: collapse;
+            max-width      : 100%;
+        }
+
+        td, th {
+            padding       : .2rem .4rem;
+            vertical-align: top;
+        }
+
+        blockquote {
+            border-left : 2px solid var(--fg-line);
+            color       : var(--fg-secondary-text);
+            margin      : .8rem 0;
+            padding-left: 1rem;
+        }
+
+        pre {
+            white-space: pre-wrap;
+        }
+
+        a {
+            color: var(--c-primary);
+        }
     }
 
-    .go-email-message-from,
-    .go-email-message-loading,
-    .go-email-stub {
-        color: var(--fg-secondary-text);
+    .go-email-plain {
+        font-family: monospace;
+        white-space: pre-wrap;
+    }
+
+    .go-email-message-truncated {
+        margin-top: 1.6rem;
     }
 }
