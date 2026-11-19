@@ -5,6 +5,8 @@ import MenuList from '../../node_modules/neo.mjs/src/menu/List.mjs';
  *
  *     items: [{text: 'Edit', icon: 'edit', handler}, {separator: true}, {text: 'Delete', icon: 'delete', disabled: true}]
  *
+ * An item's `badge` shows a count at its end (header main menu, see src/Badges.mjs).
+ *
  * GO.button.Button uses it for its `menu`.
  */
 class List extends MenuList {
@@ -20,20 +22,48 @@ class List extends MenuList {
      */
     itemIcons = []
 
+    /**
+     * Badge text per item index, like itemIcons
+     * @member {String[]} itemBadges=[]
+     */
+    itemBadges = []
+
     construct(config) {
-        this.itemIcons = (config.items || []).map(item => item?.icon || null);
+        this.itemIcons  = (config.items || []).map(item => item?.icon || null);
+        this.itemBadges = (config.items || []).map(item => item?.badge || null);
         super.construct(config)
     }
 
     createItemContent(record, index) {
         const content = super.createItemContent(record, index),
-              icon    = this.itemIcons[index];
+              icon    = this.itemIcons[index],
+              badge   = this.itemBadges[index];
 
         if (icon && Array.isArray(content) && !record.iconCls) {
             content.unshift({tag: 'i', cls: ['neo-menu-icon', 'go-icon'], text: icon})
         }
 
+        if (badge && Array.isArray(content)) {
+            content.push({tag: 'span', cls: ['go-menu-badge'], text: badge})
+        }
+
         return content
+    }
+
+    /**
+     * Changes the badge of an item
+     * @param {Number} index
+     * @param {String|null} text null or '' removes it
+     */
+    setItemBadge(index, text) {
+        let me = this;
+
+        if ((me.itemBadges[index] || null) === (text || null)) {
+            return
+        }
+
+        me.itemBadges[index] = text || null;
+        me.store?.getCount() > 0 && me.createItems()
     }
 
     /**

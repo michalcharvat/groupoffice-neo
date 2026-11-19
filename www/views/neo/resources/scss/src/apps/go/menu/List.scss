@@ -33,6 +33,20 @@
         margin: 0;
     }
 
+    // count of a module in the header main menu (src/Badges.mjs)
+    .go-menu-badge {
+        background-color: var(--c-danger, #c62828);
+        border-radius   : go.dp(10.5);
+        color           : rgba(255, 255, 255, .87);
+        font-size       : go.sp(13);
+        font-weight     : 600;
+        line-height     : go.dp(21);
+        margin-left     : auto;
+        min-width       : go.dp(21);
+        padding         : 0 go.dp(4);
+        text-align      : center;
+    }
+
     .neo-menu-separator {
         border-top: 1px solid var(--fg-line);
         margin    : go.dp(4) 0;

@@ -27,6 +27,9 @@ import client from './jmap/Client.mjs';
  *     alerts: async ({alert, entity, message}) => message,  // false: not shown
  *     // optional: start page portlets (modules/summary/views/neo), id as in the ExtJS GO.summary.portlets
  *     portlets: [{id: 'portlet-notes', title: 'Notes', icon: 'sticky_note_2', view: () => import('./view/NotesPortlet.mjs')}],
+ *     // optional: count on the module tab and main menu item (src/Badges.mjs), counted
+ *     // again when one of the entities changes; badges.set(name, count) sets it directly
+ *     badge: {entities: ['Note'], count: () => client.call('Note/countMine')},
  *     // optional, called with each window's main view after login (e.g. a dialog to show then)
  *     onMainView: mainView => {},
  *     // optional, called with each new src/users/CreateUserDialog (e.g. an extra card)
