@@ -15,6 +15,36 @@ import FormFieldset from './FormFieldset.mjs';
  * @param {GO.view.FormWindow} win
  * @returns {Promise<void>} resolves once the fields exist (before the form loads)
  */
+/**
+ * Field sets that are not added by a parent (parentFieldSetId): those without a
+ * readable parent, and in a parent cycle the first set of the cycle, so no set is lost
+ * (FormFieldset stops nesting at a set it already contains)
+ * @param {Object[]} fieldSets sorted
+ * @returns {Object[]}
+ */
+export function topLevelFieldSets(fieldSets) {
+    const byId = new Map(fieldSets.map(fs => [String(fs.id), fs]));
+
+    return fieldSets.filter(fs => {
+        const chain = [fs];
+        let current = fs;
+
+        while (current.parentFieldSetId && byId.has(String(current.parentFieldSetId))) {
+            current = byId.get(String(current.parentFieldSetId));
+
+            if (chain.includes(current)) {
+                // a cycle: its first set in sort order is the root
+                const cycle = chain.slice(chain.indexOf(current));
+                return fieldSets.find(f => cycle.includes(f)) === fs
+            }
+
+            chain.push(current)
+        }
+
+        return current === fs
+    })
+}
+
 export async function addCustomFieldsTo(win) {
     const entity = win.entityName;
 
@@ -59,7 +89,9 @@ export async function addCustomFieldsTo(win) {
         })
     }
 
-    const fieldsets = fieldSets.map(fieldSet => {
+    const topLevel = topLevelFieldSets(fieldSets);
+
+    const fieldsets = topLevel.map(fieldSet => {
         if (fieldSet.isTab) {
             const card = win.addCard({
                 header: {text: fieldSet.name},

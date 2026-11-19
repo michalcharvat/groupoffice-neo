@@ -66,4 +66,42 @@
         font-family: 'Material Symbols Rounded';
         font-size  : 2rem;
     }
+
+    .go-attachmentsfield-label {
+        color    : var(--fg-secondary-text);
+        flex     : 0 0 100%;
+        font-size: 1.2rem;
+    }
+
+    .go-attachmentsfield-description {
+        color: var(--fg-secondary-text);
+    }
+
+    .go-attachmentsfield-edit {
+        align-items  : center;
+        background   : none;
+        border       : 0;
+        border-radius: 50%;
+        color        : var(--fg-secondary-text);
+        cursor       : pointer;
+        display      : inline-flex;
+        height       : 2.4rem;
+        justify-content: center;
+        padding      : 0;
+        width        : 2.4rem;
+
+        .go-icon {
+            font-size: 1.6rem;
+        }
+
+        &:hover {
+            background-color: var(--bg-hover);
+        }
+    }
+
+    .go-attachmentsfield-error {
+        color    : var(--fg-error);
+        flex     : 0 0 100%;
+        font-size: 1.2rem;
+    }
 }

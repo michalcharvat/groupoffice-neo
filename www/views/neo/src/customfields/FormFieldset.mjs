@@ -11,6 +11,9 @@ import {createFormItem, getType} from './types.mjs';
  * applyFilter(values) shows the fieldset only for entities matching its filter
  * (e.g. some note books); a hidden fieldset's fields are not required.
  * applyConditions() makes fields required or hidden by their relatedFieldCondition.
+ *
+ * Field sets whose parentFieldSetId is this set (a tab) are added below its fields
+ * (ExtJS FormFieldSet), each with its own filter, conditions and read-only values.
  */
 class FormFieldset extends Container {
     static config = {
@@ -26,7 +29,12 @@ class FormFieldset extends Container {
          * No legend: the fieldset is a card of its own with the name as tab title
          * @member {Boolean} isCard=false
          */
-        isCard: false
+        isCard: false,
+        /**
+         * Ids of the enclosing field sets, so a broken parent chain can't nest forever
+         * @member {String[]} ancestorIds=[]
+         */
+        ancestorIds: []
     }
 
     /**
@@ -42,6 +50,8 @@ class FormFieldset extends Container {
             {fieldSet} = me,
             columns    = Math.max(1, Math.min(4, Number(fieldSet.columns) || 1)),
             fields     = customFields.getFields(fieldSet).map(createFormItem).filter(Boolean),
+            ancestors  = [...me.ancestorIds, String(fieldSet.id)],
+            children   = getChildFieldSets(fieldSet).filter(fs => !ancestors.includes(String(fs.id))),
             items      = [];
 
         me.isCard || items.push({ntype: 'component', tag: 'h4', cls: ['go-cf-legend'], flex: 'none', text: fieldSet.name});
@@ -82,18 +92,34 @@ class FormFieldset extends Container {
             })
         }
 
+        children.forEach(child => items.push({
+            module     : FormFieldset,
+            cls        : ['go-cf-nested'],
+            fieldSet   : child,
+            ancestorIds: ancestors,
+            flex       : 'none'
+        }));
+
         me.items = items
     }
 
     /**
-     * Form fields and read-only displays of this fieldset
+     * Field sets nested in this one (parentFieldSetId)
+     * @returns {FormFieldset[]}
+     */
+    getChildFieldsets() {
+        return this.items.filter(item => item instanceof FormFieldset)
+    }
+
+    /**
+     * Form fields and read-only displays of this fieldset, without those of nested sets
      * @returns {Neo.component.Base[]}
      */
     getCustomFieldComponents() {
         const result = [],
               walk   = cmp => (cmp.items || []).forEach(item => {
                   item.goCustomField && result.push(item);
-                  item.items && walk(item)
+                  item.items && !(item instanceof FormFieldset) && walk(item)
               });
 
         walk(this);
@@ -105,20 +131,22 @@ class FormFieldset extends Container {
      * Shows or hides the fieldset for the entity values. Required fields of a hidden
      * fieldset stop being required (ExtJS disables them), and come back when shown.
      * @param {Object} values entity values
+     * @param {Boolean} [parentVisible=true] false: the enclosing set is hidden
      * @returns {Boolean} visible
      */
-    applyFilter(values) {
+    applyFilter(values, parentVisible = true) {
         let me      = this,
-            visible = matchesFilter(me.fieldSet, values);
+            visible = parentVisible && matchesFilter(me.fieldSet, values);
 
-        if (visible === me.filterVisible) {
-            return visible
+        if (visible !== me.filterVisible) {
+            me.filterVisible = visible;
+            me.isCard || (me.hidden = !visible);
+
+            me.getCustomFieldComponents().forEach(cmp => me.syncField(cmp))
         }
 
-        me.filterVisible = visible;
-        me.isCard || (me.hidden = !visible);
-
-        me.getCustomFieldComponents().forEach(cmp => me.syncField(cmp));
+        // a nested set has its own filter
+        me.getChildFieldsets().forEach(child => child.applyFilter(values, visible));
 
         return visible
     }
@@ -130,6 +158,8 @@ class FormFieldset extends Container {
      * @param {Function} getValue field name → {value, texts}, see evaluateCondition()
      */
     applyConditions(getValue) {
+        this.getChildFieldsets().forEach(child => child.applyConditions(getValue));
+
         this.getCustomFieldComponents().forEach(cmp => {
             const tree = conditionOf(cmp);
 
@@ -179,6 +209,7 @@ class FormFieldset extends Container {
         const names = new Set();
 
         this.getCustomFieldComponents().forEach(cmp => conditionFieldNames(conditionOf(cmp)).forEach(n => names.add(n)));
+        this.getChildFieldsets().forEach(child => child.getConditionFieldNames().forEach(n => names.add(n)));
 
         return [...names]
     }
@@ -188,6 +219,8 @@ class FormFieldset extends Container {
      * @param {Object} customFieldValues the entity's customFields
      */
     async showReadOnlyValues(customFieldValues = {}) {
+        await Promise.all(this.getChildFieldsets().map(child => child.showReadOnlyValues(customFieldValues)));
+
         for (const cmp of this.getCustomFieldComponents()) {
             if (cmp.goReadOnly) {
                 const field = cmp.goCustomField,
@@ -200,6 +233,16 @@ class FormFieldset extends Container {
             }
         }
     }
+}
+
+/**
+ * Field sets of the same entity nested in a field set (ExtJS FormFieldSet)
+ * @param {Object} fieldSet
+ * @returns {Object[]}
+ */
+export function getChildFieldSets(fieldSet) {
+    // eslint-disable-next-line eqeqeq
+    return customFields.getFieldSets(fieldSet.entity).filter(fs => fs.parentFieldSetId && fs.parentFieldSetId == fieldSet.id)
 }
 
 /**
@@ -225,4 +268,6 @@ function conditionOf(cmp) {
     return cmp.goCondition
 }
 
-export default Neo.setupClass(FormFieldset);
+const FormFieldsetClass = Neo.setupClass(FormFieldset);
+
+export default FormFieldsetClass;

@@ -39,4 +39,15 @@
         display  : block;
         font-size: 1.2rem;
     }
+
+    // a field set nested in a tab (parentFieldSetId)
+    .go-cf-nested {
+        margin-top: 1.6rem;
+    }
+
+    // Data: JSON lists
+    .go-cf-readonly .go-cf-data-list {
+        margin      : 0;
+        padding-left: 1.6rem;
+    }
 }
