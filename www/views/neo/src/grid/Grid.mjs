@@ -114,8 +114,10 @@ class Grid extends GridContainer {
             headerToolbar: {...config.headerToolbar, itemDefaults: {module: HeaderButton, ntype: 'go-grid-header-button'}}
         });
 
-        this.allColumns = all;
-        this.dp         = dp;
+        this.allColumns     = all;
+        // the configured columns, for switchState()
+        this.defaultColumns = all.map(column => ({...column}));
+        this.dp             = dp;
         this.removeThemeListener = onThemeChange(windowIds => windowIds.includes(this.windowId) && this.measureRowHeight())
     }
 
@@ -448,6 +450,34 @@ class Grid extends GridContainer {
         }
 
         changed && !me.isDestroyed && await me.applyColumns()
+    }
+
+    /**
+     * Another state for the same grid (ExtJS ContactGrid: "company-grid" for organizations,
+     * "contact-grid" for contacts): the configured columns, then that state's changes
+     * @param {String} stateId
+     * @returns {Promise<void>}
+     */
+    async switchState(stateId) {
+        let me = this;
+
+        if (stateId === me.stateId) {
+            return
+        }
+
+        // a pending change still goes to the old state
+        if (me.saveStateTimer) {
+            clearTimeout(me.saveStateTimer);
+            me.saveStateTimer = null;
+            await me.saveColumnState()
+        }
+
+        me.stateId    = stateId;
+        me.touchedColumns.clear();
+        me.allColumns = me.defaultColumns.map(column => ({...column}));
+
+        await me.applyColumns();
+        !me.isDestroyed && await me.restoreColumnState()
     }
 
     /**
