@@ -147,6 +147,25 @@ class CalendarMain extends MainThreeColumnPanel {
                     selectRange: ({start, end}) => me.onPickerRange(start, end)
                 }
             }, {
+                // an opened saved view (GOUI viewBar)
+                module   : Toolbar,
+                reference: 'viewBar',
+                flex     : 'none',
+                cls      : ['go-cal-dense', 'go-cal-view-bar'],
+                hidden   : true,
+                items    : [{
+                    ntype    : 'component',
+                    tag      : 'h4',
+                    reference: 'viewBarTitle',
+                    text     : ''
+                }, '->', {
+                    module : Button,
+                    icon   : 'close',
+                    cls    : ['small'],
+                    text   : t('Close views'),
+                    handler: () => me.leaveView()
+                }]
+            }, {
                 module    : CheckRows,
                 reference : 'viewList',
                 flex      : 'none',
@@ -556,7 +575,7 @@ class CalendarMain extends MainThreeColumnPanel {
 
         me.visible[id]        = visible;
         me.visibleChanges[id] = visible;
-        me.activeViewId       = null;
+        me.closeViewMode();
 
         me.renderCalendars();
         me.renderViews();
@@ -577,7 +596,7 @@ class CalendarMain extends MainThreeColumnPanel {
             me.visibleChanges[c.id] = on
         });
 
-        me.activeViewId = null;
+        me.closeViewMode();
         me.renderCalendars();
         me.renderViews();
         me.applyCalendarFilter(me.visibleIds());
@@ -1047,7 +1066,8 @@ class CalendarMain extends MainThreeColumnPanel {
     }
 
     /**
-     * A saved view: shows its calendars (and makes them visible) in its view type (GOUI renderViews())
+     * A saved view: shows its calendars in its view type, the calendar list is locked and
+     * isVisible stays as it is (GOUI enterView())
      * @param {String} id
      */
     selectView(id) {
@@ -1061,24 +1081,69 @@ class CalendarMain extends MainThreeColumnPanel {
         // a JSON array (GOUI ViewWindow), old views may have an id map
         const ids = Array.isArray(view.calendarIds) ? view.calendarIds.map(String) : Object.keys(view.calendarIds || {});
 
+        // from one view to another: "Close views" returns to the route before the first
+        me.activeViewId || (me.routeBeforeView = me.currentRouteSpan());
         me.activeViewId = id;
         me.renderViews();
+        me.setViewMode(view.name);
 
-        if (ids.length) {
-            const update = {};
-            ids.forEach(cid => {
-                const c = calendarData.getCalendar(cid);
-                c && !c.isVisible && (update[cid] = {isVisible: true})
-            });
-            Object.keys(update).length && client.set('Calendar', {update}).catch(e => me.showError(e));
-            me.applyCalendarFilter(ids.map(String))
-        }
+        // may contain calendars that are not in the list
+        me.applyCalendarFilter(ids);
 
         if (view.defaultView) {
             me.routeTo(view.defaultView, me.date)
         } else {
             me.updateView()
         }
+    }
+
+    /**
+     * "Close views": the visible calendars and the route from before the view (GOUI leaveView())
+     */
+    leaveView() {
+        let me    = this,
+            route = me.routeBeforeView;
+
+        if (!me.activeViewId) {
+            return
+        }
+
+        me.activeViewId    = null;
+        me.routeBeforeView = null;
+        me.renderViews();
+        me.setViewMode(null);
+        me.applyCalendarFilter(me.visibleIds());
+
+        if (route && route !== me.currentRouteSpan()) {
+            me.routeTo(route, me.date)
+        } else {
+            me.updateView()
+        }
+    }
+
+    /**
+     * The calendar list changes the shown calendars: out of an open view, on this route
+     */
+    closeViewMode() {
+        let me = this;
+
+        if (me.activeViewId) {
+            me.activeViewId    = null;
+            me.routeBeforeView = null;
+            me.setViewMode(null)
+        }
+    }
+
+    /**
+     * @param {String|null} name the open view, null: none
+     */
+    setViewMode(name) {
+        let me = this;
+
+        me.getReference('viewBar').hidden = !name;
+        me.getReference('viewBarTitle').text = name || '';
+        me.getReference('calendarList').disabled = !!name;
+        me.getReference('selectAllCalendars').disabled = !!name
     }
 
     showViewMenu(id, target) {
