@@ -1319,12 +1319,56 @@ class AddressBookMain extends MainThreeColumnPanel {
             return
         }
 
-        const records = selected.includes(record) ? selected : [record];
+        // only contacts the user may change
+        const records = (selected.includes(record) ? selected : [record]).filter(r => r.permissionLevel >= LEVEL_WRITE);
+
+        if (!records.length) {
+            return
+        }
 
         if (node.entity === 'AddressBook') {
             me.moveContacts(records, String(node.data.id))
         } else if (node.entity === 'AddressBookGroup') {
-            me.addToGroup(records, String(node.data.id))
+            me.dropOnGroup(records, node.data)
+        }
+    }
+
+    /**
+     * ExtJS onNodeDrop() on a group: contacts of another address book move to the group's
+     * book and lose their old groups (a group only takes contacts of its own book)
+     * @param {Object[]} records
+     * @param {Object} group AddressBookGroup
+     */
+    async dropOnGroup(records, group) {
+        let me            = this,
+            groupId       = String(group.id),
+            addressBookId = String(group.addressBookId),
+            update        = {};
+
+        records.forEach(r => {
+            const sameBook = String(r.addressBookId) === addressBookId,
+                  groups   = sameBook ? (r.groups || []).map(String) : [];
+
+            if (!groups.includes(groupId)) {
+                update[r.id] = sameBook ? {groups: [...groups, groupId]} : {addressBookId, groups: [groupId]}
+            }
+        });
+
+        if (!Object.keys(update).length) {
+            return
+        }
+
+        const moves = Object.values(update).some(u => u.addressBookId);
+
+        // ExtJS: asks only with the user's setting go.User.confirmOnMove
+        if (moves && client.user?.confirmOnMove && !await me.confirm(t('Are you sure you want to move the item(s)?'))) {
+            return
+        }
+
+        try {
+            await client.set('Contact', {update})
+        } catch (e) {
+            me.showError(e)
         }
     }
 
