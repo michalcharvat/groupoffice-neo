@@ -19,12 +19,13 @@ import {notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
 import {getState, setState} from '../../../../../../../views/neo/src/State.mjs';
 import ConfirmDialog from '../../../../../../../views/neo/src/view/ConfirmDialog.mjs';
 import FilterPanel   from '../../../../../../../views/neo/src/view/FilterPanel.mjs';
+import {searchFilter} from '../../../../../../../views/neo/src/view/filterTypes.mjs';
 import MainThreeColumnPanel from '../../../../../../../views/neo/src/view/MainThreeColumnPanel.mjs';
 import {fmt, translator} from '../../../../../../../views/neo/src/Translate.mjs';
 import TaskModel     from '../model/Task.mjs';
 import TaskListModel from '../model/TaskList.mjs';
 import {categories, dateState, formatDuration, formatTaskDate, hasRight, principalHtml, principals, progressBarHtml,
-        progressHtml, taskLists} from '../util.mjs';
+        progressHtml, progressOptions, taskLists} from '../util.mjs';
 import CategoryDialog from './CategoryDialog.mjs';
 import ContinueTaskDialog from './ContinueTaskDialog.mjs';
 import ScheduleList  from './ScheduleList.mjs';
@@ -52,7 +53,14 @@ const TASK_FILTERS = [
     {name: 'percentComplete', type: 'number', multiple: false, title: t('Percent complete')},
     {name: 'commentedat',     type: 'date',   multiple: false, title: t('Commented at')},
     {name: 'modifiedat',      type: 'date',   multiple: false, title: t('Modified at')},
-    {name: 'createdat',       type: 'date',   multiple: false, title: t('Created at')}
+    {name: 'createdat',       type: 'date',   multiple: false, title: t('Created at')},
+    {name: 'modifiedBy',      type: 'user',   multiple: true,  title: t('Modified by')},
+    {name: 'createdby',       type: 'user',   multiple: true,  title: t('Created by')},
+    {name: 'responsibleUserId', type: 'user', multiple: false, title: t('Responsible')},
+    {name: 'tasklistid',      type: 'entity', entity: 'TaskList', multiple: false, title: t('List')},
+    {name: 'progress',        type: 'select', multiple: false, title: t('Progress'),
+        options: progressOptions().map(o => ({value: o.id, title: o.name}))},
+    {name: 'link',            type: 'link',   multiple: false, title: t('Has links to...')}
 ];
 
 /**
@@ -961,8 +969,16 @@ class TasksMain extends MainThreeColumnPanel {
 
     // --- center ---
 
-    onSearch(text) {
-        this.getReference('grid').store.setFilter({text: text || undefined}).catch(() => {})
+    /**
+     * Toolbar search, also with GO's "name:value" syntax (parseQuery())
+     * @param {String} text
+     */
+    async onSearch(text) {
+        const gen    = this.searchGen = (this.searchGen || 0) + 1,
+              filter = await searchFilter(text, TASK_FILTERS, 'Task');
+
+        // a newer search may have finished first
+        gen !== this.searchGen || this.isDestroyed || this.getReference('grid').store.setFilter(filter).catch(() => {})
     }
 
     onTaskSelectionChange({records}) {

@@ -17,7 +17,7 @@ where a module has one, else ExtJS3.
 | jitsimeet | System settings card + `onlineMeeting` service for the calendar's event dialog | GOUI | `ModuleRegistry.getConfigs('onlineMeeting')` → `[{name, create(), joinText()}]` |
 | wopi | System settings card "Office Online" + service dialog (read/write permissions) | ExtJS | opening files with a WOPI service depends on the files UI |
 | dokuwiki | main module (wiki in an iframe, Refresh) + System settings card | ExtJS | the module title follows the setting after login |
-| multi_instance | main module (instances grid: filters, search, edit, (de)activate, e-mail, delete, site config) + instance dialog with allowed modules | ExtJS | "Login as administrator" is missing: it POSTs an access token to the instance in a popup, which needs a main-thread addon |
+| multi_instance | main module (instances grid: filters, search, edit, login as administrator, (de)activate, e-mail, delete, site config) + instance dialog with allowed modules | ExtJS | "Login as administrator" (toolbar): the access token is POSTed to the instance in the "groupoffice_instance" window through `src/postForm.mjs` (addon `WS/PostForm`) |
 | pwned | System settings card (group to check) | ExtJS | |
 | serverclient | "Mailboxes" card in Create user (checkbox per domain, e-mail and recovery e-mail follow the username, mailboxes created after the save) | ExtJS | domains from the read-only JMAP method `Serverclient/domains` (`Neo.php` doesn't render the `App::EVENT_SCRIPTS` script); `onCreateUserDialog` hook, see below |
 | email, emailfavorites | — | — | open: depend on the legacy email module (outside community) |

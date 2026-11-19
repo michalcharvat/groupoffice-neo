@@ -20,10 +20,10 @@ These show up in several modules; each has one board card.
 |---|---|---|---|
 | Print of the detail panel (no print helper in `www/views/neo/src`) | notes, tasks, contacts (detail more menu / context menu) | goui/script/NoteDetail.ts:69, TaskDetail.ts:213; addressbook extjs3/ContactContextMenu.js:66 | fixed (`src/print.mjs`) |
 | "New linked item" from another entity's detail (`linkWindow` registry) | notes, tasks, contacts, all detail panels | notes goui/script/Index.ts:96-108; tasks extjs3/Module.js:16; addressbook extjs3/ContactDetail.js:344 | fixed (ModuleRegistry `linkWindows`, `AddLinkButton` menu) |
-| Saved filter types other than string/date/number (select, principal, combo, link entity, custom fields, input variables) | contacts (type, gender, address book, groups, has e-mail…), tasks (responsible, list, progress), notes (has links to) | addressbook extjs3/Module.js:98-320; tasks extjs3/Module.js:90-140; notes goui/script/Index.ts:63 | card "neo-ui: FilterDialog select/principal/link/custom field filters" |
+| Saved filter types other than string/date/number (select, principal, combo, link entity, custom fields, input variables) | contacts (type, gender, address book, groups, has e-mail…), tasks (responsible, list, progress), notes (has links to) | addressbook extjs3/Module.js:98-320; tasks extjs3/Module.js:90-140; notes goui/script/Index.ts:63 | fixed: `view/filterTypes.mjs` (select, user, group, entity, link editors; custom field filters added per entity). Input variables ("Input field") still open |
 | Grid group headers (`groupBy`) | tasks grid per list, task lists by grouping | tasks goui/script/TaskGrid.ts:289; extjs3/TasklistsGrid.js:15 | fixed: `GO.grid.Grid` `groupBy`, `GO.list.TextList` `groupField` (no collapsing) |
 | Custom field columns in grids | contacts, tasks, notes | www/go/core/views/extjs3/grid/GridPanel.js:31, data/StoreTrait.js:98 | done: `GO.grid.Grid` `customFieldsEntity` |
-| `name:value` search syntax in the toolbar search | multi_instance (adminEmail, isTrial…), any ExtJS tbsearch with `filters` | multi_instance extjs3/Module.js:8-58 | open (core decision, see card "neo-ui: FilterDialog …") |
+| `name:value` search syntax in the toolbar search | multi_instance (adminEmail, isTrial…), any ExtJS tbsearch with `filters` | multi_instance extjs3/Module.js:8-58 | fixed: `parseQuery()` / `searchFilter()` in `view/filterTypes.mjs` (incl. custom fields, `-name:` NOT); contacts, tasks, notes, multi_instance. No name suggestions list in the search field yet |
 
 ## addressbook
 
@@ -39,7 +39,7 @@ full detail, dialogs, three settings cards, birthdays portlet, quick add, routes
 | Keyboard | Enter opens the edit dialog, Delete / Ctrl+Backspace deletes | extjs3/MainPanel.js:671; www/go/core/views/extjs3/grid/GridTrait.js:307 | missing | fixed |
 | Grid | Own column state for the organizations view (`company-grid`) | extjs3/ContactGrid.js:94 | one `contact-grid` state | fixed |
 | Saved filters | "Modified by", "Created by" | extjs3/Module.js:82-95 | missing | fixed |
-| Saved filters | Type, gender, address book, is user, in group, has e-mail/phone/org, link, custom fields | extjs3/Module.js:98-320 | missing (FilterDialog types) | card "neo-ui: FilterDialog …" |
+| Saved filters | Type, gender, address book, is user, in group, has e-mail/phone/org, link, custom fields | extjs3/Module.js:98-320 | missing (FilterDialog types) | fixed |
 | Grid | Custom field columns | www/go/core/views/extjs3/grid/GridPanel.js:31 | done (`customFieldsEntity: 'Contact'`) | – |
 | Contact dialog | Organizations autocomplete from existing organizations | extjs3/ContactDialog.js:274 | plain ChipsField, exact name only | fixed |
 | Contact dialog | Language combo | extjs3/ContactDialog.js:333 | missing | fixed |
@@ -73,7 +73,7 @@ calendar/category/resource/subscribe/webcal dialogs).
 | Participants | "Add attendees" with RecipientPicker | goui/script/ParticipantField.ts:78-93 | done | fixed |
 | Participants | Booked resource makes the field invalid | goui/script/ParticipantField.ts:207 | done | fixed |
 | Event dialog | New linked event takes the item's name as title | goui/script/EventWindow.ts:402 | done (calendar `linkWindow.mjs`) | fixed |
-| Filter panel | "Calendars" filter | goui/script/Index.ts:302-329 | missing | card "neo-ui: FilterDialog …" |
+| Filter panel | "Calendars" filter | goui/script/Index.ts:302-329 | missing | fixed |
 | Links | New event from another item (contact becomes participant) | goui/script/Index.ts:331-357 | done | fixed |
 | Links | "Upcoming / Past appointments" cards in linked details | goui/script/Index.ts:358-384 | done: `GO.link.LinkListCard` via ModuleRegistry `linkDetailCards` | fixed |
 | Main menu | Badge with open invitations count | goui/script/Index.ts:403-413 | toolbar inbox only | fixed |
@@ -98,7 +98,7 @@ continue task, comments, files, links, history; settings, portlet, quick add).
 | List dialog | "Sync to device", "Show in calendar", owner (admin) | extjs3/TasklistDialog.js:43-49 | missing | fixed |
 | Grid | Group headers per list | goui/script/TaskGrid.ts:289 | sorted only | fixed (headers can't be collapsed) |
 | West | Lists grouped by TaskListGrouping | extjs3/TasklistsGrid.js:15 | flat list | fixed |
-| Saved filters | Created by, modified by, responsible, list, progress | extjs3/Module.js:90-140 | missing | card "neo-ui: FilterDialog …" |
+| Saved filters | Created by, modified by, responsible, list, progress | extjs3/Module.js:90-140 | missing | fixed |
 | Detail | Print | goui/script/TaskDetail.ts:213 | missing | fixed |
 | Links | "Incomplete / Completed tasks" cards with row menu in other details | extjs3/TaskLinkDetail.js | done: `GO.tasks.TaskLinkCard` via ModuleRegistry `linkDetailCards` | fixed |
 | Links | New linked task from another entity | extjs3/Module.js:16 | done | fixed |
@@ -118,7 +118,7 @@ HTML/Markdown, image zoom, full detail, settings, deep link, quick add).
 | Keyboard | Delete key deletes the selected notes | goui/script/NoteGrid.ts:75 | missing | fixed |
 | Notebook menu | Delete also needs `mayChangeNoteBooks` | goui/script/Main.ts:102 | only MANAGE checked | fixed |
 | HTML editor | Pasted images uploaded as blobs | goui/script/NoteDialog.ts:171 | HtmlField `imageUpload`: paste, drop and the image button upload blobs (`data-blob-id` + download URL); `blobImages()` shows GOUI-saved `blob:` images; Note model `content` type Html (neo `String` stripped all tags in the detail) | fixed |
-| Saved filters | Has links to… | goui/script/Index.ts:63 | missing | card "neo-ui: FilterDialog …" |
+| Saved filters | Has links to… | goui/script/Index.ts:63 | missing | fixed |
 | Detail | Print | goui/script/NoteDetail.ts:69 | missing | fixed |
 
 ## bookmarks
@@ -146,8 +146,8 @@ No gaps: dokuwiki, imapauthenticator, ldapauthenticator, jitsimeet, otp, pwned, 
 | history, comments, files | Detail cards | Cards only for users with the module | goui/script/*Panel.ts (module check) | shown to everyone, "Forbidden" for users without the module | fixed (`capability` config of `www/views/neo/src/detail/Card.mjs`) |
 | maildomains | Domain dialog | Mailbox defaults `defaultFts`, `defaultAutoExpunge` | goui/script/DomainDialog.ts:85-101 | missing | fixed |
 | maildomains | Mailbox dialog | Minimum length message `{min}` | goui/script/MailboxDialog.ts:80 | key with `{max}`, never translated | fixed |
-| multi_instance | Row menu | Login as administrator (token POSTed in a popup) | extjs3/MainPanel.js:250-295 | missing | card "neo-ui: multi_instance login as administrator" |
-| multi_instance | Search | `name:value` field filters | extjs3/Module.js:8-58 | text only | open (core, see shared gaps) |
+| multi_instance | Row menu | Login as administrator (token POSTed in a popup) | extjs3/MainPanel.js:250-295 | done | toolbar button, `src/postForm.mjs` + addon `WS/PostForm` |
+| multi_instance | Search | `name:value` field filters | extjs3/Module.js:8-58 | text only | fixed |
 | oauth2client | Login | "Sign in with {name}" buttons for OpenID clients | Module.php:60-90 | missing | fixed |
 | oidc | Client dialog | Redirect URI label translated, copy button | goui/script/OIDConnectClientDialog.ts:45 | hardcoded label, no copy | fixed |
 

@@ -1,3 +1,4 @@
+import client from '../jmap/Client.mjs';
 import ModuleRegistry from '../ModuleRegistry.mjs';
 import {t} from '../Translate.mjs';
 
@@ -7,18 +8,19 @@ import {t} from '../Translate.mjs';
  * Module.js). Unknown entities show their name and a generic icon.
  *
  * Contacts are split by the Search `filter` (isContact / isOrganization) like GO.
+ * `capability`: the module of a type the "Has links to..." filter offers.
  */
 const TYPES = {
-    Note           : {title: 'Note',         icon: 'sticky_note_2'},
-    Contact        : {title: 'Contact',      icon: 'person'},
+    Note           : {title: 'Note',         icon: 'sticky_note_2', capability: 'go:community:notes'},
+    Contact        : {title: 'Contact',      icon: 'person', capability: 'go:community:addressbook'},
     'Contact,isOrganization': {title: 'Organization', icon: 'business'},
-    Task           : {title: 'Task',         icon: 'check_circle'},
-    CalendarEvent  : {title: 'Event',        icon: 'event'},
+    Task           : {title: 'Task',         icon: 'check_circle', capability: 'go:community:tasks'},
+    CalendarEvent  : {title: 'Event',        icon: 'event', capability: 'go:community:calendar'},
     Event          : {title: 'Event',        icon: 'event'},
-    File           : {title: 'File',         icon: 'description'},
+    File           : {title: 'File',         icon: 'description', capability: 'go:legacy:files'},
     Folder         : {title: 'Folder',       icon: 'folder'},
     Comment        : {title: 'Comment',      icon: 'chat'},
-    LinkedEmail    : {title: 'E-mail',       icon: 'email'},
+    LinkedEmail    : {title: 'E-mail',       icon: 'email', capability: 'go:legacy:savemailas'},
     Project        : {title: 'Project',      icon: 'folder_special'},
     Project3       : {title: 'Project',      icon: 'folder_special'},
     Ticket         : {title: 'Ticket',       icon: 'confirmation_number'},
@@ -59,4 +61,16 @@ export function resolveRoute(entity, entityId) {
     const module = ModuleRegistry.getAvailable().find(m => m.routes?.[entity]);
 
     return module ? `${module.name}/${module.routes[entity](entityId)}` : null
+}
+
+/**
+ * Entities the "Has links to..." filter offers (ExtJS go.links.EntityCombo): the link
+ * types of the modules the user has, sorted by title
+ * @returns {Object[]} [{entity, title}] title translated
+ */
+export function linkFilterEntities() {
+    return Object.entries(TYPES)
+        .filter(([, type]) => type.capability && client.hasCapability(type.capability))
+        .map(([entity, type]) => ({entity, title: t(type.title)}))
+        .sort((a, b) => a.title.localeCompare(b.title))
 }

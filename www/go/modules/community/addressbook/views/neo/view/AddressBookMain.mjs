@@ -19,6 +19,7 @@ import {showComposer} from '../../../../../../../views/neo/src/Mail.mjs';
 import {notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
 import ConfirmDialog    from '../../../../../../../views/neo/src/view/ConfirmDialog.mjs';
 import FilterPanel      from '../../../../../../../views/neo/src/view/FilterPanel.mjs';
+import {searchFilter} from '../../../../../../../views/neo/src/view/filterTypes.mjs';
 import MainThreeColumnPanel from '../../../../../../../views/neo/src/view/MainThreeColumnPanel.mjs';
 import {fmt}         from '../../../../../../../views/neo/src/Translate.mjs';
 import ContactModel  from '../model/Contact.mjs';
@@ -88,7 +89,29 @@ const CONTACT_FILTERS = [
     {name: 'modifiedat',    type: 'date',   multiple: false, title: t('Modified at')},
     {name: 'createdat',     type: 'date',   multiple: false, title: t('Created at')},
     {name: 'modifiedBy',    type: 'string', multiple: true,  title: t('Modified by')},
-    {name: 'createdby',     type: 'string', multiple: true,  title: t('Created by')}
+    {name: 'createdby',     type: 'string', multiple: true,  title: t('Created by')},
+    {name: 'addressBookId', type: 'entity', entity: 'AddressBook', multiple: false, title: t('Address book')},
+    {name: 'isOrganization', type: 'select', multiple: false, title: t('Type'), options: [
+        {value: true,  title: t('Organization')},
+        {value: false, title: t('Contact')}
+    ]},
+    {name: 'gender',        type: 'select', multiple: true,  title: t('Gender'), options: [
+        {value: 'M',  title: t('Male')},
+        {value: 'F',  title: t('Female')},
+        {value: null, title: t('Unknown')}
+    ]},
+    {name: 'usergroupid',   type: 'group',  multiple: true,  title: t('User group')},
+    {name: 'link',          type: 'link',   multiple: false, title: t('Has links to...')},
+    ...[
+        ['isUser',            t('Is a user')],
+        ['isInGroup',         t('Is in a group')],
+        ['hasEmailAddresses', t('Has e-mail addresses')],
+        ['hasPhoneNumbers',   t('Has phone numbers')],
+        ['hasOrganizations',  t('Has organizations')]
+    ].map(([name, title]) => ({name, title, type: 'select', multiple: false, options: [
+        {value: true,  title: t('Yes')},
+        {value: false, title: t('No')}
+    ]}))
 ];
 
 /**
@@ -793,8 +816,16 @@ class AddressBookMain extends MainThreeColumnPanel {
         this.getReference('grid').store.setFilter({savedFilter: filter}).catch(() => {})
     }
 
-    onSearch(text) {
-        this.getReference('grid').store.setFilter({text: text || undefined}).catch(() => {})
+    /**
+     * Toolbar search, also with GO's "name:value" syntax (parseQuery())
+     * @param {String} text
+     */
+    async onSearch(text) {
+        const gen    = this.searchGen = (this.searchGen || 0) + 1,
+              filter = await searchFilter(text, CONTACT_FILTERS, 'Contact');
+
+        // a newer search may have finished first
+        gen !== this.searchGen || this.isDestroyed || this.getReference('grid').store.setFilter(filter).catch(() => {})
     }
 
     onContactSelectionChange({records}) {
