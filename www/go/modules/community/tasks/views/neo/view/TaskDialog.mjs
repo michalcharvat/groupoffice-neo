@@ -56,6 +56,12 @@ class TaskDialog extends FormWindow {
         entityName: 'Task',
         hasLinks  : true,
         title     : t('Task'),
+        /**
+         * Show the task after saving (GOUI); off for a task linked from another item's
+         * detail (ExtJS detail/AddButton redirectOnSave = false)
+         * @member {Boolean} redirectOnSave=true
+         */
+        redirectOnSave: true,
         wrapperStyle: {
             height   : '80vh',
             left     : 'calc(50vw - 400px)',
@@ -291,7 +297,7 @@ class TaskDialog extends FormWindow {
         });
 
         // GOUI: after saving, the task is shown
-        me.on('save', ({data}) => data?.id && Neo.Main.setRoute({value: 'tasks/task/' + data.id, windowId: me.windowId}))
+        me.on('save', ({data}) => me.redirectOnSave && data?.id && Neo.Main.setRoute({value: 'tasks/task/' + data.id, windowId: me.windowId}))
     }
 
     /**

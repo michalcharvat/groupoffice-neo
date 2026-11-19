@@ -30,6 +30,10 @@ import client from './jmap/Client.mjs';
  *     // optional: count on the module tab and main menu item (src/Badges.mjs), counted
  *     // again when one of the entities changes; badges.set(name, count) sets it directly
  *     badge: {entities: ['Note'], count: () => client.call('Note/countMine')},
+ *     // optional: "new item" entries of the detail panels' "Add link" menu (link/AddLinkButton.mjs,
+ *     // ExtJS linkWindow): open() shows the module's dialog for a new item and links it to the
+ *     // entity on save (FormWindow.addLinkOnSave()). record is the entity's data (name, addressBookId…).
+ *     linkWindows: [{title: 'Note', icon: 'sticky_note_2', open: async ({appName, windowId, entity, entityId, record}) => {}}],
  *     // optional, called with each window's main view after login (e.g. a dialog to show then)
  *     onMainView: mainView => {},
  *     // optional, called with each new src/users/CreateUserDialog (e.g. an extra card)

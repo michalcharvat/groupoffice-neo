@@ -12,10 +12,13 @@ import SelectSearchDialog from './SelectSearchDialog.mjs';
  * Detail toolbar button "Add link" (GOUI links/AddButton, ExtJS detail/AddButton): links
  * existing items, picked in a SelectSearchDialog, to the entity set with setEntity().
  *
- * With the e-mail composer and the savemailas module (its LinkedEmail entity stores the
- * link of a sent e-mail, ExtJS SaveEmailAs.js linkWindow) the button opens a menu:
- * "Existing item" and "E-mail", a new e-mail linked to the entity. A contact's e-mail goes
- * to its first address. Other neo modules don't define "new item" entries yet.
+ * With new item types the button opens a menu: "Existing item", then a new item linked
+ * to the entity (ExtJS detail/AddButton with the modules' `linkWindow`s):
+ * - "E-mail", with the e-mail composer and the savemailas module (its LinkedEmail entity
+ *   stores the link of a sent e-mail, ExtJS SaveEmailAs.js linkWindow). A contact's
+ *   e-mail goes to its first address.
+ * - the `linkWindows` modules register in ModuleRegistry (note, task, contact, event…):
+ *   their open() shows the module's dialog and links the new item on save.
  *
  * Fires `linked` {count} after the links were created.
  */
@@ -56,6 +59,16 @@ class AddLinkButton extends Button {
         return ModuleRegistry.getConfigs('showComposer').length > 0 && client.hasCapability('go:legacy:savemailas')
     }
 
+    /**
+     * New item types of the modules the user has access to (ModuleRegistry `linkWindows`)
+     * @returns {Object[]} {title, icon, open}, sorted by title
+     */
+    static getLinkWindows() {
+        return ModuleRegistry.getConfigs('linkWindows').flat()
+            .filter(l => typeof l.open === 'function')
+            .sort((a, b) => String(a.title).localeCompare(String(b.title)))
+    }
+
     onClick() {
         let me = this;
 
@@ -63,7 +76,12 @@ class AddLinkButton extends Button {
             return
         }
 
-        if (!AddLinkButton.mayEmail()) {
+        const items = [
+            ...AddLinkButton.mayEmail() ? [{text: t('E-mail'), icon: 'email', handler: () => me.composeEmail()}] : [],
+            ...AddLinkButton.getLinkWindows().map(l => ({text: l.title, icon: l.icon || 'add', handler: () => me.openLinkWindow(l)}))
+        ];
+
+        if (!items.length) {
             me.openDialog();
             return
         }
@@ -75,9 +93,37 @@ class AddLinkButton extends Button {
             items   : [
                 {text: t('Existing item'), icon: 'search', handler: () => me.openDialog()},
                 {separator: true},
-                {text: t('E-mail'), icon: 'email', handler: () => me.composeEmail()}
+                ...items
             ]
         })
+    }
+
+    /**
+     * A new item of a module, linked to the entity once it is saved
+     * @param {Object} linkWindow ModuleRegistry `linkWindows` entry
+     */
+    async openLinkWindow(linkWindow) {
+        let me     = this,
+            target = me.target;
+
+        if (!target) {
+            return
+        }
+
+        try {
+            // the item's data: its name becomes the title, a contact's address book is used…
+            const record = target.record || (await client.get(target.entity, [target.entityId]).catch(() => []))[0] || null;
+
+            await linkWindow.open({
+                appName : me.appName,
+                windowId: me.windowId,
+                entity  : target.entity,
+                entityId: String(target.entityId),
+                record
+            })
+        } catch (e) {
+            notifyError(me, e)
+        }
     }
 
     /**
