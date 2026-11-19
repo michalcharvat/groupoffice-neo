@@ -141,6 +141,9 @@ or context menu, no import/export menu. Dark mode follows
   a module's optional `style.css` is still linked by `Neo.php`.
 - **Testing with Chrome MCP**: clicks sent right after a navigation, before a screenshot,
   never reach the page. Not an app bug.
+- **Downloads**: use `download(windowId, url)` from `src/download.mjs` (a clicked
+  `<a download>` in the main thread). `Neo.Main.redirectTo()` to an attachment URL fires
+  beforeunload: neo disconnects the window from the shared worker and the page stops reacting.
 - **No `route` on buttons**: neo renders `route` as `<a href="#x">`, and `<base href>` turns
   it into `views/neo/apps/go/#x` (403). Use `handler: () => Neo.Main.setRoute(...)`.
 - **Selecting by id**: `selectionModel.select()` takes a record; a string is read as

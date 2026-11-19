@@ -1,4 +1,5 @@
 import {alertBlobId, dismissAlert, runBackgroundJob} from '../data/backgroundJob.mjs';
+import {download} from '../download.mjs';
 import client from '../jmap/Client.mjs';
 import {notify, notifyError} from '../Notify.mjs';
 import {t} from '../Translate.mjs';
@@ -98,7 +99,7 @@ export async function exportEntities(owner, {entity, extension, ids = null, quer
             return false
         }
 
-        Neo.Main.redirectTo({url: client.baseUrl + 'api/download.php?blob=' + encodeURIComponent(blobId), windowId: owner.windowId});
+        await download(owner.windowId, client.baseUrl + 'api/download.php?blob=' + encodeURIComponent(blobId));
 
         return true
     } catch (e) {
