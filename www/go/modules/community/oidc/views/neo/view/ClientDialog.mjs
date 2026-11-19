@@ -1,9 +1,10 @@
 import PasswordField from '../../../../../../../views/neo/node_modules/neo.mjs/src/form/field/Password.mjs';
 import TextField     from '../../../../../../../views/neo/node_modules/neo.mjs/src/form/field/Text.mjs';
+import Button        from '../../../../../../../views/neo/src/button/Button.mjs';
 import client        from '../../../../../../../views/neo/src/jmap/Client.mjs';
-import {escapeHtml}  from '../../../../../../../views/neo/src/Format.mjs';
+import {notify, notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
 import FormWindow    from '../../../../../../../views/neo/src/view/FormWindow.mjs';
-import {translator}  from '../../../../../../../views/neo/src/Translate.mjs';
+import {t as coreT, translator} from '../../../../../../../views/neo/src/Translate.mjs';
 
 const t = translator('community', 'oidc');
 
@@ -30,11 +31,42 @@ class ClientDialog extends FormWindow {
             hint(t('The Open ID endpoint that implements the .well-known/openid-configuration path')),
             field(TextField, 'clientId', t('Client ID')),
             field(PasswordField, 'clientSecret', t('Client secret'), {autoComplete: 'new-password'}),
-            // a text, not a field: the form would send it; absolute like the server's redirectUri
-            {ntype: 'component', cls: ['go-oidc-redirect'], flex: 'none',
-             html: `<div class="go-field-hint">Redirect URI</div><code>${escapeHtml(new URL(client.baseUrl + 'api/page.php/community/oidc/auth', globalThis.location.href).href)}</code>`},
-            hint(t("Use this redirect URI in your provider's App registration"))
+            // no name: the form doesn't send it; absolute like the server's redirectUri
+            field(TextField, null, t('Redirect URI'), {
+                reference: 'redirectUri',
+                readOnly : true,
+                clearable: false,
+                value    : new URL(client.baseUrl + 'api/page.php/community/oidc/auth', globalThis.location.href).href
+            }),
+            hint(t("Use this redirect URI in your provider's App registration")),
+            {
+                ntype : 'container',
+                flex  : 'none',
+                layout: {ntype: 'hbox', pack: 'end'},
+                items : [{
+                    module : Button,
+                    icon   : 'content_copy',
+                    text   : t('Copy to clipboard'),
+                    handler: () => this.copyRedirectUri()
+                }]
+            }
         ]
+    }
+
+    /**
+     * Selects the redirect URI and copies it (GOUI copy button)
+     */
+    async copyRedirectUri() {
+        let me   = this,
+            opts = {appName: me.appName, windowId: me.windowId};
+
+        try {
+            await Neo.main.DomAccess.selectNode({...opts, id: me.getReference('redirectUri').getInputElId()});
+            await Neo.main.DomAccess.execCommand({...opts, command: 'copy'});
+            notify(me, coreT('Copied!'))
+        } catch (e) {
+            notifyError(me, e)
+        }
     }
 
     addCustomFields() {

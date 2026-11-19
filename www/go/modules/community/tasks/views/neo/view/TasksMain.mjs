@@ -12,6 +12,7 @@ import MultiSelectToolbar from '../../../../../../../views/neo/src/grid/MultiSel
 import MenuList      from '../../../../../../../views/neo/src/menu/List.mjs';
 import {selectRow}   from '../../../../../../../views/neo/src/grid/selectRow.mjs';
 import client        from '../../../../../../../views/neo/src/jmap/Client.mjs';
+import {enableDragDrop} from '../../../../../../../views/neo/src/component/dragDrop.mjs';
 import CheckList     from '../../../../../../../views/neo/src/list/CheckList.mjs';
 import {escapeHtml, formatUserDateTime, smartDateTime} from '../../../../../../../views/neo/src/Format.mjs';
 import {notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
@@ -342,6 +343,20 @@ class TasksMain extends MainThreeColumnPanel {
                     renderer : ({value}) => (value || []).map(id => categories.get(id))
                         .filter(Boolean).map(c => `<span class="go-tasks-category">${escapeHtml(c.name)}</span>`).join('')
                 }, {
+                    // ExtJS TaskGrid: 1 high, 9 low, anything else normal
+                    dataField: 'priority',
+                    text     : t('Priority'),
+                    width    : 100,
+                    hidden   : true,
+                    renderer : ({value}) => escapeHtml(value === 1 ? t('High') : (value === 9 ? t('Low') : t('Normal')))
+                }, {
+                    dataField: 'location',
+                    text     : t('Location'),
+                    width    : 140,
+                    hidden   : true,
+                    sortable : false,
+                    renderer : ({value}) => escapeHtml(value || '')
+                }, {
                     dataField: 'estimatedDuration',
                     text     : t('Estimated duration'),
                     cellAlign: 'right',
@@ -478,6 +493,7 @@ class TasksMain extends MainThreeColumnPanel {
 
         grid.view.selectionModel.on('selectionChange', me.onTaskSelectionChange, me);
         me.getReference('multiSelectToolbar').setGrid(grid);
+        me.enableTaskDragDrop();
         grid.on('rowClick', event => {
             const sm     = grid.view.selectionModel,
                   data   = event.data || {},
@@ -1102,6 +1118,53 @@ class TasksMain extends MainThreeColumnPanel {
 
     onDeleteSelected() {
         this.deleteTasks(this.getReference('grid').getSelectedRecords())
+    }
+
+    /**
+     * GOUI Main: drag tasks onto a list in the west panel to move them there
+     */
+    enableTaskDragDrop() {
+        let me   = this,
+            grid = me.getReference('grid'),
+            list = me.getReference('taskListList');
+
+        enableDragDrop(grid, {drag: '.neo-grid-row', group: 'tasks', onDrop: () => {}})
+            .catch(e => console.error('Tasks drag and drop', e));
+
+        enableDragDrop(list, {
+            drop  : '.neo-list-item',
+            group : 'tasks',
+            onDrop: event => me.onTaskListDrop(event)
+        }).catch(e => console.error('Tasks drag and drop', e))
+    }
+
+    /**
+     * @param {Object} event goDrop of WS/DragDrop
+     */
+    async onTaskListDrop(event) {
+        let me       = this,
+            grid     = me.getReference('grid'),
+            list     = me.getReference('taskListList'),
+            taskList = list.store.get(list.getItemRecordId(event.targetId)),
+            record   = event.source?.recordId && grid.store.get(event.source.recordId),
+            selected = grid.getSelectedRecords();
+
+        if (!taskList || !record || taskList.permissionLevel < LEVEL_WRITE) {
+            return
+        }
+
+        const tasks = (selected.includes(record) ? selected : [record])
+            .filter(task => task.permissionLevel >= LEVEL_WRITE && String(task.tasklistId) !== String(taskList.id));
+
+        if (!tasks.length) {
+            return
+        }
+
+        try {
+            await client.set('Task', {update: Object.fromEntries(tasks.map(task => [task.id, {tasklistId: String(taskList.id)}]))})
+        } catch (e) {
+            me.showError(e)
+        }
     }
 
     /**

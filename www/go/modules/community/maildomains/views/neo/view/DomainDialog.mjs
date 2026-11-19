@@ -3,8 +3,9 @@ import TextField      from '../../../../../../../views/neo/node_modules/neo.mjs/
 import BoolCheckBox   from '../../../../../../../views/neo/src/form/field/BoolCheckBox.mjs';
 import PrincipalCombo from '../../../../../../../views/neo/src/form/field/PrincipalCombo.mjs';
 import SharePanel     from '../../../../../../../views/neo/src/permissions/SharePanel.mjs';
+import {fieldset}     from '../../../../../../../views/neo/src/form/fieldset.mjs';
 import FormWindow     from '../../../../../../../views/neo/src/view/FormWindow.mjs';
-import {MB, t}        from './util.mjs';
+import {MB, expungeToEntity, expungeToForm, t} from './util.mjs';
 
 /** quotas: bytes on the server, MB in the form */
 const QUOTA_FIELDS = ['defaultQuota', 'totalQuota'];
@@ -19,7 +20,7 @@ class DomainDialog extends FormWindow {
         cls       : ['go-form-window', 'go-md-domain-dialog'],
         entityName: 'MailDomain',
         properties: ['id', 'userId', 'domain', 'description', 'transport', 'maxAliases', 'maxMailboxes',
-                     'defaultQuota', 'totalQuota', 'active', 'backupMx', 'acl'],
+                     'defaultQuota', 'totalQuota', 'active', 'backupMx', 'defaultFts', 'defaultAutoExpunge', 'acl'],
         title     : t('Domain'),
         wrapperStyle: {height: '80vh', left: 'calc(50vw - 250px)', top: '10vh', width: '500px'}
     }
@@ -29,16 +30,53 @@ class DomainDialog extends FormWindow {
         const result = super.onConstructed();
 
         this.form.on({
-            beforeload: ({data}) => QUOTA_FIELDS.forEach(name => {
-                name in data && (data[name] = Math.round((data[name] || 0) / MB))
-            }),
-            beforesave: ({data}) => QUOTA_FIELDS.forEach(name => {
-                name in data && (data[name] = (Number(data[name]) || 0) * MB)
-            })
+            beforeload: ({data}) => this.toForm(data),
+            beforesave: ({data}) => this.toEntity(data)
         });
 
         this.addSharePanel();
         return result
+    }
+
+    /**
+     * Entity → form values: quotas in MB, defaultAutoExpunge as a switch and days
+     * @param {Object} data
+     */
+    toForm(data) {
+        QUOTA_FIELDS.forEach(name => {
+            name in data && (data[name] = Math.round((data[name] || 0) / MB))
+        });
+
+        const {enabled, days} = expungeToForm(data.defaultAutoExpunge);
+
+        data.defaultAutoExpungeEnabled = enabled;
+        data.defaultAutoExpungeDays    = days;
+        delete data.defaultAutoExpunge
+    }
+
+    /**
+     * Form values → entity (create: all values, update: the modified ones)
+     * @param {Object} data
+     */
+    toEntity(data) {
+        let me = this;
+
+        QUOTA_FIELDS.forEach(name => {
+            name in data && (data[name] = (Number(data[name]) || 0) * MB)
+        });
+
+        if ('defaultAutoExpungeEnabled' in data || 'defaultAutoExpungeDays' in data) {
+            const values = {...me.form.entityData, ...data};
+            data.defaultAutoExpunge = expungeToEntity(values.defaultAutoExpungeEnabled, values.defaultAutoExpungeDays)
+        }
+
+        delete data.defaultAutoExpungeEnabled;
+        delete data.defaultAutoExpungeDays
+    }
+
+    syncExpungeDays() {
+        const days = this.getReference('defaultAutoExpungeDays');
+        days && (days.disabled = !this.getReference('defaultAutoExpungeEnabled').checked)
     }
 
     /**
@@ -65,7 +103,8 @@ class DomainDialog extends FormWindow {
     onReady() {
         super.onReady();
         // GOUI: the domain name can't be changed (mailbox and alias addresses contain it)
-        this.form.currentId && (this.getReference('domain').disabled = true)
+        this.form.currentId && (this.getReference('domain').disabled = true);
+        this.syncExpungeDays()
     }
 
     createFormItems() {
@@ -85,10 +124,27 @@ class DomainDialog extends FormWindow {
                 field({module: TextField, name: 'description', labelText: t('Description')}),
                 number({name: 'maxAliases', labelText: t('Max aliases')}),
                 number({name: 'maxMailboxes', labelText: t('Max mailboxes')}),
-                number({name: 'defaultQuota', labelText: t('Default quota (MB)')}),
                 number({name: 'totalQuota', labelText: t('Max quota (MB)')}),
                 {module: BoolCheckBox, name: 'active', valueLabel: t('Active')},
-                {module: BoolCheckBox, name: 'backupMx', valueLabel: t('Backup MX')}
+                {module: BoolCheckBox, name: 'backupMx', valueLabel: t('Backup MX')},
+                // GOUI DomainDialog: what new mailboxes get
+                fieldset(t('Mailbox defaults'), [
+                    number({name: 'defaultQuota', labelText: t('Default quota (MB)')}),
+                    {module: BoolCheckBox, name: 'defaultFts', valueLabel: t('Enable Full Text Search')},
+                    {
+                        module    : BoolCheckBox,
+                        name      : 'defaultAutoExpungeEnabled',
+                        reference : 'defaultAutoExpungeEnabled',
+                        valueLabel: t('Auto expunge'),
+                        listeners : {change: () => this.syncExpungeDays()}
+                    },
+                    {
+                        ntype: 'component',
+                        cls  : ['go-field-hint'],
+                        text : t('Automatically delete mail from the Trash and Spam folder after a period of time.')
+                    },
+                    number({name: 'defaultAutoExpungeDays', reference: 'defaultAutoExpungeDays', labelText: t('Expunge after days'), minValue: 1})
+                ])
             ]
         }]
     }

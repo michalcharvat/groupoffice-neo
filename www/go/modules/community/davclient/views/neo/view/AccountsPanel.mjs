@@ -20,12 +20,21 @@ class AccountsPanel extends EntityListPanel {
         properties: ['id', 'name', 'active', 'lastSync', 'lastError', 'collections'],
         dialog    : () => import('./AccountDialog.mjs'),
         columns   : [
-            {text: '', render: record => record.lastError ? '⚠' : (record.active ? '✓' : '✕')},
+            // GOUI: the warning shows the error as tooltip
+            {text: '', vdom: record => [{tag: 'span', title: record.lastError || null, text: record.lastError ? '⚠' : (record.active ? '✓' : '✕')}]},
             {text: t('Name'), field: 'name', flex: true},
             {text: t('Last Sync'), render: record => record.lastSync ? smartDateTime(record.lastSync) : ''},
             {text: t('Collections'), render: record => String(Object.keys(record.collections || {}).length)}
         ],
         actions   : [{action: 'sync', icon: 'sync', tooltip: t('Sync')}]
+    }
+
+    /**
+     * Only the user's own accounts: an administrator can read everyone's (GOUI owner filter)
+     */
+    async load() {
+        this.jmapFilter = {ownerId: client.user.id};
+        return super.load()
     }
 
     /**
@@ -43,7 +52,13 @@ class AccountsPanel extends EntityListPanel {
         }
 
         try {
-            await client.call('DavAccount/sync', {accountId: record.id});
+            const response = await client.call('DavAccount/sync', {accountId: record.id});
+
+            if (me.isDestroyed) {
+                return
+            }
+
+            response.success || notifyError(me, new Error(response.error || coreT('Error')));
             me.load()
         } catch (e) {
             me.isDestroyed || notifyError(me, e)

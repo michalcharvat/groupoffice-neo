@@ -4,3 +4,8 @@
 .neo-theme-go .go-cal-preferences .go-fieldset {
     gap: go.dp(24);
 }
+
+// GOUI: "mark as read and archive" under its option
+.neo-theme-go .go-cal-preferences .go-cal-pref-sub {
+    margin-left: go.dp(24);
+}

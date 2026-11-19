@@ -37,6 +37,12 @@ class AutocompleteChips extends ChipsField {
          */
         jmapSort: [],
         /**
+         * Entity/get properties, null: id and displayField (an AclItemEntity such as Contact
+         * also needs the property its permissions come from, e.g. addressBookId)
+         * @member {String[]|null} properties=null
+         */
+        properties: null,
+        /**
          * Entries in the menu
          * @member {Number} limit=50
          */
@@ -57,7 +63,7 @@ class AutocompleteChips extends ChipsField {
         let me = this;
 
         me.chipRenderer ??= async id => {
-            const [record] = await client.get(me.entity, [String(id)], ['id', me.displayField]);
+            const [record] = await client.get(me.entity, [String(id)], me.properties || ['id', me.displayField]);
             return record?.[me.displayField] ?? '#' + id
         };
 
@@ -128,7 +134,7 @@ class AutocompleteChips extends ChipsField {
             filter,
             sort      : me.jmapSort,
             limit,
-            properties: ['id', me.displayField]
+            properties: me.properties || ['id', me.displayField]
         });
 
         return list

@@ -1,7 +1,7 @@
 import TextArea       from '../../../../../../../views/neo/node_modules/neo.mjs/src/form/field/TextArea.mjs';
 import {LEVEL_WRITE}  from '../../../../../../../views/neo/src/Acl.mjs';
 import BoolCheckBox   from '../../../../../../../views/neo/src/form/field/BoolCheckBox.mjs';
-import ChipsField     from '../../../../../../../views/neo/src/form/field/ChipsField.mjs';
+import AutocompleteChips from '../../../../../../../views/neo/src/form/field/AutocompleteChips.mjs';
 import DateField      from '../../../../../../../views/neo/src/form/field/DateField.mjs';
 import JmapComboBox   from '../../../../../../../views/neo/src/form/field/JmapComboBox.mjs';
 import {fieldset}     from '../../../../../../../views/neo/src/form/fieldset.mjs';
@@ -162,15 +162,20 @@ class ContactDialog extends FormWindow {
                     flex     : 'none'
                 }]
             }, {
-                module          : ChipsField,
+                // ExtJS OrganizationCombo: ▾ lists the organizations matching the typed text
+                module          : AutocompleteChips,
                 name            : 'organizationIds',
                 reference       : 'organizationsField',
                 labelText       : t('Organizations'),
                 flex            : 'none',
                 placeholder     : t('Type a name and press Enter'),
-                textInputToValue: text => this.findOrCreateOrganization(text),
+                entity          : 'Contact',
+                jmapFilter      : {isOrganization: true},
+                jmapSort        : [{property: 'name', isAscending: true}],
                 // an AclItemEntity: Contact/get needs addressBookId among the properties
-                chipRenderer    : async id => (await client.get('Contact', [id], ['id', 'name', 'addressBookId']))[0]?.name || String(id)
+                properties      : ['id', 'name', 'addressBookId'],
+                // Enter: an existing organization or a new one (ExtJS Chips allowNew)
+                textInputToValue: text => this.findOrCreateOrganization(text)
             }, {
                 module       : JmapComboBox,
                 name         : 'addressBookId',
@@ -184,7 +189,11 @@ class ContactDialog extends FormWindow {
                 required     : true,
                 flex         : 'none'
             },
-            fieldset(t('Communication'), [...emailList(), ...phoneList()]),
+            fieldset(t('Communication'), [
+                ...emailList(),
+                ...phoneList(),
+                select('language', t('Language'), Neo.config.goLanguages || [], {editable: true})
+            ]),
             fieldset(t('Addresses'), addressList()),
             fieldset(t('Other'), [
                 {module: DateField, name: 'actionAt', labelText: t('Action date'), labelPosition: 'inline', width: 200, flex: 'none'},

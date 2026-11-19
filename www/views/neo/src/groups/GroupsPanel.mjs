@@ -68,6 +68,7 @@ class GroupsPanel extends Container {
             module   : Grid,
             reference: 'grid',
             cls      : ['go-groups-grid'],
+            multiSelect: true,
             flex     : 1,
             stateId  : 'groups-grid',
             store    : {
@@ -103,6 +104,8 @@ class GroupsPanel extends Container {
             grid = me.grid;
 
         grid.on('rowDoubleClick', ({record}) => record && me.edit(record.id));
+        grid.on('enterKey', ({records}) => records.length === 1 && me.edit(records[0].id));
+        grid.on('deleteKey', ({records}) => me.remove(records[0]));
         grid.body.on('scrollEdge', () => grid.store.loadMore().catch(() => {}));
         grid.store.on({
             load     : me.loadNames,
@@ -225,16 +228,27 @@ class GroupsPanel extends Container {
     }
 
     /**
+     * Deletes the group, or all selected groups when the group is one of them. System
+     * groups and groups without delete permission are left out.
      * @param {Object} group
      */
     async remove(group) {
-        let me = this;
+        let me       = this,
+            selected = me.grid.getSelectedRecords(),
+            groups   = (selected.includes(group) ? selected : [group])
+                .filter(g => Number(g.id) > SYSTEM_GROUPS && g.permissionLevel >= LEVEL_DELETE);
+
+        if (!groups.length) {
+            return
+        }
 
         const yes = await ConfirmDialog.ask({
             appName : me.appName,
             windowId: me.windowId,
             title   : t('Confirm delete'),
-            message : fmt(t("Are you sure you want to delete '{item}'?"), {item: group.name})
+            message : groups.length === 1
+                ? fmt(t("Are you sure you want to delete '{item}'?"), {item: groups[0].name})
+                : fmt(t('Are you sure you want to delete the {count} items?'), {count: groups.length})
         });
 
         if (!yes || me.isDestroyed) {
@@ -242,7 +256,8 @@ class GroupsPanel extends Container {
         }
 
         try {
-            await client.set('Group', {destroy: [group.id]});
+            await client.set('Group', {destroy: groups.map(g => g.id)});
+            me.grid.view.selectionModel.clear();
             me.reload()
         } catch (e) {
             notifyError(me, e)

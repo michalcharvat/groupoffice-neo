@@ -30,7 +30,31 @@ class Card extends Container {
          * Entities whose changes reload the card
          * @member {String[]} watch=[]
          */
-        watch: []
+        watch: [],
+        /**
+         * Session capability of the module the card belongs to (e.g. 'go:community:history'):
+         * without it the card stays hidden (26.x adds comments, files and history only for
+         * users with access to the module)
+         * @member {String|null} capability=null
+         */
+        capability: null
+    }
+
+    /**
+     * Triggered before the hidden config gets changed
+     * @param {Boolean} value
+     * @returns {Boolean}
+     * @protected
+     */
+    beforeSetHidden(value) {
+        return value || !this.isAvailable()
+    }
+
+    /**
+     * @returns {Boolean} the user has access to the card's module (see capability)
+     */
+    isAvailable() {
+        return !this.capability || client.hasCapability(this.capability)
     }
 
     /**
@@ -136,7 +160,8 @@ class Card extends Container {
     setEntity(entity, entityId, record=null) {
         let me = this;
 
-        me.current = entity && entityId ? {entity, entityId, record} : null;
+        // without the module nothing is loaded (the server would refuse it)
+        me.current = entity && entityId && me.isAvailable() ? {entity, entityId, record} : null;
         me.reload()
     }
 

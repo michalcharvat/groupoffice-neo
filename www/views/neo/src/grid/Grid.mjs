@@ -30,6 +30,9 @@ import {t}           from '../Translate.mjs';
  * click on any header adds sorting (GO 6.8 header menu). showColumnMenu(targetId) from a button. neo's grid cannot hide a column, so the grid keeps the full list and
  * renders the visible ones. With a `stateId`, hidden columns and widths are stored like
  * GOUI's Table state: "state-<stateId>" → {columns: {<stateKey>: {hidden, width (dp)}}}.
+ *
+ * Keyboard (ExtJS GridTrait, GOUI Table "delete"): with selected rows, Delete or ctrl/⌘+Backspace
+ * fires `deleteKey` and Enter fires `enterKey`, both {records}; the module decides what they do.
  */
 class Grid extends GridContainer {
     static config = {
@@ -111,8 +114,10 @@ class Grid extends GridContainer {
             headerToolbar: {...config.headerToolbar, itemDefaults: {module: HeaderButton, ntype: 'go-grid-header-button'}}
         });
 
-        this.allColumns = all;
-        this.dp         = dp;
+        this.allColumns     = all;
+        // the configured columns, for switchState()
+        this.defaultColumns = all.map(column => ({...column}));
+        this.dp             = dp;
         this.removeThemeListener = onThemeChange(windowIds => windowIds.includes(this.windowId) && this.measureRowHeight())
     }
 
@@ -220,12 +225,34 @@ class Grid extends GridContainer {
 
         me.headerToolbar?.addCls('go-grid-header');
         me.headerToolbar?.addDomListeners({contextmenu: me.onHeaderContextMenu, scope: me});
+        me.addDomListeners({keydown: me.onGridKeyDown, scope: me});
 
         me.decorateHeader();
 
         me.measureRowHeight();
 
         me.stateId && await me.restoreColumnState()
+    }
+
+    /**
+     * Delete / ctrl+Backspace → `deleteKey`, Enter → `enterKey` (not while typing in a field)
+     * @param {Object} data neo DOM event
+     * @protected
+     */
+    onGridKeyDown(data) {
+        // DomEvents serialises tag names in lower case; any editable node on the path counts
+        const editable = (data.path || [data.target]).some(node =>
+            ['input', 'textarea', 'select'].includes(node?.tagName) || node?.isContentEditable);
+
+        if (editable) {
+            return
+        }
+
+        const isDelete = data.key === 'Delete' || (data.key === 'Backspace' && (data.ctrlKey || data.metaKey)),
+              name     = isDelete ? 'deleteKey' : (data.key === 'Enter' ? 'enterKey' : null),
+              records  = name ? this.getSelectedRecords() : [];
+
+        records.length && this.fire(name, {records})
     }
 
     /**
@@ -425,6 +452,42 @@ class Grid extends GridContainer {
         }
 
         changed && !me.isDestroyed && await me.applyColumns()
+    }
+
+    /**
+     * Another state for the same grid (ExtJS ContactGrid: "company-grid" for organizations,
+     * "contact-grid" for contacts): the configured columns, then that state's changes
+     * @param {String} stateId
+     * @returns {Promise<void>}
+     */
+    async switchState(stateId) {
+        let me = this;
+
+        // compare with the last requested state: a switch may still be saving
+        if (stateId === (me.requestedStateId ?? me.stateId)) {
+            return
+        }
+
+        me.requestedStateId = stateId;
+
+        // a pending change still goes to the old state
+        if (me.saveStateTimer) {
+            clearTimeout(me.saveStateTimer);
+            me.saveStateTimer = null;
+            await me.saveColumnState()
+        }
+
+        // a later switch took over while saving
+        if (me.isDestroyed || me.requestedStateId !== stateId) {
+            return
+        }
+
+        me.stateId    = stateId;
+        me.touchedColumns.clear();
+        me.allColumns = me.defaultColumns.map(column => ({...column}));
+
+        await me.applyColumns();
+        !me.isDestroyed && me.requestedStateId === stateId && await me.restoreColumnState()
     }
 
     /**

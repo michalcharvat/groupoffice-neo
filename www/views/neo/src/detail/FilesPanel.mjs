@@ -23,7 +23,8 @@ class FilesPanel extends Card {
         className: 'GO.detail.FilesPanel',
         cls      : ['go-files-panel'],
         title    : t('Files'),
-        stateId  : 'files-detail'
+        stateId  : 'files-detail',
+        capability: 'go:legacy:files'
     }
 
     /**

@@ -9,6 +9,8 @@ const t = translator('community', 'calendar');
 
 const pref = name => 'calendarPreferences.' + name;
 
+const hint = text => ({ntype: 'component', cls: ['go-field-hint'], flex: 'none', text});
+
 const select = (name, labelText, options, hint) => ({module: SelectField, name: pref(name), labelText, options, hint: hint || ''});
 
 /**
@@ -19,12 +21,20 @@ class PreferencesPanel extends Container {
     static config = {
         className: 'GO.calendar.PreferencesPanel',
         baseCls  : ['go-cal-preferences', 'neo-container'],
-        layout   : {ntype: 'vbox', align: 'stretch'},
-        items    : [fieldset(t('Preferences'), [
+        layout   : {ntype: 'vbox', align: 'stretch'}
+    }
+
+    construct(config) {
+        let me = this;
+
+        super.construct({...config, items: [fieldset(t('Preferences'), [
             {module: BoolCheckBox, name: pref('showWeekNumbers'), valueLabel: t('Show week numbers in calendar')},
             {module: BoolCheckBox, name: pref('showTooltips'),    valueLabel: t('Show pop-up info when hovering over appointments')},
             {module: BoolCheckBox, name: pref('showDeclined'),    valueLabel: t('Show events that you have declined')},
             {module: BoolCheckBox, name: pref('multiLine'),       valueLabel: t('Show multiline event blocks') + ' (beta)'},
+            {module: BoolCheckBox, name: pref('showCategoryColor'), valueLabel: t('Show event in category color')},
+            hint(t('Only when one calendar is selected and the event has one category')),
+            {module: BoolCheckBox, name: pref('printWeekInGrid'), valueLabel: t('Print week and workweek in a grid with hours')},
             {
                 module       : JmapComboBox,
                 name         : pref('defaultCalendarId'),
@@ -36,7 +46,7 @@ class PreferencesPanel extends Container {
                 labelText    : t('Default calendar'),
                 labelPosition: 'inline',
                 width        : null
-            }, {
+            }, hint(t('Start with this calendar selected')), {
                 module       : JmapComboBox,
                 name         : pref('personalCalendarId'),
                 reference    : 'personalCalendar',
@@ -47,7 +57,7 @@ class PreferencesPanel extends Container {
                 labelText    : t('Personal calendar'),
                 labelPosition: 'inline',
                 width        : null
-            },
+            }, hint(t('Invitation to event will be added into this calendar')),
             select('weekViewGridSnap', t('Raster size for day/week view'), [
                 {value: 5, text: '5 ' + t('minutes')}, {value: 15, text: '15 ' + t('minutes')},
                 {value: 30, text: '30 ' + t('minutes')}, {value: 60, text: '1 ' + t('hour')}
@@ -68,11 +78,21 @@ class PreferencesPanel extends Container {
             ], t('Duration for a new event when no range is selected'))
         ]), {
             ...fieldset(t('Process e-mail in'), [
-                {module: BoolCheckBox, name: pref('autoAddInvitations'),    valueLabel: t('Automatically add invitation to your calendar')},
-                {module: BoolCheckBox, name: pref('autoUpdateInvitations'), valueLabel: t('Automatically apply updates from organizer')}
+                // GOUI: "mark as read and archive" only shows while its option is on (userChange:
+                // a change listener that hides a sibling during the load drops the tick)
+                {module: BoolCheckBox, name: pref('autoAddInvitations'), reference: 'autoAddInvitations',
+                 valueLabel: t('Automatically add invitation to your calendar'), listeners: {userChange: () => me.syncArchiveFields()}},
+                hint(t('Whenever an event invitation is received, add the event to your default calendar')),
+                {module: BoolCheckBox, name: pref('markReadAndFileAutoAdd'), reference: 'markReadAndFileAutoAdd', cls: ['go-cal-pref-sub'],
+                 valueLabel: t('Mark invitation as read and archive'), hidden: true},
+                {module: BoolCheckBox, name: pref('autoUpdateInvitations'), reference: 'autoUpdateInvitations',
+                 valueLabel: t('Automatically apply updates from organizer'), listeners: {userChange: () => me.syncArchiveFields()}},
+                hint(t('Whenever an update to an event already in your calendar is received, update the event, or delete it if the event is cancelled')),
+                {module: BoolCheckBox, name: pref('markReadAndFileAutoUpdate'), reference: 'markReadAndFileAutoUpdate', cls: ['go-cal-pref-sub'],
+                 valueLabel: t('Mark updates as read and archive'), hidden: true}
             ]),
             reference: 'processFieldset'
-        }]
+        }]})
     }
 
     /**
@@ -81,7 +101,22 @@ class PreferencesPanel extends Container {
     onLoad(user) {
         // the user's own calendars (an admin editing another user)
         this.getReference('personalCalendar').jmapFilter = {davaccountId: null, isResource: false, permissionLevel: 30, ownerId: user.id};
-        this.getReference('defaultCalendar').jmapFilter  = {davaccountId: null, isSubscribedFor: user.id}
+        this.getReference('defaultCalendar').jmapFilter  = {davaccountId: null, isSubscribedFor: user.id};
+        this.syncArchiveFields()
+    }
+
+    /**
+     * The archive options follow their auto add / auto update option
+     */
+    syncArchiveFields() {
+        let me = this;
+
+        [['autoAddInvitations', 'markReadAndFileAutoAdd'], ['autoUpdateInvitations', 'markReadAndFileAutoUpdate']].forEach(([option, archive]) => {
+            const field = me.getReference(archive),
+                  on    = me.getReference(option);
+
+            field && (field.hidden = !on?.checked)
+        })
     }
 }
 

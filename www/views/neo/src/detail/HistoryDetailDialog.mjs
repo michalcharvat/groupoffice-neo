@@ -1,6 +1,9 @@
 import Dialog from '../view/Dialog.mjs';
 import {escapeHtml, formatUserDateTime} from '../Format.mjs';
-import {t} from '../Translate.mjs';
+import {t, translator} from '../Translate.mjs';
+
+// 'Changes' and 'Old' are translated by the history module
+const historyT = translator('community', 'history');
 
 const DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
 
@@ -77,10 +80,10 @@ class HistoryDetailDialog extends Dialog {
             return `<div class="go-empty">${escapeHtml(e.message)}</div>`
         }
 
-        const date = `<p>Date: ${escapeHtml(formatUserDateTime(logEntry?.createdAt))}</p><h4>Changes</h4>`;
+        const date = `<p>${escapeHtml(t('Date'))}: ${escapeHtml(formatUserDateTime(logEntry?.createdAt))}</p><h4>${escapeHtml(historyT('Changes'))}</h4>`;
 
         if (!changes.length) {
-            return date + '<div class="go-empty">No changes</div>'
+            return date + `<div class="go-empty">${escapeHtml(t('No changes'))}</div>`
         }
 
         if (logEntry.action === 'update') {
@@ -90,7 +93,7 @@ class HistoryDetailDialog extends Dialog {
                 return `<tr><td>${escapeHtml(name)}</td><td>${this.formatValue(oldValue)}</td><td>${this.formatValue(newValue)}</td></tr>`
             }).join('');
 
-            return date + `<table class="go-table"><thead><tr><th>Name</th><th>Old</th><th>New</th></tr></thead><tbody>${rows}</tbody></table>`
+            return date + `<table class="go-table"><thead><tr><th>${escapeHtml(t('Name'))}</th><th>${escapeHtml(historyT('Old'))}</th><th>${escapeHtml(t('New'))}</th></tr></thead><tbody>${rows}</tbody></table>`
         }
 
         return date + changes.map(([name, value]) => `<div><b>${escapeHtml(name)}:</b> ${this.formatValue(value)}</div>`).join('')

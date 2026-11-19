@@ -23,6 +23,7 @@ import MainThreeColumnPanel from '../../../../../../../views/neo/src/view/MainTh
 import {fmt}         from '../../../../../../../views/neo/src/Translate.mjs';
 import ContactModel  from '../model/Contact.mjs';
 import {contactAvatarHtml, downloadUrl, indexChar, renderName, settings, t, typeName, userRights} from '../util.mjs';
+import {enableDragDrop} from '../../../../../../../views/neo/src/component/dragDrop.mjs';
 import AddressBookDialog from './AddressBookDialog.mjs';
 import AddressBookTree   from './AddressBookTree.mjs';
 import ContactDetail     from './ContactDetail.mjs';
@@ -85,7 +86,9 @@ const CONTACT_FILTERS = [
     {name: 'lastcontactat', type: 'date',   multiple: false, title: t('Last contact at')},
     {name: 'commentedat',   type: 'date',   multiple: false, title: t('Commented at')},
     {name: 'modifiedat',    type: 'date',   multiple: false, title: t('Modified at')},
-    {name: 'createdat',     type: 'date',   multiple: false, title: t('Created at')}
+    {name: 'createdat',     type: 'date',   multiple: false, title: t('Created at')},
+    {name: 'modifiedBy',    type: 'string', multiple: true,  title: t('Modified by')},
+    {name: 'createdby',     type: 'string', multiple: true,  title: t('Created by')}
 ];
 
 /**
@@ -501,6 +504,13 @@ class AddressBookMain extends MainThreeColumnPanel {
         grid.on('rowDoubleClick', ({record}) => {
             record && record.permissionLevel >= LEVEL_WRITE && me.openDialog(record)
         });
+        // ExtJS MainPanel / GridTrait: Enter edits, Delete or ctrl+Backspace deletes
+        grid.on('enterKey', ({records}) => {
+            records.length === 1 && records[0].permissionLevel >= LEVEL_WRITE && me.openDialog(records[0])
+        });
+        grid.on('deleteKey', ({records}) => me.deleteContacts(records));
+
+        me.enableContactDragDrop();
 
         // right click on a row: the contact menu (ExtJS rowcontextmenu)
         Neo.main.DomEvents.registerPreventDefaultTargets({name: 'contextmenu', cls: ['go-addressbook-grid'], windowId: me.windowId});
@@ -636,6 +646,10 @@ class AddressBookMain extends MainThreeColumnPanel {
             id     = item ? String(list.getItemRecordId(item)) : 'all';
 
         me.nav = id;
+
+        // ExtJS ContactGrid: organizations have their own columns
+        me.getReference('grid').switchState(id === 'organization' ? 'company-grid' : 'contact-grid')
+            .catch(e => console.error('Contact grid state', e));
 
         if (me.restoring) {
             me.navFilter = me.getNavFilter(id);
@@ -1272,6 +1286,93 @@ class AddressBookMain extends MainThreeColumnPanel {
     }
 
     /**
+     * ExtJS MainPanel: drag contacts onto an address book (move) or a group (add); a target
+     * the user may not write refuses them
+     */
+    enableContactDragDrop() {
+        let me   = this,
+            grid = me.getReference('grid'),
+            tree = me.getReference('tree');
+
+        enableDragDrop(grid, {drag: '.neo-grid-row', group: 'addressbook', onDrop: () => {}})
+            .catch(e => console.error('Address book drag and drop', e));
+
+        enableDragDrop(tree, {
+            drop  : '.neo-list-item',
+            group : 'addressbook',
+            onDrop: event => me.onTreeDrop(event)
+        }).catch(e => console.error('Address book drag and drop', e))
+    }
+
+    /**
+     * @param {Object} event goDrop of WS/DragDrop
+     */
+    onTreeDrop(event) {
+        let me       = this,
+            grid     = me.getReference('grid'),
+            tree     = me.getReference('tree'),
+            node     = tree.getNode(tree.getItemRecordId(event.targetId)),
+            record   = event.source?.recordId && grid.store.get(event.source.recordId),
+            selected = grid.getSelectedRecords();
+
+        if (!node || !record || (node.data?.permissionLevel || 0) < LEVEL_WRITE) {
+            return
+        }
+
+        // only contacts the user may change
+        const records = (selected.includes(record) ? selected : [record]).filter(r => r.permissionLevel >= LEVEL_WRITE);
+
+        if (!records.length) {
+            return
+        }
+
+        if (node.entity === 'AddressBook') {
+            me.moveContacts(records, String(node.data.id))
+        } else if (node.entity === 'AddressBookGroup') {
+            me.dropOnGroup(records, node.data)
+        }
+    }
+
+    /**
+     * ExtJS onNodeDrop() on a group: contacts of another address book move to the group's
+     * book and lose their old groups (a group only takes contacts of its own book)
+     * @param {Object[]} records
+     * @param {Object} group AddressBookGroup
+     */
+    async dropOnGroup(records, group) {
+        let me            = this,
+            groupId       = String(group.id),
+            addressBookId = String(group.addressBookId),
+            update        = {};
+
+        records.forEach(r => {
+            const sameBook = String(r.addressBookId) === addressBookId,
+                  groups   = sameBook ? (r.groups || []).map(String) : [];
+
+            if (!groups.includes(groupId)) {
+                update[r.id] = sameBook ? {groups: [...groups, groupId]} : {addressBookId, groups: [groupId]}
+            }
+        });
+
+        if (!Object.keys(update).length) {
+            return
+        }
+
+        const moves = Object.values(update).some(u => u.addressBookId);
+
+        // ExtJS: asks only with the user's setting go.User.confirmOnMove
+        if (moves && client.user?.confirmOnMove && !await me.confirm(t('Are you sure you want to move the item(s)?'))) {
+            return
+        }
+
+        try {
+            await client.set('Contact', {update})
+        } catch (e) {
+            me.showError(e)
+        }
+    }
+
+    /**
      * ExtJS onNodeDrop() on an address book: the contacts change address book and lose
      * their groups
      * @param {Object[]} records
@@ -1285,7 +1386,8 @@ class AddressBookMain extends MainThreeColumnPanel {
             return
         }
 
-        if (!await me.confirm(t('Are you sure you want to move the item(s)?'))) {
+        // ExtJS: asks only with the user's setting go.User.confirmOnMove
+        if (client.user?.confirmOnMove && !await me.confirm(t('Are you sure you want to move the item(s)?'))) {
             return
         }
 
