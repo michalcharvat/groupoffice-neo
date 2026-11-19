@@ -58,14 +58,14 @@ class CustomCssMain extends FormContainer {
             items : [{
                 module       : TextArea,
                 name         : 'css',
-                labelText    : 'CSS',
+                labelText    : t('CSS'),
                 labelPosition: 'inline',
                 flex         : 1,
                 spellCheck   : false
             }, {
                 module       : TextArea,
                 name         : 'javascript',
-                labelText    : 'JavaScript',
+                labelText    : t('JavaScript'),
                 labelPosition: 'inline',
                 flex         : 1,
                 spellCheck   : false
