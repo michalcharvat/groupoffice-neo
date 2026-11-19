@@ -3,6 +3,7 @@ import BoolCheckBox     from '../../../../views/neo/src/form/field/BoolCheckBox.
 import {t, LEVEL_WRITE} from './api.mjs';
 import CertificatesPanel from './view/CertificatesPanel.mjs';
 import composerPlugin   from './view/composerPlugin.mjs';
+import messagePlugin    from './view/messagePlugin.mjs';
 
 /**
  * S/MIME (legacy module www/modules/smime, ExtJS PluginAccountDialog, PluginEmailComposer,
@@ -49,5 +50,8 @@ ModuleRegistry.register({
     },
 
     // composer: Sign / Encrypt in the options menu, the certificate password before sending
-    emailComposerPlugins: composerPlugin
+    emailComposerPlugins: composerPlugin,
+
+    // message view: encrypted / signed state, verify, decrypt, import an attached certificate
+    emailMessagePanelPlugins: messagePlugin
 });
