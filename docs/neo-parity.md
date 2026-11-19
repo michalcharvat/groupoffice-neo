@@ -78,8 +78,8 @@ calendar/category/resource/subscribe/webcal dialogs).
 | Links | "Upcoming / Past appointments" cards in linked details | goui/script/Index.ts:358-384 | done: `GO.link.LinkListCard` via ModuleRegistry `linkDetailCards` | fixed |
 | Main menu | Badge with open invitations count | goui/script/Index.ts:403-413 | toolbar inbox only | fixed |
 | Views | Rich hover tooltip (`showTooltips`) | goui/script/CalendarView.ts:318 | done | fixed |
-| Views | Swipe to previous/next period | goui/script/Main.ts:327,378 | missing | card "neo-ui: calendar swipe and availability drag" |
-| Availability | Drag the event on the timeline | goui/script/AvailabilityWindow.ts:61-96 | click only | card "neo-ui: calendar swipe and availability drag" |
+| Views | Swipe to previous/next period | goui/script/Main.ts:327,378 | missing | fixed |
+| Availability | Drag the event on the timeline | goui/script/AvailabilityWindow.ts:61-96 | click only | fixed |
 | Participant status | "Invite not sent yet" | goui/script/Index.ts:137 | key misspelled "Invite not send yet" | fixed |
 
 ## tasks

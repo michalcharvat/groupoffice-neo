@@ -13,7 +13,8 @@ const SNAP = 5;
 /**
  * Free / busy of the participants on a day (GOUI AvailabilityWindow): a row per
  * participant with their busy periods, the free periods that fit the event, and the event.
- * Clicking the timeline moves the event there; "Apply" takes the new time.
+ * Dragging the event (or pressing anywhere on its row) moves it in steps of 5 minutes;
+ * "Apply" takes the new time.
  *
  *     Neo.create(AvailabilityDialog, {appName, windowId, principalIds, start, end})
  *
@@ -43,6 +44,8 @@ class AvailabilityDialog extends Dialog {
     principals = []
     /** @member {Object} busy principal id → [{start, end}] minutes */
     busy = {}
+    /** @member {Object|null} drag {left, width, grab} of the event row, set while the event is dragged */
+    drag = null
 
     construct(config) {
         super.construct(config);
@@ -66,7 +69,12 @@ class AvailabilityDialog extends Dialog {
             cls         : ['go-cal-availability'],
             flex        : 1,
             vdom        : {cn: []},
-            domListeners: [{click: me.onPlanClick, delegate: '.go-cal-av-plan', scope: me}]
+            domListeners: [
+                {mousedown : me.onDragDown, delegate: '.go-cal-av-plan', scope: me},
+                {mousemove : {fn: me.onDragMove, scope: me, local: true}},
+                {mouseup   : me.onDragUp,   scope: me},
+                {mouseleave: me.onDragLeave, scope: me}
+            ]
         }, {
             module: Toolbar,
             cls   : ['go-dialog-buttons'],
@@ -160,15 +168,11 @@ class AvailabilityDialog extends Dialog {
     render() {
         let me   = this,
             grid = me.getReference('grid'),
-            day  = me.day,
             plan = me.freePeriods().map(p => me.block(p.start, p.end, ['go-cal-av-free']));
 
-        if (me.start && me.end && me.start < addDays(day, 1) && me.end > day) {
-            const s = me.start < day ? 0 : minuteOfDay(me.start),
-                  e = me.end >= addDays(day, 1) ? 1440 : minuteOfDay(me.end);
+        const event = me.eventMinutes();
 
-            plan.push(me.block(s, e, ['go-cal-av-event']))
-        }
+        event && plan.push(me.block(event.start, event.end, ['go-cal-av-event']));
 
         grid.vdom.cn = [
             {tag: 'ol', cn: [
@@ -186,22 +190,106 @@ class AvailabilityDialog extends Dialog {
     }
 
     /**
-     * Moves the event to the clicked time, centred on it, keeping its length
+     * The part of the event on the shown day
+     * @returns {Object|null} {start, end} minutes
      */
-    onPlanClick(data) {
-        let me   = this,
-            node = data.path.find(n => n.cls?.includes('go-cal-av-plan'));
+    eventMinutes() {
+        let me  = this,
+            day = me.day,
+            end = addDays(day, 1);
 
-        if (!node?.rect) {
+        if (!(me.start && me.end && me.start < end && me.end > day)) {
+            return null
+        }
+
+        return {start: me.start < day ? 0 : minuteOfDay(me.start), end: me.end >= end ? 1440 : minuteOfDay(me.end)}
+    }
+
+    /**
+     * Length of the event in minutes
+     * @returns {Number}
+     */
+    eventLength() {
+        return this.start && this.end ? (this.end - this.start) / 60000 : 60
+    }
+
+    /**
+     * Starts dragging the event (GOUI makeDraggable()): pressed on the event, the event keeps
+     * the point it was grabbed at; elsewhere on the row, it is centred on the mouse
+     * @param {Object} data mousedown
+     */
+    onDragDown(data) {
+        let me   = this,
+            plan = data.path.find(n => n.cls?.includes('go-cal-av-plan'));
+
+        if (data.button !== 0 || !plan?.rect) {
             return
         }
 
-        const length = me.start && me.end ? (me.end - me.start) / 60000 : 60,
-              m      = (data.clientX - node.rect.x) / node.rect.width * 1440 - length / 2,
-              startM = Math.max(0, Math.min(1440 - length, Math.round(m / SNAP) * SNAP)),
-              start  = new Date(me.day);
+        // the blocks don't take the mouse (pointer-events: none), so a press on the event is found by its minutes
+        const minute = (data.clientX - plan.rect.x) / plan.rect.width * 1440,
+              event  = me.eventMinutes(),
+              onIt   = event && minute >= event.start && minute <= event.end;
+
+        // the row is measured once: the mouse may leave it while dragging. The grab point is measured from the
+        // real start, which lies on the day before for an event shown on its second day
+        me.drag = {
+            left : plan.rect.x,
+            width: plan.rect.width,
+            grab : onIt ? minute - (me.start - me.day) / 60000 : me.eventLength() / 2
+        };
+
+        me.addCls('go-cal-av-dragging');
+        // pressed on the event, it stays until the mouse moves; elsewhere it jumps to the mouse
+        onIt || me.moveTo(data.clientX)
+    }
+
+    onDragMove(data) {
+        const me = this;
+
+        if (!me.drag) {
+            return
+        }
+
+        // released outside the browser window
+        data.buttons === 0 ? me.onDragUp() : me.moveTo(data.clientX)
+    }
+
+    onDragUp() {
+        if (this.drag) {
+            this.drag = null;
+            this.removeCls('go-cal-av-dragging')
+        }
+    }
+
+    onDragLeave(data) {
+        const me = this;
+
+        // capture: only leaving the grid itself ends the drag, at the point where the mouse left
+        // (a fast move skips the last part of the row: the event then still reaches the start or end of the day)
+        if (me.drag && data.target?.id === me.getReference('grid').id) {
+            typeof data.clientX === 'number' && me.moveTo(data.clientX);
+            me.onDragUp()
+        }
+    }
+
+    /**
+     * Moves the event to the mouse position, keeping its length, within the day
+     * @param {Number} clientX
+     */
+    moveTo(clientX) {
+        let me     = this,
+            drag   = me.drag,
+            length = me.eventLength(),
+            m      = (clientX - drag.left) / drag.width * 1440 - drag.grab,
+            startM = Math.max(0, Math.min(1440 - length, Math.round(m / SNAP) * SNAP)),
+            start  = new Date(me.day);
 
         start.setHours(0, startM, 0, 0);
+
+        if (me.start?.getTime() === start.getTime()) {
+            return
+        }
 
         me.start = start;
         me.end   = new Date(start.getTime() + length * 60000);

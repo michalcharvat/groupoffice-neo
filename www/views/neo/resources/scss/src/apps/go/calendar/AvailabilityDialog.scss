@@ -85,8 +85,18 @@ $side: go.dp(240);
             }
         }
 
+        // a drag must not start a text selection, which would run over the dialogs
         .go-cal-av-plan {
-            cursor: pointer;
+            cursor     : grab;
+            user-select: none;
+        }
+    }
+
+    &.go-cal-av-dragging .go-cal-availability {
+        cursor: grabbing;
+
+        .go-cal-av-plan {
+            cursor: grabbing;
         }
     }
 
