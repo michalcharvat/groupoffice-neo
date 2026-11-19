@@ -16,7 +16,9 @@ class Note extends Model {
             {name: 'modifiedBy',      type: 'String'},
             {name: 'password',        type: 'String'},
             {name: 'permissionLevel', type: 'Int'},
-            {name: 'filesFolderId',   type: 'String'}
+            {name: 'filesFolderId',   type: 'String'},
+            // {databaseName: value}: custom field columns
+            {name: 'customFields'}
         ]
     }
 }

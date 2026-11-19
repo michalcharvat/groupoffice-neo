@@ -210,6 +210,8 @@ class NotesMain extends MainThreeColumnPanel {
                 },
                 // GOUI NoteGrid columns; right click on the header shows/hides them
                 stateId: 'notes-noteGrid',
+                // a column per custom field, hidden ones in the column menu
+                customFieldsEntity: 'Note',
                 columns: [{
                     dataField: 'id',
                     text     : t('ID'),

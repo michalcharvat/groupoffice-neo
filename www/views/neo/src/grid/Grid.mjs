@@ -6,6 +6,7 @@ import {dpSize, getState, setState} from '../State.mjs';
 import {dpPixels, onThemeChange} from '../Preferences.mjs';
 import client        from '../jmap/Client.mjs';
 import {t}           from '../Translate.mjs';
+import {createColumns as createCustomFieldColumns, loadNames as loadCustomFieldNames} from '../customfields/gridColumns.mjs';
 
 /**
  * GO grid: neo's grid with the GOUI table metrics (goui/style/_table.scss) —
@@ -31,6 +32,12 @@ import {t}           from '../Translate.mjs';
  * renders the visible ones. With a `stateId`, hidden columns and widths are stored like
  * GOUI's Table state: "state-<stateId>" → {columns: {<stateKey>: {hidden, width (dp)}}}.
  *
+ * Custom fields (ExtJS GridTrait.initCustomFields(), GOUI CustomFields.getTableColumns()):
+ * `customFieldsEntity: 'Contact'` adds a column per custom field of the entity after the
+ * configured ones, hidden when the field is "Hidden in grid", sortable on the server. The store
+ * needs the `customFields` property (added to `properties` when they are listed) and a model
+ * field `customFields`.
+ *
  * Keyboard (ExtJS GridTrait, GOUI Table "delete"): with selected rows, Delete or ctrl/⌘+Backspace
  * fires `deleteKey` and Enter fires `enterKey`, both {records}; the module decides what they do.
  */
@@ -54,7 +61,12 @@ class Grid extends GridContainer {
          * GOUI compatible state key ("state-<stateId>"): hidden columns, widths
          * @member {String|null} stateId=null
          */
-        stateId: null
+        stateId: null,
+        /**
+         * JMAP entity whose custom fields get columns, e.g. 'Note'
+         * @member {String|null} customFieldsEntity=null
+         */
+        customFieldsEntity: null
     }
 
     /**
@@ -88,6 +100,12 @@ class Grid extends GridContainer {
     static measuredDp = null
 
     /**
+     * px a flex column keeps when custom field columns are added
+     * @member {Number} FLEX_MIN_WIDTH
+     */
+    static FLEX_MIN_WIDTH = 200
+
+    /**
      * px of dp(1) the rowHeight is based on
      * @member {Number} dp
      */
@@ -105,6 +123,13 @@ class Grid extends GridContainer {
     construct(config) {
         const all = (config.columns || []).map(column => ({hideable: true, hidden: false, ...column})),
               dp  = Grid.measuredDp || Grid.THEME_DP[client.user?.theme] || Grid.THEME_DP.Paper;
+
+        // custom field values come with the entity's `customFields` property
+        const properties = config.store?.properties;
+
+        if (config.customFieldsEntity && Neo.typeOf(config.store) === 'Object' && Array.isArray(properties) && !properties.includes('customFields')) {
+            config = {...config, store: {...config.store, properties: [...properties, 'customFields']}}
+        }
 
         super.construct({
             rowHeight: Grid.rowHeightFor(config.rowLines || 1, dp),
@@ -200,7 +225,7 @@ class Grid extends GridContainer {
      * @returns {Object[]}
      */
     static visibleColumns(columns) {
-        return columns.filter(column => !column.hidden).map(({hidden, hideable, resized, stateKey, ...column}) => ({...column}))
+        return columns.filter(column => !column.hidden).map(({hidden, hideable, resized, stateKey, goCustomField, ...column}) => ({...column}))
     }
 
     /**
@@ -231,7 +256,67 @@ class Grid extends GridContainer {
 
         me.measureRowHeight();
 
-        me.stateId && await me.restoreColumnState()
+        // before the state: it may show or resize them
+        me.customColumnsLoaded = me.customFieldsEntity ? me.addCustomFieldColumns() : null;
+        await me.customColumnsLoaded;
+
+        !me.isDestroyed && me.stateId && await me.restoreColumnState()
+    }
+
+    /**
+     * Appends the custom field columns of customFieldsEntity
+     * @protected
+     */
+    async addCustomFieldColumns() {
+        let me = this,
+            columns;
+
+        try {
+            columns = await createCustomFieldColumns(me.customFieldsEntity)
+        } catch (e) {
+            console.error('Custom field columns', e);
+            return
+        }
+
+        if (me.isDestroyed) {
+            return
+        }
+
+        // names of user, group and contact fields
+        const loadNames = () => me.loadCustomFieldNames();
+
+        me.store.on({load: loadNames, loadMore: loadNames});
+
+        if (!columns.length) {
+            return
+        }
+
+        // shown fields would squeeze a flex column (the name) to nothing: scroll instead
+        [me.allColumns, me.defaultColumns].forEach(list => list.forEach(column => {
+            column.flex && !column.minWidth && (column.minWidth = Grid.FLEX_MIN_WIDTH)
+        }));
+
+        me.allColumns.push(...columns.map(column => ({hideable: true, ...column})));
+        me.defaultColumns.push(...columns.map(column => ({hideable: true, ...column})));
+
+        await me.applyColumns();
+        me.loadCustomFieldNames()
+    }
+
+    /**
+     * Loads the names that the visible user, group and contact columns show, then renders
+     * the rows again
+     * @protected
+     */
+    async loadCustomFieldNames() {
+        let me     = this,
+            fields = me.allColumns.filter(c => c.goCustomField && !c.hidden).map(c => c.goCustomField);
+
+        if (!fields.length || !me.store?.items?.length) {
+            return
+        }
+
+        (await loadCustomFieldNames(fields, me.store.items)) && !me.isDestroyed && me.body?.createViewData()
     }
 
     /**
@@ -315,7 +400,10 @@ class Grid extends GridContainer {
         me.touchedColumns.add(key);
 
         await me.applyColumns();
-        me.saveColumnState()
+        me.saveColumnState();
+
+        // a shown user / group / contact column
+        !hidden && column.goCustomField && me.loadCustomFieldNames()
     }
 
     /**
@@ -410,9 +498,13 @@ class Grid extends GridContainer {
      * @protected
      */
     async restoreColumnState() {
-        let me      = this,
-            {columns} = await getState(me.stateId, me.windowId),
-            changed = false;
+        let me = this;
+
+        // a switchState() while they load: their state counts too
+        await me.customColumnsLoaded;
+
+        let {columns} = await getState(me.stateId, me.windowId),
+            changed   = false;
 
         if (!columns || me.isDestroyed) {
             return
@@ -451,7 +543,9 @@ class Grid extends GridContainer {
             me.allColumns[0].hidden = false
         }
 
-        changed && !me.isDestroyed && await me.applyColumns()
+        changed && !me.isDestroyed && await me.applyColumns();
+
+        changed && !me.isDestroyed && me.loadCustomFieldNames()
     }
 
     /**

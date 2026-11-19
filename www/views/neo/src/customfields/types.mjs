@@ -8,7 +8,7 @@ import JmapComboBox  from '../form/field/JmapComboBox.mjs';
 import PrincipalCombo from '../form/field/PrincipalCombo.mjs';
 import TextList      from '../list/TextList.mjs';
 import client        from '../jmap/Client.mjs';
-import {escapeHtml, formatDate, formatUserDateTime, sanitizeHtml, userFormat} from '../Format.mjs';
+import {decodeEntities, escapeHtml, formatDate, formatUserDateTime, sanitizeHtml, userFormat} from '../Format.mjs';
 import {t}           from '../Translate.mjs';
 import BoolCheckBox     from '../form/field/BoolCheckBox.mjs';
 import DateTimeField    from './fields/DateTimeField.mjs';
@@ -19,6 +19,10 @@ import MultiSelectField from './fields/MultiSelectField.mjs';
  * GO custom field types (GOUI customfields/Types.ts) for neo:
  * - formField(field): item config of the form field, null for none
  * - detailHtml(field, value): Promise<String|null> HTML for the detail view, null when empty
+ * - cellHtml(field, value, names): HTML of a grid cell (GOUI createTableColumn()), default the
+ *   detailHtml of types that render it at once; `nameEntity` types (ids of users, groups,
+ *   contacts) get the loaded names (see gridColumns.mjs)
+ * - column: extra grid column config (sortable, cellAlign, width); noColumn: no grid column
  *
  * Form fields are named 'customFields.<databaseName>', so a form loads and saves them
  * as the entity's `customFields` object. Types without an editor here show their value
@@ -140,7 +144,9 @@ const TYPES = {
     },
     TextArea: {
         formField : f => ({...baseConfig(f), module: TextArea, height: 100}),
-        detailHtml: (f, v) => text(v)?.replace(/\n/g, '<br>') ?? null
+        detailHtml: (f, v) => text(v)?.replace(/\n/g, '<br>') ?? null,
+        // GOUI TextAreaCustomField column: one line
+        cellHtml  : (f, v) => text(v)?.replace(/\r?\n/g, ' ') ?? null
     },
     EncryptedText: {
         formField : f => ({...baseConfig(f), module: TextField}),
@@ -161,24 +167,30 @@ const TYPES = {
                 useSpinButtons: false
             }
         },
-        detailHtml: (f, v) => formatNumber(v, decimalsOf(f))
+        detailHtml: (f, v) => formatNumber(v, decimalsOf(f)),
+        column    : {cellAlign: 'right', width: 120}
     },
     FunctionField: {
         // calculated by the server: shown, never submitted
         formField : () => null,
         readOnly  : true,
-        detailHtml: (f, v) => Number(v) > 0 ? formatNumber(v, decimalsOf(f)) : null
+        detailHtml: (f, v) => Number(v) > 0 ? formatNumber(v, decimalsOf(f)) : null,
+        // GOUI numbercolumn: zero and negative results too
+        cellHtml  : (f, v) => formatNumber(v, decimalsOf(f)),
+        column    : {cellAlign: 'right', width: 120}
     },
     Date: {
         formField : f => ({...baseConfig(f), module: DateField}),
         detailHtml: (f, v) => {
             const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v || '');
             return m ? escapeHtml(formatDate(new Date(+m[1], m[2] - 1, +m[3]), userFormat.dateFormat)) : null
-        }
+        },
+        column    : {cellAlign: 'right', width: 120}
     },
     DateTime: {
         formField : f => ({...baseConfig(f), module: DateTimeField}),
-        detailHtml: (f, v) => v ? escapeHtml(formatUserDateTime(v)) : null
+        detailHtml: (f, v) => v ? escapeHtml(formatUserDateTime(v)) : null,
+        column    : {cellAlign: 'right', width: 164}
     },
     Checkbox: {
         formField : f => ({...baseConfig(f), module: BoolCheckBox, valueLabel: f.name, labelText: f.name}),
@@ -195,15 +207,19 @@ const TYPES = {
     },
     MultiSelect: {
         formField : f => ({...baseConfig(f), module: MultiSelectField, options: flattenOptions(f.dataType?.options)}),
-        detailHtml: (f, v) => Array.isArray(v) && v.length ? escapeHtml(v.map(id => optionText(f, id) ?? id).join(', ')) : null
+        detailHtml: (f, v) => Array.isArray(v) && v.length ? escapeHtml(v.map(id => optionText(f, id) ?? id).join(', ')) : null,
+        // ExtJS MultiSelect.getColumn(): a list of ids, the server cannot sort it
+        column    : {sortable: false}
     },
     User: {
         formField : f => ({...baseConfig(f), module: PrincipalCombo, principalEntity: 'User'}),
-        detailHtml: async (f, v) => text(await entityName('Principal', v))
+        detailHtml: async (f, v) => text(await entityName('Principal', v)),
+        nameEntity: 'Principal'
     },
     Group: {
         formField : f => ({...baseConfig(f), module: GroupCombo}),
-        detailHtml: async (f, v) => text(await entityName('Group', v))
+        detailHtml: async (f, v) => text(await entityName('Group', v)),
+        nameEntity: 'Group'
     },
     Contact: {
         formField: f => {
@@ -227,17 +243,28 @@ const TYPES = {
             }
         },
         readOnly  : true,
-        detailHtml: async (f, v) => text(await entityName('Contact', v))
+        detailHtml: async (f, v) => text(await entityName('Contact', v)),
+        nameEntity: 'Contact'
     },
     Html: {
         formField : f => ({...baseConfig(f), module: HtmlField, height: 200}),
-        detailHtml: (f, v) => v ? sanitizeHtml(String(v)) : null
+        detailHtml: (f, v) => v ? sanitizeHtml(String(v)) : null,
+        // GOUI HtmlCustomField column: the text without tags
+        cellHtml  : (f, v) => text(decodeEntities(String(v ?? '').replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim())
     },
     Notes: {
         // admin-written text, no value
         formField : f => f.options?.formNotes ? {ntype: 'component', cls: ['go-cf-notes'], flex: 'none', html: sanitizeHtml(f.options.formNotes)} : null,
         detailHtml: f => f.options?.detailNotes ? sanitizeHtml(f.options.detailNotes) : null,
-        noValue   : true
+        noValue   : true,
+        noColumn  : true
+    },
+    Attachments: {
+        // shown like FALLBACK; a JSON list, the server cannot sort it
+        formField : () => null,
+        readOnly  : true,
+        detailHtml: (f, v) => FALLBACK.detailHtml(f, v),
+        column    : {sortable: false}
     }
 };
 
@@ -256,10 +283,31 @@ const FALLBACK = {
 
 /**
  * @param {Object} field GO Field entity
- * @returns {Object} {formField, detailHtml, readOnly, noValue}
+ * @returns {Object} {formField, detailHtml, readOnly, noValue, cellHtml, nameEntity, column, noColumn}
  */
 export function getType(field) {
     return TYPES[field.type] || FALLBACK
+}
+
+/**
+ * HTML of a grid cell, '' when empty
+ * @param {Object} field
+ * @param {*} value
+ * @param {Map<String, String>} [names] "<entity>:<id>" → name, for `nameEntity` types
+ * @returns {String}
+ */
+export function cellHtml(field, value, names) {
+    const type = getType(field);
+
+    if (type.nameEntity) {
+        const empty = value === null || value === undefined || value === '';
+        return empty ? '' : text(names?.get(type.nameEntity + ':' + value)) ?? ''
+    }
+
+    const html = (type.cellHtml || type.detailHtml)(field, value);
+
+    // an async detailHtml has no cell renderer: show nothing rather than "[object Promise]"
+    return typeof html === 'string' ? html : ''
 }
 
 /**

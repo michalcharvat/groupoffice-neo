@@ -22,7 +22,7 @@ These show up in several modules; each has one board card.
 | "New linked item" from another entity's detail (`linkWindow` registry) | notes, tasks, contacts, all detail panels | notes goui/script/Index.ts:96-108; tasks extjs3/Module.js:16; addressbook extjs3/ContactDetail.js:344 | card "neo-ui: create new linked item from a detail panel" |
 | Saved filter types other than string/date/number (select, principal, combo, link entity, custom fields, input variables) | contacts (type, gender, address book, groups, has e-mail…), tasks (responsible, list, progress), notes (has links to) | addressbook extjs3/Module.js:98-320; tasks extjs3/Module.js:90-140; notes goui/script/Index.ts:63 | card "neo-ui: FilterDialog select/principal/link/custom field filters" |
 | Grid group headers (`groupBy`) | tasks grid per list, task lists by grouping | tasks goui/script/TaskGrid.ts:289; extjs3/TasklistsGrid.js:15 | card "neo-ui: grid and list group headers" |
-| Custom field columns in grids | contacts, tasks, notes | www/go/core/views/extjs3/grid/GridPanel.js:31, data/StoreTrait.js:98 | card "neo-ui: custom field grid columns" |
+| Custom field columns in grids | contacts, tasks, notes | www/go/core/views/extjs3/grid/GridPanel.js:31, data/StoreTrait.js:98 | done: `GO.grid.Grid` `customFieldsEntity` |
 | `name:value` search syntax in the toolbar search | multi_instance (adminEmail, isTrial…), any ExtJS tbsearch with `filters` | multi_instance extjs3/Module.js:8-58 | open (core decision, see card "neo-ui: FilterDialog …") |
 
 ## addressbook
@@ -40,7 +40,7 @@ full detail, dialogs, three settings cards, birthdays portlet, quick add, routes
 | Grid | Own column state for the organizations view (`company-grid`) | extjs3/ContactGrid.js:94 | one `contact-grid` state | fixed |
 | Saved filters | "Modified by", "Created by" | extjs3/Module.js:82-95 | missing | fixed |
 | Saved filters | Type, gender, address book, is user, in group, has e-mail/phone/org, link, custom fields | extjs3/Module.js:98-320 | missing (FilterDialog types) | card "neo-ui: FilterDialog …" |
-| Grid | Custom field columns | www/go/core/views/extjs3/grid/GridPanel.js:31 | missing | card "neo-ui: custom field grid columns" |
+| Grid | Custom field columns | www/go/core/views/extjs3/grid/GridPanel.js:31 | done (`customFieldsEntity: 'Contact'`) | – |
 | Contact dialog | Organizations autocomplete from existing organizations | extjs3/ContactDialog.js:274 | plain ChipsField, exact name only | fixed |
 | Contact dialog | Language combo | extjs3/ContactDialog.js:333 | missing | fixed |
 | Contact dialog | ICD combo (per country) | extjs3/ContactDialog.js:84, ICDCombo.js | missing | card "neo-ui: addressbook ICD combo and MultiContact custom field" |
