@@ -693,7 +693,8 @@ class Client {
             if (!r) {
                 c.reject(new Error('No response for ' + c.method))
             } else if (r.method === 'error') {
-                c.reject(new Error(r.args.message || r.args.type || 'JMAP error'))
+                // type: JMAP error type, e.g. 'unauthorized'
+                c.reject(Object.assign(new Error(r.args.message || r.args.type || 'JMAP error'), {type: r.args.type}))
             } else {
                 c.resolve(r.args)
             }

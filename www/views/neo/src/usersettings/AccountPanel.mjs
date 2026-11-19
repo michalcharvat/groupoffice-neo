@@ -7,6 +7,8 @@ import Button        from '../button/Button.mjs';
 import BoolCheckBox  from '../form/field/BoolCheckBox.mjs';
 import ImageField    from '../form/field/ImageField.mjs';
 import {fieldset}    from '../form/fieldset.mjs';
+import AppPasswordsPanel      from './AppPasswordsPanel.mjs';
+import AuthorizedClientsField from './AuthorizedClientsField.mjs';
 import client        from '../jmap/Client.mjs';
 import {t}           from '../Translate.mjs';
 import {generatePassword, loadCoreSettings} from '../users/password.mjs';
@@ -19,9 +21,8 @@ const USERNAME = /^[A-Za-z0-9_\-.@]*$/;
  * name, e-mail addresses, password with a generator, and for user managers login
  * enabled, forced password change, the disk quota and the space used. Users that log
  * in through another authenticator (IMAP, LDAP) have no password here; a user manager
- * converts them to a local user.
- *
- * Not yet: authorized clients ("Logout all").
+ * converts them to a local user. Security: app passwords (AppPasswordsPanel, saved
+ * right away) and the authorized clients with "Logout all" (saved with the user).
  */
 class AccountPanel extends Container {
     static config = {
@@ -177,7 +178,36 @@ class AccountPanel extends Container {
                 text   : t('Convert to local user'),
                 handler: () => me.convertToLocal()
             }] : []
-            ], {reference: 'externalSet', hidden: true})
+            ], {reference: 'externalSet', hidden: true}),
+
+            fieldset(t('App passwords'), [{
+                module   : AppPasswordsPanel,
+                reference: 'appPasswords',
+                flex     : 'none'
+            }], {reference: 'appPasswordsSet', hidden: true}),
+
+            fieldset(t('Authorized clients'), [{
+                ntype : 'container',
+                cls   : ['go-authorizedclients-header'],
+                flex  : 'none',
+                layout: {ntype: 'hbox', align: 'center'},
+                items : [
+                    {ntype: 'component', flex: 1, text: t('Client')},
+                    {ntype: 'component', flex: 'none', cls: ['go-authorizedclients-status'], text: t('Status')}
+                ]
+            }, {
+                module   : AuthorizedClientsField,
+                name     : 'clients',
+                reference: 'clients',
+                flex     : 'none'
+            }, {
+                module : Button,
+                flex   : 'none',
+                cls    : ['go-usersettings-logoutall'],
+                icon   : 'logout',
+                text   : t('Logout all'),
+                handler: () => me.getReference('clients').logoutAll()
+            }])
         ]
     }
 
@@ -310,6 +340,11 @@ class AccountPanel extends Container {
         me.getReference('externalSet').hidden = local;
         me.getReference('passwordConfirm').reset(null);
         me.hideGenerated();
+
+        const appPasswords = me.getReference('appPasswords');
+        appPasswords.onLoad(user);
+        // the panel decides who may see the app passwords
+        me.getReference('appPasswordsSet').hidden = appPasswords.hidden;
 
         const usage = me.getReference('diskUsage');
         // in MB like the quota (ExtJS AccountSettingsPanel)

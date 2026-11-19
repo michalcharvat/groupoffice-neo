@@ -106,7 +106,13 @@ class UserSettingsDialog extends FormWindow {
         // before the form loads: FormWindow.onConstructed() loads after a timeout
         me.form.on({
             beforesave: event => {
-                me.currentPassword && (event.data.currentPassword = me.currentPassword)
+                me.currentPassword && (event.data.currentPassword = me.currentPassword);
+
+                // a patch per changed client status, not the whole map (AuthorizedClientsField)
+                if ('clients' in event.data) {
+                    delete event.data.clients;
+                    Object.assign(event.data, me.getReference('accountPanel').getReference('clients').toPatch('clients'))
+                }
             },
             // the account panel sits inside the first card
             load: ({data}) => [me.getReference('accountPanel'), ...me.cards.getCardContainer().items].forEach(card => card?.onLoad?.(data))
@@ -211,6 +217,13 @@ class UserSettingsDialog extends FormWindow {
     async onSaveError(data) {
         let me    = this,
             error = data.validationErrors?.currentPassword;
+
+        // "Logout all" on the own account was saved: it ended this session as well, so reading
+        // the user back was refused. Reloading shows the login.
+        if (me.isOwnAccount && data.error?.type === 'unauthorized' && me.saving.clients && !Object.keys(me.saving.clients).length) {
+            Object.keys(Neo.apps || {}).forEach(windowId => Neo.Main.reloadWindow({windowId}));
+            return
+        }
 
         if (!error) {
             return super.onSaveError(data)

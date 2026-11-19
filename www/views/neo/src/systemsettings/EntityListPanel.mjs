@@ -106,12 +106,13 @@ class EntityListPanel extends Container {
             cls   : ['go-systemsettings-grid-tbar'],
             flex  : 'none',
             items : [...me.createToolbarItems(), '->', {
-                module : Button,
-                icon   : 'add',
-                ui     : me.addText ? 'primary' : undefined,
-                text   : me.addText || undefined,
-                tooltip: me.addText ? undefined : t('Add'),
-                handler: () => me.edit(null)
+                module   : Button,
+                reference: 'addButton',
+                icon     : 'add',
+                ui       : me.addText ? 'primary' : undefined,
+                text     : me.addText || undefined,
+                tooltip  : me.addText ? undefined : t('Add'),
+                handler  : () => me.edit(null)
             }]
         }, {
             module   : ActionTable,
@@ -212,6 +213,7 @@ class EntityListPanel extends Container {
     /**
      * @param {String|null} id null: new
      * @param {Object} [values] initial values of a new entity
+     * @returns {Promise<GO.view.FormWindow|undefined>} the dialog
      */
     async edit(id, values) {
         let me = this;
@@ -223,7 +225,9 @@ class EntityListPanel extends Container {
         const {default: Dialog} = await me.dialog(),
               dialog            = Neo.create(Dialog, {appName: me.appName, windowId: me.windowId, entityId: id, ...values ? {values} : {}});
 
-        dialog.on('save', () => me.load())
+        dialog.on('save', () => me.load());
+
+        return dialog
     }
 
     /**

@@ -168,8 +168,8 @@ sounds, "Visible to", groups, custom field tabs, module cards, current-password 
 | Account | "Space used" (`disk_usage`) | x/usersettings/AccountSettingsPanel.js:112 | missing | card "neo-ui: My account avatar, space used, password generator, local user, mail notification" |
 | Password | Password generator, `passwordMinLength` | x/usersettings/AccountSettingsPanel.js:133-150 | two plain fields | card "neo-ui: My account avatar, space used, password generator, local user, mail notification" |
 | Password | "Convert to local user" for external users | x/usersettings/AccountSettingsPanel.js:158-190 | text only | card "neo-ui: My account avatar, space used, password generator, local user, mail notification" |
-| Security | Authorized clients, "Logout all" | x/usersettings/AccountSettingsPanel.js:197-275 | missing | card "neo-ui: My account authorized clients and app passwords" |
-| Security | App passwords | x/usersettings/AppPasswordsFieldset.js, AppPasswordDialog.js | missing | card "neo-ui: My account authorized clients and app passwords" |
+| Security | Authorized clients, "Logout all" | x/usersettings/AccountSettingsPanel.js:197-275 | present | fixed (`src/usersettings/AuthorizedClientsField.mjs` in the Account card: status per client, "Logout all" empties `clients` on save; on the own account that ends the session too, so the windows reload to the login) |
+| Security | App passwords | x/usersettings/AppPasswordsFieldset.js, AppPasswordDialog.js | present | fixed (`src/usersettings/AppPasswordsPanel.mjs`, `AppPasswordDialog.mjs`; the secret is shown once in `src/view/SecretDialog.mjs`, which the API key token uses as well; only the own user creates one, admins see and delete others') |
 | Notifications | "Create desktop notification for new e-mails" | x/usersettings/NotificationPanel.js:23 | missing | card "neo-ui: My account avatar, space used, password generator, local user, mail notification" |
 
 ### System settings
@@ -184,7 +184,7 @@ Groups, Custom fields, Default permissions, Modules, module cards.
 | Cron | Task scheduler (grid, dialog with parameters) | x/cron/SystemSettingsCronGrid.js, CronDialog.js | `src/systemsettings/CronPanel.mjs`, `CronJobDialog.mjs` (legacy jobs), `CronScheduleDialog.mjs` (CronJobSchedule rows "new:<id>", edit only) | done (Users/Groups tabs not ported: no 26.x job enables them and their cron/cronUser controllers are gone) |
 | Modules | Trial license dialog | x/modules/SystemSettingsModuleGrid.js:69, x/license/LicenseDialog.js | present | fixed (`src/license/LicenseDialog.mjs`: "Trial license" in Modules while `has_license` is false, "Register" in the user menu for admins) |
 | Modules | Module sort order | x/modules/ModuleSortWindow.js | present | fixed (`src/systemsettings/ModuleSortDialog.mjs`: drag rows or up/down, saves `sort_order` right away) |
-| Authentication | "Force app passwords" | x/systemsettings/AuthenticationPanel.js:49 | missing | open (with the app passwords card) |
+| Authentication | "Force app passwords" | x/systemsettings/AuthenticationPanel.js:49 | present | fixed (checkbox in `src/systemsettings/AuthenticationPanel.mjs`) |
 
 ### Users
 
