@@ -4,6 +4,7 @@ import TextField      from '../../node_modules/neo.mjs/src/form/field/Text.mjs';
 import Button         from '../button/Button.mjs';
 import GroupCheckList from '../groups/GroupCheckList.mjs';
 import client         from '../jmap/Client.mjs';
+import ModuleRegistry from '../ModuleRegistry.mjs';
 import {t}            from '../Translate.mjs';
 import FormWindow     from '../view/FormWindow.mjs';
 
@@ -38,6 +39,9 @@ function generatePassword(length) {
  * New user (go.users.CreateUserWizard): account, password and groups on three cards, one
  * User/set. The groups start with the default groups of the user defaults. Fires `save`
  * with the new id; the users card then opens the account dialog like the wizard did.
+ *
+ * Modules extend it with the hook `onCreateUserDialog: dialog => {}` (ModuleRegistry), e.g.
+ * with addCard(); the references username, email, recoveryEmail and password are public.
  */
 class CreateUserDialog extends FormWindow {
     static config = {
@@ -79,6 +83,7 @@ class CreateUserDialog extends FormWindow {
         return [stack([{
             module       : TextField,
             name         : 'username',
+            reference    : 'username',
             labelText    : t('Username'),
             labelPosition: 'inline',
             required     : true,
@@ -93,6 +98,7 @@ class CreateUserDialog extends FormWindow {
         }, {
             module       : EmailField,
             name         : 'email',
+            reference    : 'email',
             labelText    : t('E-mail'),
             labelPosition: 'inline',
             required     : true,
@@ -169,6 +175,9 @@ class CreateUserDialog extends FormWindow {
         });
 
         me.loadCoreSettings();
+
+        // modules add to the dialog, e.g. serverclient a "Mailboxes" card
+        ModuleRegistry.callHook('onCreateUserDialog', me);
 
         return promise
     }
