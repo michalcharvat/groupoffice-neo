@@ -117,7 +117,7 @@ HTML/Markdown, image zoom, full detail, settings, deep link, quick add).
 | Saved filters | Modified by, Created by | goui/script/Index.ts:79,89 | missing | fixed |
 | Keyboard | Delete key deletes the selected notes | goui/script/NoteGrid.ts:75 | missing | fixed |
 | Notebook menu | Delete also needs `mayChangeNoteBooks` | goui/script/Main.ts:102 | only MANAGE checked | fixed |
-| HTML editor | Pasted images uploaded as blobs | goui/script/NoteDialog.ts:171 | not pasted | card "neo-ui: HtmlField image paste/upload" |
+| HTML editor | Pasted images uploaded as blobs | goui/script/NoteDialog.ts:171 | HtmlField `imageUpload`: paste, drop and the image button upload blobs (`data-blob-id` + download URL); `blobImages()` shows GOUI-saved `blob:` images; Note model `content` type Html (neo `String` stripped all tags in the detail) | fixed |
 | Saved filters | Has links to… | goui/script/Index.ts:63 | missing | card "neo-ui: FilterDialog …" |
 | Detail | Print | goui/script/NoteDetail.ts:69 | missing | fixed |
 

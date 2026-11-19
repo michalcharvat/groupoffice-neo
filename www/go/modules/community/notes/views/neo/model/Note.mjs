@@ -7,7 +7,7 @@ class Note extends Model {
         fields     : [
             {name: 'id',              type: 'String'},
             {name: 'name',            type: 'String'},
-            {name: 'content',         type: 'String'},
+            {name: 'content',         type: 'Html'},
             {name: 'type',            type: 'String'},
             {name: 'noteBookId',      type: 'String'},
             {name: 'createdAt',       type: 'String'},
