@@ -15,6 +15,7 @@ import LinkDetail       from '../../../../../../../views/neo/src/link/LinkDetail
 import DetailFieldsets  from '../../../../../../../views/neo/src/customfields/DetailFieldsets.mjs';
 import {showComposer} from '../../../../../../../views/neo/src/Mail.mjs';
 import {notify, notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
+import {print} from '../../../../../../../views/neo/src/print.mjs';
 import {contactAvatarHtml, downloadUrl, t, transformUrl, typeName} from '../util.mjs';
 
 const GENDERS = {M: 'Male', F: 'Female', N: 'Non-binary', P: "Won't say"};
@@ -88,7 +89,8 @@ class ContactDetail extends Container {
                 // ExtJS addActionDate(): saved right away
                 ntype    : 'container',
                 reference: 'actionDateCard',
-                cls      : ['go-card', 'go-pad', 'go-addressbook-action-date'],
+                // an input, left out of print
+                cls      : ['go-card', 'go-pad', 'go-addressbook-action-date', 'go-print-hide'],
                 flex     : 'none',
                 hidden   : true,
                 layout   : {ntype: 'vbox', align: 'stretch'},
@@ -372,6 +374,13 @@ class ContactDetail extends Container {
 
     onMore() {
         this.contact && this.fire('more', {contact: this.contact, target: this.getReference('moreButton').id})
+    }
+
+    /**
+     * Prints the shown contact with its cards (ExtJS ContactContextMenu "Print")
+     */
+    print() {
+        this.contact && print(this.getReference('scroller'), {title: this.contact.name})
     }
 }
 
