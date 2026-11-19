@@ -21,6 +21,8 @@ ModuleRegistry.register({
     mainView  : () => import('./view/CalendarMain.mjs'),
     // "Add link" menu of other items' details: a new linked event
     linkWindows: [{title: t('Event'), icon: 'event', open: ctx => import('./linkWindow.mjs').then(m => m.default(ctx))}],
+    // cards of other items' details: upcoming and past linked events
+    linkDetailCards: {entities: ['CalendarEvent'], cards: () => import('./linkDetailCards.mjs').then(m => m.default())},
     // notification area: invitations and reminders (src/alerts/Alerts.mjs)
     alerts    : args => import('./alerts.mjs').then(m => m.default(args)),
     // e-mail message view (www/modules/email/views/neo): invitations (GOUI GO.email.handleITIP)

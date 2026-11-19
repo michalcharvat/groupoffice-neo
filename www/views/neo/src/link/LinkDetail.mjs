@@ -11,6 +11,9 @@ import {loadLinks, onLinkListClick, renderLinks} from './links.mjs';
  *
  * A click opens the item in its neo module (ModuleRegistry `routes`); items of
  * modules without a neo UI are listed but not clickable.
+ *
+ * Links to the `excludeEntities` are left out: a module card shows them (LinkCards,
+ * ModuleRegistry `linkDetailCards`, like ExtJS linkDetailCards replacing the type's panel).
  */
 class LinkDetail extends Card {
     static config = {
@@ -19,7 +22,12 @@ class LinkDetail extends Card {
         title    : t('Links'),
         stateId  : 'links-detail',
         hidden   : true,
-        watch    : ['Link']
+        watch    : ['Link'],
+        /**
+         * Entities whose links are not listed, e.g. ['Task']
+         * @member {String[]} excludeEntities=[]
+         */
+        excludeEntities: []
     }
 
     /**
@@ -57,7 +65,9 @@ class LinkDetail extends Card {
     }
 
     async loadData(entity, entityId) {
-        return loadLinks(entity, entityId)
+        const links = await loadLinks(entity, entityId);
+
+        return links.filter(({link}) => !this.excludeEntities.includes(link.toEntity))
     }
 
     showData(links) {

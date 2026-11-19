@@ -23,11 +23,12 @@ const SEARCH_PROPERTIES = ['id', 'name', 'description', 'entity', 'entityId', 'f
  * Links of an entity with their targets, grouped by type, newest first
  * @param {String} entity e.g. "Note"
  * @param {String|Number} entityId
+ * @param {Object} [filter] more Link filters, e.g. {entities: [{name: 'CalendarEvent'}], eventsAfter: true}
  * @returns {Promise<Object[]>} [{link, to}], `to` = Search record (may be null)
  */
-export async function loadLinks(entity, entityId) {
+export async function loadLinks(entity, entityId, filter={}) {
     const {list} = await client.queryGet('Link', {
-        filter    : {entity, entityId},
+        filter    : {...filter, entity, entityId},
         sort      : [{property: 'toEntity', isAscending: true}, {property: 'modifiedAt', isAscending: false}],
         properties: ['id', 'fromEntity', 'fromId', 'toEntity', 'toId', 'toSearchId', 'description', 'createdAt']
     });
@@ -129,21 +130,22 @@ export function openLink(owner, {link}) {
  * @param {Object[]} items [{link, to}]
  * @param {Object} [options]
  * @param {Boolean} [options.unlink=true] show the unlink button
+ * @param {Boolean} [options.groups=true] a header per type (false: a card of one type)
  * @returns {String} HTML
  */
-export function renderLinks(items, {unlink=true}={}) {
+export function renderLinks(items, {unlink=true, groups=true}={}) {
     let html  = '',
         group = null;
 
     items.forEach(({link, to}, index) => {
-        const key = linkGroup(link.toEntity, to?.filter);
+        const key = groups ? linkGroup(link.toEntity, to?.filter) : '';
 
         if (key !== group) {
             const type = linkType(link.toEntity, to?.filter);
 
-            group && (html += '</div>');
+            group !== null && (html += '</div>');
             group = key;
-            html += `<div class="go-link-group"><h4 class="go-link-group-title"><i class="go-icon">${escapeHtml(type.icon)}</i>${escapeHtml(type.title)}</h4>`
+            html += !groups ? '<div class="go-link-group">' : `<div class="go-link-group"><h4 class="go-link-group-title"><i class="go-icon">${escapeHtml(type.icon)}</i>${escapeHtml(type.title)}</h4>`
         }
 
         const route = resolveRoute(link.toEntity, link.toId),
@@ -157,7 +159,7 @@ export function renderLinks(items, {unlink=true}={}) {
         </div>`
     });
 
-    group && (html += '</div>');
+    group !== null && (html += '</div>');
 
     return html
 }

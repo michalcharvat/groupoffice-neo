@@ -75,7 +75,7 @@ calendar/category/resource/subscribe/webcal dialogs).
 | Event dialog | New linked event takes the item's name as title | goui/script/EventWindow.ts:402 | done (calendar `linkWindow.mjs`) | fixed |
 | Filter panel | "Calendars" filter | goui/script/Index.ts:302-329 | missing | card "neo-ui: FilterDialog …" |
 | Links | New event from another item (contact becomes participant) | goui/script/Index.ts:331-357 | done | fixed |
-| Links | "Upcoming / Past appointments" cards in linked details | goui/script/Index.ts:358-384 | missing | card "neo-ui: link detail cards (tasks, appointments)" |
+| Links | "Upcoming / Past appointments" cards in linked details | goui/script/Index.ts:358-384 | done: `GO.link.LinkListCard` via ModuleRegistry `linkDetailCards` | fixed |
 | Main menu | Badge with open invitations count | goui/script/Index.ts:403-413 | toolbar inbox only | fixed |
 | Views | Rich hover tooltip (`showTooltips`) | goui/script/CalendarView.ts:318 | plain `title` | card "neo-ui: calendar event detail, participants and paste" |
 | Views | Swipe to previous/next period | goui/script/Main.ts:327,378 | missing | card "neo-ui: calendar swipe and availability drag" |
@@ -100,7 +100,7 @@ continue task, comments, files, links, history; settings, portlet, quick add).
 | West | Lists grouped by TaskListGrouping | extjs3/TasklistsGrid.js:15 | flat list | fixed |
 | Saved filters | Created by, modified by, responsible, list, progress | extjs3/Module.js:90-140 | missing | card "neo-ui: FilterDialog …" |
 | Detail | Print | goui/script/TaskDetail.ts:213 | missing | fixed |
-| Links | "Incomplete / Completed tasks" cards with row menu in other details | extjs3/TaskLinkDetail.js | generic LinkDetail | card "neo-ui: link detail cards (tasks, appointments)" |
+| Links | "Incomplete / Completed tasks" cards with row menu in other details | extjs3/TaskLinkDetail.js | done: `GO.tasks.TaskLinkCard` via ModuleRegistry `linkDetailCards` | fixed |
 | Links | New linked task from another entity | extjs3/Module.js:16 | done | fixed |
 | Projects | Project column, combo, detail link (business/projects3) | goui/script/TaskGrid.ts:171, TaskDialog.ts:130 | missing; business modules not in this checkout | open (with the projects3 neo port) |
 

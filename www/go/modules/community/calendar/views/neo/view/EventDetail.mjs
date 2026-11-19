@@ -8,7 +8,7 @@ import RecurrenceField from '../../../../../../../views/neo/src/form/field/Recur
 import client        from '../../../../../../../views/neo/src/jmap/Client.mjs';
 import AddLinkButton from '../../../../../../../views/neo/src/link/AddLinkButton.mjs';
 import LinkBrowseButton from '../../../../../../../views/neo/src/link/LinkBrowseButton.mjs';
-import LinkDetail    from '../../../../../../../views/neo/src/link/LinkDetail.mjs';
+import LinkCards     from '../../../../../../../views/neo/src/link/LinkCards.mjs';
 import {print}       from '../../../../../../../views/neo/src/print.mjs';
 import {translator}  from '../../../../../../../views/neo/src/Translate.mjs';
 import CalendarItem, {participantStatusIcon} from '../CalendarItem.mjs';
@@ -79,7 +79,7 @@ class EventDetail extends Container {
                 reference: 'customFields',
                 flex     : 'none'
             }, {
-                module   : LinkDetail,
+                module   : LinkCards,
                 reference: 'links',
                 flex     : 'none'
             }, {
