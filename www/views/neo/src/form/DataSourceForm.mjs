@@ -19,7 +19,8 @@ import {t}           from '../Translate.mjs';
  * - load       {data}         values set (also after create())
  * - loaderror  {error}
  * - beforesave {data, isNew, cancel}  data is mutable, set cancel = true to stop
- * - save       {data, isNew}  data: the full entity after saving
+ * - save       {data, isNew, created}  data: the full entity after saving; created: the
+ *               properties the server returned for a new entity (only there, e.g. a new API key's token)
  * - saveerror  {error, validationErrors}  validationErrors are shown on the fields
  * - invalid    {}           client-side validation failed
  */
@@ -269,7 +270,8 @@ class DataSourceForm extends FormContainer {
         }
 
         try {
-            let id = me.currentId;
+            let id      = me.currentId,
+                created = null;
 
             // nothing changed: nothing to send
             if (isNew || Object.keys(event.data).length) {
@@ -282,7 +284,10 @@ class DataSourceForm extends FormContainer {
                     throw Object.assign(new Error(DataSourceForm.describeError(error)), {setError: error})
                 }
 
-                isNew && (id = response.created.new.id)
+                if (isNew) {
+                    created = response.created.new;
+                    id      = created.id
+                }
             }
 
             const [entity] = await client.get(me.entity, [id], me.properties || undefined);
@@ -293,7 +298,7 @@ class DataSourceForm extends FormContainer {
 
             me.currentId = id;
             await me.applyData(entity || {...me.entityData, ...event.data, id});
-            me.fire('save', {data: me.entityData, isNew});
+            me.fire('save', {data: me.entityData, isNew, created});
 
             return me.entityData
         } catch (error) {

@@ -2,12 +2,13 @@ import TextField    from '../../../../../../../views/neo/node_modules/neo.mjs/sr
 import Toolbar      from '../../../../../../../views/neo/node_modules/neo.mjs/src/toolbar/Base.mjs';
 import Button       from '../../../../../../../views/neo/src/button/Button.mjs';
 import Dialog, {headerTools} from '../../../../../../../views/neo/src/view/Dialog.mjs';
+import {notify, notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
 import {translator} from '../../../../../../../views/neo/src/Translate.mjs';
 
 const t = translator('community', 'apikeys');
 
 /**
- * Shows an API key's access token, selected for copying (GOUI KeyGrid "View access token")
+ * Shows a new API key's access token once, selected, with a copy button (GOUI KeyDialog.showToken())
  */
 class TokenDialog extends Dialog {
     static config = {
@@ -33,6 +34,10 @@ class TokenDialog extends Dialog {
         let me = this;
 
         me.items = [{
+            ntype: 'component',
+            cls  : ['go-confirm-message'],
+            text : t("Copy the access token now. It's not possible to view it again.")
+        }, {
             module       : TextField,
             reference    : 'token',
             cls          : ['go-token-field'],
@@ -44,13 +49,35 @@ class TokenDialog extends Dialog {
         }, {
             module: Toolbar,
             cls   : ['go-dialog-buttons'],
-            items : ['->', {
+            items : [{
+                module : Button,
+                icon   : 'content_copy',
+                text   : t('Copy'),
+                handler: () => me.copy()
+            }, '->', {
                 module : Button,
                 ui     : 'primary',
                 text   : t('Close'),
                 handler: () => me.close()
             }]
         }]
+    }
+
+    /**
+     * Selects the token and copies it to the clipboard
+     */
+    async copy() {
+        let me    = this,
+            field = me.getReference('token'),
+            opts  = {appName: me.appName, windowId: me.windowId};
+
+        try {
+            await Neo.main.DomAccess.selectNode({...opts, id: field.getInputElId()});
+            await Neo.main.DomAccess.execCommand({...opts, command: 'copy'});
+            notify(me, t('Copied!'))
+        } catch (e) {
+            notifyError(me, e)
+        }
     }
 
     onConstructed() {

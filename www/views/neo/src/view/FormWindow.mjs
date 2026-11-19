@@ -39,7 +39,7 @@ import {t}            from '../Translate.mjs';
  *
  * Events:
  * - formReady {currentId}   loaded, or prepared for a new entity
- * - save  {data, isNew}     saved (the window closes when closeOnSave)
+ * - save  {data, isNew, created}  saved (the window closes when closeOnSave)
  * - saveerror {error, validationErrors}
  */
 class FormWindow extends Dialog {
