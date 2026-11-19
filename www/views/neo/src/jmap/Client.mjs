@@ -349,10 +349,13 @@ class Client {
      * Calls a legacy controller action (GO.request in the ExtJS client)
      * @param {String} route e.g. "files/folder/list"
      * @param {Object} params form parameters
+     * @param {Object} [options]
+     * @param {String} [options.method='POST'] 'GET' for actions that save on POST and load on GET
+     *     (the AbstractModelController update/create forms, e.g. core/cron/update)
      * @returns {Promise<Object>} the JSON response; success: false becomes an exception
      */
-    async legacy(route, params={}) {
-        const response = await this.#legacyFetch(route, params);
+    async legacy(route, params={}, {method='POST'}={}) {
+        const response = await this.#legacyFetch(route, params, method);
 
         let data;
 
@@ -396,14 +399,15 @@ class Client {
         return text
     }
 
-    async #legacyFetch(route, params) {
-        const response = await fetch(this.legacyUrl(route), {
-            method     : 'POST',
+    async #legacyFetch(route, params, method='POST') {
+        const get      = method === 'GET',
+              response = await fetch(get ? this.legacyUrl(route, params) : this.legacyUrl(route), {
+            method,
             credentials: 'same-origin',
             // the session needs the CSRF token like JMAP (else Access denied); as an AJAX
             // request GO answers errors with JSON instead of its HTML exception page
-            headers    : {...this.#headers(), 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest'},
-            body       : new URLSearchParams(params)
+            headers    : {...this.#headers(), ...get ? {} : {'Content-Type': 'application/x-www-form-urlencoded'}, 'X-Requested-With': 'XMLHttpRequest'},
+            ...get ? {} : {body: new URLSearchParams(params)}
         });
 
         if (response.status === 401) {

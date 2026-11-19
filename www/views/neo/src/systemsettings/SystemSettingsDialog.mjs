@@ -23,7 +23,9 @@ const CORE_CARDS = () => [
     ['customfields',   t('Custom fields'),   'fa fa-database',     () => import('../customfields/admin/CustomFieldsPanel.mjs'), () => client.isAdmin || client.mayChangeCustomFields],
     ['defaultpermissions', t('Default permissions'), 'fa fa-share-nodes', () => import('../defaultpermissions/DefaultPermissionsPanel.mjs'), () => client.isAdmin],
     ['modules',        t('Modules'),         'fa fa-puzzle-piece', () => import('./ModulesPanel.mjs'),        () => client.isAdmin],
-    ['tools',          t('Tools'),           'fa fa-screwdriver-wrench', () => import('./ToolsPanel.mjs'),    () => client.isAdmin]
+    ['tools',          t('Tools'),           'fa fa-screwdriver-wrench', () => import('./ToolsPanel.mjs'),    () => client.isAdmin],
+    ['oauth2',         t('Oauth 2.0'),       'fa fa-key',          () => import('./OauthClientsPanel.mjs'),   () => client.isAdmin],
+    ['cron',           t('Manage system tasks'), 'fa fa-clock',    () => import('./CronPanel.mjs'),           () => client.isAdmin]
 ];
 
 /**

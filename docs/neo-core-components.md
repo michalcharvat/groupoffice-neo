@@ -132,7 +132,16 @@ Bookmarks has no grid and no `Bookmark/export`, so neither applies there.
 - A `change` listener on a checkbox that hides or shows a sibling also runs while the form
   loads and can drop the checkbox's tick. Listen to `userChange` and sync once in the load
   hook (calendar `PreferencesPanel.mjs`).
-- `EntityListPanel` takes a `jmapFilter` for its query (davclient: own accounts only).
+- `EntityListPanel` takes a `jmapFilter` for its query (davclient: own accounts only),
+  `mayEdit(record)` / `mayDelete(record)` to hide a row's buttons, `createToolbarItems()` and `createHeaderItems()` for
+  items in and above its toolbar; a subclass may override `load()` / `edit()` / `remove()` for a legacy
+  store (`CronPanel.mjs`).
+- Legacy `update` / `create` actions of an `AbstractModelController` save on every POST: load
+  their form with `client.legacy(route, params, {method: 'GET'})`, a POST with only the id
+  would save the record (core/cron/update would empty the job's `params`).
+- Two classes in one file: don't nest a className under the other's
+  (`GO.x.Dialog.Field` makes `GO.x.Dialog` a namespace object, and `Neo.setupClass()` of the
+  dialog then returns `{}`: "Class created with object configuration missing className").
 - `client.user.confirmOnMove` is loaded (`USER_PROPERTIES`); moves of contacts and files ask
   only when it is set.
 - Rich hover info: a `Neo.tooltip.Base` with `componentId` and a string `delegate` such as

@@ -1,0 +1,16 @@
+// GO.systemsettings.CronPanel: "the main cron job doesn't appear to be running" above the jobs
+.neo-theme-go .go-entity-list-panel > .go-systemsettings-text.go-cron-feedback {
+    color      : var(--fg-error);
+    white-space: pre-line;
+}
+
+
+// names and job classes are long: wrap them instead of pushing the row buttons out of view
+.neo-theme-go .go-entity-list-panel .go-actiontable td.go-cron-wrap {
+    overflow-wrap: anywhere;
+    white-space  : normal;
+}
+
+.neo-theme-go .go-entity-list-panel .go-actiontable td.go-cron-job {
+    min-width: 16rem;
+}
