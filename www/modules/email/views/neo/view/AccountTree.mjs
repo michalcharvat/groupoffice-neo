@@ -4,6 +4,7 @@ import ModuleRegistry from '../../../../../views/neo/src/ModuleRegistry.mjs';
 import client        from '../../../../../views/neo/src/jmap/Client.mjs';
 import * as api      from '../api.mjs';
 import {t}           from '../util.mjs';
+import {isImapAuthError, promptImapPassword} from './account/accountActions.mjs';
 
 /**
  * Material icon per special folder (ExtJS AccountController::_getMailboxTreeNodes() iconCls)
@@ -106,8 +107,19 @@ class AccountTree extends Tree {
             return [...before, ...accountNodes, ...after]
         }
 
-        if (node.entity === 'account' || node.entity === 'folder') {
-            const children = await api.tree(node.entity === 'account' ? api.serverNodeId(node.accountId) : node.data.id);
+        if (node.entity === 'account') {
+            try {
+                return (await api.tree(api.serverNodeId(node.accountId))).map(child => me.toFolderNode(child))
+            } catch (e) {
+                // one broken account must not break the tree; a wrong password is asked for (card 4)
+                console.error('email/account/tree', e);
+                me.onAccountError(node, e);
+                return []
+            }
+        }
+
+        if (node.entity === 'folder') {
+            const children = await api.tree(node.data.id);
             return children.map(child => me.toFolderNode(child))
         }
 
@@ -116,6 +128,28 @@ class AccountTree extends Tree {
         }
 
         return []
+    }
+
+    /**
+     * The folders of an account failed to load. A failed IMAP login asks for the password once
+     * per account (ExtJS AccountsTree imapLoginFailedDialog) and reloads the tree when saved.
+     * @param {Object} node account node
+     * @param {Error} error
+     * @protected
+     */
+    async onAccountError(node, error) {
+        let me = this;
+
+        if (!isImapAuthError(error) || me.passwordAsked?.has(node.accountId)) {
+            return
+        }
+
+        (me.passwordAsked ??= new Set()).add(node.accountId);
+
+        if (await promptImapPassword(me, node.accountId, node.data?.text || node.text) && !me.isDestroyed) {
+            me.passwordAsked.delete(node.accountId);
+            me.reload().catch(e => console.error('AccountTree', e))
+        }
     }
 
     /**
