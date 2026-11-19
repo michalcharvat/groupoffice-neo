@@ -21,7 +21,7 @@ Status: **neo** = neo.mjs 13.2 ships it, usable as is (maybe GO styling);
 | Toolbar, OverlayToolbarButton | toolbar/Base | neo (overlay: missing) |
 | Paginator | toolbar/Paging | neo (Notes uses infinite scroll) |
 | List, ListPicker | list/Base | GO.neo (`TextList`, `CheckList`) |
-| Table, TableColumns, RowSelect | grid/Container (buffered) | GO.neo (`GO.grid.Grid`, `selectRow`; row height in px from the measured density: dp(40) one-line = 35px Paper / 29px Compact, `rowLines: 2` (avatar or two lines: users, address book, duplicates, RecipientPicker) dp(56) = 48px / 40px; follows `Preferences.applyTheme()` live) |
+| Table, TableColumns, RowSelect | grid/Container (buffered) | GO.neo (`GO.grid.Grid`, `selectRow`; row height in px from the measured density: dp(40) one-line = 35px Paper / 29px Compact, `rowLines: 2` (avatar or two lines: users, address book, duplicates, RecipientPicker) dp(56) = 48px / 40px; follows `Preferences.applyTheme()` live); keys: `enterKey` / `deleteKey` (Delete, Ctrl/Cmd+Backspace) events with `{records}` outside inputs; `switchState(stateId)` swaps the column state, e.g. addressbook organizations view |
 | SelectAllCheckboxField, MultiSelectToolbar | – | GO.neo (`GO.grid.Grid` `multiSelect`, `RowSelectionModel` with `selectAll()`, `MultiSelectToolbar`; Notes deletes several notes) |
 | Tree, TreeStore, TreeColumn | tree/List, tree/Accordion (basic) | GO.neo (`GO.tree.Tree`: lazy `nodeProvider`, checkboxes; no drag and drop, no extra columns) |
 | DescriptionList | – | GO.neo (`GO.component.DescriptionList`) |
@@ -44,11 +44,11 @@ Status: **neo** = neo.mjs 13.2 ships it, usable as is (maybe GO styling);
 | Checkbox, Radio, Color, Range, Time, Date | form/field/* | neo (`GO.component.CheckBox`) |
 | ComboBox, Select | form/field/ComboBox | GO.neo (`JmapComboBox` remote, `LocalCombo`, `SelectField`) |
 | Fieldset, Form | form/Fieldset, form/Container | neo |
-| DataSourceForm (load/save an entity) | – | GO.neo (`GO.form.DataSourceForm`) |
+| DataSourceForm (load/save an entity) | – | GO.neo (`GO.form.DataSourceForm`); `save` event `{data, isNew, created}`, `created` = what Foo/set returned for a new entity (API key token) |
 | DateField, DateTimeField, DateRangeField, DurationField | form/field/Date (native input + picker) | GO.neo (`GO.form.field.*`; DateRangeField: custom range/from/until in a dialog instead of picker submenus) |
 | HtmlField (rich text) | – | GO.neo (`HtmlField`, main-thread addon; `HtmlFieldMentionPlugin`: "@name" suggestions at the caret, owned by the addon, provider in the worker) |
 | MarkdownField | – | GO.neo (`MarkdownField`: textarea + main-thread addon `MarkdownEditor`, toolbar, preview, image paste / drop / upload; `src/Markdown.mjs` renders with `marked` + `Format.sanitizeHtml()`; no EasyMDE/CodeMirror) |
-| ChipsField, AutocompleteChips, AutocompleteField | form/field/Chip (basic) | ChipsField: GO.neo (`GO.form.field.ChipsField`, async textInputToValue/chipRenderer); AutocompleteChips: GO.neo (`GO.form.field.AutocompleteChips`, entity ids, ▾ menu; tasks categories); AutocompleteField: missing |
+| ChipsField, AutocompleteChips, AutocompleteField | form/field/Chip (basic) | ChipsField: GO.neo (`GO.form.field.ChipsField`, async textInputToValue/chipRenderer); AutocompleteChips: GO.neo (`GO.form.field.AutocompleteChips`, entity ids, ▾ menu; tasks categories); AutocompleteField: missing; AutocompleteChips `properties` = fetched properties |
 | ArrayField, ContainerField, MapField, ListField | – | ArrayField, ContainerField: GO.neo (`src/form/nestedFields.mjs`); MapField, ListField: missing |
 | CheckboxGroup | – | missing (small) |
 | DatePicker / MonthPicker / WeekPicker | component/DateSelector | neo (month/week: missing) |
@@ -61,7 +61,7 @@ Status: **neo** = neo.mjs 13.2 ships it, usable as is (maybe GO styling);
 | Upload (`client.upload()`, ExtJS `go.Uploader`) | GO.neo (`jmap/Uploader.mjs`: XHR with progress, queue of `maxConcurrentUpload`, `maxSizeUpload` check, abort; `component/UploadPanel.mjs` shows the uploads of a window bottom right; used by `UploadButton` `autoUpload`, `BlobField`, `AttachmentsField`, `ImageField`, `MarkdownField`, `FilesPanel`, imports; demo `#dev/core/Upload`) |
 | auth/Login | GO.neo (`apps/go/view/LoginView.mjs`: forgot credentials, 2FA via `loginPanels`) |
 | MainThreeColumnPanel, TableTitle | GO.neo |
-| DetailPanel | GO.neo (`detail/Card` + panels) |
+| DetailPanel | GO.neo (`detail/Card` + panels); `Card` `capability` hides a card without module access (history, comments, files) |
 | Comments, Files (legacy files), History | GO.neo (`CommentsPanel`, `FilesPanel`, `HistoryPanel` + `HistoryDetailDialog`). `FilesPanel` takes files dropped from the desktop; with the files module's neo UI a click opens the file with the user's file handler (ModuleRegistry hook `openFile`) and "Browse files" opens the entity's folder in `#files/folder/<id>` |
 | FilterPanel (saved EntityFilters) | GO.neo (`FilterPanel`, `FilterDialog`) |
 | Global search | GO.neo (`GlobalSearch`) |
@@ -101,3 +101,15 @@ Bookmarks has no grid and no `Bookmark/export`, so neither applies there.
 5. **Drag and drop** — rows and tree nodes onto targets and desktop files: done (`enableDragDrop()`, used by the files module and `FilesPanel`); sortable lists still missing.
 6. Small fields: AutocompleteField, MapField, ListField, CheckboxGroup, ColorMenu, Month/WeekPicker.
 7. Chart, EntityTypeTable. ~~Alerts/notifications, reminders, session activity watcher, start page~~ — done: `src/alerts/`, module `alerts` renderers (calendar invitations, tasks), `modules/summary/views/neo` (files and e-mail portlets wait for those modules).
+
+## Gotchas from the parity audit (2026-11-19)
+
+- A local store without a model whose `id` values are strings ('create', 'update', …) gets
+  generated ids (-1, -2, …) and a CheckList on it crashes with `isRecord` of undefined. Give
+  such stores a model with `{name: 'id', type: 'String'}` (see `HistoryMain.mjs`).
+- A `change` listener on a checkbox that hides or shows a sibling also runs while the form
+  loads and can drop the checkbox's tick. Listen to `userChange` and sync once in the load
+  hook (calendar `PreferencesPanel.mjs`).
+- `EntityListPanel` takes a `jmapFilter` for its query (davclient: own accounts only).
+- `client.user.confirmOnMove` is loaded (`USER_PROPERTIES`); moves of contacts and files ask
+  only when it is set.
