@@ -112,7 +112,7 @@ HTML/Markdown, image zoom, full detail, settings, deep link, quick add).
 
 | Area | 26.x feature | 26.x ref | neo | Status |
 |---|---|---|---|---|
-| Encryption | Encrypt toggle with password in the dialog, decrypt prompt in detail and dialog | goui/script/NoteDialog.ts:54,87-144, NoteDetail.ts:104, Encrypt.ts | "open in the classic UI" text (hardcoded English) | card "neo-ui: notes encryption"; text through t() fixed |
+| Encryption | Encrypt toggle with password in the dialog, decrypt prompt in detail and dialog | goui/script/NoteDialog.ts:54,87-144, NoteDetail.ts:104, Encrypt.ts | `notes/views/neo/view/Encrypt.mjs` (same format); dialog decrypts on load (last password, else asks; cancel closes), encrypts on save, lock off saves plain text; detail decrypts on click (last password silently); old server-encrypted notes (`password`, {GOCRYPT}) read through Note/decrypt, not editable | fixed |
 | More menu | Import CSV/XLSX/JSON | goui/script/Main.ts:244 | only Export | fixed |
 | Saved filters | Modified by, Created by | goui/script/Index.ts:79,89 | missing | fixed |
 | Keyboard | Delete key deletes the selected notes | goui/script/NoteGrid.ts:75 | missing | fixed |

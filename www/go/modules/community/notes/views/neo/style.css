@@ -9,3 +9,17 @@
     flex-wrap: wrap;
     gap      : .8rem;
 }
+
+/* NoteDetail: the lock of an encrypted note, a link that asks for the password */
+.go-notes-decrypt {
+    background: none;
+    border    : 0;
+    color     : var(--c-primary);
+    cursor    : pointer;
+    font      : inherit;
+    padding   : 0;
+}
+
+.go-notes-decrypt:hover {
+    text-decoration: underline;
+}

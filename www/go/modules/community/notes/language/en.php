@@ -7,5 +7,4 @@ return array (
 		'Switch between HTML and Markdown editor' => 'Switch between HTML and Markdown editor',
 		'Switching the editor will clear the content. Are you sure?' => 'Switching the editor will clear the content. Are you sure?',
 		'Default editor for new notes' => 'Default editor for new notes',
-		'This note is encrypted. Open it in the classic UI to decrypt.' => 'This note is encrypted. Open it in the classic UI to decrypt.',
 );
