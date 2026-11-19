@@ -24,6 +24,7 @@ const defaultAcls = new Map();
  *
  *     {module: SharePanel, flex: 1}
  *     sharePanel.setEntity('NoteBook', id)   // id null: new entity, default ACL
+ *     sharePanel.setAclId(aclId, {2: 50})     // an ACL without a JMAP entity (legacy folders)
  */
 class SharePanel extends Field {
     static config = {
@@ -45,6 +46,11 @@ class SharePanel extends Field {
          * @member {Object|null} value=null
          */
         value: null,
+        /**
+         * Levels can't be changed (no manage permission)
+         * @member {Boolean} readOnly_=false
+         */
+        readOnly_: false,
         _vdom:
         {cn: [
             {cls: ['go-sharepanel-tbar'], cn: [
@@ -58,6 +64,8 @@ class SharePanel extends Field {
 
     /** Entity whose ACL is shown: {entity, id} */
     entity = null
+    /** ACL id shown by setAclId() (instead of an entity) */
+    aclId = null
     /** Loaded Group records */
     groups = []
     /** principal id → {name, avatarId} */
@@ -127,6 +135,7 @@ class SharePanel extends Field {
         let me = this;
 
         me.entity = {entity, id};
+        me.aclId  = null;
 
         if (!id) {
             const acl = await me.getDefaultAcl(entity);
@@ -139,6 +148,26 @@ class SharePanel extends Field {
         }
 
         return me.load()
+    }
+
+    /**
+     * Shows an ACL by id, for ACLs without a JMAP entity (legacy files folders). The caller
+     * loads its value ({groupId: level}) and saves the changes itself.
+     * @param {Number|String} aclId
+     * @param {Object|null} value {groupId: level}
+     * @returns {Promise<void>}
+     */
+    setAclId(aclId, value) {
+        let me = this;
+
+        me.entity = null;
+        me.aclId  = aclId;
+        me.reset(value ? {...value} : null);
+        return me.load()
+    }
+
+    afterSetReadOnly() {
+        this.loadGeneration && this.renderList()
     }
 
     /**
@@ -182,6 +211,7 @@ class SharePanel extends Field {
 
         me.searchText && (filter.text = me.searchText);
         me.entity     && (filter.inAcl = me.entity.id ? {entity: me.entity.entity, id: me.entity.id} : {entity: me.entity.entity, default: true});
+        me.aclId      && (filter.inAcl = me.aclId);
 
         return filter
     }
@@ -321,6 +351,7 @@ class SharePanel extends Field {
                         cls            : ['go-sharepanel-level'],
                         'aria-label'   : fmt('{0}: {1}', [t('Level'), name]),
                         'data-group-id': String(group.id),
+                        disabled       : me.readOnly ? true : null,
                         value          : current,
                         cn             : levels.map(o => ({
                             tag     : 'option',
@@ -413,7 +444,7 @@ class SharePanel extends Field {
             level   = parseInt(data.value, 10) || null,
             oldValue = me.value;
 
-        if (!groupId) {
+        if (!groupId || me.readOnly) {
             return
         }
 
