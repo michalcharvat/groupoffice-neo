@@ -2,7 +2,8 @@ import Container from '../../../../../../../views/neo/node_modules/neo.mjs/src/c
 import Toolbar   from '../../../../../../../views/neo/node_modules/neo.mjs/src/toolbar/Base.mjs';
 import {LEVEL_DELETE, LEVEL_WRITE} from '../../../../../../../views/neo/src/Acl.mjs';
 import Button      from '../../../../../../../views/neo/src/button/Button.mjs';
-import {escapeHtml} from '../../../../../../../views/neo/src/Format.mjs';
+import {escapeHtml, sanitizeHtml} from '../../../../../../../views/neo/src/Format.mjs';
+import {notify} from '../../../../../../../views/neo/src/Notify.mjs';
 import {contentToHtml} from '../../../../../../../views/neo/src/Markdown.mjs';
 import {enableImageZoom} from '../../../../../../../views/neo/src/view/ImageWindow.mjs';
 import CommentsPanel from '../../../../../../../views/neo/src/detail/CommentsPanel.mjs';
@@ -12,7 +13,9 @@ import AddLinkButton    from '../../../../../../../views/neo/src/link/AddLinkBut
 import LinkBrowseButton from '../../../../../../../views/neo/src/link/LinkBrowseButton.mjs';
 import LinkDetail       from '../../../../../../../views/neo/src/link/LinkDetail.mjs';
 import DetailFieldsets  from '../../../../../../../views/neo/src/customfields/DetailFieldsets.mjs';
+import PasswordPrompt   from '../../../../../../../views/neo/src/view/PasswordPrompt.mjs';
 import {translator} from '../../../../../../../views/neo/src/Translate.mjs';
+import {decryptNote, getLastPassword, isLegacyEncrypted, isLocked} from './Encrypt.mjs';
 
 const t = translator('community', 'notes');
 
@@ -24,6 +27,10 @@ const t = translator('community', 'notes');
  * rendered with innerHTML, which does not run <script> elements. Markdown content is
  * not sanitised by the server: contentToHtml() renders and sanitises it. Clicking an
  * image opens it large (GOUI Image.enableZoom()).
+ *
+ * Encrypted content (Encrypt.mjs) shows a lock until it is decrypted: with the last
+ * password that worked, else with the password the user enters after clicking it.
+ * Decrypted HTML was never sanitised by the server, so it goes through sanitizeHtml().
  */
 class NoteDetail extends Container {
     static config = {
@@ -106,6 +113,8 @@ class NoteDetail extends Container {
 
         let me = this;
 
+        me.getReference('body').addDomListeners([{click: me.onDecryptClick, delegate: '.go-notes-decrypt', scope: me}]);
+
         me.getReference('moreButton').menu = [{text: t('Delete'), icon: 'delete', handler: () => me.onDelete()}]
     }
 
@@ -119,7 +128,7 @@ class NoteDetail extends Container {
 
         me.note = note;
 
-        me.getReference('editButton').disabled = !note || !!note.password || level < LEVEL_WRITE;
+        me.getReference('editButton').disabled = !note || isLegacyEncrypted(note) || level < LEVEL_WRITE;
         me.getReference('moreButton').disabled = !note || level < LEVEL_DELETE;
 
         me.getReference('addLinkButton').setEntity(note ? 'Note' : null, note?.id || null);
@@ -153,9 +162,24 @@ class NoteDetail extends Container {
             return
         }
 
-        const html = note.password
-            ? `<p class="go-empty"><i class="go-icon">lock</i> ${escapeHtml(t('This note is encrypted. Open it in the classic UI to decrypt.'))}</p>`
-            : contentToHtml(note.content, note.type);
+        if (isLocked(note)) {
+            me.renderBody(note, `<p class="go-empty"><button type="button" class="go-notes-decrypt"><i class="go-icon">lock</i> ${escapeHtml(t('Click here to decrypt and read the content.'))}</button></p>`);
+
+            const password = getLastPassword();
+            password && me.decrypt(note, password, true);
+            return
+        }
+
+        me.renderBody(note, contentToHtml(note.content, note.type))
+    }
+
+    /**
+     * @param {Object} note
+     * @param {String} html content, safe
+     * @protected
+     */
+    renderBody(note, html) {
+        const body = this.getReference('body');
 
         body.html = `
             <div class="go-card go-pad">
@@ -166,6 +190,51 @@ class NoteDetail extends Container {
 
         // also after a popout: the addon is loaded per window
         enableImageZoom(body)
+    }
+
+    /**
+     * Shows the decrypted content of the current note
+     * @param {Object} note
+     * @param {String} password
+     * @param {Boolean} [silent=false] no error for a wrong password (the last password tried)
+     * @returns {Promise<void>}
+     */
+    async decrypt(note, password, silent = false) {
+        let me = this,
+            content;
+
+        try {
+            content = await decryptNote(note, password)
+        } catch (e) {
+            if (!silent && !me.isDestroyed) {
+                notify(me, t('Wrong password'), {title: t('Cannot decrypt'), iconCls: 'fa fa-triangle-exclamation', closable: true})
+            }
+            return
+        }
+
+        // another note was selected meanwhile (a reload of the same note is fine)
+        if (me.isDestroyed || me.note?.id !== note.id || me.note.content !== note.content) {
+            return
+        }
+
+        me.renderBody(note, note.type === 'markdown' ? contentToHtml(content, 'markdown') : sanitizeHtml(content))
+    }
+
+    async onDecryptClick() {
+        let me   = this,
+            note = me.note;
+
+        if (!note || !isLocked(note)) {
+            return
+        }
+
+        const password = await PasswordPrompt.ask({
+            appName : me.appName,
+            windowId: me.windowId,
+            title   : t('Enter password to decrypt')
+        });
+
+        password && me.note?.id === note.id && me.decrypt(me.note, password)
     }
 
     onEdit() {

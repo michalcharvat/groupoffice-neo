@@ -23,6 +23,7 @@ import NoteModel     from '../model/Note.mjs';
 import NoteBookDialog from './NoteBookDialog.mjs';
 import NoteDetail    from './NoteDetail.mjs';
 import NoteDialog    from './NoteDialog.mjs';
+import {isLegacyEncrypted, isLocked} from './Encrypt.mjs';
 
 // GOUI loads 20 per scroll step; 40 fills a tall screen in one request
 const PAGE_SIZE = 40;
@@ -219,7 +220,7 @@ class NotesMain extends MainThreeColumnPanel {
                     text     : t('Name'),
                     flex     : 1,
                     hideable : false,
-                    renderer : ({record}) => (record.password ? '🔒 ' : '') + escapeHtml(record.name)
+                    renderer : ({record}) => (isLocked(record) ? '🔒 ' : '') + escapeHtml(record.name)
                 }, {
                     dataField: 'createdAt',
                     text     : t('Created at'),
@@ -320,7 +321,7 @@ class NotesMain extends MainThreeColumnPanel {
         });
         // GO: double click edits (same rules as the detail's Edit button)
         grid.on('rowDoubleClick', ({record}) => {
-            if (record && !record.password && record.permissionLevel >= LEVEL_WRITE) {
+            if (record && !isLegacyEncrypted(record) && record.permissionLevel >= LEVEL_WRITE) {
                 me.openDialog(record)
             }
         });
