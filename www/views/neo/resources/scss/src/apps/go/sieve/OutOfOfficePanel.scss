@@ -1,0 +1,21 @@
+// GO.sieve.OutOfOfficePanel: the account dialog's "Out of office" card
+.neo-theme-go .go-sieve-ooo-panel {
+    gap: 1.6rem;
+
+    .go-sieve-ooo-columns {
+        gap: 1.6rem;
+    }
+
+    .go-sieve-hint {
+        color    : var(--fg-secondary-text);
+        font-size: 1.2rem;
+    }
+
+    .go-sieve-message textarea {
+        min-height: 16rem;
+    }
+
+    .go-sieve-aliases textarea {
+        min-height: 4rem;
+    }
+}

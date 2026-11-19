@@ -1,0 +1,14 @@
+// GO.sieve.SieveRulesPanel: the sieve rules in the account dialog's "Filters" card
+.neo-theme-go .go-sieve-rules-panel {
+    min-height: 0;
+
+    .go-sieve-rules-bar {
+        align-items: flex-end;
+        gap        : .8rem;
+        padding    : 0 0 .8rem;
+    }
+
+    .go-sieve-script-combo {
+        min-width: 22rem;
+    }
+}
