@@ -38,18 +38,30 @@ class DragDrop extends Base {
      * @member {HTMLElement|null} over=null
      */
     over = null
+    /**
+     * Removes the document listeners on destroy
+     * @member {AbortController|null} domListeners=null
+     */
+    domListeners = null
 
     construct(config) {
         super.construct(config);
 
-        let me = this;
+        let me     = this,
+            signal = (me.domListeners = new AbortController()).signal;
 
-        document.addEventListener('pointerdown', e => me.onPointerDown(e), true);
-        document.addEventListener('dragstart',   e => me.onDragStart(e));
-        document.addEventListener('dragover',    e => me.onDragOver(e));
-        document.addEventListener('dragleave',   e => me.onDragLeave(e));
-        document.addEventListener('drop',        e => me.onDrop(e));
-        document.addEventListener('dragend',     () => me.reset())
+        document.addEventListener('pointerdown', e => me.onPointerDown(e), {capture: true, signal});
+        document.addEventListener('dragstart',   e => me.onDragStart(e), {signal});
+        document.addEventListener('dragover',    e => me.onDragOver(e), {signal});
+        document.addEventListener('dragleave',   e => me.onDragLeave(e), {signal});
+        document.addEventListener('drop',        e => me.onDrop(e), {signal});
+        document.addEventListener('dragend',     () => me.reset(), {signal})
+    }
+
+    destroy(...args) {
+        this.domListeners?.abort();
+        this.reset();
+        super.destroy(...args)
     }
 
     /**
