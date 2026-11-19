@@ -40,10 +40,6 @@ class Field extends BaseField {
          */
         readOnly_: false,
         /**
-         * @member {Boolean} required_=false
-         */
-        required_: false,
-        /**
          * (field) => true | error text
          * @member {Function|null} validator=null
          */
@@ -102,7 +98,9 @@ class Field extends BaseField {
         oldValue !== undefined && this.renderControl()
     }
 
-    afterSetRequired(value) {
+    // required_ is declared by neo's form.field.Base (13.4+), which re-validates on change
+    afterSetRequired(value, oldValue) {
+        super.afterSetRequired(value, oldValue);
         this.toggleCls('go-required', !!value)
     }
 
