@@ -53,5 +53,15 @@ ModuleRegistry.register({
     emailComposerPlugins: composerPlugin,
 
     // message view: encrypted / signed state, verify, decrypt, import an attached certificate
-    emailMessagePanelPlugins: messagePlugin
+    emailMessagePanelPlugins: messagePlugin,
+
+    // the e-mail ⋮ menu: the public certificates of other people
+    emailMenuItems: emailMain => [{
+        text   : t('Public SMIME certificates'),
+        icon   : 'verified_user',
+        handler: async () => {
+            const {default: PublicCertsDialog} = await import('./view/PublicCertsDialog.mjs');
+            Neo.create(PublicCertsDialog, {appName: emailMain.appName, windowId: emailMain.windowId})
+        }
+    }]
 });
