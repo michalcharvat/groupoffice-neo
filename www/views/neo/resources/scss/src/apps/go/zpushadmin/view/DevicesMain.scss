@@ -1,0 +1,44 @@
+// GO.zpushadmin.view.DevicesMain: devices grid | device details
+.neo-theme-go .go-zpushadmin {
+    height: 100%;
+
+    .go-zpa-title {
+        font-size  : 1.1em;
+        font-weight: 500;
+        padding    : 0 8px;
+    }
+
+    // DevicesGrid row colours as a status label
+    .go-zpa-status {
+        border-radius: 4px;
+        padding      : 2px 6px;
+    }
+
+    .go-zpa-new {
+        background: var(--bg-warning);
+        color     : var(--fg-warning);
+    }
+
+    .go-zpa-enabled {
+        color: var(--hue-green);
+    }
+
+    .go-zpa-disabled {
+        color: var(--fg-error);
+    }
+
+    .go-zpa-detail {
+        border-left: 1px solid var(--fg-line);
+    }
+
+    .go-zpa-details {
+        overflow: auto;
+        padding : 16px;
+    }
+
+    .go-zpa-errors {
+        font-family: inherit;
+        margin     : 0;
+        white-space: pre-wrap;
+    }
+}

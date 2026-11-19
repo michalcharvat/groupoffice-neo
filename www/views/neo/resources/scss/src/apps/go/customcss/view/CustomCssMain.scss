@@ -1,0 +1,31 @@
+// GO.customcss.view.CustomCssMain: CSS and JavaScript share the height below the toolbar
+.neo-theme-go .go-customcss {
+    height: 100%;
+
+    .go-customcss-title {
+        font-size  : 1.1em;
+        font-weight: 500;
+        padding    : 0 8px;
+    }
+
+    .go-customcss-fields {
+        gap    : 16px;
+        padding: 16px;
+    }
+
+    // the outlined box and its textarea grow with the field
+    .neo-textarea {
+        display       : flex;
+        flex-direction: column;
+
+        .neo-input-wrapper {
+            flex: 1;
+        }
+
+        textarea {
+            font-family: monospace;
+            height     : 100%;
+            resize     : none;
+        }
+    }
+}

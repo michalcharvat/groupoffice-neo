@@ -38,17 +38,8 @@ export function fileIcon(record) {
     return ICONS[String(record?.extension || '').toLowerCase()] || 'description'
 }
 
-/**
- * The legacy controllers send paths with HTML entities (htmlspecialchars / htmlentities)
- * @param {String} value
- * @returns {String}
- */
-export function decodeEntities(value) {
-    return String(value ?? '')
-        .replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-        .replace(/&#(\d+);/g, (m, code) => String.fromCodePoint(+code))
-        .replace(/&amp;/g, '&')
-}
+// moved to core: the legacy controllers of other modules encode their values too
+export {decodeEntities} from '../../../../views/neo/src/Format.mjs';
 
 /**
  * Material icon of a tree node from its ExtJS iconCls

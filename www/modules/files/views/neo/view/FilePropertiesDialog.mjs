@@ -12,7 +12,7 @@ import {parseYmd}   from '../../../../../views/neo/src/DateUtil.mjs';
 import {translator} from '../../../../../views/neo/src/Translate.mjs';
 import {decodeEntities, isValidName, splitFileName, userDateToYmd} from '../util.mjs';
 import {submitFile} from '../fileHandlers.mjs';
-import LegacyFormWindow from './LegacyFormWindow.mjs';
+import LegacyFormWindow from '../../../../../views/neo/src/view/LegacyFormWindow.mjs';
 
 const t = translator('legacy', 'files');
 

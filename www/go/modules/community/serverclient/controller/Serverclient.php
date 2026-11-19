@@ -11,6 +11,19 @@ use go\modules\community\serverclient\Module;
 class Serverclient extends \go\core\Controller
 {
 	/**
+	 * The mail domains of the "serverclient_domains" config option, for the mailboxes of a
+	 * new user (the ExtJS client gets them from the page script of Module::onLoad())
+	 *
+	 * @apiPermission Module access: the same domains the module puts in the page for every user of the ExtJS client.
+	 * @apiReadOnly
+	 * @return void
+	 */
+	public function domains(): void
+	{
+		Response::get()->addResponse(['domains' => array_values(Module::getDomains())]);
+	}
+
+	/**
 	 * save mailbox on server when the user is saved
 	 *
 	 * password is synchronized in user save event

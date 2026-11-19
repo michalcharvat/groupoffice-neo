@@ -12,7 +12,8 @@ import {t}       from '../Translate.mjs';
  *         columns: [
  *             {text: t('Group'), field: 'name', flex: true},
  *             {text: t('Read'),  field: 'mayRead', type: 'check'},      // fires `check`
- *             {text: '', render: record => '…'}                         // text, never HTML
+ *             {text: '', render: record => '…'},                        // text, never HTML
+ *             {text: t('Label'), vdom: record => [{tag: 'span', text: '…'}]} // cell children
  *         ],
  *         actions: [{action: 'delete', icon: 'delete', tooltip: t('Delete')}],  // fire `action`
  *         records: [{id: 1, name: 'Admins', mayRead: true}]
@@ -177,6 +178,10 @@ class ActionTable extends Component {
                             'data-key'  : key,
                             'data-field': column.field
                         }]}
+                    }
+
+                    if (column.vdom) {
+                        return {tag: 'td', cls: ActionTable.cellCls(column), cn: column.vdom(record)}
                     }
 
                     const value = column.render ? column.render(record) : record[column.field];

@@ -1,0 +1,13 @@
+// GO.sync.view.SyncBooksField: the default star before the checkbox of a checked book
+.neo-theme-go .go-sync-books {
+    .go-sync-default {
+        color      : var(--fg-secondary-text);
+        cursor     : pointer;
+        margin-right: 8px;
+    }
+
+    .go-sync-default-on {
+        color                  : var(--fg-main);
+        font-variation-settings: 'FILL' 1;
+    }
+}

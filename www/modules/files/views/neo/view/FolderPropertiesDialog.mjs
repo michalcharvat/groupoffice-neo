@@ -7,7 +7,7 @@ import SharePanel   from '../../../../../views/neo/src/permissions/SharePanel.mj
 import ConfirmDialog from '../../../../../views/neo/src/view/ConfirmDialog.mjs';
 import {translator} from '../../../../../views/neo/src/Translate.mjs';
 import {decodeEntities, isValidName} from '../util.mjs';
-import LegacyFormWindow from './LegacyFormWindow.mjs';
+import LegacyFormWindow from '../../../../../views/neo/src/view/LegacyFormWindow.mjs';
 import {saveAcl} from './acl.mjs';
 
 const t = translator('legacy', 'files');
