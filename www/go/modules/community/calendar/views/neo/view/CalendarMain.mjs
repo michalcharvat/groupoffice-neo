@@ -1,5 +1,6 @@
 import Container     from '../../../../../../../views/neo/node_modules/neo.mjs/src/container/Base.mjs';
 import Toolbar       from '../../../../../../../views/neo/node_modules/neo.mjs/src/toolbar/Base.mjs';
+import {LEVEL_WRITE} from '../../../../../../../views/neo/src/Acl.mjs';
 import Button        from '../../../../../../../views/neo/src/button/Button.mjs';
 import Splitter      from '../../../../../../../views/neo/src/component/Splitter.mjs';
 import CheckBox      from '../../../../../../../views/neo/src/component/CheckBox.mjs';
@@ -255,7 +256,10 @@ class CalendarMain extends MainThreeColumnPanel {
                 filters  : [
                     {name: 'text', type: 'string', multiple: false, title: t('Query')},
                     {name: 'title', type: 'string', multiple: true, title: t('Title')},
-                    {name: 'location', type: 'string', multiple: true, title: t('Location')}
+                    {name: 'location', type: 'string', multiple: true, title: t('Location')},
+                    // 26.x: the calendars the user may write to
+                    {name: 'calendarId', type: 'entity', entity: 'Calendar', multiple: true, title: t('Calendars'),
+                        jmapFilter: {permissionLevel: LEVEL_WRITE}}
                 ],
                 listeners: {filterChange: ({filter}) => me.onSavedFilterChange(filter)}
             }]
