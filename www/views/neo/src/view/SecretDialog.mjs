@@ -1,31 +1,42 @@
-import TextField    from '../../../../../../../views/neo/node_modules/neo.mjs/src/form/field/Text.mjs';
-import Toolbar      from '../../../../../../../views/neo/node_modules/neo.mjs/src/toolbar/Base.mjs';
-import Button       from '../../../../../../../views/neo/src/button/Button.mjs';
-import Dialog, {headerTools} from '../../../../../../../views/neo/src/view/Dialog.mjs';
-import {notify, notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
-import {translator} from '../../../../../../../views/neo/src/Translate.mjs';
-
-const t = translator('community', 'apikeys');
+import TextField from '../../node_modules/neo.mjs/src/form/field/Text.mjs';
+import Toolbar   from '../../node_modules/neo.mjs/src/toolbar/Base.mjs';
+import Button    from '../button/Button.mjs';
+import Dialog, {headerTools} from './Dialog.mjs';
+import {notify, notifyError} from '../Notify.mjs';
+import {t}       from '../Translate.mjs';
 
 /**
- * Shows a new API key's access token once, selected, with a copy button (GOUI KeyDialog.showToken())
+ * Shows a secret the server returns only once (a new API key's access token, a new app
+ * password), selected, with a copy button.
+ *
+ *     Neo.create(SecretDialog, {appName, windowId, title: t('App password created'),
+ *         message: t("Copy this password now. You won't be able to see it again."), secret})
  */
-class TokenDialog extends Dialog {
+class SecretDialog extends Dialog {
     static config = {
-        className   : 'GO.apikeys.view.TokenDialog',
-        cls         : ['go-confirm-dialog'],
+        className   : 'GO.view.SecretDialog',
+        cls         : ['go-confirm-dialog', 'go-secret-dialog'],
         modal       : true,
         resizable   : false,
         headerConfig: headerTools('close'),
-        title       : t('Access token'),
         wrapperStyle: {left: 'calc(50vw - 260px)', top: '30vh', width: 'min(520px, 100vw)'},
         containerConfig: {
             layout: {ntype: 'vbox', align: 'stretch'}
         },
         /**
-         * @member {String} token=''
+         * Text above the secret
+         * @member {String} message=''
          */
-        token: ''
+        message: '',
+        /**
+         * Label of the secret field, none when empty
+         * @member {String} label=''
+         */
+        label: '',
+        /**
+         * @member {String} secret=''
+         */
+        secret: ''
     }
 
     construct(config) {
@@ -36,16 +47,15 @@ class TokenDialog extends Dialog {
         me.items = [{
             ntype: 'component',
             cls  : ['go-confirm-message'],
-            text : t("Copy the access token now. It's not possible to view it again.")
+            text : me.message
         }, {
             module       : TextField,
-            reference    : 'token',
-            cls          : ['go-token-field'],
-            labelText    : t('Access token'),
-            labelPosition: 'inline',
+            reference    : 'secret',
+            cls          : ['go-secret-field'],
+            ...me.label ? {labelText: me.label, labelPosition: 'inline'} : {hideLabel: true},
             readOnly     : true,
             clearable    : false,
-            value        : me.token
+            value        : me.secret
         }, {
             module: Toolbar,
             cls   : ['go-dialog-buttons'],
@@ -64,11 +74,11 @@ class TokenDialog extends Dialog {
     }
 
     /**
-     * Selects the token and copies it to the clipboard
+     * Selects the secret and copies it to the clipboard
      */
     async copy() {
         let me    = this,
-            field = me.getReference('token'),
+            field = me.getReference('secret'),
             opts  = {appName: me.appName, windowId: me.windowId};
 
         try {
@@ -87,7 +97,7 @@ class TokenDialog extends Dialog {
 
         // selected: ctrl/⌘+C copies it
         me.timeout(100).then(() => {
-            const field = !me.isDestroyed && me.getReference('token');
+            const field = !me.isDestroyed && me.getReference('secret');
 
             if (field) {
                 field.focus(field.getInputElId());
@@ -97,4 +107,4 @@ class TokenDialog extends Dialog {
     }
 }
 
-export default Neo.setupClass(TokenDialog);
+export default Neo.setupClass(SecretDialog);
