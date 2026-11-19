@@ -1,0 +1,28 @@
+// GO.systemsettings.ToolsPanel: links to the maintenance scripts
+.neo-theme-go .go-tools-panel {
+    .go-tools-title {
+        margin: 0 0 .8rem;
+    }
+
+    .go-tools-list {
+        list-style: none;
+        margin    : 0;
+        max-width : 72rem;
+        padding   : 0;
+
+        > li {
+            border-bottom: 1px solid var(--fg-outline);
+        }
+    }
+
+    .go-tools-link {
+        display        : block;
+        padding        : 1.2rem .8rem;
+        text-decoration: none;
+
+        &:hover,
+        &:focus-visible {
+            background-color: var(--bg-low);
+        }
+    }
+}
