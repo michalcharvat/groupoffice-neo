@@ -1,3 +1,4 @@
+- Comments: mentioning "@username" in a comment no longer alerts a user who can't read the commented item. Before, that user got an alert with an excerpt of the comment. "@" followed by a word that isn't a username no longer alerts the author, and usernames with a dot ("@john.doe") can be mentioned.
 - Tasks: fix icon in main panel
 - Core: turning on maintenance mode could fail with "Record has changed since last read" when another request was using a login token at the same moment. Logging out the other users is now retried after a short wait.
 - Core: the global search and the links panel could hang for many minutes on large installations, filling up the database server with slow queries.

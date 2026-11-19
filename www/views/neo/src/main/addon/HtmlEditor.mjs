@@ -51,6 +51,12 @@ function isSafeUrl(value, image) {
 /** ms after the last input before the value goes to the worker */
 const SYNC_DELAY = 300;
 
+/**
+ * "@name" right before the caret, after a space or at the start of the text. The
+ * characters match the server's parser (Comment::parseMentions(): [\w-] and inner dots).
+ */
+const MENTION = /(?:^|[\s\u00a0])@([\w.-]*)$/;
+
 class HtmlEditor extends Base {
     static config = {
         className: 'GO.main.addon.HtmlEditor',
@@ -62,13 +68,15 @@ class HtmlEditor extends Base {
                 'destroyInstance',
                 'focus',
                 'getValue',
-                'setValue'
+                'setValue',
+                'showMentions'
             ]
         }
     }
 
     /**
-     * field id → {root, editor, linkBar, linkInput, range, timer, labels, listeners}
+     * field id → {root, editor, linkBar, linkInput, range, timer, labels, listeners,
+     * mentions, mention, mentionMenu, mentionItems, mentionActive, mentionSuppress}
      * @member {Object} map={}
      */
     map = {}
@@ -85,9 +93,10 @@ class HtmlEditor extends Base {
      * @param {String} data.value   HTML
      * @param {Object} data.labels  translated texts for the link bar
      * @param {Number} [data.token] identifies this instance for destroyInstance()
+     * @param {Boolean} [data.mentions] "@name" asks the worker for suggestions ("mentionQuery"), see showMentions()
      * @returns {Boolean} false when the field's DOM is missing
      */
-    createInstance({id, value = '', labels = {}, token = null}) {
+    createInstance({id, value = '', labels = {}, token = null, mentions = false}) {
         let me   = this,
             root = DomAccess.getElement(id);
 
@@ -105,6 +114,8 @@ class HtmlEditor extends Base {
             labels,
             linkBar  : DomAccess.getElement(id + '__linkbar'),
             listeners: [],
+            mention  : null,
+            mentions,
             range    : null,
             root,
             timer    : null,
@@ -119,8 +130,14 @@ class HtmlEditor extends Base {
             item.listeners.push(() => el.removeEventListener(type, fn))
         };
 
-        on(item.editor, 'input', () => me.scheduleSync(id));
-        on(item.editor, 'blur', () => me.sync(id));
+        on(item.editor, 'input', () => {
+            me.scheduleSync(id);
+            me.checkMention(id)
+        });
+        on(item.editor, 'blur', () => {
+            me.hideMentions(item);
+            me.sync(id)
+        });
         on(item.editor, 'keydown', e => me.onKeyDown(id, e));
         // on the root, which neo keeps while the field lives: toolbar nodes may get re-rendered
         const inToolbar = e => e.target.closest?.('.go-htmlfield-toolbar');
@@ -154,6 +171,7 @@ class HtmlEditor extends Base {
 
         clearTimeout(item.timer);
         item.listeners.forEach(off => off());
+        item.mentionMenu?.remove();
         delete this.map[id];
 
         return this.readValue(item)
@@ -307,6 +325,9 @@ class HtmlEditor extends Base {
 
         if (cmd === 'createLink') {
             this.showLinkBar(id)
+        } else if (cmd === 'mention') {
+            this.restoreRange(item);
+            this.startMention(id)
         } else if (cmd === 'foreColor' || cmd === 'backColor') {
             // the colour input inside the label opens the picker
             this.saveRange(item)
@@ -326,6 +347,10 @@ class HtmlEditor extends Base {
     }
 
     onKeyDown(id, e) {
+        if (this.onMentionKey(this.map[id], e)) {
+            return
+        }
+
         // Tab in a list item: indent / outdent like GOUI
         if (e.key === 'Tab' && getSelection().anchorNode?.parentElement?.closest('li')) {
             e.preventDefault();
@@ -340,7 +365,9 @@ class HtmlEditor extends Base {
         Object.entries(this.map).forEach(([id, item]) => {
             if (node && item.editor.contains(node)) {
                 item.range = selection.rangeCount ? selection.getRangeAt(0).cloneRange() : null;
-                this.updateToolbar(id)
+                this.updateToolbar(id);
+                // caret moved into or out of an "@name"
+                this.checkMention(id)
             }
         })
     }
@@ -492,6 +519,276 @@ class HtmlEditor extends Base {
                 this.exec(id, 'createLink', href)
             }
         }
+    }
+
+    /**
+     * Toolbar "Mention user": types "@" (after a space when needed) and opens the suggestions
+     * @param {String} id
+     */
+    startMention(id) {
+        const selection = getSelection(),
+              node      = selection.anchorNode,
+              before    = node?.nodeType === 3 ? node.textContent.slice(0, selection.anchorOffset) : '';
+
+        document.execCommand('insertText', false, before && !/[\s ]$/.test(before) ? ' @' : '@');
+        this.checkMention(id)
+    }
+
+    /**
+     * Looks for "@name" before the caret. A new name is sent to the worker as the DOM event
+     * "mentionQuery" {query}; it answers with showMentions().
+     * @param {String} id
+     */
+    checkMention(id) {
+        const item = this.map[id];
+
+        if (!item?.mentions || item.editor.contentEditable === 'false') {
+            return
+        }
+
+        const selection = getSelection(),
+              node      = selection.anchorNode;
+        let state       = null;
+
+        if (selection.rangeCount && selection.isCollapsed && node?.nodeType === 3 && item.editor.contains(node)) {
+            const match = MENTION.exec(node.textContent.slice(0, selection.anchorOffset));
+
+            if (match) {
+                state = {node, query: match[1], start: selection.anchorOffset - match[1].length - 1}
+            }
+        }
+
+        // closed with Escape: stays closed for this "@"
+        const suppress = item.mentionSuppress;
+
+        if (state && suppress?.node === state.node && suppress.start === state.start) {
+            state = null
+        } else if (!state) {
+            item.mentionSuppress = null
+        }
+
+        if (!state) {
+            this.hideMentions(item);
+            return
+        }
+
+        const old = item.mention;
+        item.mention = state;
+
+        if (old?.query === state.query && old.node === state.node && old.start === state.start) {
+            return
+        }
+
+        // the shown names are for the old text until the worker answers: not pickable
+        item.mentionPending = true;
+        item.mentionMenu?.isConnected && this.positionMentions(item);
+
+        DomEvents.sendMessageToApp({
+            id,
+            path : DomEvents.getPathFromElement(item.root).map(e => DomEvents.getTargetData(e)),
+            query: state.query,
+            type : 'mentionQuery'
+        })
+    }
+
+    /**
+     * Suggestions from the worker for an "@name"; ignored when the user typed on meanwhile
+     * @param {Object} data
+     * @param {String} data.id
+     * @param {String} data.query the name they are for
+     * @param {Object[]} data.items {value, display, sub}: value is typed after the "@"
+     */
+    showMentions({id, query, items = []}) {
+        const item = this.map[id];
+
+        if (!item?.mention || item.mention.query !== query || document.activeElement !== item.editor) {
+            return
+        }
+
+        item.mentionPending = false;
+        item.mentionItems   = items;
+        item.mentionActive = 0;
+
+        let menu = item.mentionMenu;
+
+        if (!menu) {
+            menu = item.mentionMenu = document.createElement('div');
+            menu.className = 'go-htmlfield-mentions';
+            menu.id        = id + '__mentions';
+            menu.setAttribute('role', 'listbox');
+            menu.setAttribute('aria-label', item.labels.mention || 'Mention user');
+            // keep the focus in the editor
+            menu.addEventListener('mousedown', e => {
+                e.preventDefault();
+                const option = e.target.closest('[data-index]');
+                option && this.pickMention(item, Number(option.dataset.index))
+            })
+        }
+
+        menu.replaceChildren(...(items.length ? items.map((entry, index) => {
+            const option = document.createElement('div'),
+                  text   = document.createElement('span');
+
+            option.className = 'go-htmlfield-mention';
+            option.id        = id + '__mention_' + index;
+            option.dataset.index = String(index);
+            option.setAttribute('role', 'option');
+            text.textContent = entry.display ?? entry.value;
+            option.append(text);
+
+            if (entry.sub) {
+                const sub = document.createElement('small');
+                sub.textContent = entry.sub;
+                option.append(sub)
+            }
+
+            return option
+        }) : [Object.assign(document.createElement('div'), {
+            className  : 'go-htmlfield-mention go-htmlfield-mention-empty',
+            textContent: item.labels.noResults || 'No results found'
+        })]));
+
+        // the theme classes (CSS variables) live on the app's root element, not on body
+        const themed = item.root.closest('[class*="neo-theme-"]');
+        menu.className = ['go-htmlfield-mentions', ...[...(themed?.classList || [])].filter(c => c.startsWith('neo-theme-'))].join(' ');
+
+        menu.isConnected || document.body.append(menu);
+        this.positionMentions(item);
+        this.markActiveMention(item)
+    }
+
+    /**
+     * Below the caret, above it when there is no room
+     * @param {Object} item
+     */
+    positionMentions(item) {
+        const menu      = item.mentionMenu,
+              selection = getSelection();
+
+        if (!menu || !selection.rangeCount) {
+            return
+        }
+
+        let rect = selection.getRangeAt(0).getBoundingClientRect();
+
+        // an empty line has no caret rect
+        if (!rect.height) {
+            rect = item.editor.getBoundingClientRect()
+        }
+
+        menu.style.left = Math.max(0, Math.min(rect.left, innerWidth - menu.offsetWidth - 8)) + 'px';
+        menu.style.top  = (rect.bottom + menu.offsetHeight + 4 > innerHeight ?
+            Math.max(0, rect.top - menu.offsetHeight - 4) : rect.bottom + 4) + 'px'
+    }
+
+    markActiveMention(item) {
+        const editor = item.editor;
+
+        item.mentionMenu?.querySelectorAll('[data-index]').forEach(option => {
+            const active = Number(option.dataset.index) === item.mentionActive;
+
+            option.classList.toggle('active', active);
+            option.setAttribute('aria-selected', String(active));
+            active && option.scrollIntoView({block: 'nearest'})
+        });
+
+        if (item.mentionMenu?.isConnected && item.mentionItems?.length) {
+            editor.setAttribute('aria-activedescendant', editor.id.replace(/__editor$/, '') + '__mention_' + item.mentionActive)
+        } else {
+            editor.removeAttribute('aria-activedescendant')
+        }
+    }
+
+    /**
+     * @param {Object} item
+     */
+    hideMentions(item) {
+        item.mention        = null;
+        item.mentionItems   = null;
+        item.mentionPending = false;
+        item.mentionMenu?.remove();
+        item.editor.removeAttribute('aria-activedescendant')
+    }
+
+    /**
+     * Arrow keys, Enter, Tab and Escape while the suggestions show
+     * @param {Object} item
+     * @param {KeyboardEvent} e
+     * @returns {Boolean} true when the key was used
+     */
+    onMentionKey(item, e) {
+        const count = item?.mentionItems?.length;
+
+        if (!item?.mention || e.isComposing) {
+            return false
+        }
+
+        // Escape also while the suggestions are still loading: they must not open afterwards,
+        // and a dialog around the editor must not close
+        if (e.key === 'Escape') {
+            item.mentionSuppress = {node: item.mention.node, start: item.mention.start};
+            this.hideMentions(item);
+            e.preventDefault();
+            e.stopPropagation();
+            return true
+        }
+
+        if (!item.mentionMenu?.isConnected) {
+            return false
+        }
+
+        switch (e.key) {
+            case 'ArrowDown':
+            case 'ArrowUp':
+                if (!count) {
+                    return false
+                }
+                item.mentionActive = (item.mentionActive + (e.key === 'ArrowDown' ? 1 : -1) + count) % count;
+                this.markActiveMention(item);
+                break;
+            case 'Enter':
+            case 'Tab':
+                if (!count) {
+                    return false
+                }
+                // names of the previous text: wait for the answer instead of picking a wrong one
+                item.mentionPending || this.pickMention(item, item.mentionActive);
+                break;
+            default:
+                return false
+        }
+
+        e.preventDefault();
+        e.stopPropagation();
+        return true
+    }
+
+    /**
+     * Replaces the typed "@name" with "@value" and a space
+     * @param {Object} item
+     * @param {Number} index
+     */
+    pickMention(item, index) {
+        const entry = item.mentionItems?.[index],
+              state = item.mention;
+
+        if (!entry || !state || !state.node.isConnected) {
+            return
+        }
+
+        const range = document.createRange();
+
+        range.setStart(state.node, state.start);
+        range.setEnd(state.node, Math.min(state.start + 1 + state.query.length, state.node.length));
+        getSelection().removeAllRanges();
+        getSelection().addRange(range);
+
+        this.hideMentions(item);
+        // insertText keeps the browser's undo stack
+        document.execCommand('insertText', false, '@' + entry.value + ' ');
+
+        const id = Object.keys(this.map).find(key => this.map[key] === item);
+        id && this.sync(id)
     }
 }
 

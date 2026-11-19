@@ -379,7 +379,8 @@ class Comment extends AclItemEntity {
 		if(empty($text)) {
 			return [];
 		}
-		$regex = "/(?<![\w.])@([\w-]+)/";
+		// "@john.doe," → john.doe: dots only inside the name
+		$regex = "/(?<![\w.])@([\w-]+(?:\.[\w-]+)*)/";
 		preg_match_all($regex, $text, $matches, PREG_PATTERN_ORDER );
 		return $matches[1];
 	}
@@ -402,8 +403,17 @@ class Comment extends AclItemEntity {
 
 		$entity = $this->findEntity();
 
-		foreach($new as $username) {
-			$userId = User::find(['id'])->selectSingleValue('id')->where('username', '=', $username)->single();
+		foreach(array_unique($new) as $username) {
+			$userId = User::find(['id'])->selectSingleValue('id')
+				->where('username', '=', $username)
+				->andWhere('enabled', '=', 1)
+				->single();
+
+			// "@word" that is no user, the author, or a user who can't read the commented item: no alert.
+			// createAlert() would give a missing user id to the author.
+			if(!$userId || $userId == go()->getAuthState()->getUserId() || !self::userCanRead($entity, (int) $userId)) {
+				continue;
+			}
 
 			$entity->createAlert(
 				new DateTime(),
@@ -412,6 +422,32 @@ class Comment extends AclItemEntity {
 			)->setData(['excerpt' => $this->getExcerpt($username)])->save();
 		}
 
+	}
+
+	/**
+	 * Whether a user may read the commented item: a mention alert shows an excerpt of the comment
+	 *
+	 * @param Entity|ActiveRecord $entity
+	 * @param int $userId
+	 * @return bool
+	 */
+	private static function userCanRead(Entity|ActiveRecord $entity, int $userId) : bool {
+		$aclId = method_exists($entity, 'findAclId') ? $entity->findAclId() : null;
+
+		if($aclId) {
+			return Acl::getUserPermissionLevel((int) $aclId, $userId) >= Acl::LEVEL_READ;
+		}
+
+		if($entity instanceof Entity) {
+			$cls = get_class($entity);
+			$query = $cls::find(['id'])->selectSingleValue($cls::getMapping()->getPrimaryTable()->getAlias() . '.id')
+				->where($cls::getMapping()->getPrimaryTable()->getAlias() . '.id', '=', $entity->id);
+
+			return (bool) $cls::applyAclToQuery($query, Acl::LEVEL_READ, $userId)->single();
+		}
+
+		// a legacy model without an ACL: everyone who can see the comments
+		return true;
 	}
 
 	private function getExcerpt(string $username) : string {

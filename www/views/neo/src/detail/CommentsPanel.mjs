@@ -1,4 +1,5 @@
-import TextArea   from '../../node_modules/neo.mjs/src/form/field/TextArea.mjs';
+import HtmlField  from '../form/field/HtmlField.mjs';
+import HtmlFieldMentionPlugin from '../form/field/HtmlFieldMentionPlugin.mjs';
 import Button     from '../button/Button.mjs';
 import client     from '../jmap/Client.mjs';
 import {avatarHtml, escapeHtml, formatUserDateTime, sanitizeHtml, smartDateTime} from '../Format.mjs';
@@ -11,8 +12,8 @@ import {t} from '../Translate.mjs';
  *
  * Comment text is HTML from other users: the server's XSS check (Comment::$validateXSS,
  * a heuristic that can be switched off) is not trusted, the text goes through
- * Format.sanitizeHtml(). New comments are typed as text: neo has no rich text
- * editor, so the text is escaped and line breaks become <br>.
+ * Format.sanitizeHtml(). New comments are typed in a GO.form.field.HtmlField; "@name"
+ * mentions a user (HtmlFieldMentionPlugin), who gets an alert from the server.
  */
 class CommentsPanel extends Card {
     static config = {
@@ -30,11 +31,12 @@ class CommentsPanel extends Card {
             cls      : ['go-comments'],
             html     : ''
         }, {
-            module       : TextArea,
-            reference    : 'input',
-            hideLabel    : true,
-            placeholderText: t('Add a comment...'),
-            height       : 80
+            module     : HtmlField,
+            reference  : 'input',
+            cls        : ['go-comment-editor'],
+            placeholder: t('Add a comment...'),
+            toolbar    : ['bold', 'italic', 'underline', '-', 'insertOrderedList', 'insertUnorderedList', '-', 'createLink'],
+            plugins    : [{module: HtmlFieldMentionPlugin}]
         }, {
             ntype : 'container',
             cls   : ['go-detail-card-buttons'],
@@ -112,10 +114,9 @@ class CommentsPanel extends Card {
         let me      = this,
             input   = me.getReference('input'),
             button  = me.getReference('addButton'),
-            text    = String(input.value || '').trim(),
             current = me.current;
 
-        if (!text || !current || button.disabled) {
+        if (!current || button.disabled) {
             return
         }
 
@@ -123,10 +124,17 @@ class CommentsPanel extends Card {
         me.getReference('error').text = '';
 
         try {
+            // typing the debounced sync has not sent yet
+            const text = (await input.flush()).trim();
+
+            if (!text || me.current !== current) {
+                return
+            }
+
             await client.set('Comment', {create: {new: {
                 entity  : current.entity,
                 entityId: current.entityId,
-                text    : escapeHtml(text).replace(/\n/g, '<br>')
+                text
             }}});
 
             // the user may have moved on to another note meanwhile
