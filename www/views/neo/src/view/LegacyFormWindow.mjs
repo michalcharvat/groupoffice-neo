@@ -1,4 +1,4 @@
-import FormWindow from '../../../../../views/neo/src/view/FormWindow.mjs';
+import FormWindow from './FormWindow.mjs';
 
 /**
  * GO.view.FormWindow over a legacy controller instead of a JMAP entity: the caller loads the
@@ -8,7 +8,7 @@ import FormWindow from '../../../../../views/neo/src/view/FormWindow.mjs';
  */
 class LegacyFormWindow extends FormWindow {
     static config = {
-        className : 'GO.files.view.LegacyFormWindow',
+        className : 'GO.view.LegacyFormWindow',
         entityName: null
     }
 
