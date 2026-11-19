@@ -28,8 +28,13 @@ Port of `views/extjs3` (there is no GOUI address book) to the neo webclient
   background; `src/data/backgroundJob.mjs` runs them one after the other per worker,
   waits for the job's alert ("Export finished" / "Export error"), downloads the blob or shows
   the error, and removes the alert.
-- Not ported: ICD combo (`ICDCombo.js`), language combo, birthday portlet, select dialog
-  panel (`SelectDialogPanel.js`), custom field types Contact / MultiContact, custom field
+- **ICD** (Business tab, `view/icd.mjs`): the Peppol schemes of the first address's country
+  and the international ones, updated when an address or its country changes (ExtJS loaded
+  them on focus and listed only the country's, removed schemes included).
+- Custom field types Contact / MultiContact are in core `src/customfields/types.mjs`
+  (MultiContact: AutocompleteChips, detail links, grid names).
+- Not ported: language combo, birthday portlet, select dialog
+  panel (`SelectDialogPanel.js`), custom field
   set dialog override, batch edit, e-mail composer / callto (plain `mailto:` / `tel:` links),
   print.
 

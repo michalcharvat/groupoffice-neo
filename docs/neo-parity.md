@@ -43,8 +43,8 @@ full detail, dialogs, three settings cards, birthdays portlet, quick add, routes
 | Grid | Custom field columns | www/go/core/views/extjs3/grid/GridPanel.js:31 | done (`customFieldsEntity: 'Contact'`) | – |
 | Contact dialog | Organizations autocomplete from existing organizations | extjs3/ContactDialog.js:274 | plain ChipsField, exact name only | fixed |
 | Contact dialog | Language combo | extjs3/ContactDialog.js:333 | missing | fixed |
-| Contact dialog | ICD combo (per country) | extjs3/ContactDialog.js:84, ICDCombo.js | missing | card "neo-ui: addressbook ICD combo and MultiContact custom field" |
-| Custom field type | MultiContact | extjs3/customfield/MultiContact.js | missing in `www/views/neo/src/customfields/types.mjs` | card "neo-ui: addressbook ICD combo and MultiContact custom field" |
+| Contact dialog | ICD combo (per country) | extjs3/ContactDialog.js:84, ICDCombo.js | missing | done: Business tab, `view/icd.mjs` (country + international schemes, follows the addresses) |
+| Custom field type | MultiContact | extjs3/customfield/MultiContact.js | missing in `www/views/neo/src/customfields/types.mjs` | done: `MultiContact` in `types.mjs` (chips, detail links, grid names) |
 | Context menu | Print | extjs3/ContactContextMenu.js:66 | missing | fixed |
 | Detail | "+" new linked contact/organization | extjs3/ContactDetail.js:344 | done | fixed |
 
