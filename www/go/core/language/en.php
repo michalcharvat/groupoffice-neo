@@ -459,4 +459,7 @@ If you did not request a new password please delete this mail.',
   'There are no fields to edit' => 'There are no fields to edit',
   'Check the fields to change first' => 'Check the fields to change first',
   '{count} items were not saved' => '{count} items were not saved',
+  'Browse files' => 'Browse files',
+  '\'{file}\' exists already and was not replaced.' => '\'{file}\' exists already and was not replaced.',
+  '{name} at {date}' => '{name} at {date}',
 );

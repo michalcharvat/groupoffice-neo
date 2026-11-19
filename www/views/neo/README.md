@@ -59,6 +59,8 @@ Small modules, 2FA login, module hooks: `docs/neo-small-modules.md`.
 | `resources/scss/src/apps/go/` | styles of the `GO.*` components and the shell (`Viewport`, `LoginView`, `MainView` topbar, `GlobalSearch`, …) |
 | `src/form/field/AutocompleteChips.mjs` | chips of entity ids with a ▾ menu of the entity (`entity`, `setJmapFilter()`) |
 | `go/modules/<pkg>/<name>/views/neo/Index.mjs` | module entry, found by `Neo::moduleFiles()`; optional `style.css` |
+| `modules/<name>/views/neo/Index.mjs` | entry of a legacy module (package `legacy`), e.g. the files module (`modules/files/views/neo`, see `docs/neo-files-module.md`) |
+| `src/view/TextPrompt.mjs`, `src/component/dragDrop.mjs` | one line of text (`TextPrompt.ask()`); native drag and drop (`enableDragDrop()`, main-thread addon `WS/DragDrop`) |
 | `src/login/AuthenticatorPanel.mjs`, `src/systemsettings/EntityListPanel.mjs` | 2FA login step of a module (`loginPanels`), entity list card for System settings / My account (see `docs/neo-small-modules.md`) |
 | `src/users/`, `src/groups/`, `src/defaultpermissions/` | System settings cards Users (`UsersPanel`: show disabled, search, ⋮/right-click row menu: edit = `UserSettingsDialog` with `entityId`, login as (admins, `User/loginAs` reloads all windows), archive, delete; ⋮: `UserDefaultsDialog`, export), `CreateUserDialog` (account / password / groups, default groups), Groups (`GroupsPanel`, `GroupDialog`: name + members, permissions, `GroupModulesPanel` modules and their rights, saved after the group), Default permissions (`DefaultPermissionsPanel`, `DefaultAclDialog` with Reset all / Add to all). Cards show for `mayChangeUsers` / `mayChangeGroups` / admins |
 | `src/customfields/admin/` | System settings card Custom fields (`CustomFieldsPanel`: entities with `supportsCustomFields`, core right `mayChangeCustomFields`), `EntityFieldsDialog` (field sets + fields, add / move / edit / delete, JSON import / export), `FieldSetDialog` (+ `registerFieldSetExtension(entity)`), `FieldDialog` (+ types in `fieldTypes.mjs`, `registerFieldType()`), `SelectOptionsField` (select option tree). Modules add types / extensions in a file their registry entry loads with `customFieldsAdmin` (addressbook: Contact) |
@@ -101,8 +103,7 @@ The reference is GO 26's GOUI module UI (e.g. Notes), not the ExtJS Paper theme.
 
 Still different from GOUI notes: no "Input field" variable
 filters, filter conditions are text values only (no sub groups / pickers), comments are plain
-text (no rich text editor, labels, attachments), files have no drag & drop, overwrite question
-or context menu, no import/export menu. Dark mode follows
+text (no rich text editor, labels, attachments), no import/export menu. Dark mode follows
 `body.dark` (GO tokens), set in My account → Look & feel.
 
 ## Translations

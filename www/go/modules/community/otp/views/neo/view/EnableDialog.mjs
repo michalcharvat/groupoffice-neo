@@ -68,7 +68,7 @@ class EnableDialog extends Dialog {
         me.items = [{
             module   : FormContainer,
             reference: 'form',
-            keys     : {Enter: 'up.onSave'},
+            keys     : {Enter: () => me.onSave()},
             cls      : ['go-otp-enable-form'],
             flex     : 'none',
             layout   : {ntype: 'vbox', align: 'stretch'},

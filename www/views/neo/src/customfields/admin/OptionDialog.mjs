@@ -50,7 +50,7 @@ class OptionDialog extends Dialog {
             reference: 'form',
             flex     : 'none',
             layout   : {ntype: 'vbox', align: 'stretch'},
-            keys     : {Enter: 'up.onOk'},
+            keys     : {Enter: () => me.onOk()},
             items    : [{
                 module       : TextField,
                 name         : 'text',

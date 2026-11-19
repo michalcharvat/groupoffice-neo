@@ -62,14 +62,16 @@ Status: **neo** = neo.mjs 13.2 ships it, usable as is (maybe GO styling);
 | auth/Login | GO.neo (`apps/go/view/LoginView.mjs`: forgot credentials, 2FA via `loginPanels`) |
 | MainThreeColumnPanel, TableTitle | GO.neo |
 | DetailPanel | GO.neo (`detail/Card` + panels) |
-| Comments, Files (legacy files), History | GO.neo (`CommentsPanel`, `FilesPanel`, `HistoryPanel` + `HistoryDetailDialog`) |
+| Comments, Files (legacy files), History | GO.neo (`CommentsPanel`, `FilesPanel`, `HistoryPanel` + `HistoryDetailDialog`). `FilesPanel` takes files dropped from the desktop; with the files module's neo UI a click opens the file with the user's file handler (ModuleRegistry hook `openFile`) and "Browse files" opens the entity's folder in `#files/folder/<id>` |
 | FilterPanel (saved EntityFilters) | GO.neo (`FilterPanel`, `FilterDialog`) |
 | Global search | GO.neo (`GlobalSearch`) |
 | FormWindow (entity dialog: load, save, validation, links, custom fields) | GO.neo (`view/FormWindow.mjs`) |
 | PrincipalCombo, GroupCombo | GO.neo (`form/field/PrincipalCombo`, `GroupCombo`, `PrincipalList`) |
 | links/ (LinkBrowser, CreateLinkButton/Field, LinkDetail, SelectSearch) | GO.neo (`src/link/`: browse/add links on saved entities; `CreateLinkButton`/`CreateLinkField` collect links for a new entity, FormWindow `hasLinks` creates them after the first save, `addLinkOnSave()`) |
 | customfields/ (FormFieldset, DetailFieldset, Types, admin) | GO.neo (`src/customfields/`) |
-| permissions/SharePanel (ACL) | GO.neo (`permissions/SharePanel.mjs`) |
+| permissions/SharePanel (ACL) | GO.neo (`permissions/SharePanel.mjs`; `setAclId(aclId, value)` for a legacy ACL without a JMAP entity, e.g. a files folder; `readOnly` without manage permission) |
+| prompt() (one line of text) | GO.neo (`view/TextPrompt.mjs`: `TextPrompt.ask({title, label, value, select: 'all'\|'name', validator})`, `null` when cancelled) |
+| Drag and drop (native) | GO.neo (`component/dragDrop.mjs` `enableDragDrop(component, {drag, drop, group, files, onDrop})` + addon `WS/DragDrop`: rows and tree nodes onto drop targets of the same group, desktop files; the worker gets a `goDrop` DOM event) |
 | RecurrenceField, RecurrencePicker | GO.neo (`GO.form.field.RecurrenceField`: presets menu + "Customize" dialog) |
 | Image (blob images, zoom) | GO.neo (`view/ImageWindow.mjs`: `enableImageZoom()` + addon `WS/ImageZoom`, `ImageWindow.show()`; images load by URL with the session cookie, no `getBlobURL()` needed) |
 | HtmlFieldMentionPlugin | GO.neo (`form/field/HtmlFieldMentionPlugin.mjs`, a neo plugin on `HtmlField`; default provider: users, inserts `@username`; `CommentsPanel` uses it, the server alerts mentioned users who can read the item; demo `#dev/form/HtmlField`) |
@@ -94,6 +96,6 @@ Bookmarks has no grid and no `Bookmark/export`, so neither applies there.
    ~~**Create link while creating**~~ — done: `CreateLinkButton` in FormWindow (notes, tasks, contacts, calendar events).
 3. ~~**Upload with progress**~~ — done: `jmap/Uploader.mjs` + `UploadPanel` (progress, abort, size limit).
 4. ~~**HtmlField mentions** and **RecipientPicker**~~ — done: `HtmlFieldMentionPlugin` (comments), `RecipientsField` + `RecipientPicker` (ready for a mail composer).
-5. **Drag and drop** — tree nodes, rows to containers, sortable lists.
+5. **Drag and drop** — rows and tree nodes onto targets and desktop files: done (`enableDragDrop()`, used by the files module and `FilesPanel`); sortable lists still missing.
 6. Small fields: AutocompleteField, MapField, ListField, CheckboxGroup, ColorMenu, Month/WeekPicker.
 7. Chart, EntityTypeTable, alerts/notifications, session activity watcher.
