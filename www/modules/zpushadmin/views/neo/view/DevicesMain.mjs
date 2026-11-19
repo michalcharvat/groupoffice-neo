@@ -75,6 +75,12 @@ class DevicesMain extends Container {
      */
     device = null
 
+    /**
+     * Number of the last load(): an older response doesn't replace a newer one
+     * @member {Number} loadCounter=0
+     */
+    loadCounter = 0
+
     construct(config) {
         super.construct(config);
 
@@ -214,17 +220,19 @@ class DevicesMain extends Container {
      * @returns {Promise<void>}
      */
     async load() {
-        let me = this;
+        let me      = this,
+            counter = ++me.loadCounter;
 
         try {
-            const {results = []} = await client.legacy('zpushadmin/device/store', me.query ? {query: me.query} : {});
+            // limit 0: all devices (the store's default is the user's max_rows_list)
+            const {results = []} = await client.legacy('zpushadmin/device/store', {limit: 0, ...me.query ? {query: me.query} : {}});
 
-            if (!me.isDestroyed) {
+            if (!me.isDestroyed && counter === me.loadCounter) {
                 me.getReference('grid').store.data = results.map(decodeRecord);
                 me.onSelectionChange()
             }
         } catch (e) {
-            me.isDestroyed || notifyError(me, e)
+            me.isDestroyed || counter !== me.loadCounter || notifyError(me, e)
         }
     }
 
@@ -384,7 +392,7 @@ class DevicesMain extends Container {
 
         try {
             // GO.grid.GridPanel deleteSelected(): the store deletes before it lists
-            await client.legacy('zpushadmin/device/store', {delete_keys: JSON.stringify(selected.map(r => r.id)), ...me.query ? {query: me.query} : {}});
+            await client.legacy('zpushadmin/device/store', {delete_keys: JSON.stringify(selected.map(r => r.id)), limit: 1});
             me.load()
         } catch (e) {
             notifyError(me, e)
