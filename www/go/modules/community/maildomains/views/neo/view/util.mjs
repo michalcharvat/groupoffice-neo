@@ -8,6 +8,26 @@ export const t = translator('community', 'maildomains');
 export const MB = 1024 * 1024;
 
 /**
+ * autoExpunge value ("0" or "<days>d", GOUI AutoExpungeField) → switch and days
+ * @param {String|null} value
+ * @returns {{enabled: Boolean, days: Number}}
+ */
+export function expungeToForm(value) {
+    const expunge = String(value ?? '30d');
+    return {enabled: expunge !== '0', days: parseInt(expunge) || 30}
+}
+
+/**
+ * Switch and days → autoExpunge value
+ * @param {Boolean} enabled
+ * @param {Number|String} days
+ * @returns {String}
+ */
+export function expungeToEntity(enabled, days) {
+    return enabled ? (parseInt(days) || 30) + 'd' : '0'
+}
+
+/**
  * Status icon (Material) with the GOUI status colour
  * @param {Boolean} ok
  * @returns {String} html

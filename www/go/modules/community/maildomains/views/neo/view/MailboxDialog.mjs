@@ -5,7 +5,7 @@ import BoolCheckBox  from '../../../../../../../views/neo/src/form/field/BoolChe
 import {fieldset}    from '../../../../../../../views/neo/src/form/fieldset.mjs';
 import FormWindow    from '../../../../../../../views/neo/src/view/FormWindow.mjs';
 import {fmt}         from '../../../../../../../views/neo/src/Translate.mjs';
-import {MB, moduleSettings, t} from './util.mjs';
+import {MB, expungeToEntity, expungeToForm, moduleSettings, t} from './util.mjs';
 
 /**
  * Create or edit a mailbox (GOUI MailboxDialog). The user name is entered without
@@ -65,10 +65,10 @@ class MailboxDialog extends FormWindow {
 
         'quota' in data && (data.quota = Math.round((data.quota || 0) / MB));
 
-        const expunge = String(data.autoExpunge ?? '30d');
+        const {enabled, days} = expungeToForm(data.autoExpunge);
 
-        data.autoExpungeEnabled = expunge !== '0';
-        data.autoExpungeDays    = parseInt(expunge) || 30
+        data.autoExpungeEnabled = enabled;
+        data.autoExpungeDays    = days
     }
 
     /**
@@ -92,7 +92,7 @@ class MailboxDialog extends FormWindow {
             const enabled = 'autoExpungeEnabled' in data ? data.autoExpungeEnabled : me.form.entityData.autoExpungeEnabled,
                   days    = 'autoExpungeDays' in data ? data.autoExpungeDays : me.form.entityData.autoExpungeDays;
 
-            data.autoExpunge = enabled ? (parseInt(days) || 30) + 'd' : '0'
+            data.autoExpunge = expungeToEntity(enabled, days)
         }
 
         delete data.autoExpungeEnabled;
@@ -122,7 +122,7 @@ class MailboxDialog extends FormWindow {
             other   = me.getReference(field.reference === 'password' ? 'passwordConfirm' : 'password')?.value || '';
 
         if (value && value.length < me.minPasswordLength) {
-            return fmt(t('The minimum length for this field is {max}'), {max: me.minPasswordLength})
+            return fmt(t('The minimum length for this field is {min}'), {min: me.minPasswordLength})
         }
 
         return value === other || t('The passwords do not match')
