@@ -2350,4 +2350,5 @@ Sollten Sie kein neues Kennwort angefordert haben, können Sie diese Nachricht e
   'Open in new window' => 'In neuem Fenster öffnen',
   'Choose a file to import' => 'Wählen Sie eine Datei zum Importieren',
   'Show options' => 'Optionen anzeigen',
+  'Every key may only be used once' => 'Jeder Schlüssel darf nur einmal verwendet werden',
 );

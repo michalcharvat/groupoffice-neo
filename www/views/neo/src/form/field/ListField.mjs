@@ -62,6 +62,8 @@ class ListField extends Field {
         placeholder: ''
     }
 
+    /** the field created the store from a config, so it destroys it (a passed instance may be shared) */
+    ownsStore = false
     /** HTML of the value in the box */
     valueHtml = ''
     /** bumped by value changes: drops pending renders of older values */
@@ -79,13 +81,37 @@ class ListField extends Field {
     }
 
     beforeSetStore(value, oldValue) {
-        oldValue?.destroy();
+        let me = this;
+
+        if (oldValue) {
+            oldValue.un('load', me.onStoreLoad, me);
+            me.ownsStore && oldValue.destroy()
+        }
+
+        // a config (or none: beforeSetInstance() creates an empty store) is ours, an instance is not
+        me.ownsStore = Neo.typeOf(value) !== 'NeoInstance';
         return ClassSystemUtil.beforeSetInstance(value, Store)
     }
 
+    afterSetStore(value, oldValue) {
+        let me = this;
+
+        // the displayField of a loaded record replaces the raw value
+        value?.on('load', me.onStoreLoad, me);
+        oldValue !== undefined && me.renderValueHtml()
+    }
+
+    /** @protected */
+    onStoreLoad() {
+        this.renderValue || this.renderValueHtml()
+    }
+
     destroy(...args) {
-        this.closeMenu();
-        this.store?.destroy();
+        let me = this;
+
+        me.closeMenu();
+        me.store?.un('load', me.onStoreLoad, me);
+        me.ownsStore && me.store?.destroy();
         super.destroy(...args)
     }
 

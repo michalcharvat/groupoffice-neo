@@ -252,7 +252,10 @@ class AutocompleteField extends Field {
         me.boxNode.cn[0].value = me.inputText;
         me.update();
 
+        // typing makes pending suggestions, picks and value texts outdated
         clearTimeout(me.bufferTimer);
+        me.queryGeneration++;
+        me.textGeneration++;
 
         if (!me.inputText.trim()) {
             me.closeMenu();
@@ -276,11 +279,29 @@ class AutocompleteField extends Field {
             clearTimeout(me.bufferTimer);
             me.pickFirst()
         } else if (key === 'Escape') {
+            clearTimeout(me.bufferTimer);
+            me.queryGeneration++;
             me.closeMenu()
         } else if (key === 'ArrowDown' && !me.menuOpen()) {
             clearTimeout(me.bufferTimer);
             me.showMenu()
         }
+    }
+
+    /**
+     * Suggestions opened while typing don't take the focus, so they don't close with it:
+     * close them when the focus leaves the field and did not go into them
+     */
+    onFocusLeave(data) {
+        super.onFocusLeave?.(data);
+
+        let me = this;
+
+        clearTimeout(me.bufferTimer);
+
+        setTimeout(() => {
+            !me.isDestroyed && !me.containsFocus && me.menuOpen() && !me.menu.containsFocus && me.closeMenu()
+        }, 200)
     }
 
     onTriggerClick() {
@@ -311,7 +332,8 @@ class AutocompleteField extends Field {
             return
         }
 
-        !me.isDestroyed && generation === me.queryGeneration && records[0] && me.pick(records[0])
+        // typing, Escape, a reset or a disable meanwhile drop the answer
+        !me.isDestroyed && generation === me.queryGeneration && !me.readOnly && !me.disabled && records[0] && me.pick(records[0])
     }
 
     /**
@@ -321,6 +343,8 @@ class AutocompleteField extends Field {
         let me    = this,
             value = me.recordToValue(record);
 
+        clearTimeout(me.bufferTimer);
+        me.queryGeneration++;
         me.closeMenu();
         me.shownValue = value;
         me.textGeneration++;
@@ -346,17 +370,19 @@ class AutocompleteField extends Field {
             return
         }
 
-        if (me.isDestroyed || generation !== me.queryGeneration) {
+        if (me.isDestroyed || generation !== me.queryGeneration || me.readOnly || me.disabled) {
             return
         }
 
         me.closeMenu();
 
         me.menu = MenuList.showAt({
-            appName : me.appName,
-            windowId: me.windowId,
-            target  : me.id,
-            align   : {edgeAlign: 't0-b0'},
+            appName     : me.appName,
+            windowId    : me.windowId,
+            target      : me.id,
+            align       : {edgeAlign: 't0-b0'},
+            // typing goes on in the input
+            focusOnMount: false,
             cls     : ['go-menu', 'go-autocomplete-menu'],
             items   : records.length
                 ? records.slice(0, me.limit).map(record => ({

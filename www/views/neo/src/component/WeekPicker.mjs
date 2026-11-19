@@ -20,19 +20,10 @@ class WeekPicker extends PeriodPicker {
     }
 
     /**
-     * The year of a week is the year of its Thursday: the shown year is the ISO year
+     * The year of a week is the year of its Thursday (ISO year)
      */
-    afterSetValue(value, oldValue) {
-        if (oldValue !== undefined && value) {
-            this.year = addDays(value, 3).getFullYear()
-        }
-
-        super.afterSetValue(value, oldValue)
-    }
-
-    construct(config) {
-        config.value && !config.year && (config = {...config, year: addDays(weekStart(config.value), 3).getFullYear()});
-        super.construct(config)
+    periodYear(start) {
+        return addDays(start, 3).getFullYear()
     }
 
     periods(year) {

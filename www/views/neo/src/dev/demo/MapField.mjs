@@ -49,7 +49,7 @@ class MapFieldDemo extends FormDemo {
                 style : {gap: '8px'},
                 items : [
                     {module: TextField, name: 'key', labelText: 'Key', labelPosition: 'inline', flex: 1},
-                    {module: NumberField, name: 'value', labelText: 'Value', labelPosition: 'inline', width: 160},
+                    {module: NumberField, name: 'value', labelText: 'Value', labelPosition: 'inline', width: 160, maxValue: 100000},
                     ArrayField.removeButton()
                 ]
             })
@@ -60,7 +60,7 @@ class MapFieldDemo extends FormDemo {
             text   : 'Add limit',
             flex   : 'none',
             style  : {alignSelf: 'start'},
-            handler: data => data.component.parent.getReference('limits').addValue(0, 'new')
+            handler: data => data.component.parent.getReference('limits').addValue(0)
         }],
         sample: {
             alerts: {1: {offset: '-PT1H', action: 'email'}, 2: {offset: '-PT10M', action: 'display'}},

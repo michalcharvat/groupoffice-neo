@@ -1,4 +1,5 @@
 import ArrayField from './ArrayField.mjs';
+import {t}        from '../../Translate.mjs';
 
 /**
  * GOUI MapField: an object of values keyed by id, one row field per entry (JMAP maps such
@@ -24,7 +25,8 @@ import ArrayField from './ArrayField.mjs';
  *     // value {"$seen": true} ↔ rows [{key: '$seen', value: true}]
  *
  * Value: {key: row value}; an empty map is {}. Removed keys are not in the value, so
- * saving it replaces the whole map.
+ * saving it replaces the whole map. Two rows with the same key make the field invalid
+ * instead of one silently replacing the other.
  */
 class MapField extends ArrayField {
     static config = {
@@ -49,11 +51,14 @@ class MapField extends ArrayField {
     /** highest numeric key seen, for new keys */
     lastKey = 0
 
-    getSubmitValue() {
-        let me    = this,
-            value = {};
+    /**
+     * @returns {Array[]} [key, entry] per row, in row order (duplicate keys included)
+     * @protected
+     */
+    getEntries() {
+        let me = this;
 
-        me.getRows().forEach(row => {
+        return me.getRows().map(row => {
             let rowValue = row.getSubmitValue(),
                 key      = row.mapKey;
 
@@ -65,10 +70,22 @@ class MapField extends ArrayField {
                 delete rowValue[me.keyFieldName]
             }
 
-            value[key] = me.valueFieldName ? rowValue?.[me.valueFieldName] ?? null : rowValue
-        });
+            return [key, me.valueFieldName ? rowValue?.[me.valueFieldName] ?? null : rowValue]
+        })
+    }
 
-        return value
+    getSubmitValue() {
+        // own properties: an assignment to "__proto__" would set the prototype instead
+        return Object.fromEntries(this.getEntries())
+    }
+
+    /**
+     * @returns {Boolean} two rows have the same key
+     */
+    hasDuplicateKeys() {
+        const keys = this.getEntries().map(([key]) => key);
+
+        return new Set(keys).size !== keys.length
     }
 
     applyValue(value, reset = false) {
@@ -129,11 +146,15 @@ class MapField extends ArrayField {
     }
 
     /**
-     * @returns {String} a numeric key above the ones in use (GOUI nextKey())
+     * @returns {String} a numeric key above the ones in use and not in a row (GOUI nextKey())
      * @protected
      */
     nextKey() {
-        return String(++this.lastKey)
+        const used = new Set(this.getEntries().map(([key]) => key));
+
+        while (used.has(String(++this.lastKey))) {}
+
+        return String(this.lastKey)
     }
 
     reset(value = {}) {
@@ -142,6 +163,32 @@ class MapField extends ArrayField {
 
     isEmptyAndRequired() {
         return this.required && !this.getRows().length
+    }
+
+    isValid() {
+        return !this.hasDuplicateKeys() && super.isValid()
+    }
+
+    validate(silent = true) {
+        let me        = this,
+            valid     = super.validate(silent),
+            duplicate = me.hasDuplicateKeys();
+
+        // the key fields of the rows that share a key show it (keyFieldName)
+        if (!silent && duplicate && me.keyFieldName) {
+            const entries = me.getEntries(),
+                  counts  = new Map();
+
+            entries.forEach(([key]) => counts.set(key, (counts.get(key) || 0) + 1));
+
+            me.getRows().forEach((row, index) => {
+                const keyField = counts.get(entries[index][0]) > 1 && (row.getChildFields?.() || []).find(field => field.name === me.keyFieldName);
+
+                keyField && (keyField.error = t('Every key may only be used once'))
+            })
+        }
+
+        return valid && !duplicate
     }
 }
 

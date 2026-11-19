@@ -154,3 +154,8 @@ Bookmarks has no grid and no `Bookmark/export`, so neither applies there.
 - `{...record}` of a neo Record is empty: the fields are getters. Copy them by name.
 - Headless Playwright drives native drag and drop with `dragTo()`, but with `mouse.move()` the
   last move often sends no `dragover`: move once more before `mouse.up()`.
+- A floating menu takes the focus when it mounts (`focusOnMount: true`): suggestions shown while
+  typing need `focusOnMount: false` and their own close on the field's focus leave
+  (`AutocompleteField.onFocusLeave()`).
+- neo's `getItemRecordId()` takes the part after the first `__` of a row id: ids that contain
+  `__` resolve wrongly. Strip the exact `<list id>__` prefix (`GO.tree.Tree.nodeIdOf()`).

@@ -1,5 +1,5 @@
 import PeriodPicker from './PeriodPicker.mjs';
-import {formatDate} from '../Format.mjs';
+import {escapeHtml, formatDate} from '../Format.mjs';
 
 /**
  * GOUI MonthPicker: the twelve months of a year; `select` fires with {date}, the first day
@@ -22,7 +22,7 @@ class MonthPicker extends PeriodPicker {
             const date = new Date(year, month, 1),
                   name = formatDate(date, 'F');
 
-            return {date, html: name.charAt(0).toUpperCase() + name.slice(1)}
+            return {date, html: escapeHtml(name.charAt(0).toUpperCase() + name.slice(1))}
         })
     }
 }

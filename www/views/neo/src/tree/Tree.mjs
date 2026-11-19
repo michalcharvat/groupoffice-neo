@@ -101,6 +101,8 @@ class Tree extends List {
     expandedIds = new Set()
     /** ids whose children are loading */
     loadingIds = new Set()
+    /** ids whose loading children were changed by moveNode(): load them again */
+    staleIds = new Set()
     /** load counter: a reload drops older answers */
     generation = 0
 
@@ -131,9 +133,21 @@ class Tree extends List {
      * @protected
      */
     onDragHover(itemId) {
-        const id = this.getItemRecordId(itemId);
+        const id = this.nodeIdOf(itemId);
 
-        id !== undefined && id !== null && this.expand(id).catch(e => console.error('Tree expand', e))
+        id !== null && this.expand(id).catch(e => console.error('Tree expand', e))
+    }
+
+    /**
+     * Node id of a row's DOM id. neo's getItemRecordId() takes the part after the first "__",
+     * which is wrong for ids that contain "__" themselves: strip this tree's prefix instead.
+     * @param {String} itemId
+     * @returns {String|null} null when it is no row of this tree
+     */
+    nodeIdOf(itemId) {
+        const prefix = this.id + '__';
+
+        return typeof itemId === 'string' && itemId.startsWith(prefix) ? itemId.slice(prefix.length) : null
     }
 
     /**
@@ -142,11 +156,16 @@ class Tree extends List {
      */
     onNodeDrop(event) {
         let me       = this,
-            targetId = event.targetId === me.id ? null : me.getItemRecordId(event.targetId),
-            node     = targetId === undefined || targetId === null ? null : me.getNode(targetId) || null,
-            dragId   = event.source?.rootId === me.id ? me.getItemRecordId(event.source.itemId) : null,
-            dragNode = dragId === undefined || dragId === null ? null : me.getNode(dragId) || null,
+            onRoot   = event.targetId === me.id,
+            node     = onRoot ? null : me.getNode(me.nodeIdOf(event.targetId)) || null,
+            ownDrag  = event.source?.rootId === me.id,
+            dragNode = ownDrag ? me.getNode(me.nodeIdOf(event.source.itemId)) || null : null,
             position = node ? event.position || 'on' : 'on';
+
+        // a row that is gone meanwhile (reload) is no drop on the root
+        if ((!onRoot && !node) || (ownDrag && !dragNode)) {
+            return
+        }
 
         if (node && ((position === 'on' && !me.dropOn) || (position !== 'on' && !me.dropBetween))) {
             return
@@ -203,6 +222,8 @@ class Tree extends List {
         if (parent && !Array.isArray(parent.children)) {
             from.splice(from.indexOf(node), 1);
             me.unregister(node);
+            // a load running now may have started before the move was saved
+            me.loadingIds.has(parent.id) && me.staleIds.add(parent.id);
             me.refresh();
             return true
         }
@@ -329,7 +350,7 @@ class Tree extends List {
      * @returns {Object|undefined}
      */
     getNode(id) {
-        return this.nodes.get(String(id))
+        return id === null || id === undefined ? undefined : this.nodes.get(String(id))
     }
 
     /**
@@ -366,7 +387,10 @@ class Tree extends List {
             me.updateItem(node.id);
 
             try {
-                node.children = await me.provide(node)
+                do {
+                    me.staleIds.delete(node.id);
+                    node.children = await me.provide(node)
+                } while (me.staleIds.has(node.id) && !me.isDestroyed)
             } finally {
                 me.loadingIds.delete(node.id);
                 me.updateItem(node.id)
@@ -488,7 +512,7 @@ class Tree extends List {
             caret    = data.path.find(node => node.cls?.includes('go-tree-caret')),
             check    = data.path.find(node => node.cls?.includes('go-check')),
             itemNode = (caret || check) && data.path.find(node => node.cls?.includes(me.itemCls)),
-            id       = itemNode && me.getItemRecordId(itemNode.id);
+            id       = itemNode && me.nodeIdOf(itemNode.id);
 
         if (id !== undefined && id !== null && caret) {
             me.expandedIds.has(String(id)) ? me.collapse(id) : me.expand(id).catch(e => console.error('Tree expand', e));

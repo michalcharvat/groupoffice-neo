@@ -828,7 +828,8 @@ class NotesMain extends MainThreeColumnPanel {
             record   = event.source?.recordId && grid.store.get(event.source.recordId),
             selected = grid.getSelectedRecords();
 
-        if (!noteBook || !record || noteBook.permissionLevel < LEVEL_CREATE) {
+        // moving checks write permission on both note books (AclItemEntity::internalValidate())
+        if (!noteBook || !record || noteBook.permissionLevel < LEVEL_WRITE) {
             return
         }
 

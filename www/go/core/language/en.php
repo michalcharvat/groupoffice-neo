@@ -475,4 +475,5 @@ If you did not request a new password please delete this mail.',
   'Choose a file to import' => 'Choose a file to import',
   '2000-row limit reached: use the filters to show the names' => '2000-row limit reached: use the filters to show the names',
   'Show options' => 'Show options',
+  'Every key may only be used once' => 'Every key may only be used once',
 );

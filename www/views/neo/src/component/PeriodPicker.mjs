@@ -1,4 +1,5 @@
 import Component from '../../node_modules/neo.mjs/src/component/Base.mjs';
+import {parseYmd} from '../DateUtil.mjs';
 import {t}       from '../Translate.mjs';
 
 /**
@@ -35,7 +36,7 @@ class PeriodPicker extends Component {
         let me = this;
 
         me.addDomListeners([{click: me.onPickerClick, scope: me}]);
-        me.year ??= (me.value || new Date()).getFullYear();
+        me.year ??= me.periodYear(me.value || me.periodStart(new Date()));
         me.renderPicker()
     }
 
@@ -44,16 +45,26 @@ class PeriodPicker extends Component {
             return null
         }
 
-        const date = value instanceof Date ? value : new Date(value);
+        // "Y-m-d" is a local day (new Date() would read it as UTC midnight)
+        const date = value instanceof Date ? value : (parseYmd(value) || new Date(value));
 
         return isNaN(date) ? null : this.periodStart(date)
     }
 
     afterSetValue(value, oldValue) {
         if (oldValue !== undefined) {
-            value && (this.year = value.getFullYear());
+            value && (this.year = this.periodYear(value));
             this.renderPicker()
         }
+    }
+
+    /**
+     * @param {Date} start first day of a period
+     * @returns {Number} the year whose grid shows the period
+     * @protected
+     */
+    periodYear(start) {
+        return start.getFullYear()
     }
 
     afterSetYear(value, oldValue) {
