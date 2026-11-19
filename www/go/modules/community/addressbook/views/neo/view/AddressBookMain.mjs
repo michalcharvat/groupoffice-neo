@@ -14,6 +14,8 @@ import {parseYmd}    from '../../../../../../../views/neo/src/DateUtil.mjs';
 import {escapeHtml, formatDate, formatUserDateTime, smartDateTime, userFormat} from '../../../../../../../views/neo/src/Format.mjs';
 import {download} from '../../../../../../../views/neo/src/download.mjs';
 import {exportEntities, exportMenuItem} from '../../../../../../../views/neo/src/export/exportEntities.mjs';
+import ModuleRegistry from '../../../../../../../views/neo/src/ModuleRegistry.mjs';
+import {showComposer} from '../../../../../../../views/neo/src/Mail.mjs';
 import {notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
 import ConfirmDialog    from '../../../../../../../views/neo/src/view/ConfirmDialog.mjs';
 import FilterPanel      from '../../../../../../../views/neo/src/view/FilterPanel.mjs';
@@ -1128,6 +1130,21 @@ class AddressBookMain extends MainThreeColumnPanel {
             }))
         });
 
+        // e-mail to the selected contacts; their vCards as attachment (ExtJS "Send (vCard)",
+        // needs the e-mail composer)
+        items.push({
+            text    : t('Send e-mail'),
+            icon    : 'email',
+            disabled: !records.some(r => r.emailAddresses?.[0]?.email),
+            handler : () => me.emailContacts(records)
+        });
+
+        ModuleRegistry.getConfigs('showComposer').length && items.push({
+            text   : t('Send') + ' (vCard)',
+            icon   : 'attach_file',
+            handler: () => me.sendVCard(records)
+        });
+
         items.push({
             text    : t('Export') + ' (vCard)',
             icon    : 'cloud_download',
@@ -1331,6 +1348,47 @@ class AddressBookMain extends MainThreeColumnPanel {
 
         // the module's vcard download route (ExtJS go.Jmap.downloadUrl("community/addressbook/vcard/<id>"))
         download(this.windowId, downloadUrl('community/addressbook/vcard/' + records[0].id)).catch(e => this.showError(e))
+    }
+
+    /**
+     * The composer to the first e-mail address of each contact (mailto: without the e-mail module)
+     * @param {Object[]} records
+     */
+    emailContacts(records) {
+        let me     = this,
+            single = records.length === 1 ? records[0] : null,
+            to     = records.filter(r => r.emailAddresses?.[0]?.email).map(r => ({name: r.name || '', email: r.emailAddresses[0].email}));
+
+        to.length && showComposer({
+            appName : me.appName,
+            windowId: me.windowId,
+            to,
+            // one contact: the template's contact tags
+            ...single ? {entity: 'Contact', entityId: single.id} : {}
+        })
+    }
+
+    /**
+     * Contact/export as .vcf, attached to a new e-mail (ExtJS ContactContextMenu "Send (vCard)")
+     * @param {Object[]} records
+     */
+    async sendVCard(records) {
+        let me = this;
+
+        try {
+            const response = await client.call('Contact/export', {extension: 'vcf', ids: records.map(r => r.id)});
+
+            if (!response?.blob) {
+                throw new Error(t('Sorry, an unknown error occurred'))
+            }
+
+            // the e-mail module's composer even with the desktop composer: mailto: can't attach
+            // (ExtJS GO.email.showComposer)
+            const open = ModuleRegistry.getConfigs('showComposer')[0];
+            me.isDestroyed || await open?.({appName: me.appName, windowId: me.windowId, blobs: [response.blob]})
+        } catch (e) {
+            me.showError(e)
+        }
     }
 
     async mergeSelected() {

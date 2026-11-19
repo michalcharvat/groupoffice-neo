@@ -4,7 +4,7 @@
  * items too (CalendarAdapter providers).
  *
  * The dialogs it opens (editor, detail, "this event / all events" questions) come from
- * CalendarItem.ui, set by the calendar main view.
+ * CalendarItem.ui, set by the calendar main view, or from the item's own ui (ownUi).
  */
 import client     from '../../../../../../views/neo/src/jmap/Client.mjs';
 import {escapeHtml, smartDateTime} from '../../../../../../views/neo/src/Format.mjs';
@@ -88,6 +88,21 @@ export default class CalendarItem {
      * @member {Object} ui
      */
     static ui = null
+
+    /**
+     * Dialogs and messages of this item when it is shown outside the calendar view (the
+     * e-mail message view, notifications: windowUi() of ui.mjs); null uses CalendarItem.ui.
+     * Set through the constructor config.
+     * @member {Object|null} ownUi=null
+     */
+    ownUi = null
+
+    /**
+     * @returns {Object} the item's dialogs and messages
+     */
+    get ui() {
+        return this.ownUi || CalendarItem.ui
+    }
 
     /**
      * Provider of the item: 'event', 'holiday', 'task', 'birthday'
@@ -240,7 +255,7 @@ export default class CalendarItem {
             throw new Error('Not found')
         }
 
-        return new CalendarItem({key: this.data.id + '/' + recurrenceId, recurrenceId, override: o, data: this.data})
+        return new CalendarItem({key: this.data.id + '/' + recurrenceId, recurrenceId, override: o, data: this.data, ownUi: this.ownUi})
     }
 
     get isRecurring() {
@@ -502,7 +517,7 @@ export default class CalendarItem {
     }
 
     info() {
-        return CalendarItem.ui.openDetail(this)
+        return this.ui.openDetail(this)
     }
 
     /**
@@ -512,7 +527,7 @@ export default class CalendarItem {
      */
     async open(onCancel, forceWrite) {
         let me = this,
-            ui = CalendarItem.ui;
+            ui = me.ui;
 
         if (!forceWrite && !me.mayChange) {
             return ui.openDetail(me)
@@ -538,7 +553,7 @@ export default class CalendarItem {
 
     downloadIcs() {
         const name = `${this.cal.name || 'calendar'}_${format(this.start, 'Y-m-d\\THi')}_${this.title}.ics`;
-        CalendarItem.ui.download('community/calendar/ics/' + this.key, name)
+        this.ui.download('community/calendar/ics/' + this.key, name)
     }
 
     /**
@@ -579,7 +594,7 @@ export default class CalendarItem {
      */
     async confirmScheduleMessage(modified) {
         let me   = this,
-            ui   = CalendarItem.ui,
+            ui   = me.ui,
             type = me.shouldSchedule(modified);
 
         if (type) {
@@ -616,10 +631,10 @@ export default class CalendarItem {
      * CalendarEvent/set
      * @param {Object} args {create, update, destroy}
      * @param {Boolean} send sendSchedulingMessages
+     * @param {Object} [ui] the item's ui (mask, error), default CalendarItem.ui
      * @returns {Promise<Object>}
      */
-    static async set(args, send = false) {
-        const ui = CalendarItem.ui;
+    static async set(args, send = false, ui = CalendarItem.ui) {
 
         ui?.mask();
 
@@ -641,8 +656,8 @@ export default class CalendarItem {
         }
     }
 
-    static update(id, changes, send) {
-        return CalendarItem.set({update: {[id]: changes}}, send)
+    static update(id, changes, send, ui = CalendarItem.ui) {
+        return CalendarItem.set({update: {[id]: changes}}, send, ui)
     }
 
     /**
@@ -663,14 +678,14 @@ export default class CalendarItem {
                 return
             }
 
-            await CalendarItem.update(me.data.id, modified, answer.send).then(() => onFinish?.(), () => onCancel?.())
+            await CalendarItem.update(me.data.id, modified, answer.send, me.ui).then(() => onFinish?.(), () => onCancel?.())
         } else if (me.isOverride) {
             await me.patchOccurrence(modified, onFinish, onCancel)
         } else if (skipAsk || !me.recurrenceId) {
             await me.patchSeries(modified, onFinish, onCancel)
         } else {
             const isFirstInSeries = me.data.start == me.recurrenceId,
-                  choice          = await CalendarItem.ui.choose({
+                  choice          = await me.ui.choose({
                       title  : t('Do you want to edit a recurring event?'),
                       icon   : 'event_repeat',
                       text   : t('You will be editing a recurring event. Do you want to edit this occurrence only or all future occurrences?'),
@@ -699,7 +714,7 @@ export default class CalendarItem {
             return
         }
 
-        await CalendarItem.update(this.data.id, modified, answer.send).then(() => onFinish?.(), () => onCancel?.())
+        await CalendarItem.update(this.data.id, modified, answer.send, this.ui).then(() => onFinish?.(), () => onCancel?.())
     }
 
     /**
@@ -714,7 +729,7 @@ export default class CalendarItem {
         try {
             [original] = await client.get('CalendarEvent', [me.data.id]);
         } catch (e) {
-            CalendarItem.ui.error(e);
+            me.ui.error(e);
             onCancel?.();
             return
         }
@@ -770,7 +785,7 @@ export default class CalendarItem {
             ? {['recurrenceOverrides/' + me.recurrenceId]: patch}
             : {recurrenceOverrides: {[me.recurrenceId]: patch}};
 
-        await CalendarItem.update(me.data.id, data, answer.send).then(() => onFinish?.(), () => onCancel?.())
+        await CalendarItem.update(me.data.id, data, answer.send, me.ui).then(() => onFinish?.(), () => onCancel?.())
     }
 
     /**
@@ -844,7 +859,7 @@ export default class CalendarItem {
         ['modifier', 'creator', 'id', 'uid', 'recurrenceOverrides', 'createdAt', 'modifiedAt', 'createdBy', 'modifiedBy', 'isOrigin']
             .forEach(key => delete next[key]);
 
-        await CalendarItem.set({update: {[me.data.id]: update}, create: {next}}, answer.send).then(() => onFinish?.(), () => onCancel?.())
+        await CalendarItem.set({update: {[me.data.id]: update}, create: {next}}, answer.send, me.ui).then(() => onFinish?.(), () => onCancel?.())
     }
 
     /**
@@ -917,7 +932,7 @@ export default class CalendarItem {
      */
     async remove() {
         let me = this,
-            ui = CalendarItem.ui;
+            ui = me.ui;
 
         if (!me.mayChange && !me.mayMove) {
             if (me.cal.myRights?.mayWriteAll && !me.isOwner) {
@@ -948,7 +963,7 @@ export default class CalendarItem {
 
         if (!me.isRecurring) {
             const answer = await me.confirmScheduleMessage(false);
-            answer && await CalendarItem.set({destroy: [me.data.id]}, answer.send).then(() => me.onRemoved?.(), () => {})
+            answer && await CalendarItem.set({destroy: [me.data.id]}, answer.send, me.ui).then(() => me.onRemoved?.(), () => {})
         } else if (me.mayChange) {
             const isFirstInSeries = me.data.start == me.recurrenceId,
                   choice          = await ui.choose({
@@ -985,7 +1000,7 @@ export default class CalendarItem {
             // overrides after the end would still show
             Object.keys(overrides).length !== Object.keys(this.data.recurrenceOverrides || {}).length && (update.recurrenceOverrides = overrides);
 
-            await CalendarItem.update(this.data.id, update, answer.send).catch(() => {})
+            await CalendarItem.update(this.data.id, update, answer.send, this.ui).catch(() => {})
         }
     }
 
@@ -993,13 +1008,13 @@ export default class CalendarItem {
         const answer = await this.confirmScheduleMessage(false);
 
         if (answer) {
-            await CalendarItem.update(this.data.id, {['recurrenceOverrides/' + this.recurrenceId]: {excluded: true}}, answer.send).catch(() => {})
+            await CalendarItem.update(this.data.id, {['recurrenceOverrides/' + this.recurrenceId]: {excluded: true}}, answer.send, this.ui).catch(() => {})
         }
     }
 
     async removeSeries() {
         const answer = await this.confirmScheduleMessage(false);
-        answer && await CalendarItem.set({destroy: [this.data.id]}, answer.send).catch(() => {})
+        answer && await CalendarItem.set({destroy: [this.data.id]}, answer.send, this.ui).catch(() => {})
     }
 
     /**
@@ -1008,6 +1023,6 @@ export default class CalendarItem {
      */
     undoException(recurrenceId) {
         delete this.data.recurrenceOverrides?.[recurrenceId];
-        return CalendarItem.update(this.data.id, {['recurrenceOverrides/' + recurrenceId]: null})
+        return CalendarItem.update(this.data.id, {['recurrenceOverrides/' + recurrenceId]: null}, false, this.ui)
     }
 }

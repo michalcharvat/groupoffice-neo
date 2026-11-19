@@ -549,8 +549,8 @@ class CalendarView extends Component {
             {text: t('Copy'), icon: 'content_copy', handler: () => item.copy()},
             {separator: true},
             {text: t('E-mail participants'), icon: 'email', disabled: !item.data.participants, handler: () => {
-                const to = Object.values(item.data.participants || {}).map(p => p.email).filter(Boolean).join(', ');
-                to && CalendarItem.ui.mailTo(to)
+                const to = Object.values(item.data.participants || {}).filter(p => p.email).map(p => ({name: p.name || '', email: p.email}));
+                to.length && CalendarItem.ui.mailTo(to)
             }},
             {text: t('Download ICS'), icon: 'import_export', handler: () => item.downloadIcs()}
         );
