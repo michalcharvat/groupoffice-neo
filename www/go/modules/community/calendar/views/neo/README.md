@@ -35,7 +35,8 @@ Styles: theme-go, `www/views/neo/resources/scss/src/apps/go/calendar/` (class
   properties (colour, visibility) don't always arrive as a push: dialogs reload
   `calendarData` after saving.
 - **Not ported**: e-mail iTIP buttons and `go.openIcs` (ExtJS e-mail module), alert
-  panel buttons, swipe gestures, tooltips as HTML popups (a `title` attribute instead),
-  the availability drag (click places the event).
+  panel buttons.
+- **Swipe**: neo sends touch coordinates only with `touchmove` (`deltaX`/`deltaY` since the
+  previous move), so `CalendarMain` sums them between `touchstart` and `touchend`.
 - Test user: no calendar admin rights, so categories / views / resources dialogs were
   only checked to open; the server refuses categories without `mayChangeCategories`.

@@ -42,6 +42,9 @@ import YearView      from './YearView.mjs';
 
 const t = translator('community', 'calendar');
 
+/** Pixels a finger has to move sideways before a swipe changes the period (GOUI: 10, which a tap can reach) */
+const SWIPE_DISTANCE = 50;
+
 /** timeSpan → [card index, index of the pressed view button (-1: none)] (GOUI updateView()) */
 const SPANS = {
     day  : [0, 0],
@@ -103,6 +106,8 @@ class CalendarMain extends MainThreeColumnPanel {
     dialogs = new Set()
     /** @member {Boolean} initialized */
     initialized = false
+    /** @member {Object|null} swipe distance {x, y} the finger moved since touchstart */
+    swipe = null
 
     get adapter() {
         return this._adapter ??= new CalendarAdapter()
@@ -332,6 +337,12 @@ class CalendarMain extends MainThreeColumnPanel {
                 reference: 'cards',
                 cls      : ['go-cal-cards'],
                 flex     : 1,
+                // swipe to the previous / next period (GOUI applySwipeEvents())
+                domListeners: [
+                    {touchstart: me.onSwipeStart, scope: me},
+                    {touchmove : me.onSwipeMove,  scope: me},
+                    {touchend  : me.onSwipeEnd,   scope: me}
+                ],
                 layout   : {ntype: 'card', activeIndex: 1},
                 items    : [
                     {module: WeekView,  reference: 'weekView',  adapter: me.adapter, listeners: me.viewListeners()},
@@ -882,6 +893,44 @@ class CalendarMain extends MainThreeColumnPanel {
 
     currentRouteSpan() {
         return ['days', 'weeks', 'split'].includes(this.timeSpan) ? `${this.timeSpan}-${this.spanAmount}` : this.timeSpan
+    }
+
+    onSwipeStart() {
+        const me = this;
+
+        // a second finger (pinch) cancels the gesture until all fingers are lifted
+        me.swipe = me.swipe ? {...me.swipe, cancelled: true} : {x: 0, y: 0}
+    }
+
+    /**
+     * Neo sends the touch coordinates only with touchmove, as the distance to the previous move
+     * @param {Object} data touchmove
+     */
+    onSwipeMove(data) {
+        const swipe = this.swipe;
+
+        if (swipe) {
+            swipe.x += data.deltaX || 0;
+            swipe.y += data.deltaY || 0
+        }
+    }
+
+    /**
+     * A mostly horizontal swipe of at least SWIPE_DISTANCE pixels goes to the next period
+     * (to the left) or the previous one (to the right)
+     */
+    onSwipeEnd() {
+        let me    = this,
+            swipe = me.swipe;
+
+        // the other fingers of a pinch lift later: their touchend finds no swipe
+        me.swipe = null;
+
+        if (!swipe || swipe.cancelled || Math.abs(swipe.y) > Math.abs(swipe.x) || Math.abs(swipe.x) < SWIPE_DISTANCE) {
+            return
+        }
+
+        me.forward(swipe.x < 0 ? 1 : -1)
     }
 
     /**
