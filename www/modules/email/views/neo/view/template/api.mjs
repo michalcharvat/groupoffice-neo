@@ -58,8 +58,8 @@ export async function loadTemplate(id) {
 
     return {
         ...data,
-        name   : decodeEntities(data.name || ''),
-        // Message::toOutputArray() escapes the subject
+        // getAttributes() gives the name raw, Message::toOutputArray() escapes the subject
+        name   : data.name || '',
         subject: decodeEntities(data.subject || '')
     }
 }

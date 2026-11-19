@@ -58,6 +58,12 @@ class EmailPortlet extends Container {
      */
     messages = []
 
+    /**
+     * The folder of `messages` (the shown one can change while its messages load)
+     * @member {Object|null} messagesFolder=null
+     */
+    messagesFolder = null
+
     loadCounter = 0
 
     onConstructed() {
@@ -128,6 +134,10 @@ class EmailPortlet extends Container {
         let me = this;
 
         me.folder = folder;
+        // the old folder's rows would open their uid in the new folder
+        me.messages = [];
+        me.messagesFolder = null;
+        me.showText(t('Loading...'));
         me.getReference('folders').items.forEach((button, i) => button.ui = me.folders[i] === folder ? 'secondary' : 'ghost');
         me.loadMessages()
     }
@@ -142,6 +152,7 @@ class EmailPortlet extends Container {
 
         if (!folder) {
             me.messages = [];
+            me.messagesFolder = null;
             me.showText(t('No folders have been added.'));
             return
         }
@@ -154,6 +165,7 @@ class EmailPortlet extends Container {
             }
 
             me.messages = results;
+            me.messagesFolder = folder;
             me.renderMessages()
         } catch (e) {
             me.isDestroyed || counter !== me.loadCounter || me.showText(e.message || String(e))
@@ -198,7 +210,7 @@ class EmailPortlet extends Container {
         let me      = this,
             index   = path.find(n => n.cls?.includes('go-portlet-row'))?.data?.index,
             message = index !== undefined && me.messages[Number(index)],
-            folder  = me.folder;
+            folder  = me.messagesFolder;
 
         if (message && folder) {
             openMessageWindow({appName: me.appName, windowId: me.windowId, accountId: Number(folder.account_id), mailbox: folder.folder_name, uid: Number(message.uid)})
