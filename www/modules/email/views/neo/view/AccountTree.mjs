@@ -2,6 +2,7 @@ import Tree          from '../../../../../views/neo/src/tree/Tree.mjs';
 import MenuList      from '../../../../../views/neo/src/menu/List.mjs';
 import ModuleRegistry from '../../../../../views/neo/src/ModuleRegistry.mjs';
 import client        from '../../../../../views/neo/src/jmap/Client.mjs';
+import {LEVEL_CREATE} from '../../../../../views/neo/src/Acl.mjs';
 import * as api      from '../api.mjs';
 import {t}           from '../util.mjs';
 import {isImapAuthError, promptImapPassword} from './account/accountActions.mjs';
@@ -417,14 +418,38 @@ class AccountTree extends Tree {
     }
 
     /**
-     * neo lists get the item classes from the record: add the node's cls
+     * neo lists get the item classes from the record: add the node's cls and the drag and
+     * drop classes (EmailMain.enableMessageDragDrop())
      */
     createItem(record, ...args) {
         const item = super.createItem(record, ...args),
-              cls  = this.getNode(record.id)?.cls;
+              node = this.getNode(record.id),
+              cls  = [...(node?.cls || []), ...this.dragDropCls(node)];
 
-        cls?.length && (item.cls = [...(item.cls || []), ...cls]);
+        cls.length && (item.cls = [...(item.cls || []), ...cls]);
         return item
+    }
+
+    /**
+     * Accounts can be dragged (sort order) and folders the user may move (ExtJS: not trash,
+     * sent, drafts, spam or INBOX). Accounts, folders and section nodes of a folder (e.g. a
+     * favourite) are drop targets.
+     * @param {Object|undefined} node
+     * @returns {String[]} "go-email-drag", "go-email-drop"
+     */
+    dragDropCls(node) {
+        const cls = [];
+
+        if (node?.entity === 'account') {
+            cls.push('go-email-drag', 'go-email-drop')
+        } else if (node?.entity === 'folder') {
+            !node.special && (Number(node.data?.permission_level) || 0) >= LEVEL_CREATE && cls.push('go-email-drag');
+            cls.push('go-email-drop')
+        } else if (node?.entity === 'sectionNode' && node.mailbox) {
+            cls.push('go-email-drop')
+        }
+
+        return cls
     }
 
     getInteractiveItemIndex(path) {

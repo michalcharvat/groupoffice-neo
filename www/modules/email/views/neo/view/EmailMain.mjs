@@ -3,6 +3,7 @@ import {LEVEL_CREATE, LEVEL_MANAGE} from '../../../../../views/neo/src/Acl.mjs';
 import Button        from '../../../../../views/neo/src/button/Button.mjs';
 import SearchButton  from '../../../../../views/neo/src/button/SearchButton.mjs';
 import TableTitle    from '../../../../../views/neo/src/component/TableTitle.mjs';
+import {enableDragDrop} from '../../../../../views/neo/src/component/dragDrop.mjs';
 import Grid          from '../../../../../views/neo/src/grid/Grid.mjs';
 import MultiSelectToolbar from '../../../../../views/neo/src/grid/MultiSelectToolbar.mjs';
 import {selectRow}   from '../../../../../views/neo/src/grid/selectRow.mjs';
@@ -19,6 +20,7 @@ import checker       from '../checker.mjs';
 import MessageStore  from '../data/MessageStore.mjs';
 import {imapText, LEVEL_DELEGATED, parseRoutePath, routePath, t} from '../util.mjs';
 import * as accountActions from './account/accountActions.mjs';
+import * as accountApi from './account/accountApi.mjs';
 import {compose}     from './composer/compose.mjs';
 import MessagePanel  from './message/MessagePanel.mjs';
 import {openMessageWindow} from './message/openMessageWindow.mjs';
@@ -421,6 +423,8 @@ class EmailMain extends MainThreeColumnPanel {
 
         Neo.main.DomEvents.registerPreventDefaultTargets({name: 'contextmenu', cls: ['go-email-grid'], windowId: me.windowId});
         grid.addDomListeners({contextmenu: me.onGridContextMenu, scope: me});
+
+        me.enableMessageDragDrop();
 
         store.on('response', ({response}) => me.onStoreResponse(response));
         store.on('load', me.onMessagesLoad, me);
@@ -1135,6 +1139,128 @@ class EmailMain extends MainThreeColumnPanel {
     }
 
     /**
+     * ExtJS ddGroup "EmailDD": messages dragged from the grid onto a folder of the tree (or a
+     * section node of a folder, e.g. a favourite) move there, with Ctrl / Alt / Cmd they are
+     * copied; tree rows: accounts change their order, folders move below another folder
+     */
+    enableMessageDragDrop() {
+        let me   = this,
+            grid = me.getReference('grid'),
+            tree = me.getReference('tree');
+
+        enableDragDrop(grid, {drag: '.neo-grid-row', group: 'email', onDrop: () => {}})
+            .catch(e => console.error('E-mail drag and drop', e));
+
+        enableDragDrop(tree, {
+            drag  : '.go-email-drag',
+            drop  : '.go-email-drop',
+            group : 'email',
+            onDrop: event => me.onTreeDrop(event)
+        }).catch(e => console.error('E-mail drag and drop', e))
+    }
+
+    /**
+     * @param {Object} event goDrop of WS/DragDrop
+     */
+    onTreeDrop(event) {
+        let me     = this,
+            grid   = me.getReference('grid'),
+            tree   = me.getReference('tree'),
+            target = tree.getNode(tree.getItemRecordId(event.targetId)),
+            source = event.source;
+
+        if (!target || !source) {
+            return
+        }
+
+        if (source.rootId === tree.id) {
+            const dragged = tree.getNode(tree.getItemRecordId(source.itemId));
+
+            dragged && dragged !== target && me.onTreeNodeDrop(dragged, target);
+            return
+        }
+
+        // data-record-id: the internal id or the key (Body.getRecord() takes both)
+        const record   = source.recordId && grid.body.getRecord(source.recordId),
+              selected = me.getSelected();
+
+        // messages go to a folder that can hold them (not an account or a "noselect" folder)
+        if (!record || !target.mailbox || target.data?.noselect) {
+            return
+        }
+
+        const records = selected.includes(record) ? selected : [record];
+
+        if (event.copy) {
+            me.copyTo(records, target.accountId, target.mailbox)
+        } else if (me.mayChange()) {
+            me.moveTo(records, target.accountId, target.mailbox)
+        }
+    }
+
+    /**
+     * A tree row dropped on another one (ExtJS AccountsTree nodedrop)
+     * @param {Object} dragged account or folder node
+     * @param {Object} target account, folder or section node
+     */
+    onTreeNodeDrop(dragged, target) {
+        let me   = this,
+            tree = me.getReference('tree');
+
+        if (dragged.entity === 'account') {
+            if (target.entity !== 'account') {
+                return
+            }
+
+            // dragged down: below the target, dragged up: above it
+            const ids  = tree.accountIds.filter(id => id !== dragged.accountId),
+                  down = tree.accountIds.indexOf(dragged.accountId) < tree.accountIds.indexOf(target.accountId);
+
+            ids.splice(ids.indexOf(target.accountId) + (down ? 1 : 0), 0, dragged.accountId);
+            me.saveAccountOrder(ids);
+            return
+        }
+
+        // a folder below a folder or the root of its own account (email/folder/move)
+        if (dragged.entity !== 'folder' || !['account', 'folder'].includes(target.entity) || target.accountId !== dragged.accountId
+            || !!target.data?.noinferiors || me.isBelow(target, dragged) || tree.getParentNode(dragged.id)?.id === target.id) {
+            return
+        }
+
+        me.moveFolderTo(dragged, target.entity === 'account' ? target.data?.mailbox || '' : target.mailbox)
+    }
+
+    /**
+     * Copies messages to a folder of any account (ExtJS AccountsTree copyDroppedNodes,
+     * email/account/copyMailTo)
+     * @param {Object[]} records
+     * @param {Number} accountId
+     * @param {String} mailbox
+     */
+    async copyTo(records, accountId, mailbox) {
+        let me = this;
+
+        try {
+            await accountApi.copyMailTo(records.map(r => ({
+                accountId  : r.account_id,
+                mailboxPath: r.mailbox,
+                mailUid    : r.uid,
+                seen       : r.seen ?? null
+            })), accountId, mailbox);
+        } catch (e) {
+            me.showError(e);
+            return
+        }
+
+        if (me.isDestroyed) {
+            return
+        }
+
+        Number(accountId) === me.accountId && mailbox === me.mailbox && await me.reload();
+        me.checkUnseen()
+    }
+
+    /**
      * The view and the tree after messages left the folder
      */
     afterMessagesGone() {
@@ -1541,8 +1667,18 @@ class EmailMain extends MainThreeColumnPanel {
             return
         }
 
+        await me.moveFolderTo(node, target.mailbox)
+    }
+
+    /**
+     * @param {Object} node folder node
+     * @param {String} targetMailbox the new parent, the account's root folder for the top level
+     */
+    async moveFolderTo(node, targetMailbox) {
+        let me = this;
+
         try {
-            await api.moveFolder(node.accountId, node.mailbox, target.mailbox);
+            await api.moveFolder(node.accountId, node.mailbox, targetMailbox);
 
             me.isOpenFolderIn(node) && (me.accountId = null);
 
@@ -1688,6 +1824,15 @@ class EmailMain extends MainThreeColumnPanel {
 
         ids.splice(index, 1);
         ids.splice(to, 0, accountId);
+
+        await me.saveAccountOrder(ids)
+    }
+
+    /**
+     * @param {Number[]} ids all account ids, first = top
+     */
+    async saveAccountOrder(ids) {
+        let me = this;
 
         try {
             await api.saveSort(ids);

@@ -157,6 +157,24 @@ as `nodeId`. `tree.reloadSection(id)` reloads one section; `tree.setUnseen(accou
 updates every node of that folder, section nodes included. Folder nodes (`folderMenuItems`) have
 `accountId`, `mailbox`, `special` ('inbox' | 'sent' | 'drafts' | 'trash' | 'spam' | null), `unseen`
 and `data` (the `email/account/tree` node: `permission_level`, `noselect`, `noinferiors`, …).
+A section node with `accountId` + `mailbox` is also a drop target for dragged messages.
+
+### Drag and drop (`EmailMain.enableMessageDragDrop()`)
+
+ExtJS ddGroup `EmailDD`, here `enableDragDrop()` (`views/neo/src/component/dragDrop.mjs`) with
+group `email`. `AccountTree.dragDropCls()` marks the rows: `go-email-drag` on accounts and on folders
+the user may move (permission ≥ create, not a special folder), `go-email-drop` on accounts, folders
+and section nodes with a `mailbox`.
+
+- Grid rows (the selection when a selected row is dragged) onto a folder: `moveTo()` (same account
+  `email/message/store` action `move`, other account `email/message/move`); with Ctrl / Alt / Cmd
+  `copyTo()` → `email/account/copyMailTo`. Not onto accounts or `noselect` folders; moving needs
+  `mayChange()` (not in a search over several folders), copying does not.
+- An account onto another account: it goes above it when dragged up, below when dragged down →
+  `email/account/saveSort`.
+- A folder onto a folder or the root of its own account → `email/folder/move` (`moveFolderTo()`).
+  GreenMail (the test IMAP server) fails `rename_folder()`'s UNSUBSCRIBE of the old name after the
+  RENAME: the folder is moved but left unsubscribed, and GO reports an error. The menu's "Move folder" does the same.
 
 Known limit: a section **without** header that had no nodes is appended at the end of the roots
 when it gets its first node through a push (`reloadSection()`), below the accounts, until the next
@@ -266,8 +284,6 @@ Left (board backlog cards, parent 20261119-011401-neo-ui-email-module):
 - **Unknown recipients dialog** (ExtJS UnknownRecipientsDialog: add the recipients of a sent mail to
   the address book): the composer imports `view/message/UnknownRecipientsDialog.mjs` and calls
   `default.show({appName, windowId, recipients})`, but the file does not exist yet, so nothing shows.
-- **Drag and drop** of messages onto tree folders / favourites and of accounts (ExtJS): neo moves
-  through "Move email to…" and the account menu's Move up / down.
 - Copy/move all results of a search (`openCopyMailToDialog`) has no button yet.
 - No message threads (GO 26 has none either), no favourites ordering (`em_folders_favorites` has no
   sort column), no "print verifies the signature first" (the S/MIME bar's Verify does it).
@@ -311,7 +327,7 @@ ExtJS files: `EmailClient.js` (module panel, store, toolbar, checker), `Accounts
 - Expanded state: `email/account/saveTreeState` `expandedNodes` = JSON array of node ids
   (setting `email_accounts_tree`). Without a saved state accounts and INBOX are expanded; once
   saved, only the listed nodes.
-- Account order: ExtJS drags accounts; neo has account menu "Move up/down" → `email/account/saveSort`
+- Account order: dragged in the tree, or account menu "Move up/down" → `email/account/saveSort`
   `sort_order` = JSON account ids, first = top.
 - Unread counts: `email/account/checkUnseen` (ExtJS `GO.checker`, every `checker_interval`, default
   120 s) → `email_status: {total_unseen, has_new, unseen: [{account_id, mailbox, unseen}]}` for each
