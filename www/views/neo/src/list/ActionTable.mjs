@@ -165,6 +165,8 @@ class ActionTable extends Component {
             tag     : 'tr',
             cls     : ['go-actiontable-row', ...me.rowCls?.(record) || []],
             'data-key': key,
+            // enableDragDrop() hands the dragged row and the drop target over by data-record-id
+            'data-record-id': key,
             cn      : [
                 ...me.columns.map(column => {
                     if (column.type === 'check') {

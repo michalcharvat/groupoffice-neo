@@ -7,6 +7,7 @@ import {notifyError} from '../Notify.mjs';
 import {fmt, t}      from '../Translate.mjs';
 import ConfirmDialog from '../view/ConfirmDialog.mjs';
 import ModuleRightsDialog from './ModuleRightsDialog.mjs';
+import ModuleSortDialog   from './ModuleSortDialog.mjs';
 import ModuleTiles   from './ModuleTiles.mjs';
 
 /** filter buttons: [isInstalled param, label] */
@@ -18,7 +19,7 @@ const CORE_RIGHTS = ['mayChangeUsers', 'mayChangeGroups', 'mayChangeCustomFields
 /**
  * "Modules" card of System settings (go.modules.SystemSettingsModuleGrid): all modules
  * of the installation as tiles, install / enable / disable / uninstall and the
- * permissions per module. Changes apply right away (no Save); the windows reload when
+ * permissions per module and the order of the modules (sort button). Changes apply right away (no Save); the windows reload when
  * the dialog closes, so the header shows the changed modules.
  */
 class ModulesPanel extends Container {
@@ -85,6 +86,11 @@ class ModulesPanel extends Container {
                 placeholderText: t('Search'),
                 width          : 240,
                 listeners      : {change: () => me.onSearchChange()}
+            }, {
+                module : Button,
+                icon   : 'sort',
+                tooltip: t('Modules sorting'),
+                handler: () => me.showSort()
             }]
         }, {
             module   : ModuleTiles,
@@ -250,6 +256,17 @@ class ModulesPanel extends Container {
             dialog = Neo.create(ModuleRightsDialog, {appName: me.appName, windowId: me.windowId, moduleId, rights});
 
         dialog.on('save', () => me.needsReload = true)
+    }
+
+    /**
+     * Order of the modules in the main menu
+     * @protected
+     */
+    showSort() {
+        let me     = this,
+            dialog = Neo.create(ModuleSortDialog, {appName: me.appName, windowId: me.windowId});
+
+        dialog.on('change', () => me.needsReload = true)
     }
 
     /**
