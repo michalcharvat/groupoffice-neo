@@ -4,23 +4,29 @@ import Button        from '../../../../../../../views/neo/src/button/Button.mjs'
 import DetailFieldsets from '../../../../../../../views/neo/src/customfields/DetailFieldsets.mjs';
 import CommentsPanel from '../../../../../../../views/neo/src/detail/CommentsPanel.mjs';
 import {escapeHtml, smartDateTime} from '../../../../../../../views/neo/src/Format.mjs';
+import LocalCombo    from '../../../../../../../views/neo/src/form/field/LocalCombo.mjs';
+import PrincipalCombo from '../../../../../../../views/neo/src/form/field/PrincipalCombo.mjs';
 import RecurrenceField from '../../../../../../../views/neo/src/form/field/RecurrenceField.mjs';
 import client        from '../../../../../../../views/neo/src/jmap/Client.mjs';
 import AddLinkButton from '../../../../../../../views/neo/src/link/AddLinkButton.mjs';
 import LinkBrowseButton from '../../../../../../../views/neo/src/link/LinkBrowseButton.mjs';
 import LinkCards     from '../../../../../../../views/neo/src/link/LinkCards.mjs';
+import TextList      from '../../../../../../../views/neo/src/list/TextList.mjs';
 import {print}       from '../../../../../../../views/neo/src/print.mjs';
 import {translator}  from '../../../../../../../views/neo/src/Translate.mjs';
 import CalendarItem, {participantStatusIcon} from '../CalendarItem.mjs';
 import calendarData  from '../data.mjs';
 import {durationText} from '../util/date.mjs';
+import AlertField    from './field/AlertField.mjs';
 
-const t = translator('community', 'calendar');
+const t     = translator('community', 'calendar'),
+      clone = value => JSON.parse(JSON.stringify(value));
 
 /**
- * An event read only (GOUI EventDetail): title, calendar, time, recurrence, location,
- * description, participants with their status, attachments; Accept / Maybe / Decline for
- * invitations, the event's own reminder; links, comments and custom fields below.
+ * An event (GOUI EventDetail): title, calendar, time, recurrence, location, description,
+ * participants with their status, attachments; Accept / Maybe / Decline for invitations.
+ * Saved right away: the calendar (with mayMove), the user's reminder and, with the module
+ * right mayChangeOrganizer, a new organizer. Links, comments and custom fields below.
  *
  * Events: edit {item}, changed {}
  */
@@ -74,6 +80,41 @@ class EventDetail extends Container {
                 reference: 'body',
                 flex     : 'none',
                 html     : ''
+            }, {
+                ntype    : 'container',
+                reference: 'controls',
+                cls      : ['go-card', 'go-pad', 'go-cal-detail-controls'],
+                flex     : 'none',
+                layout   : {ntype: 'vbox', align: 'stretch'},
+                hidden   : true,
+                items    : [{
+                    module       : LocalCombo,
+                    reference    : 'calendarField',
+                    flex         : 'none',
+                    width        : null,
+                    labelText    : t('Calendar'),
+                    labelPosition: 'inline',
+                    required     : true,
+                    displayField : 'name',
+                    valueField   : 'id',
+                    listConfig   : {module: TextList},
+                    store        : {keyProperty: 'id', data: []},
+                    listeners    : {change: 'up.onCalendarChange'}
+                }, {
+                    module       : AlertField,
+                    reference    : 'alertField',
+                    flex         : 'none',
+                    labelPosition: 'inline',
+                    listeners    : {change: 'up.onAlertChange'}
+                }, {
+                    module         : PrincipalCombo,
+                    principalEntity: 'User',
+                    reference      : 'organizerField',
+                    flex           : 'none',
+                    labelText      : t('Change organizer'),
+                    labelPosition  : 'inline',
+                    listeners      : {change: 'up.onOrganizerChange'}
+                }]
             }, {
                 module   : DetailFieldsets,
                 reference: 'customFields',
@@ -135,7 +176,59 @@ class EventDetail extends Container {
         comments.current?.entityId !== id && comments.setEntity(real ? 'CalendarEvent' : null, real ? id : null, real ? item.data : null);
 
         me.renderStatus();
+        me.renderControls();
         me.renderBody()
+    }
+
+    /**
+     * Whether the reminder is edited below instead of shown in the body
+     * @returns {Boolean}
+     */
+    get alertsEditable() {
+        const item = this.item;
+        return !!(item && item.key && !item.isNew() && item.provider === 'event' && item.data.id && !item.readOnly)
+    }
+
+    /**
+     * Calendar, reminder and organizer fields of a saved event (GOUI EventDetail.loadEvent())
+     */
+    renderControls() {
+        let me       = this,
+            item     = me.item,
+            editable = me.alertsEditable,
+            controls = me.getReference('controls');
+
+        controls.hidden = !editable;
+
+        if (!editable) {
+            return
+        }
+
+        const calendarField  = me.getReference('calendarField'),
+              alertField     = me.getReference('alertField'),
+              organizerField = me.getReference('organizerField'),
+              cal            = item.cal,
+              allDay         = !!item.data.showWithoutTime,
+              calendarId     = String(item.data.calendarId),
+              options        = calendarData.writableCalendars.map(c => ({id: String(c.id), name: c.name}));
+
+        options.some(o => o.id === calendarId) || options.push({id: calendarId, name: cal?.name || t('Calendar')});
+
+        // programmatic values: no saving
+        me.silent = true;
+
+        calendarField.hidden = !item.mayMove;
+        calendarField.store.data = options;
+        calendarField.value = calendarId;
+
+        alertField.fullDay = allDay;
+        alertField.setDefaultLabel(allDay ? cal?.defaultAlertsWithoutTime : cal?.defaultAlertsWithTime);
+        alertField.value = item.data.useDefaultAlerts ? 'default' : (item.data.alerts || null);
+
+        organizerField.hidden = !item.participants || !item.data.isOrigin || !calendarData.rights.mayChangeOrganizer;
+        organizerField.value = null;
+
+        me.silent = false
     }
 
     renderStatus() {
@@ -204,7 +297,7 @@ class EventDetail extends Container {
                 `<div class="go-cal-attachment"><button type="button" class="go-cal-attachment-file" data-blob="${escapeHtml(l.blobId)}"><i class="go-icon">description</i> ${escapeHtml(l.title)}</button></div>`).join(''))
         }
 
-        if (item.key && item.provider === 'event') {
+        if (item.key && item.provider === 'event' && !me.alertsEditable) {
             const alerts = item.data.useDefaultAlerts
                 ? (item.data.showWithoutTime ? cal?.defaultAlertsWithoutTime : cal?.defaultAlertsWithTime)
                 : item.data.alerts,
@@ -229,6 +322,135 @@ class EventDetail extends Container {
             const url = (client.session?.downloadUrl || client.baseUrl + 'api/download.php?blob={blobId}').replace('{blobId}', encodeURIComponent(blob));
             Neo.Main.windowOpen({url, windowName: '_blank', windowId: this.windowId})
         }
+    }
+
+    /**
+     * Saves a change of the whole event without scheduling messages (GOUI patches the
+     * series for the calendar, reminder and organizer too)
+     * @param {Object} changes
+     * @returns {Promise<Boolean>} saved
+     */
+    async saveChanges(changes) {
+        let me   = this,
+            item = me.item;
+
+        try {
+            await CalendarItem.update(item.data.id, changes, false, item.ui || CalendarItem.ui);
+            return true
+        } catch (e) {
+            // set() showed the error
+            return false
+        }
+    }
+
+    async onCalendarChange() {
+        let me         = this,
+            item       = me.item,
+            calendarId = me.getReference('calendarField').getSubmitValue();
+
+        if (me.silent || !item || String(calendarId) === String(item.data.calendarId)) {
+            return
+        }
+
+        // cleared: back to the event's calendar
+        if (!calendarId) {
+            me.renderControls();
+            return
+        }
+
+        if (await me.saveChanges({calendarId})) {
+            item.data.calendarId = item.patched.calendarId = calendarId;
+            item.cal = calendarData.getCalendar(calendarId) || item.cal;
+            item.calendarIds = {[calendarId]: true};
+            item._calendarPrincipal = undefined;
+            me.fire('changed', {})
+        }
+
+        me.isDestroyed || me.setItem(item)
+    }
+
+    async onAlertChange() {
+        let me    = this,
+            item  = me.item,
+            field = me.getReference('alertField');
+
+        if (me.silent || !item) {
+            return
+        }
+
+        const useDefaultAlerts = field.useDefault,
+              alerts           = useDefaultAlerts ? null : field.getSubmitValue();
+
+        if (await me.saveChanges({useDefaultAlerts, alerts})) {
+            Object.assign(item.data, {useDefaultAlerts, alerts});
+            me.fire('changed', {})
+        }
+
+        me.isDestroyed || me.renderControls()
+    }
+
+    /**
+     * The picked user becomes the organizer, the old one an attendee (GOUI changeOrganizer())
+     */
+    async onOrganizerChange() {
+        let me        = this,
+            item      = me.item,
+            picked    = me.getReference('organizerField').value;
+
+        if (me.silent || !item || !picked?.id) {
+            return
+        }
+
+        // the list record has no e-mail address
+        let principal;
+
+        try {
+            [principal] = await client.get('Principal', [picked.id], ['id', 'name', 'email', 'type']);
+        } catch (e) {
+            (item.ui || CalendarItem.ui).error(e);
+            return
+        }
+
+        if (!principal?.email || me.isDestroyed || me.item !== item) {
+            return
+        }
+
+        const changes      = {},
+              participants = clone(item.data.participants || {});
+
+        const email = principal.email.toLowerCase();
+
+        Object.entries(participants).forEach(([id, p]) => {
+            // already invited under another key: replaced by the organizer entry
+            if (id !== String(principal.id) && p.email?.toLowerCase() === email) {
+                changes[`participants/${id}`] = null;
+                delete participants[id]
+            } else if (p.roles?.owner) {
+                changes[`participants/${id}/roles`] = {attendee: true, owner: null};
+                p.roles = {attendee: true}
+            }
+        });
+
+        const organizer = {
+            email              : principal.email,
+            name               : principal.name,
+            roles              : {attendee: true, owner: true},
+            kind               : principal.type || 'individual',
+            participationStatus: 'accepted',
+            expectReply        : false
+        };
+
+        changes[`participants/${principal.id}`] = organizer;
+        participants[principal.id] = organizer;
+
+        if (await me.saveChanges(changes)) {
+            item.data.participants = participants;
+            item.patched.participants = clone(participants);
+            item._calendarPrincipal = undefined;
+            me.fire('changed', {})
+        }
+
+        me.isDestroyed || me.setItem(item)
     }
 
     onEdit() {
