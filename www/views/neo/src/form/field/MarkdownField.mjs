@@ -71,12 +71,6 @@ class MarkdownField extends HtmlField {
         ]}
     }
 
-    /**
-     * Uploads running (flush() waits for them)
-     * @member {Set} uploads=new Set()
-     */
-    uploads = new Set()
-
     get addonName() {return 'WS/MarkdownEditor'}
     get addon()     {return Neo.ns('GO.main.addon.MarkdownEditor')}
     get commands()  {return COMMANDS}
@@ -306,15 +300,6 @@ class MarkdownField extends HtmlField {
             // not supported for this image type, e.g. SVG
             return undefined
         }
-    }
-
-    /**
-     * Waits for running uploads, then takes the last typing along (FormWindow calls it before saving)
-     * @returns {Promise<String>}
-     */
-    async flush() {
-        await Promise.allSettled([...this.uploads]);
-        return super.flush()
     }
 }
 

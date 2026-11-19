@@ -1,5 +1,8 @@
-import Field from '../../../node_modules/neo.mjs/src/form/field/Base.mjs';
-import {t}   from '../../Translate.mjs';
+import Field                from '../../../node_modules/neo.mjs/src/form/field/Base.mjs';
+import client               from '../../jmap/Client.mjs';
+import uploader, {Uploader} from '../../jmap/Uploader.mjs';
+import {notifyError}        from '../../Notify.mjs';
+import {t}                  from '../../Translate.mjs';
 
 /**
  * Rich text field, port of GOUI HtmlField (contenteditable + toolbar).
@@ -15,6 +18,11 @@ import {t}   from '../../Translate.mjs';
  * Works in a form.Container like any neo field (name, value, getSubmitValue(),
  * isDirty, change event). Moving to another window (popout dialog) recreates the
  * editor there with the current value.
+ *
+ * imageUpload (GOUI "insertimage" + client.upload(), e.g. notes): images pasted, dropped
+ * or chosen with the toolbar's image button are uploaded as blobs and kept as
+ * <img data-blob-id="…" src="…/download.php?blob=…">; the server attaches the blobs it
+ * finds in the HTML. flush() waits for running uploads.
  */
 
 /** GOUI default toolbar, minus image, code and source edit */
@@ -38,6 +46,8 @@ const COMMANDS = {
     indent             : {icon: 'format_indent_increase', title: 'Indent'},
     outdent            : {icon: 'format_indent_decrease', title: 'Outdent'},
     createLink         : {icon: 'link',                   title: 'Create link'},
+    // imageUpload: a label around a file input, the addon inserts the chosen images
+    image              : {icon: 'image',                  title: 'Image'},
     // added by GO.form.field.HtmlFieldMentionPlugin
     mention            : {icon: 'alternate_email',        title: 'Mention user'},
     removeFormat       : {icon: 'format_clear',           title: 'Remove formatting'}
@@ -64,6 +74,12 @@ class HtmlField extends Field {
          * @member {Boolean} pasteImages=false
          */
         pasteImages: false,
+        /**
+         * Pasted, dropped and chosen images (toolbar "image" button, added after "createLink")
+         * are uploaded as blobs. Overrides pasteImages.
+         * @member {Boolean} imageUpload=false
+         */
+        imageUpload: false,
         /**
          * @member {Boolean} readOnly_=false
          */
@@ -112,6 +128,19 @@ class HtmlField extends Field {
     #valueSource = null
 
     /**
+     * Uploads running (flush() waits for them)
+     * @member {Set} uploads=new Set()
+     */
+    uploads = new Set()
+
+    /**
+     * Upload results, token → blobId (null: failed). Applied again when the editor is
+     * recreated (popout): its images still carry their data-upload token.
+     * @member {Map} #uploadedImages=new Map()
+     */
+    #uploadedImages = new Map()
+
+    /**
      * Main thread addon that runs the editor, see Neo.Main.importAddon()
      * @returns {String}
      */
@@ -148,6 +177,7 @@ class HtmlField extends Field {
 
         me.addDomListeners({
             htmlChange: me.onHtmlChange,
+            htmlFiles : me.onHtmlFiles,
             scope     : me
         })
     }
@@ -173,10 +203,29 @@ class HtmlField extends Field {
      */
     get commands() {return COMMANDS}
 
+    /**
+     * The toolbar commands, with "image" when images are uploaded (imageUpload)
+     * @returns {String[]}
+     */
+    getToolbarCommands() {
+        let toolbar = this.toolbar;
+
+        if (this.imageUpload && !toolbar.includes('image')) {
+            const index = toolbar.indexOf('createLink');
+
+            toolbar = [...toolbar];
+            toolbar.splice(index < 0 ? toolbar.length : index + 1, 0, 'image')
+        } else if (!this.imageUpload) {
+            toolbar = toolbar.filter(cmd => cmd !== 'image')
+        }
+
+        return toolbar
+    }
+
     renderToolbar() {
         let me = this;
 
-        me.toolbarNode.cn = me.toolbar.map(cmd => {
+        me.toolbarNode.cn = me.getToolbarCommands().map(cmd => {
             if (cmd === '-') {
                 return {cls: ['go-htmlfield-separator']}
             }
@@ -184,6 +233,17 @@ class HtmlField extends Field {
             const {icon, title, color} = me.commands[cmd],
                   text                 = t(title),
                   iconNode             = {tag: 'span', cls: ['go-icon'], 'aria-hidden': 'true', text: icon};
+
+            // image: the label opens the file chooser of its input, the addon inserts the images
+            if (cmd === 'image') {
+                return {
+                    tag  : 'label',
+                    cls  : ['go-htmlfield-btn', 'go-htmlfield-upload'],
+                    title: text,
+                    cn   : [iconNode, {tag: 'input', type: 'file', accept: 'image/*', multiple: true,
+                        cls: ['go-htmlfield-file'], 'aria-label': text}]
+                }
+            }
 
             // colour: the label opens the native colour picker of its input
             return color ? {
@@ -292,6 +352,8 @@ class HtmlField extends Field {
                 labels  : me.getEditorLabels(),
                 mentions: !!me.mentionPlugin,
                 pasteImages: !!me.pasteImages,
+                uploadImages: !!me.imageUpload,
+                blobUrl : client.apiUrl + 'download.php?blob=',
                 token   : generation,
                 value   : sent,
                 windowId
@@ -303,7 +365,11 @@ class HtmlField extends Field {
                 me.syncReadOnly?.();
 
                 // value set while the editor was being created
-                (me.value || '') !== sent && me.addon.setValue({id: me.id, value: me.value || '', windowId}).catch(() => {})
+                (me.value || '') !== sent && me.addon.setValue({id: me.id, value: me.value || '', windowId}).catch(() => {});
+
+                // uploads that finished while there was no editor
+                me.#uploadedImages.forEach((blobId, token) =>
+                    me.addon.setImageBlob({id: me.id, token, blobId, windowId}).catch(() => {}))
             } else {
                 // unmounted, moved or destroyed meanwhile: destroyEditor() did not know
                 // this instance yet, remove it from its window
@@ -366,6 +432,57 @@ class HtmlField extends Field {
     }
 
     /**
+     * Images the addon inserted (paste, drop, image button): upload them
+     * @param {Object} data
+     * @param {File[]} data.files
+     * @param {String[]} data.tokens the images' data-upload, see GO.main.addon.HtmlEditor.setImageBlob()
+     */
+    onHtmlFiles(data) {
+        let me = this;
+
+        if (data.id !== me.id || !me.imageUpload || !data.files?.length) {
+            return
+        }
+
+        const upload = Promise.all(data.files.map((file, i) => me.uploadInsertedImage(file, data.tokens[i])));
+
+        me.uploads.add(upload);
+        upload.finally(() => me.uploads.delete(upload))
+    }
+
+    /**
+     * Uploads one image and tells the editor its blob (null when the upload failed)
+     * @param {File} file
+     * @param {String} token
+     * @returns {Promise<void>}
+     */
+    async uploadInsertedImage(file, token) {
+        let me     = this,
+            blobId = null;
+
+        try {
+            const blob = await uploader.upload(file, {component: me});
+
+            blobId = blob.blobId || blob.id
+        } catch (e) {
+            if (!Uploader.isAbort(e)) {
+                console.error(e);
+                me.isDestroyed || notifyError(me, new Error(t('Failed to upload {name}').replace('{name}', file.name)))
+            }
+        }
+
+        if (me.isDestroyed) {
+            return
+        }
+
+        me.#uploadedImages.set(token, blobId);
+
+        // the current editor, also after a popout; the addon sends the new HTML back as htmlChange
+        const windowId = me.#editorWindowId;
+        windowId && await me.addon.setImageBlob({id: me.id, token, blobId, windowId}).catch(() => {})
+    }
+
+    /**
      * Focuses the editor
      */
     focus() {
@@ -387,10 +504,12 @@ class HtmlField extends Field {
 
     /**
      * Latest HTML straight from the editor, including typing the debounced sync
-     * has not sent yet. Use before saving.
+     * has not sent yet, after running image uploads. Use before saving.
      * @returns {Promise<String>}
      */
     async flush() {
+        await Promise.allSettled([...this.uploads]);
+
         let me       = this,
             windowId = me.#editorWindowId;
 

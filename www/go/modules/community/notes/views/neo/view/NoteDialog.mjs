@@ -195,7 +195,9 @@ class NoteDialog extends FormWindow {
             name     : 'content',
             reference: 'content',
             labelText: t('Content'),
-            flex     : 1
+            flex     : 1,
+            // pasted, dropped and chosen images are uploaded as blobs (GOUI NoteDialog insertimage)
+            ...type === 'markdown' ? {} : {imageUpload: true}
         }
     }
 

@@ -17,6 +17,12 @@ import DomEvents from '../../../node_modules/neo.mjs/src/main/DomEvents.mjs';
  *
  * The App worker gets the HTML as a custom DOM event "htmlChange" (debounced
  * on input, immediately on blur and before a command).
+ *
+ * With uploadImages, pasted, dropped or chosen (toolbar file input) images are
+ * inserted at once with an object URL and a data-upload token, and go to the worker
+ * as "htmlFiles" {files, tokens}. The worker uploads them and calls setImageBlob():
+ * the image then gets data-blob-id and the blob's download URL (GOUI HtmlField
+ * "insertimage"). The server attaches the blobs it finds in the HTML (Blob::parse()).
  */
 
 /** commands with an on/off state shown on their button */
@@ -48,6 +54,9 @@ function isSafeUrl(value, image) {
     return LINK_SCHEME.test(url) || (image && /^(data:image\/(png|gif|jpe?g|webp);|cid:)/i.test(url))
 }
 
+/** numbers the images of insertImages() */
+let uploadToken = 0;
+
 /** ms after the last input before the value goes to the worker */
 const SYNC_DELAY = 300;
 
@@ -69,6 +78,7 @@ class HtmlEditor extends Base {
                 'focus',
                 'getValue',
                 'insertText',
+                'setImageBlob',
                 'setValue',
                 'showMentions'
             ]
@@ -95,9 +105,12 @@ class HtmlEditor extends Base {
      * @param {Object} data.labels  translated texts for the link bar
      * @param {Number} [data.token] identifies this instance for destroyInstance()
      * @param {Boolean} [data.mentions] "@name" asks the worker for suggestions ("mentionQuery"), see showMentions()
+     * @param {Boolean} [data.pasteImages] pasted image files become data: images
+     * @param {Boolean} [data.uploadImages] pasted, dropped and chosen images go to the worker for upload ("htmlFiles")
+     * @param {String} [data.blobUrl] download URL of a blob without its id ("…/download.php?blob=")
      * @returns {Boolean} false when the field's DOM is missing
      */
-    createInstance({id, value = '', labels = {}, token = null, mentions = false, pasteImages = false}) {
+    createInstance({id, value = '', labels = {}, token = null, mentions = false, pasteImages = false, uploadImages = false, blobUrl = ''}) {
         let me   = this,
             root = DomAccess.getElement(id);
 
@@ -111,19 +124,21 @@ class HtmlEditor extends Base {
         }
 
         const item = me.map[id] = {
+            blobUrl,
             editor   : DomAccess.getElement(id + '__editor'),
             labels,
             linkBar  : DomAccess.getElement(id + '__linkbar'),
             listeners: [],
             mention  : null,
             mentions,
+            objectUrls: new Set(),
             range    : null,
             root,
             timer    : null,
             token
         };
 
-        me.fill(item.editor, value);
+        me.fill(item.editor, value, blobUrl);
         me.buildLinkBar(item);
 
         const on = (el, type, fn) => {
@@ -140,7 +155,15 @@ class HtmlEditor extends Base {
             me.sync(id)
         });
         on(item.editor, 'keydown', e => me.onKeyDown(id, e));
-        pasteImages && on(item.editor, 'paste', e => me.onPasteImages(id, e));
+        if (uploadImages) {
+            on(item.editor, 'paste', e => me.onImageFiles(id, e, e.clipboardData));
+            on(item.editor, 'dragover', e => me.hasImages(e.dataTransfer) && e.preventDefault());
+            on(item.editor, 'drop', e => me.onImageFiles(id, e, e.dataTransfer));
+            // the toolbar's image button: a label around a file input (GO.form.field.HtmlField)
+            on(root, 'change', e => e.target.matches?.('.go-htmlfield-file') && me.onFileInput(id, e.target))
+        } else if (pasteImages) {
+            on(item.editor, 'paste', e => me.onPasteImages(id, e))
+        }
         // on the root, which neo keeps while the field lives: toolbar nodes may get re-rendered
         const inToolbar = e => e.target.closest?.('.go-htmlfield-toolbar');
 
@@ -176,7 +199,12 @@ class HtmlEditor extends Base {
         item.mentionMenu?.remove();
         delete this.map[id];
 
-        return this.readValue(item)
+        const html = this.readValue(item);
+
+        // images still uploading lose their object URL: the HTML keeps them, a new editor drops them
+        item.objectUrls.forEach(url => URL.revokeObjectURL(url));
+
+        return html
     }
 
     /**
@@ -235,7 +263,7 @@ class HtmlEditor extends Base {
 
         if (item && this.readValue(item) !== (value || '')) {
             clearTimeout(item.timer);
-            this.fill(item.editor, value);
+            this.fill(item.editor, value, item.blobUrl);
             this.updateToolbar(id)
         }
     }
@@ -245,8 +273,10 @@ class HtmlEditor extends Base {
      * first; elements and attributes that could run code are removed.
      * @param {HTMLElement} editor
      * @param {String} html
+     * @param {String} [blobUrl] images with data-blob-id show that blob (GOUI saves them with
+     * the object URL of the upload, which is gone after a reload)
      */
-    fill(editor, html) {
+    fill(editor, html, blobUrl = '') {
         const doc = new DOMParser().parseFromString('<body>' + (html || '') + '</body>', 'text/html');
 
         doc.body.querySelectorAll(UNSAFE_TAGS).forEach(el => el.remove());
@@ -261,7 +291,191 @@ class HtmlEditor extends Base {
             })
         });
 
+        blobUrl && doc.body.querySelectorAll('img[data-blob-id]').forEach(img => {
+            const src = img.getAttribute('src') || '';
+
+            if (!src || /^blob:/i.test(src.trim())) {
+                img.setAttribute('src', blobUrl + encodeURIComponent(img.dataset.blobId))
+            }
+        });
+
         editor.replaceChildren(...[...doc.body.childNodes].map(node => document.importNode(node, true)))
+    }
+
+    /**
+     * @param {DataTransfer|null} transfer
+     * @returns {Boolean}
+     */
+    hasImages(transfer) {
+        return !!transfer && [...transfer.types || []].includes('Files')
+    }
+
+    /**
+     * Pasted or dropped image files are uploaded (createInstance() with uploadImages).
+     * Other content is pasted / dropped as usual.
+     * @param {String} id
+     * @param {ClipboardEvent|DragEvent} e
+     * @param {DataTransfer|null} transfer
+     */
+    onImageFiles(id, e, transfer) {
+        const item   = this.map[id],
+              images = [...transfer?.files || []].filter(file => file.type.startsWith('image/'));
+
+        if (!item || !images.length || item.editor.contentEditable === 'false') {
+            return
+        }
+
+        e.preventDefault();
+
+        if (e.type === 'drop') {
+            this.setCaretFromPoint(item, e.clientX, e.clientY)
+        } else {
+            this.saveRange(item)
+        }
+
+        this.insertImages(id, images)
+    }
+
+    /**
+     * Files chosen with the toolbar's image button
+     * @param {String} id
+     * @param {HTMLInputElement} input
+     */
+    onFileInput(id, input) {
+        const item   = this.map[id],
+              images = [...input.files || []].filter(file => file.type.startsWith('image/'));
+
+        // the same file can be chosen again
+        input.value = '';
+
+        if (item && images.length && item.editor.contentEditable !== 'false') {
+            this.insertImages(id, images)
+        }
+    }
+
+    /**
+     * Puts the caret where something was dropped
+     * @param {Object} item
+     * @param {Number} x
+     * @param {Number} y
+     */
+    setCaretFromPoint(item, x, y) {
+        let range = null;
+
+        if (document.caretPositionFromPoint) {
+            const pos = document.caretPositionFromPoint(x, y);
+
+            if (pos) {
+                range = document.createRange();
+                range.setStart(pos.offsetNode, pos.offset)
+            }
+        } else if (document.caretRangeFromPoint) {
+            range = document.caretRangeFromPoint(x, y)
+        }
+
+        if (range && item.editor.contains(range.startContainer)) {
+            const selection = getSelection();
+
+            range.collapse(true);
+            item.range = range;
+            // insertImages() takes the live selection first
+            item.editor.focus();
+            selection.removeAllRanges();
+            selection.addRange(range)
+        }
+    }
+
+    /**
+     * Inserts the images at the caret (at the end when the editor never had it) and
+     * sends them to the worker for upload
+     * @param {String} id
+     * @param {File[]} files
+     */
+    insertImages(id, files) {
+        const me     = this,
+              item   = me.map[id],
+              tokens = [];
+
+        // the live caret when the editor still has it, the last saved one otherwise
+        me.saveRange(item);
+        me.restoreRange(item);
+
+        if (!item.range || !item.editor.contains(item.range.startContainer)) {
+            const selection = getSelection();
+            selection.selectAllChildren(item.editor);
+            selection.collapseToEnd()
+        }
+
+        files.forEach(file => {
+            const url   = URL.createObjectURL(file),
+                  token = `${id}-${++uploadToken}`;
+
+            item.objectUrls.add(url);
+            tokens.push(token);
+
+            // insertImage keeps the browser's undo stack; insertHTML would copy computed styles onto the image
+            document.execCommand('insertImage', false, url);
+
+            const img = [...item.editor.querySelectorAll('img')].find(el => el.getAttribute('src') === url);
+
+            if (img) {
+                img.alt            = file.name || '';
+                img.dataset.upload = token;
+                img.setAttribute('style', 'max-width: 100%; height: auto;')
+            }
+        });
+
+        me.saveRange(item);
+
+        // File objects survive postMessage (structured clone)
+        DomEvents.sendMessageToApp({
+            id,
+            path : DomEvents.getPathFromElement(item.root).map(e => DomEvents.getTargetData(e)),
+            type : 'htmlFiles',
+            files,
+            tokens
+        });
+
+        me.sync(id)
+    }
+
+    /**
+     * An image of insertImages() was uploaded: it shows the blob from now on. Without a
+     * blobId (failed or aborted upload) the image is removed.
+     * @param {Object} data
+     * @param {String} data.id
+     * @param {String} data.token
+     * @param {String|null} data.blobId
+     */
+    setImageBlob({id, token, blobId}) {
+        const item = this.map[id];
+
+        if (!item) {
+            return
+        }
+
+        item.editor.querySelectorAll('img[data-upload]').forEach(img => {
+            if (img.dataset.upload !== token) {
+                return
+            }
+
+            const url = img.getAttribute('src');
+
+            if (blobId) {
+                img.src = item.blobUrl + encodeURIComponent(blobId);
+                img.dataset.blobId = blobId;
+                img.removeAttribute('data-upload')
+            } else {
+                img.remove()
+            }
+
+            if (item.objectUrls.has(url)) {
+                URL.revokeObjectURL(url);
+                item.objectUrls.delete(url)
+            }
+        });
+
+        this.sync(id)
     }
 
     /**

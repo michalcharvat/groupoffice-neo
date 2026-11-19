@@ -83,6 +83,16 @@
         border: 0;
     }
 
+    /* image button (imageUpload): the label opens the file chooser */
+    .go-htmlfield-file {
+        display: none;
+    }
+
+    /* uploading: shown from its object URL until the blob is stored */
+    .go-htmlfield-editor img[data-upload] {
+        opacity: .5;
+    }
+
     .go-htmlfield-separator {
         width     : 1px;
         height    : 2rem;
