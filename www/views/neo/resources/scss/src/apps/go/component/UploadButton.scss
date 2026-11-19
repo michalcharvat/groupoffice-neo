@@ -2,6 +2,12 @@
 .neo-theme-go {
     .go-upload-button {
         cursor: pointer;
+
+        &.neo-disabled {
+            cursor        : default;
+            opacity       : .5;
+            pointer-events: none;
+        }
     }
 
     .go-upload-input {

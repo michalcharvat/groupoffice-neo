@@ -2317,4 +2317,5 @@ Pokud jste o nové heslo nežádali, tento e-mail prosím smažte.',
   'Saved' => 'Uloženo',
   'Open in new window' => 'Otevřít v novém okně',
   'Failed to delete' => 'Smazání se nezdařilo',
+  'Choose a file to import' => 'Vyberte soubor k importu',
 );
