@@ -6,7 +6,7 @@ import client from '../jmap/Client.mjs';
  * finished" whose body links the blob (AbstractConverter notifyStart/notifyEnd). The
  * ExtJS client shows them as notifications; neo has none yet, so the caller waits:
  *
- *     const alert  = await runBackgroundJob(() => client.call('Contact/export', {extension: 'csv', ids}));
+ *     const alert  = await runBackgroundJob(() => client.call('Contact/export', {extension: 'csv', ids, background: true}));
  *     const blobId = alertBlobId(alert); // the export file, null for an "Export error"
  *
  * Jobs of this worker run one after the other: the first alert created after a job

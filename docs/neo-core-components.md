@@ -1,4 +1,4 @@
-# Core UI components: GO vs neo.mjs (updated 2026-11-18)
+# Core UI components: GO vs neo.mjs (updated 2026-11-19)
 
 What the neo webclient (`www/views/neo`) has to provide to replace the GOUI/ExtJS
 webclient. The live per-component status is the Dev module (`src/dev/menu.mjs`, `status`). Reference is GOUI (`views/goui/goui/script` = base library,
@@ -80,12 +80,17 @@ Status: **neo** = neo.mjs 13.2 ships it, usable as is (maybe GO styling);
 ## ExtJS-only core (not in GOUI yet)
 
 Done in neo: import (`src/import/`), system and module settings, user/group
-administration, e-mail and PDF templates, blob upload with progress (`Uploader`, `UploadPanel`, `UploadButton`, `BlobField`).
+administration, e-mail and PDF templates, blob upload with progress (`Uploader`, `UploadPanel`, `UploadButton`, `BlobField`),
+grid export (`src/export/exportEntities.mjs`: `exportMenuItem()` / `exportEntities()`,
+`MainThreeColumnPanel.exportMenuItem()`; Users, notes, tasks, address book) and batch edit
+(`GO.form.BatchEditDialog` + `GO.grid.BatchEditButton` in a MultiSelectToolbar: the entity's
+custom fields, like ExtJS; notes, tasks, address book). Downloads use `src/download.mjs`.
+Bookmarks has no grid and no `Bookmark/export`, so neither applies there.
 
 ## Left to build (2026-11-19)
 
 1. ~~**Notes Markdown + image zoom**~~ — done: `MarkdownField`, `src/Markdown.mjs`, `ImageWindow`.
-2. **Grid export + batch edit** — a reusable export (only `UsersPanel.exportUsers()` exists today) and editing several selected records.
+2. ~~**Grid export + batch edit**~~ — done: `src/export/exportEntities.mjs`, `GO.form.BatchEditDialog`.
    ~~**Create link while creating**~~ — done: `CreateLinkButton` in FormWindow (notes, tasks, contacts, calendar events).
 3. ~~**Upload with progress**~~ — done: `jmap/Uploader.mjs` + `UploadPanel` (progress, abort, size limit).
 4. ~~**HtmlField mentions** and **RecipientPicker**~~ — done: `HtmlFieldMentionPlugin` (comments), `RecipientsField` + `RecipientPicker` (ready for a mail composer).

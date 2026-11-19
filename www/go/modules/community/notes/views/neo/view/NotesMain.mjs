@@ -3,7 +3,9 @@ import {LEVEL_CREATE, LEVEL_DELETE, LEVEL_MANAGE, LEVEL_WRITE} from '../../../..
 import Button        from '../../../../../../../views/neo/src/button/Button.mjs';
 import SearchButton  from '../../../../../../../views/neo/src/button/SearchButton.mjs';
 import Grid          from '../../../../../../../views/neo/src/grid/Grid.mjs';
+import BatchEditButton from '../../../../../../../views/neo/src/grid/BatchEditButton.mjs';
 import MultiSelectToolbar from '../../../../../../../views/neo/src/grid/MultiSelectToolbar.mjs';
+import MenuList      from '../../../../../../../views/neo/src/menu/List.mjs';
 import {selectRow}   from '../../../../../../../views/neo/src/grid/selectRow.mjs';
 import CheckBox      from '../../../../../../../views/neo/src/component/CheckBox.mjs';
 import TableTitle    from '../../../../../../../views/neo/src/component/TableTitle.mjs';
@@ -158,11 +160,21 @@ class NotesMain extends MainThreeColumnPanel {
                         reference: 'newButton',
                         tooltip  : t('Add'),
                         handler  : 'up.onNew'
+                    }, {
+                        module   : Button,
+                        icon     : 'more_vert',
+                        reference: 'moreButton',
+                        tooltip  : t('More options'),
+                        handler  : 'up.showMoreMenu'
                     }]
                 }, {
                     module   : MultiSelectToolbar,
                     reference: 'multiSelectToolbar',
                     items    : [{
+                        module   : BatchEditButton,
+                        entity   : 'Note',
+                        listeners: {save: () => this.getReference('grid').store.load({keepCount: true}).catch(() => {})}
+                    }, {
                         module   : Button,
                         icon     : 'delete',
                         reference: 'deleteSelectedButton',
@@ -745,6 +757,20 @@ class NotesMain extends MainThreeColumnPanel {
 
     showError(error) {
         notifyError(this, error)
+    }
+
+    /**
+     * ⋮ of the grid toolbar: export what the grid shows (GOUI Main "Export" menu)
+     */
+    showMoreMenu() {
+        let me = this;
+
+        MenuList.showAt({
+            appName : me.appName,
+            windowId: me.windowId,
+            target  : me.getReference('moreButton').id,
+            items   : [me.exportMenuItem({entity: 'Note', store: me.getReference('grid').store, formats: ['xlsx', 'csv', 'html', 'json']})]
+        })
     }
 }
 

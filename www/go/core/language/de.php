@@ -2336,4 +2336,8 @@ Sollten Sie kein neues Kennwort angefordert haben, können Sie diese Nachricht e
   'Total remaining' => 'Gesamt verbleibend',
   'There are no address books' => 'Es gibt keine Adressbücher',
   'Add selected' => 'Ausgewählte hinzufügen',
+  'Check the fields to change in {count} items.' => 'Markieren Sie die Felder, die Sie bei {count} Elementen ändern möchten.',
+  'There are no fields to edit' => 'Es gibt keine Felder zum Bearbeiten',
+  'Check the fields to change first' => 'Markieren Sie zuerst die Felder, die Sie ändern möchten',
+  '{count} items were not saved' => '{count} Elemente wurden nicht gespeichert',
 );

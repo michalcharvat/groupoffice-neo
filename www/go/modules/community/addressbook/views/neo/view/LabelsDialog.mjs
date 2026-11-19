@@ -5,6 +5,7 @@ import Toolbar       from '../../../../../../../views/neo/node_modules/neo.mjs/s
 import Button        from '../../../../../../../views/neo/src/button/Button.mjs';
 import LocalCombo    from '../../../../../../../views/neo/src/form/field/LocalCombo.mjs';
 import {fieldset}    from '../../../../../../../views/neo/src/form/fieldset.mjs';
+import {download}    from '../../../../../../../views/neo/src/download.mjs';
 import client        from '../../../../../../../views/neo/src/jmap/Client.mjs';
 import TextList      from '../../../../../../../views/neo/src/list/TextList.mjs';
 import {notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
@@ -157,7 +158,7 @@ class LabelsDialog extends Dialog {
                   response = await client.call('Contact/labels', {...values, ids});
 
             // window.open() after the awaits would be blocked: download the PDF (attachment)
-            Neo.Main.redirectTo({url: downloadUrl(response.blobId), windowId: me.windowId})
+            await download(me.windowId, downloadUrl(response.blobId))
         } catch (e) {
             notifyError(me, e)
         } finally {

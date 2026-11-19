@@ -455,4 +455,8 @@ If you did not request a new password please delete this mail.',
   'The authorization request expired. Please connect the application again.' => 'The authorization request expired. Please connect the application again.',
   'The search took too long. Please use a longer or more specific search text.' => 'The search took too long. Please use a longer or more specific search text.',
   'Add selected' => 'Add selected',
+  'Check the fields to change in {count} items.' => 'Check the fields to change in {count} items.',
+  'There are no fields to edit' => 'There are no fields to edit',
+  'Check the fields to change first' => 'Check the fields to change first',
+  '{count} items were not saved' => '{count} items were not saved',
 );

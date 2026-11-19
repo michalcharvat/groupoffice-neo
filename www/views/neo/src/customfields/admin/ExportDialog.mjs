@@ -1,5 +1,6 @@
 import Toolbar       from '../../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import Button        from '../../button/Button.mjs';
+import {download}    from '../../download.mjs';
 import client        from '../../jmap/Client.mjs';
 import ActionTable   from '../../list/ActionTable.mjs';
 import {notifyError} from '../../Notify.mjs';
@@ -82,7 +83,7 @@ class ExportDialog extends Dialog {
             const {blobId} = await client.call('FieldSet/exportToJson', {entity: me.forEntity, fieldSetIds});
 
             if (!me.isDestroyed) {
-                Neo.Main.redirectTo({url: client.apiUrl + 'download.php?blob=' + encodeURIComponent(blobId), windowId: me.windowId});
+                await download(me.windowId, client.apiUrl + 'download.php?blob=' + encodeURIComponent(blobId));
                 me.close()
             }
         } catch (e) {

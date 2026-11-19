@@ -64,6 +64,7 @@ Small modules, 2FA login, module hooks: `docs/neo-small-modules.md`.
 | `src/customfields/admin/` | System settings card Custom fields (`CustomFieldsPanel`: entities with `supportsCustomFields`, core right `mayChangeCustomFields`), `EntityFieldsDialog` (field sets + fields, add / move / edit / delete, JSON import / export), `FieldSetDialog` (+ `registerFieldSetExtension(entity)`), `FieldDialog` (+ types in `fieldTypes.mjs`, `registerFieldType()`), `SelectOptionsField` (select option tree). Modules add types / extensions in a file their registry entry loads with `customFieldsAdmin` (addressbook: Contact) |
 | `src/emailtemplate/`, `src/pdftemplate/` | a module's e-mail / PDF templates: `EmailTemplateGrid` / `PdfTemplateGrid` (`templateModule: {package, name}`, `key`; search, copy / paste, add, edit, delete), `EmailTemplateDialog`, `emailTemplateItems()` (fields for a template inside another form), `PdfTemplateDialog` (page, margins, header / footer, content blocks); demo `#dev/core/Templates` |
 | `src/import/` | `importFile()` (upload; CSV / Excel → `CsvMappingDialog` with `MappingEditor` and saved column profiles, other formats → `Entity/import`), `ImportFileDialog` (file chooser for menus), `ColumnSelectDialog.ask()` (export columns + presets); used by the address book and Users |
+| `src/export/`, `src/form/BatchEditDialog.mjs`, `src/grid/BatchEditButton.mjs` | grid export: `exportMenuItem()` (⋮ → Export submenu of the entity's formats) and `exportEntities()` (`Entity/export` with `background: true`, ColumnSelectDialog for csv/xlsx/html, waits for the alert, then `download()`); batch edit of the custom fields of selected rows (BatchEditButton in a MultiSelectToolbar, hidden when the entity has none) |
 | `src/form/field/AttachmentsField.mjs`, `BlobField.mjs` | uploaded files as form values: `[{blobId, name, attachment}]` chips with "Attach files"; one blob `{id, name}` with upload / remove (PDF template logo) |
 | `src/form/field/EntityCheckList.mjs`, `src/groups/GroupCheckList.mjs`, `src/model/User.mjs`, `Group.mjs` | form field: checkbox list over a JMAP entity, value = checked ids (search, loads on scroll, `jmapFilter`, `readOnly`); the group version shows members (User `groups`, My account "Groups" card) |
 
@@ -144,6 +145,9 @@ or context menu, no import/export menu. Dark mode follows
   a module's optional `style.css` is still linked by `Neo.php`.
 - **Testing with Chrome MCP**: clicks sent right after a navigation, before a screenshot,
   never reach the page. Not an app bug.
+- **Downloads**: use `download(windowId, url)` from `src/download.mjs` (a clicked
+  `<a download>` in the main thread). `Neo.Main.redirectTo()` to an attachment URL fires
+  beforeunload: neo disconnects the window from the shared worker and the page stops reacting.
 - **No `route` on buttons**: neo renders `route` as `<a href="#x">`, and `<base href>` turns
   it into `views/neo/apps/go/#x` (403). Use `handler: () => Neo.Main.setRoute(...)`.
 - **Selecting by id**: `selectionModel.select()` takes a record; a string is read as

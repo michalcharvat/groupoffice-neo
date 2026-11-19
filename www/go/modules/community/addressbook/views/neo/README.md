@@ -47,5 +47,6 @@ Port of `views/extjs3` (there is no GOUI address book) to the neo webclient
 - **Material Symbols** draw `star` outlined as well; a starred contact's button is orange.
 - **Array of My account cards** (`userSettings: [...]`) needs `ModuleRegistry.loadSettingsPanels()`;
   `Index.mjs` registers only the first card while it is missing.
-- **Downloads** go through `Neo.Main.redirectTo()` with an attachment URL: `window.open()`
-  after an await is blocked as a popup.
+- **Downloads** go through `download()` (`views/neo/src/download.mjs`, a clicked `<a download>`):
+  `window.open()` after an await is blocked as a popup, and `Neo.Main.redirectTo()` fires
+  beforeunload, after which neo disconnects the window from the shared worker (it stops reacting).

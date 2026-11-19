@@ -2237,4 +2237,8 @@ Als u niet om een nieuw wachtwoord heeft gevraagd verwijder dan deze e-mail.',
   'There are no address books' => 'Er zijn geen adresboeken',
   'The search took too long. Please use a longer or more specific search text.' => 'Het zoeken duurde te lang. Gebruik een langere of specifiekere zoektekst.',
   'Add selected' => 'Geselecteerde toevoegen',
+  'Check the fields to change in {count} items.' => 'Vink de velden aan die u bij {count} items wilt wijzigen.',
+  'There are no fields to edit' => 'Er zijn geen velden om te bewerken',
+  'Check the fields to change first' => 'Vink eerst de velden aan die u wilt wijzigen',
+  '{count} items were not saved' => '{count} items zijn niet opgeslagen',
 );

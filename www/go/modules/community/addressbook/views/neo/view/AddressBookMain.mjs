@@ -3,6 +3,7 @@ import {LEVEL_CREATE, LEVEL_DELETE, LEVEL_MANAGE, LEVEL_WRITE} from '../../../..
 import Button        from '../../../../../../../views/neo/src/button/Button.mjs';
 import SearchButton  from '../../../../../../../views/neo/src/button/SearchButton.mjs';
 import Grid          from '../../../../../../../views/neo/src/grid/Grid.mjs';
+import BatchEditButton from '../../../../../../../views/neo/src/grid/BatchEditButton.mjs';
 import MultiSelectToolbar from '../../../../../../../views/neo/src/grid/MultiSelectToolbar.mjs';
 import {selectRow}   from '../../../../../../../views/neo/src/grid/selectRow.mjs';
 import TableTitle    from '../../../../../../../views/neo/src/component/TableTitle.mjs';
@@ -11,8 +12,9 @@ import JmapStore     from '../../../../../../../views/neo/src/data/JmapStore.mjs
 import MenuList      from '../../../../../../../views/neo/src/menu/List.mjs';
 import {parseYmd}    from '../../../../../../../views/neo/src/DateUtil.mjs';
 import {escapeHtml, formatDate, formatUserDateTime, smartDateTime, userFormat} from '../../../../../../../views/neo/src/Format.mjs';
-import {alertBlobId, dismissAlert, runBackgroundJob} from '../../../../../../../views/neo/src/data/backgroundJob.mjs';
-import {notify, notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
+import {download} from '../../../../../../../views/neo/src/download.mjs';
+import {exportEntities, exportMenuItem} from '../../../../../../../views/neo/src/export/exportEntities.mjs';
+import {notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
 import ConfirmDialog    from '../../../../../../../views/neo/src/view/ConfirmDialog.mjs';
 import FilterPanel      from '../../../../../../../views/neo/src/view/FilterPanel.mjs';
 import MainThreeColumnPanel from '../../../../../../../views/neo/src/view/MainThreeColumnPanel.mjs';
@@ -228,6 +230,10 @@ class AddressBookMain extends MainThreeColumnPanel {
                     module   : MultiSelectToolbar,
                     reference: 'multiSelectToolbar',
                     items    : [{
+                        module   : BatchEditButton,
+                        entity   : 'Contact',
+                        listeners: {save: () => me.getReference('grid').store.load({keepCount: true}).catch(() => {})}
+                    }, {
                         module : Button,
                         icon   : 'star',
                         tooltip: t('Star'),
@@ -1161,28 +1167,20 @@ class AddressBookMain extends MainThreeColumnPanel {
         let me     = this,
             node   = me.getReference('tree').getAddressBookNodes().find(n => String(n.data.id) === String(me.addAddressBookId)),
             locked = node ? node.data.permissionLevel < LEVEL_CREATE : false,
-            mayExport = !!userRights().mayExportContacts && !locked,
-            exportItem = (text, extension) => ({text, icon: 'description', handler: () => me.exportContacts(extension)});
+            mayExport = !!userRights().mayExportContacts && !locked;
 
         return [{
             text    : t('Import'),
             icon    : 'cloud_upload',
             disabled: locked,
             handler : () => me.openImportDialog()
-        }, {
-            text    : t('Export'),
-            icon    : 'cloud_download',
+        }, exportMenuItem(me, {
+            entity  : 'Contact',
+            formats : ['vcf', 'xlsx', 'csv', 'html', 'json'],
+            query   : () => me.getGridQuery(),
             disabled: !mayExport,
-            items   : [
-                exportItem('vCard (Virtual Contact File)', 'vcf'),
-                exportItem('Microsoft Excel', 'xlsx'),
-                exportItem('Comma Separated Values', 'csv'),
-                exportItem(t('Web page') + ' (HTML)', 'html'),
-                exportItem('JSON', 'json'),
-                {separator: true},
-                {text: t('Labels'), icon: 'print', handler: () => me.openLabelsDialog()}
-            ]
-        }, {
+            items   : [{text: t('Labels'), icon: 'print', handler: () => me.openLabelsDialog()}]
+        }), {
             text   : t('Look for duplicates'),
             icon   : 'merge_type',
             handler: () => me.openDuplicateDialog()
@@ -1199,51 +1197,13 @@ class AddressBookMain extends MainThreeColumnPanel {
     }
 
     /**
-     * go.util.exportToFile(): exports run in the background; their alert links the file
+     * Contact/export of the grid's query or of the given contacts (GO.export)
      * @param {String} extension
      * @param {String[]|null} [ids] the contacts, null for the grid's query
+     * @returns {Promise<Boolean>}
      */
-    async exportContacts(extension, ids = null) {
-        let me = this;
-
-        try {
-            ids ??= (await client.call('Contact/query', me.getGridQuery())).ids;
-
-            if (!ids.length) {
-                throw new Error(t("There's nothing to export"))
-            }
-
-            // spreadsheets and HTML: the user picks the columns (go.import.ColumnSelectDialog)
-            let columns;
-
-            if (['csv', 'xlsx', 'html'].includes(extension)) {
-                const {default: ColumnSelectDialog} = await import('../../../../../../../views/neo/src/import/ColumnSelectDialog.mjs');
-
-                columns = await ColumnSelectDialog.ask({appName: me.appName, windowId: me.windowId, entity: 'Contact', extension});
-
-                if (!columns || me.isDestroyed) {
-                    return
-                }
-            }
-
-            const job = runBackgroundJob(() => client.call('Contact/export', {extension, ids, ...columns ? {columns} : {}}));
-
-            notify(me, t('You will be notified when the export is complete. You can close this window now.'), {title: t('Export in progress')});
-
-            const alert  = await job,
-                  blobId = alertBlobId(alert);
-
-            dismissAlert(alert);
-
-            // "Export error": the alert says why
-            if (!blobId) {
-                throw new Error(String(alert.data?.body || alert.data?.title || t('Error')).replace(/<[^>]*>/g, ' '))
-            }
-
-            me.isDestroyed || Neo.Main.redirectTo({url: downloadUrl(blobId), windowId: me.windowId})
-        } catch (e) {
-            me.isDestroyed || me.showError(e)
-        }
+    exportContacts(extension, ids = null) {
+        return exportEntities(this, {entity: 'Contact', extension, ids, query: ids ? null : this.getGridQuery()})
     }
 
     async openImportDialog() {
@@ -1369,7 +1329,7 @@ class AddressBookMain extends MainThreeColumnPanel {
         }
 
         // the module's vcard download route (ExtJS go.Jmap.downloadUrl("community/addressbook/vcard/<id>"))
-        Neo.Main.redirectTo({url: downloadUrl('community/addressbook/vcard/' + records[0].id), windowId: this.windowId})
+        download(this.windowId, downloadUrl('community/addressbook/vcard/' + records[0].id)).catch(e => this.showError(e))
     }
 
     async mergeSelected() {
