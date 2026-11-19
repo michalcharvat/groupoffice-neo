@@ -1,0 +1,24 @@
+@use "../../../../go/go";
+
+// GO.calendar.ItipPanel: invitation bar in the e-mail message view (GOUI handleITIP li.goui-toolbar)
+.neo-theme-go .go-cal-itip {
+    background   : var(--bg-low);
+    border-bottom: 1px solid var(--fg-line);
+    flex-wrap    : wrap;
+    gap          : go.dp(8) go.dp(12);
+    padding      : go.dp(8) go.dp(16);
+
+    .go-cal-itip-icon {
+        color: var(--c-primary);
+    }
+
+    .go-cal-itip-text {
+        min-width  : go.dp(160);
+        white-space: pre-line;
+    }
+
+    .go-cal-itip-buttons {
+        flex-wrap: wrap;
+        gap      : go.dp(8);
+    }
+}

@@ -18,6 +18,13 @@ ModuleRegistry.register({
     mainView  : () => import('./view/CalendarMain.mjs'),
     // notification area: invitations and reminders (src/alerts/Alerts.mjs)
     alerts    : args => import('./alerts.mjs').then(m => m.default(args)),
+    // e-mail message view (www/modules/email/views/neo): invitations (GOUI GO.email.handleITIP)
+    // and .ics attachments (go.openIcs)
+    emailMessagePanelPlugins: {
+        id    : 'itip',
+        onLoad: message => message?.itip ? import('./itip.mjs').then(m => m.onLoad(message)) : null
+    },
+    openIcs   : (attachment, panel) => import('./itip.mjs').then(m => m.openIcs(attachment, panel)),
     // card in My account
     userSettings: {
         title  : t('Calendar'),

@@ -4,10 +4,9 @@ import notificationCenter from '../../../../../../views/neo/src/alerts/Notificat
 import {escapeHtml, smartDateTime} from '../../../../../../views/neo/src/Format.mjs';
 import {notifyError} from '../../../../../../views/neo/src/Notify.mjs';
 import {translator} from '../../../../../../views/neo/src/Translate.mjs';
-import ConfirmDialog from '../../../../../../views/neo/src/view/ConfirmDialog.mjs';
 import CalendarItem from './CalendarItem.mjs';
 import calendarData from './data.mjs';
-import ChoiceDialog from './view/ChoiceDialog.mjs';
+import {withWindowUi} from './ui.mjs';
 
 const t = translator('community', 'calendar');
 
@@ -81,25 +80,10 @@ async function reply(alert, event, status, message, view) {
         await calendarData.init();
 
         const [current] = await client.get('CalendarEvent', [event.id]),
-              item      = new CalendarItem({key: String(event.id), data: current || event, recurrenceId: alert.recurrenceId || undefined}),
-              previous  = CalendarItem.ui,
-              // the questions open in this notification area's window, not in a calendar view of another one
-              ui        = {
-                  choose : config => ChoiceDialog.ask({...base, ...config}),
-                  confirm: text => ConfirmDialog.ask({...base, message: text}),
-                  error  : e => notifyError(view, e),
-                  mask   : () => {},
-                  unmask : () => {}
-              };
+              item      = new CalendarItem({key: String(event.id), data: current || event, recurrenceId: alert.recurrenceId || undefined});
 
-        CalendarItem.ui = ui;
-
-        try {
-            await item.updateParticipation(status, () => notificationCenter.dismiss(message.id))
-        } finally {
-            // a calendar view opened or closed meanwhile sets its own
-            CalendarItem.ui === ui && (CalendarItem.ui = previous)
-        }
+        // the questions open in this notification area's window, not in a calendar view of another one
+        await withWindowUi(base, () => item.updateParticipation(status, () => notificationCenter.dismiss(message.id)))
     } catch (e) {
         notifyError(view, e)
     }
