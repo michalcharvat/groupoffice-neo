@@ -1,4 +1,4 @@
-# Core UI components: GO vs neo.mjs (updated 2026-11-18)
+# Core UI components: GO vs neo.mjs (updated 2026-11-19)
 
 What the neo webclient (`www/views/neo`) has to provide to replace the GOUI/ExtJS
 webclient. The live per-component status is the Dev module (`src/dev/menu.mjs`, `status`). Reference is GOUI (`views/goui/goui/script` = base library,
@@ -76,13 +76,17 @@ Status: **neo** = neo.mjs 13.2 ships it, usable as is (maybe GO styling);
 ## ExtJS-only core (not in GOUI yet)
 
 Done in neo: import (`src/import/`), system and module settings, user/group
-administration, e-mail and PDF templates, blob upload (`UploadButton`, `BlobField`).
+administration, e-mail and PDF templates, blob upload (`UploadButton`, `BlobField`),
+grid export (`src/export/exportEntities.mjs`: `exportMenuItem()` / `exportEntities()`,
+`MainThreeColumnPanel.exportMenuItem()`; Users, notes, tasks, address book) and batch edit
+(`GO.form.BatchEditDialog` + `GO.grid.BatchEditButton` in a MultiSelectToolbar: the entity's
+custom fields, like ExtJS; notes, tasks, address book). Downloads use `src/download.mjs`.
+Bookmarks has no grid and no `Bookmark/export`, so neither applies there.
 
-## Left to build (2026-11-18)
+## Left to build (2026-11-19)
 
 1. **Notes Markdown + image zoom** — parity with the GOUI NoteDialog from master.
-2. **Grid export + batch edit** — a reusable export (only `UsersPanel.exportUsers()` exists today) and editing several selected records.
-   **Create link while creating** an entity (CreateLinkButton in FormWindow `linkSlot`).
+2. **Create link while creating** an entity (CreateLinkButton in FormWindow `linkSlot`).
 3. **Upload with progress** (`Uploader`) — large files, several at once.
 4. **HtmlField mentions** and **RecipientPicker** — comments mentions, mail.
 5. **Drag and drop** — tree nodes, rows to containers, sortable lists.
