@@ -2,14 +2,14 @@ import Container     from '../../node_modules/neo.mjs/src/container/Base.mjs';
 import Toolbar       from '../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import Button        from '../button/Button.mjs';
 import SearchButton  from '../button/SearchButton.mjs';
-import {alertBlobId, dismissAlert, runBackgroundJob} from '../data/backgroundJob.mjs';
+import {exportMenuItem} from '../export/exportEntities.mjs';
 import JmapStore     from '../data/JmapStore.mjs';
 import UserModel     from '../model/User.mjs';
 import Grid          from '../grid/Grid.mjs';
 import {selectRow}   from '../grid/selectRow.mjs';
 import client        from '../jmap/Client.mjs';
 import MenuList      from '../menu/List.mjs';
-import {notify, notifyError} from '../Notify.mjs';
+import {notifyError} from '../Notify.mjs';
 import {avatarHtml, escapeHtml, formatUserDateTime, smartDateTime} from '../Format.mjs';
 import {fmt, t}      from '../Translate.mjs';
 import ConfirmDialog from '../view/ConfirmDialog.mjs';
@@ -216,8 +216,7 @@ class UsersPanel extends Container {
     }
 
     showMoreMenu() {
-        let me     = this,
-            export_ = extension => () => me.exportUsers(extension);
+        let me = this;
 
         MenuList.showAt({
             appName : me.appName,
@@ -235,15 +234,7 @@ class UsersPanel extends Container {
                 icon    : 'cloud_upload',
                 disabled: !client.mayChangeUsers,
                 handler : () => me.openImport()
-            }, {
-                text : t('Export'),
-                icon : 'cloud_download',
-                items: [
-                    {text: 'Microsoft Excel',         icon: 'table_view', handler: export_('xlsx')},
-                    {text: 'Comma Separated Values',  icon: 'csv',        handler: export_('csv')},
-                    {text: 'JSON',                    icon: 'data_object', handler: export_('json')}
-                ]
-            }]
+            }, exportMenuItem(me, {entity: 'User', store: me.grid.store, formats: ['xlsx', 'csv', 'json']})]
         })
     }
 
@@ -401,53 +392,6 @@ class UsersPanel extends Container {
                 groups       : t('Groups')
             }}
         })
-    }
-
-    /**
-     * go.util.exportToFile('User', query, extension): runs in the background, its alert links the file
-     * @param {String} extension xlsx, csv or json
-     */
-    async exportUsers(extension) {
-        let me    = this,
-            store = me.grid.store;
-
-        try {
-            const {ids} = await client.call('User/query', {filter: store.getJmapFilter(), sort: store.getJmapSort()});
-
-            if (!ids.length) {
-                throw new Error(t("There's nothing to export"))
-            }
-
-            // spreadsheets: the user picks the columns (go.import.ColumnSelectDialog)
-            let columns;
-
-            if (['csv', 'xlsx'].includes(extension)) {
-                const {default: ColumnSelectDialog} = await import('../import/ColumnSelectDialog.mjs');
-
-                columns = await ColumnSelectDialog.ask({appName: me.appName, windowId: me.windowId, entity: 'User', extension});
-
-                if (!columns || me.isDestroyed) {
-                    return
-                }
-            }
-
-            const job = runBackgroundJob(() => client.call('User/export', {extension, ids, ...columns ? {columns} : {}}));
-
-            notify(me, t('You will be notified when the export is complete. You can close this window now.'), {title: t('Export in progress')});
-
-            const alert  = await job,
-                  blobId = alertBlobId(alert);
-
-            dismissAlert(alert);
-
-            if (!blobId) {
-                throw new Error(String(alert.data?.body || alert.data?.title || t('Error')).replace(/<[^>]*>/g, ' '))
-            }
-
-            me.isDestroyed || Neo.Main.redirectTo({url: client.baseUrl + 'api/download.php?blob=' + encodeURIComponent(blobId), windowId: me.windowId})
-        } catch (e) {
-            me.isDestroyed || notifyError(me, e)
-        }
     }
 }
 

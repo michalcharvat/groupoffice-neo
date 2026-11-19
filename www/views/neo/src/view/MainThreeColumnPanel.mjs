@@ -1,6 +1,7 @@
 import Container from '../../node_modules/neo.mjs/src/container/Base.mjs';
 import Button    from '../button/Button.mjs';
 import Splitter  from '../component/Splitter.mjs';
+import {exportMenuItem} from '../export/exportEntities.mjs';
 import {t} from '../Translate.mjs';
 
 /**
@@ -98,6 +99,19 @@ class MainThreeColumnPanel extends Container {
             tooltip: t('Close'),
             handler: () => this.showCenter()
         }
+    }
+
+    /**
+     * The "Export" item of the center toolbar's ⋮ menu (GOUI module Main "Export" submenu):
+     * exports what the grid shows, see GO.export exportMenuItem()
+     *
+     *     items: [this.exportMenuItem({entity: 'Note', store: grid.store, formats: ['xlsx', 'csv', 'html', 'json']})]
+     *
+     * @param {Object} options entity, formats, store or query, ids, disabled, items
+     * @returns {Object} menu item config
+     */
+    exportMenuItem(options) {
+        return exportMenuItem(this, options)
     }
 
     /**

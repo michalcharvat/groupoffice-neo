@@ -51,6 +51,7 @@ export default [
     {id: 'core/CustomFields', text: 'Custom fields',     level: 1, status: 'done', demo: 'CustomFields', neo: 'src/customfields/*',           goui: 'groupoffice-core/script/customfields/'},
     {id: 'core/SharePanel',   text: 'SharePanel',        level: 1, status: 'done', demo: 'SharePanel',   neo: 'GO.permissions.SharePanel',    goui: 'groupoffice-core/script/permissions/SharePanel.ts'},
     {id: 'core/Templates',    text: 'E-mail / PDF templates', level: 1, status: 'done', demo: 'Templates', neo: 'GO.emailtemplate.EmailTemplateGrid, GO.pdftemplate.PdfTemplateGrid', goui: 'ExtJS go.emailtemplate, go.pdftemplate'},
+    {id: 'core/Export',       text: 'Grid export',       level: 1, status: 'done', demo: 'GridExport', neo: 'src/export/exportEntities.mjs (exportMenuItem, exportEntities), MainThreeColumnPanel.exportMenuItem()', goui: 'ExtJS go.util.exportToFile, GOUI module Main "Export" menus'},
     {id: 'core/Recurrence',   text: 'RecurrenceField',   level: 1, status: 'done', demo: 'Recurrence', neo: 'GO.form.field.RecurrenceField', goui: 'groupoffice-core/script/components/form/RecurrenceField.ts'},
     {id: 'core/Recipients',   text: 'RecipientPicker',   level: 1, status: 'todo', goui: 'goui-docs/script/components/RecipientsField.ts'}
 ];
