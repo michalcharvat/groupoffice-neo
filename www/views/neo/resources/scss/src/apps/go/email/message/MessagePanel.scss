@@ -1,0 +1,16 @@
+// message view (stub of card 1; card 2 replaces it)
+.neo-theme-go .go-email-message-panel {
+    .go-email-message-body {
+        padding: 1.6rem;
+    }
+
+    .go-email-message-subject {
+        margin: 0 0 .8rem;
+    }
+
+    .go-email-message-from,
+    .go-email-message-loading,
+    .go-email-stub {
+        color: var(--fg-secondary-text);
+    }
+}
