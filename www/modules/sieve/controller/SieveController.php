@@ -51,7 +51,8 @@ class SieveController extends \GO\Base\Controller\AbstractModelController{
 
 			go()->debug($e);
 
-			$error = (string) $e;
+			// only the message: the trace shows file paths and arguments
+			$error = $e->getMessage();
 		}
 		$extensions = array();
 		if($supported){
@@ -292,6 +293,13 @@ class SieveController extends \GO\Base\Controller\AbstractModelController{
 	}
 	
 	protected function actionAccountAliases($params) {
+		$accountModel = \GO\Email\Model\Account::model()->findByPk($params['account_id']);
+		if (!$accountModel) {
+			throw new \GO\Base\Exception\NotFound();
+		}
+		// the aliases fill the addresses of the out of office reply, which only users who manage the account may change
+		$accountModel->requirePermissionLevel(\GO\Base\Model\Acl::MANAGE_PERMISSION);
+
 		$response = array();
 		$aliasesStmt = \GO\Email\Model\Alias::model()->findByAttribute('account_id',$params['account_id']);
 		$aliases = array();

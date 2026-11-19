@@ -63,4 +63,30 @@ class SievePermissionTest extends TestCase
 		$this->actAs($this->other->id);
 		$this->assertDenied(new SieveController(), 'actionRules', ['account_id' => $this->account->id, 'script_name' => 'default', 'delete_keys' => '[0]']);
 	}
+
+	public function testUserWithoutManagePermissionCannotListAliases(): void
+	{
+		$this->actAs($this->other->id);
+		$this->assertDenied(new SieveController(), 'actionAccountAliases', ['account_id' => $this->account->id]);
+	}
+
+	public function testOwnerCanListAliases(): void
+	{
+		$this->actAs($this->owner->id);
+		$response = $this->invoke(new SieveController(), 'actionAccountAliases', [['account_id' => $this->account->id]]);
+		$this->assertStringContainsString($this->owner->email, $response['data']['aliases']);
+	}
+
+	/**
+	 * The error goes to the browser, so it must not contain the stack trace with file paths and arguments
+	 */
+	public function testIsSupportedReturnsNoStackTrace(): void
+	{
+		$this->actAs($this->other->id);
+		$response = $this->invoke(new SieveController(), 'actionIsSupported', [['account_id' => $this->account->id]]);
+		$this->assertFalse($response['supported']);
+		$this->assertNotEmpty($response['error']);
+		$this->assertStringNotContainsString('#0 ', $response['error']);
+		$this->assertStringNotContainsString('.php', $response['error']);
+	}
 }
