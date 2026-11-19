@@ -5,5 +5,16 @@ return array (
 	'mayAccessMainPanel' => "Access main",
 	'Invalid file or folder name' => "Invalid file or folder name",
 	"The archive contains links or other special files and can't be decompressed" => "The archive contains links or other special files and can't be decompressed",
-	'Could not restore the item' => "Could not restore the item"
+	'Could not restore the item' => "Could not restore the item",
+	'Locked' => 'Locked',
+	'Nothing selected' => 'Nothing selected',
+	'{count} items' => '{count} items',
+	'Search results in {folder}' => 'Search results in {folder}',
+	'{usage} of {quota} used' => '{usage} of {quota} used',
+	'Are you sure you want to move {count} items?' => 'Are you sure you want to move {count} items?',
+	'Are you sure you want to move the selected items to the trash?' => 'Are you sure you want to move the selected items to the trash?',
+	'Are you sure you want to permanently delete the selected items?' => 'Are you sure you want to permanently delete the selected items?',
+	'Delete failed' => 'Delete failed',
+	'Are you sure you want to stop sharing this folder? Everyone except you loses access.' => 'Are you sure you want to stop sharing this folder? Everyone except you loses access.',
+	'Double click a version to download it' => 'Double click a version to download it',
 );

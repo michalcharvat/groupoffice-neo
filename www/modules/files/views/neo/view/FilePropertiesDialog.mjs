@@ -10,7 +10,8 @@ import client       from '../../../../../views/neo/src/jmap/Client.mjs';
 import {escapeHtml, fileSize, formatDate, userFormat} from '../../../../../views/neo/src/Format.mjs';
 import {parseYmd}   from '../../../../../views/neo/src/DateUtil.mjs';
 import {translator} from '../../../../../views/neo/src/Translate.mjs';
-import {decodeEntities, isValidName, userDateToYmd} from '../util.mjs';
+import {decodeEntities, isValidName, splitFileName, userDateToYmd} from '../util.mjs';
+import {submitFile} from '../fileHandlers.mjs';
 import LegacyFormWindow from './LegacyFormWindow.mjs';
 
 const t = translator('legacy', 'files');
@@ -188,19 +189,13 @@ class FilePropertiesDialog extends LegacyFormWindow {
             .catch(e => me.isDestroyed || me.showError(e.message))
     }
 
-    async save(modified) {
+    async save(modified, values) {
         let me     = this,
             file   = me.file,
             params = {id: file.id};
 
-        if ('name' in modified) {
-            // file/submit joins name and extension
-            const name = modified.name,
-                  dot  = name.lastIndexOf('.');
-
-            params.name      = dot > 0 ? name.slice(0, dot) : name;
-            params.extension = dot > 0 ? name.slice(dot + 1) : ''
-        }
+        // file/submit joins name and extension
+        'name' in modified && Object.assign(params, splitFileName(modified.name));
 
         'comment' in modified && (params.comment = modified.comment);
 
@@ -209,10 +204,11 @@ class FilePropertiesDialog extends LegacyFormWindow {
             params.content_expire_date = date ? formatDate(date, userFormat.dateFormat) : ''
         }
 
-        // an empty class removes the user's choice
-        'handlerCls' in modified && (params.handlerCls = modified.handlerCls === DEFAULT_HANDLER ? '' : modified.handlerCls);
-
-        Object.keys(params).length > 1 && await client.legacy('files/file/submit', params);
+        if (Object.keys(params).length > 1 || 'handlerCls' in modified) {
+            // always sent: the controller deletes the user's choice without it (empty: the default)
+            params.handlerCls = values.handlerCls === DEFAULT_HANDLER ? '' : (values.handlerCls || '');
+            await submitFile(params)
+        }
 
         return {id: file.id}
     }

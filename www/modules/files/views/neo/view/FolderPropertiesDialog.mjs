@@ -102,11 +102,11 @@ class FolderPropertiesDialog extends LegacyFormWindow {
         }, {
             module    : BoolCheckBox,
             name      : 'notify',
-            valueLabel: t('Notify me about changes')
+            valueLabel: t('Notify me about changes in this folder')
         }, {
             module    : BoolCheckBox,
             name      : 'apply_state',
-            valueLabel: t("Apply the folder's display settings for everyone"),
+            valueLabel: t("Apply the folder's display settings for everyone."),
             disabled  : level < 50 && !client.user?.isAdmin
         }, {
             module       : TextArea,
@@ -165,13 +165,13 @@ class FolderPropertiesDialog extends LegacyFormWindow {
             params.notifyRecursive = await ConfirmDialog.ask({
                 appName : me.appName,
                 windowId: me.windowId,
-                message : t('Do you want to apply this to all subfolders?')
+                message : t('Do you want to apply this to all the subfolders?')
             }) ? 'true' : 'false'
         }
 
         if (params.share === 0 && !await ConfirmDialog.ask({appName: me.appName, windowId: me.windowId,
             message: t('Are you sure you want to stop sharing this folder? Everyone except you loses access.')})) {
-            throw new Error(t('Not saved'))
+            return false
         }
 
         // levels first: "stop sharing" removes the ACL

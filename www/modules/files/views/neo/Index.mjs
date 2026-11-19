@@ -15,5 +15,7 @@ ModuleRegistry.register({
     quickAdd  : {text: t('Folder'), icon: 'create_new_folder'},
     // header search results ("#files/file/5", "#files/folder/3")
     routes    : {File: id => 'file/' + id, Folder: id => 'folder/' + id},
-    mainView  : () => import('./view/FilesMain.mjs')
+    mainView  : () => import('./view/FilesMain.mjs'),
+    // files in detail panels (GO.detail.FilesPanel) open with the user's file handler
+    openFile  : (file, component) => import('./fileHandlers.mjs').then(m => m.openFile(file, component))
 });

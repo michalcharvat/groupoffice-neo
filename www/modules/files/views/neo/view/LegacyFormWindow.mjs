@@ -36,7 +36,8 @@ class LegacyFormWindow extends FormWindow {
 
             const result = await me.save(modified, values);
 
-            if (me.isDestroyed) {
+            // false: the user cancelled a question of save(); the dialog stays open
+            if (me.isDestroyed || result === false) {
                 return result
             }
 
@@ -57,7 +58,7 @@ class LegacyFormWindow extends FormWindow {
     /**
      * @param {Object} modified changed values
      * @param {Object} values all values
-     * @returns {Promise<Object>}
+     * @returns {Promise<Object|false>} false keeps the dialog open (cancelled)
      */
     async save(modified, values) {
         return {}

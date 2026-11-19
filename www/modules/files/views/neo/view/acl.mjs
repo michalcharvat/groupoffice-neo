@@ -1,4 +1,7 @@
 import client from '../../../../../views/neo/src/jmap/Client.mjs';
+import {translator} from '../../../../../views/neo/src/Translate.mjs';
+
+const t = translator('legacy', 'files');
 
 /**
  * Saves the changes of a SharePanel value to a legacy ACL (ExtJS GO.grid.PermissionsPanel
@@ -37,7 +40,7 @@ export async function saveAcl(aclId, oldValue, newValue) {
         const response = await client.legacy('core/aclGroup/selectedStore', {model_id: aclId, delete_keys: JSON.stringify(removed), limit: 1});
 
         if (response.deleteSuccess === false) {
-            throw new Error(response.deleteFeedback || 'Delete failed')
+            throw new Error(response.deleteFeedback || t('Delete failed'))
         }
     }
 }

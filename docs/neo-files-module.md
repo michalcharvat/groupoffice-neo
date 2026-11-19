@@ -81,4 +81,34 @@ JS, so it maps the handler class `cls` itself.
 
 ## neo port status
 
-See the end of this file (filled in per section).
+The neo UI is in `www/modules/files/views/neo/` (registered as `legacy/files`, capability
+`go:legacy:files`). It talks to the legacy controllers through `client.legacy()`; there is
+no JMAP backend for files yet.
+
+| Feature | neo |
+|---|---|
+| Folder tree (personal, shared, address book, …, trash), lazy loading, deep link `#files/folder/<id>` and `#files/file/<id>` (expand_folder_id) | done (`FilesMain`) |
+| File grid: sort, paging on scroll, multi select, search below the folder, quota | done (`FolderStore`) |
+| Detail (east): preview head, properties list, open / download / properties / more | done (`FileDetail`) |
+| Upload (button, desktop drop on grid / tree / detail FilesPanel), overwrite question with yes / no / to all | done (one blob per `processUploadQueue` request: `overwrite=yes` overwrites all conflicts) |
+| New folder, rename, cut / copy / paste (overwrite queue), move to trash, delete permanently | done |
+| Drag and drop of rows onto folder rows and tree nodes (move, Ctrl copy) | done (`enableDragDrop()`) |
+| Trash: list, restore, delete permanently | done |
+| Folder properties: name, comment, activate sharing, notify (with subfolders question), apply display settings, permissions (SharePanel on the folder's ACL, `core/aclGroup` routes) | done (`FolderPropertiesDialog`, `acl.mjs`) |
+| File properties: name, comment, content expiry, default "Open with", older versions (download on double click) | done (`FilePropertiesDialog`) |
+| Lock / unlock, favorites (bookmarks) below the tree | done |
+| Open / "Open with": the server's handlers (`files/file/handlers`) | done (`fileHandlers.mjs`: Download, Inline, ImageViewer built in; a handler whose JavaScript opens a URL, like WOPI Collabora / Office Online, opens that URL; modules add their own handler classes via ModuleRegistry `fileHandlers`) |
+| Files in detail panels: open with the user's handler, "Browse files", drop upload | done (core `FilesPanel`, ModuleRegistry hook `openFile`) |
+| Thumbnails view, folder upload (subfolders), keyboard shortcuts (Ctrl+C/X/V, Delete), download links, compress / decompress, templates, batch edit, e-mail files, column state per folder | not ported |
+
+### neo gotchas
+
+- The home folder is listed as `folder_id: ''`; its id comes from the tree's first root
+  (`resolveHomeFolder()`). The first load must not write the route: a deep link waits for
+  it and would be replaced by `#files/folder/<home>`.
+- `files/folder/list` and other legacy responses can carry handler JavaScript
+  (`startjs:…:endjs`); `parseLegacyJson` drops it and neo never runs it.
+- A hidden grid gets no width for flex columns: the trash grid uses fixed widths.
+- Folder ACL: add groups with `core/aclGroup/selectedStore {model_id, add, addAttributes: {"level": L}}`,
+  change a level with `core/aclGroup/updateRecord {model_id, record: {"id": groupId, "level": L}}`,
+  remove with `delete_keys`.

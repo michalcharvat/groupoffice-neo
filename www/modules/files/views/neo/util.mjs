@@ -104,3 +104,15 @@ export function userDateToYmd(value, format) {
     const pad = n => String(n).padStart(2, '0');
     return `${date.y}-${pad(date.m)}-${pad(date.d)}`
 }
+
+/**
+ * name and extension of a new file name for files/file/submit. The controller appends
+ * "." + extension whenever `extension` is sent: without a dot it is left out, so the
+ * file keeps its extension (like ExtJS)
+ * @param {String} fileName
+ * @returns {{name: String, extension?: String}}
+ */
+export function splitFileName(fileName) {
+    const dot = fileName.lastIndexOf('.');
+    return dot > 0 ? {name: fileName.slice(0, dot), extension: fileName.slice(dot + 1)} : {name: fileName}
+}

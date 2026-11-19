@@ -17,9 +17,10 @@ import TextPrompt   from '../../../../../views/neo/src/view/TextPrompt.mjs';
 import MainThreeColumnPanel from '../../../../../views/neo/src/view/MainThreeColumnPanel.mjs';
 import {fmt, translator} from '../../../../../views/neo/src/Translate.mjs';
 import FolderStore  from '../data/FolderStore.mjs';
-import {decodeEntities, fileIcon, isFolder, isValidName, treeIcon} from '../util.mjs';
+import {decodeEntities, fileIcon, isFolder, isValidName, splitFileName, treeIcon} from '../util.mjs';
 import FileDetail   from './FileDetail.mjs';
 import OverwriteDialog from './OverwriteDialog.mjs';
+import {downloadUrl, getHandlers, openFile, openUrl, runHandler, submitFile} from '../fileHandlers.mjs';
 import FilePropertiesDialog   from './FilePropertiesDialog.mjs';
 import FolderPropertiesDialog from './FolderPropertiesDialog.mjs';
 import TextList     from '../../../../../views/neo/src/list/TextList.mjs';
@@ -29,6 +30,9 @@ const t = translator('legacy', 'files');
 
 /** ExtJS GO.permissionLevels */
 export const LEVEL_READ = 10, LEVEL_CREATE = 20, LEVEL_WRITE = 30, LEVEL_DELETE = 40, LEVEL_MANAGE = 50;
+
+/** files/folder/paste calls one after the other (pasteInto()) */
+let pasteQueue = Promise.resolve();
 
 const dateRenderer = ({value}) => escapeHtml(value || '');
 
@@ -73,6 +77,11 @@ class FilesMain extends MainThreeColumnPanel {
      * @member {String|null} pendingTypeId=null
      */
     pendingTypeId = null
+    /**
+     * Counts folder changes: a route answered late does not undo a newer navigation
+     * @member {Number} navigation=0
+     */
+    navigation = 0
     /**
      * Open dialogs: closing the module closes them too
      * @member {Set<GO.view.Dialog>} dialogs
@@ -365,7 +374,8 @@ class FilesMain extends MainThreeColumnPanel {
         me.initFavorites();
 
         // the home folder, like ExtJS (folder_id '' lists it)
-        me.initialLoad = me.openFolder('', {})
+        // no route: a deep link (route()) waits for it and must not be replaced by the home folder
+        me.initialLoad = me.openFolder('', {setRoute: false})
     }
 
     /**
@@ -443,14 +453,16 @@ class FilesMain extends MainThreeColumnPanel {
      * @param {Object} [opts]
      * @param {Boolean} [opts.fromTree] clicked in the tree
      * @param {String} [opts.select] type_id to select once loaded
+     * @param {Boolean} [opts.setRoute=true] put the folder in the URL
      * @returns {Promise<void>}
      */
-    async openFolder(folderId, {fromTree=false, select=null}={}) {
+    async openFolder(folderId, {fromTree=false, select=null, setRoute=true}={}) {
         let me    = this,
             grid  = me.getReference('grid'),
             store = grid.store,
             trash = String(folderId) === 'trash';
 
+        me.navigation++;
         me.pendingTypeId = select;
         me.folderId      = String(folderId);
         me.getReference('searchButton').reset?.();
@@ -478,7 +490,7 @@ class FilesMain extends MainThreeColumnPanel {
         !fromTree && me.syncTreeSelection();
         me.activatePanel('center');
 
-        me.moduleName && /^\d+$/.test(me.folderId) && !select &&
+        setRoute && me.moduleName && /^\d+$/.test(me.folderId) && !select &&
             Neo.Main.setRoute({value: `${me.moduleName}/folder/${me.folderId}`, windowId: me.windowId})
     }
 
@@ -487,6 +499,10 @@ class FilesMain extends MainThreeColumnPanel {
      * @param {Object} meta
      */
     onFolderMeta({meta}) {
+        if (this.folderId === 'trash') {
+            return // a folder answered after the trash was opened
+        }
+
         let me    = this,
             store = me.getReference('grid').store,
             path  = decodeEntities(meta.path || ''),
@@ -514,7 +530,7 @@ class FilesMain extends MainThreeColumnPanel {
             store = grid.store,
             id    = me.pendingTypeId;
 
-        if (me.isDestroyed) {
+        if (me.isDestroyed || me.folderId === 'trash') {
             return
         }
 
@@ -585,23 +601,42 @@ class FilesMain extends MainThreeColumnPanel {
     }
 
     /**
-     * Opens a file in the browser (inline download); section 4 adds the file handlers
+     * Opens a file with the user's default handler (inline, image viewer, WOPI, …)
      * @param {Object} record
      */
     openFile(record) {
-        Neo.Main.windowOpen({
-            url       : client.legacyUrl('files/file/download', {id: record.id, inline: 1}),
-            windowName: '_blank',
-            windowId  : this.windowId
-        })
+        openFile({id: record.id, name: decodeEntities(record.name)}, this)
     }
 
     downloadFile(record) {
-        Neo.Main.windowOpen({
-            url       : client.legacyUrl('files/file/download', {id: record.id, inline: 0}),
-            windowName: '_blank',
-            windowId  : this.windowId
-        })
+        openUrl(this, downloadUrl(record, false))
+    }
+
+    /**
+     * ExtJS "Open with": all handlers of the file
+     * @param {Object} record
+     * @param {String} target DOM id
+     */
+    async openWith(record, target) {
+        let me = this;
+
+        try {
+            const handlers = await getHandlers(record, true),
+                  file     = {id: record.id, name: decodeEntities(record.name)};
+
+            me.isDestroyed || MenuList.showAt({
+                appName : me.appName,
+                windowId: me.windowId,
+                target,
+                items   : handlers.map(handler => ({
+                    text   : handler.name,
+                    icon   : 'open_in_new',
+                    handler: () => runHandler(handler, file, me)
+                }))
+            })
+        } catch (e) {
+            me.showError(e)
+        }
     }
 
     onDetailAction({action, record, target}) {
@@ -674,11 +709,18 @@ class FilesMain extends MainThreeColumnPanel {
         }
 
         try {
-            const {data} = await client.legacy('files/file/display', {id: match[2]});
+            const navigation = me.navigation,
+                  {data}     = await client.legacy('files/file/display', {id: match[2]});
 
-            if (!me.isDestroyed && data?.folder_id) {
+            if (!me.isDestroyed && data?.folder_id && navigation === me.navigation) {
                 me.revealFolder(String(data.folder_id));
-                await me.openFolder(data.folder_id, {select: typeId})
+                await me.openFolder(data.folder_id, {select: typeId});
+
+                // not on the first page of its folder: show it anyway
+                if (!me.isDestroyed && !store.get(typeId) && String(me.folderId) === String(data.folder_id)) {
+                    me.getReference('detail').setRecord({...data, id: match[2], type_id: typeId});
+                    me.activatePanel('east')
+                }
             }
         } catch (e) {
             me.showError(e)
@@ -740,7 +782,7 @@ class FilesMain extends MainThreeColumnPanel {
         let me    = this,
             store = me.getReference('trashGrid').store;
 
-        if (me.isDestroyed) {
+        if (me.isDestroyed || me.folderId !== 'trash') {
             return
         }
 
@@ -843,17 +885,23 @@ class FilesMain extends MainThreeColumnPanel {
     editItems(records, {tree=false}={}) {
         let me     = this,
             single = records.length === 1 ? records[0] : null,
-            system = records.some(r => isFolder(r) && +r.readonly);
+            system = records.some(r => isFolder(r) && +r.readonly),
+            // rows of the shown folder: its level (ExtJS setWritePermission()); a tree node or a
+            // search result: unknown, the server checks
+            level  = tree || me.getReference('grid').store.query ? LEVEL_MANAGE : me.folderLevel(),
+            write  = level >= LEVEL_WRITE,
+            del    = level >= LEVEL_DELETE;
 
         return [{
             text    : t('Rename'),
             icon    : 'drive_file_rename_outline',
-            disabled: !single || system,
+            disabled: !single || system || !write,
             handler : () => me.rename(single)
         }, ...(tree ? [] : [{
-            text   : t('Cut'),
-            icon   : 'content_cut',
-            handler: () => me.setClipboard('cut', records)
+            text    : t('Cut'),
+            icon    : 'content_cut',
+            disabled: !del,
+            handler : () => me.setClipboard('cut', records)
         }, {
             text   : t('Copy'),
             icon   : 'content_copy',
@@ -861,12 +909,12 @@ class FilesMain extends MainThreeColumnPanel {
         }]), {separator: true}, {
             text    : t('Move to Trash'),
             icon    : 'delete',
-            disabled: system,
+            disabled: system || !del,
             handler : () => me.moveToTrash(records)
         }, {
             text    : t('Delete permanently'),
             icon    : 'delete_forever',
-            disabled: system,
+            disabled: system || !del,
             handler : () => me.deleteRecords(records)
         }]
     }
@@ -885,6 +933,7 @@ class FilesMain extends MainThreeColumnPanel {
             const lockedByOther = single.locked_user_id > 0;
 
             items.push({text: t('Open'), icon: 'open_in_new', handler: () => me.openFile(single)},
+                       {text: t('Open with'), icon: 'apps', handler: () => me.openWith(single, target)},
                        {text: t('Download'), icon: 'download', handler: () => me.downloadFile(single)},
                        {separator: true},
                        lockedByOther
@@ -1114,7 +1163,7 @@ class FilesMain extends MainThreeColumnPanel {
         let me = this;
 
         try {
-            await client.legacy('files/file/submit', {id: record.id, locked_user_id: locked ? client.user.id : 0});
+            await submitFile({id: record.id, locked_user_id: locked ? client.user.id : 0});
             await me.refresh();
             me.getReference('detail').refresh()
         } catch (e) {
@@ -1142,7 +1191,7 @@ class FilesMain extends MainThreeColumnPanel {
                 appName : me.appName,
                 windowId: me.windowId,
                 target  : data.path[0]?.id || item.id,
-                items   : [{text: t('Remove from favorites'), icon: 'star_border', handler: () => me.removeFavorite(record.folder_id)}]
+                items   : [{text: t('Remove favorite'), icon: 'star_border', handler: () => me.removeFavorite(record.folder_id)}]
             })
         }, scope: me});
 
@@ -1261,12 +1310,7 @@ class FilesMain extends MainThreeColumnPanel {
                 await client.legacy('files/folder/submit', {id: record.id, name})
             } else {
                 // file/submit joins name and extension
-                const dot = name.lastIndexOf('.');
-                await client.legacy('files/file/submit', {
-                    id       : record.id,
-                    name     : dot > 0 ? name.slice(0, dot) : name,
-                    extension: dot > 0 ? name.slice(dot + 1) : ''
-                })
+                await submitFile({id: record.id, ...splitFileName(name)})
             }
 
             await me.refresh();
@@ -1308,9 +1352,20 @@ class FilesMain extends MainThreeColumnPanel {
      * @param {String[]} typeIds
      * @param {String} mode 'cut' or 'copy'
      */
-    async pasteInto(destId, typeIds, mode) {
+    pasteInto(destId, typeIds, mode) {
+        // one paste at a time in all windows: the server's overwrite queue is per session
+        const run = pasteQueue.then(() => this.runPaste(destId, typeIds, mode));
+        pasteQueue = run.catch(() => {});
+        return run
+    }
+
+    async runPaste(destId, typeIds, mode) {
         let me        = this,
             overwrite = 'ask';
+
+        if (me.isDestroyed) {
+            return
+        }
 
         try {
             for (;;) {
