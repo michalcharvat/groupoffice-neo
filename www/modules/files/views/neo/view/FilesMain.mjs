@@ -20,6 +20,10 @@ import FolderStore  from '../data/FolderStore.mjs';
 import {decodeEntities, fileIcon, isFolder, isValidName, treeIcon} from '../util.mjs';
 import FileDetail   from './FileDetail.mjs';
 import OverwriteDialog from './OverwriteDialog.mjs';
+import FilePropertiesDialog   from './FilePropertiesDialog.mjs';
+import FolderPropertiesDialog from './FolderPropertiesDialog.mjs';
+import TextList     from '../../../../../views/neo/src/list/TextList.mjs';
+import Store        from '../../../../../views/neo/node_modules/neo.mjs/src/data/Store.mjs';
 
 const t = translator('legacy', 'files');
 
@@ -89,12 +93,41 @@ class FilesMain extends MainThreeColumnPanel {
                     text : t('Files')
                 }, '->', this.hideWestButton()]
             }, {
-                module      : Tree,
-                reference   : 'tree',
-                cls         : ['go-files-tree'],
-                flex        : 1,
-                defaultIcon : 'folder',
-                nodeProvider: node => this.loadTreeNodes(node)
+                ntype : 'container',
+                cls   : ['go-scroll'],
+                flex  : 1,
+                layout: {ntype: 'vbox', align: 'stretch'},
+                items : [{
+                    module      : Tree,
+                    reference   : 'tree',
+                    cls         : ['go-files-tree'],
+                    flex        : 'none',
+                    defaultIcon : 'folder',
+                    nodeProvider: node => this.loadTreeNodes(node)
+                }, {
+                    // ExtJS GO.files.BookmarksGrid
+                    module   : Toolbar,
+                    flex     : 'none',
+                    reference: 'favoritesHeader',
+                    hidden   : true,
+                    items    : [{
+                        ntype: 'component',
+                        tag  : 'h4',
+                        cls  : ['go-toolbar-heading'],
+                        text : t('Favorites')
+                    }]
+                }, {
+                    module      : TextList,
+                    reference   : 'favorites',
+                    cls         : ['go-files-favorites'],
+                    flex        : 'none',
+                    displayField: 'name',
+                    store       : {
+                        module     : Store,
+                        keyProperty: 'folder_id',
+                        model      : {fields: [{name: 'folder_id', type: 'String'}, {name: 'name', type: 'String'}]}
+                    }
+                }]
             }, {
                 ntype    : 'component',
                 reference: 'quota',
@@ -329,6 +362,7 @@ class FilesMain extends MainThreeColumnPanel {
 
         me.initContextMenus();
         me.initDragDrop();
+        me.initFavorites();
 
         // the home folder, like ExtJS (folder_id '' lists it)
         me.initialLoad = me.openFolder('', {})
@@ -570,7 +604,7 @@ class FilesMain extends MainThreeColumnPanel {
         })
     }
 
-    onDetailAction({action, record}) {
+    onDetailAction({action, record, target}) {
         let me = this;
 
         switch (action) {
@@ -579,6 +613,12 @@ class FilesMain extends MainThreeColumnPanel {
                 break
             case 'download':
                 me.downloadFile(record);
+                break
+            case 'properties':
+                me.openProperties(record);
+                break
+            case 'more':
+                me.showItemMenu([record], target);
                 break
         }
     }
@@ -781,6 +821,14 @@ class FilesMain extends MainThreeColumnPanel {
                 icon    : 'content_paste',
                 disabled: !clipboard.typeIds.length,
                 handler : () => me.paste(node.id)
+            }, {
+                text   : t('Add to favorites'),
+                icon   : 'star',
+                handler: () => me.addFavorite(node.id)
+            }, {
+                text   : t('Properties'),
+                icon   : 'info',
+                handler: () => me.openProperties(record)
             }, {separator: true}, ...me.editItems([record], {tree: true})]
         })
     }
@@ -834,13 +882,22 @@ class FilesMain extends MainThreeColumnPanel {
             items  = [];
 
         if (single && !folder) {
+            const lockedByOther = single.locked_user_id > 0;
+
             items.push({text: t('Open'), icon: 'open_in_new', handler: () => me.openFile(single)},
-                       {text: t('Download'), icon: 'download', handler: () => me.downloadFile(single)});
+                       {text: t('Download'), icon: 'download', handler: () => me.downloadFile(single)},
+                       {separator: true},
+                       lockedByOther
+                           ? {text: t('Unlock'), icon: 'lock_open', disabled: !single.unlock_allowed, handler: () => me.setLocked(single, false)}
+                           : {text: t('Lock'), icon: 'lock', handler: () => me.setLocked(single, true)});
         } else if (folder) {
-            items.push({text: t('Open'), icon: 'folder_open', handler: () => me.openFolder(single.id)});
+            items.push({text: t('Open'), icon: 'folder_open', handler: () => me.openFolder(single.id)},
+                       {text: t('Add to favorites'), icon: 'star', handler: () => me.addFavorite(single.id)});
 
             clipboard.typeIds.length && items.push({text: t('Paste'), icon: 'content_paste', handler: () => me.paste(single.id)})
         }
+
+        single && items.push({text: t('Properties'), icon: 'info', handler: () => me.openProperties(single)});
 
         items.length && items.push({separator: true});
         items.push(...me.editItems(records));
@@ -1015,6 +1072,121 @@ class FilesMain extends MainThreeColumnPanel {
         } catch (e) {
             // loadError shows a store error
             e && !grid.store.isLoading && me.showError(e)
+        }
+    }
+
+
+    /**
+     * File or folder properties
+     * @param {Object} record
+     */
+    async openProperties(record) {
+        let me = this;
+
+        try {
+            const dialog = await (isFolder(record)
+                ? FolderPropertiesDialog.open({appName: me.appName, windowId: me.windowId, folderId: record.id})
+                : FilePropertiesDialog.open({appName: me.appName, windowId: me.windowId, fileId: record.id}));
+
+            if (me.isDestroyed) {
+                dialog.close();
+                return
+            }
+
+            me.trackDialog(dialog);
+            dialog.on('save', () => {
+                if (!me.isDestroyed) {
+                    me.refresh();
+                    me.getReference('detail').refresh()
+                }
+            })
+        } catch (e) {
+            me.showError(e)
+        }
+    }
+
+    /**
+     * Lock / unlock a file (files/file/submit locked_user_id, ExtJS ContextMenu)
+     * @param {Object} record
+     * @param {Boolean} locked
+     */
+    async setLocked(record, locked) {
+        let me = this;
+
+        try {
+            await client.legacy('files/file/submit', {id: record.id, locked_user_id: locked ? client.user.id : 0});
+            await me.refresh();
+            me.getReference('detail').refresh()
+        } catch (e) {
+            me.showError(e)
+        }
+    }
+
+    /**
+     * Favorites below the tree (files/bookmark/store): a click opens the folder, a right
+     * click removes it
+     */
+    initFavorites() {
+        let me   = this,
+            list = me.getReference('favorites');
+
+        list.on('itemClick', ({record}) => record && me.openFolder(record.folder_id));
+
+        Neo.main.DomEvents.registerPreventDefaultTargets({name: 'contextmenu', cls: ['go-files-favorites'], windowId: me.windowId});
+        list.addDomListeners({contextmenu: data => {
+            const item   = data.path.find(node => node.cls?.includes('neo-list-item')),
+                  id     = item && list.getItemRecordId(item.id),
+                  record = id !== undefined && id !== null && list.store.get(String(id));
+
+            record && MenuList.showAt({
+                appName : me.appName,
+                windowId: me.windowId,
+                target  : data.path[0]?.id || item.id,
+                items   : [{text: t('Remove from favorites'), icon: 'star_border', handler: () => me.removeFavorite(record.folder_id)}]
+            })
+        }, scope: me});
+
+        me.loadFavorites()
+    }
+
+    async loadFavorites() {
+        let me = this;
+
+        try {
+            const {results = []} = await client.legacy('files/bookmark/store', {limit: 0});
+
+            if (me.isDestroyed) {
+                return
+            }
+
+            me.getReference('favorites').store.data = results.map(r => ({folder_id: String(r.folder_id), name: decodeEntities(r.name)}));
+            me.getReference('favoritesHeader').hidden = !results.length
+        } catch (e) {
+            me.showError(e)
+        }
+    }
+
+    /**
+     * @param {String} folderId
+     */
+    async addFavorite(folderId) {
+        try {
+            await client.legacy('files/bookmark/submit', {folder_id: folderId});
+            await this.loadFavorites()
+        } catch (e) {
+            this.showError(e)
+        }
+    }
+
+    /**
+     * @param {String} folderId
+     */
+    async removeFavorite(folderId) {
+        try {
+            await client.legacy('files/bookmark/delete', {folder_id: folderId});
+            await this.loadFavorites()
+        } catch (e) {
+            this.showError(e)
         }
     }
 
