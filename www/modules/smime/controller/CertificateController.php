@@ -49,13 +49,30 @@ class CertificateController extends \GO\Base\Controller\AbstractModelController 
 		echo $cert->cert;
 	}
 
+	/**
+	 * Add a PKCS#12 certificate to an e-mail account. Saving it needs write permission on the account.
+	 *
+	 * @param array $params ['account_id', 'smime_password', 'blobId'] the certificate is the uploaded file "cert" or,
+	 *  for clients that upload with JMAP, the blob "blobId"
+	 * @return array
+	 */
 	public function actionUpload($params) {
 
-		if (!isset($_FILES['cert']['tmp_name'][0]) || !is_uploaded_file($_FILES['cert']['tmp_name'][0])) {
-			throw new \Exception("No file was received");
-		}
+		if (!empty($params['blobId'])) {
+			$blob = \go\core\fs\Blob::findById($params['blobId']);
+			if (!$blob) {
+				throw new \GO\Base\Exception\NotFound();
+			}
+			// Path of a blob from the database.
+			// nosemgrep: go-path-from-request
+			$certData = file_get_contents($blob->path());
+		} else {
+			if (!isset($_FILES['cert']['tmp_name'][0]) || !is_uploaded_file($_FILES['cert']['tmp_name'][0])) {
+				throw new \Exception("No file was received");
+			}
 
-		$certData = file_get_contents($_FILES['cert']['tmp_name'][0]);
+			$certData = file_get_contents($_FILES['cert']['tmp_name'][0]);
+		}
 		if(!$certData) {
 			throw new Exception("No certificate data was found");
 		}
