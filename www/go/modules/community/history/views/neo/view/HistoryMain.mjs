@@ -21,6 +21,9 @@ const t = translator('community', 'history');
 // GOUI LogEntryGrid loads more rows on scroll
 const PAGE_SIZE = 40;
 
+// string keys ('create', entity names): without a model the store doesn't keep them
+const LIST_MODEL = {fields: [{name: 'id', type: 'String'}, {name: 'name', type: 'String'}]};
+
 // LogEntry `actions` filter values (LogEntry::$actionMap)
 const ACTIONS = [
     ['create', 'Create'], ['update', 'Update'], ['delete', 'Delete'], ['login', 'Login'],
@@ -86,7 +89,7 @@ class HistoryMain extends MainThreeColumnPanel {
                 reference   : 'actionList',
                 flex        : 'none',
                 displayField: 'name',
-                store       : {keyProperty: 'id', data: ACTIONS.map(([id, text]) => ({id, name: coreT(text)}))}
+                store       : {keyProperty: 'id', model: LIST_MODEL, data: ACTIONS.map(([id, text]) => ({id, name: coreT(text)}))}
             }, {
                 module: Toolbar,
                 flex  : 'none',
@@ -96,7 +99,7 @@ class HistoryMain extends MainThreeColumnPanel {
                 reference   : 'typeList',
                 flex        : 'none',
                 displayField: 'name',
-                store       : {keyProperty: 'id', data: []}
+                store       : {keyProperty: 'id', model: LIST_MODEL, data: []}
             }]
         }
     }

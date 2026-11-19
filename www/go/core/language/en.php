@@ -468,4 +468,5 @@ If you did not request a new password please delete this mail.',
   'Move up' => 'Move up',
   'Move down' => 'Move down',
   'Move to the other column' => 'Move to the other column',
+  'No changes' => 'No changes',
 );

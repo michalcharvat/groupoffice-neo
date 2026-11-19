@@ -24,7 +24,8 @@ class HistoryPanel extends Card {
         className: 'GO.detail.HistoryPanel',
         cls      : ['go-history-panel'],
         title    : t('History'),
-        stateId  : 'history-detail'
+        stateId  : 'history-detail',
+        capability: 'go:community:history'
         // no `watch`: the grid's JmapStore reloads on LogEntry changes itself
     }
 

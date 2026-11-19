@@ -28,7 +28,8 @@ class CommentsPanel extends Card {
         cls      : ['go-comments-panel'],
         title    : t('Comments'),
         stateId  : 'comments-detail',
-        watch    : ['Comment']
+        watch    : ['Comment'],
+        capability: 'go:community:comments'
     }
 
     /**
