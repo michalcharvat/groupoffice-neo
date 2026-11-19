@@ -36,6 +36,11 @@ ModuleRegistry.register({
     // ModuleRegistry.loadSettingsPanels() (neo-ui "system settings" card), before that only the first
     userSettings: typeof ModuleRegistry.loadSettingsPanels === 'function' ? userSettings : userSettings[0],
     // Contact field types and the contact field set filter for the custom fields admin
+    // "Add link" menu of other items' details: a new linked contact or organization
+    linkWindows: [
+        {title: t('Contact'), icon: 'person', open: ctx => import('./linkWindow.mjs').then(m => m.default(ctx, false))},
+        {title: t('Organization'), icon: 'business', open: ctx => import('./linkWindow.mjs').then(m => m.default(ctx, true))}
+    ],
     customFieldsAdmin: () => import('./customFieldsAdmin.mjs'),
     // start page (legacy summary module)
     portlets: [{id: 'portlet-birthdays', title: t('Upcoming birthdays'), icon: 'cake', view: () => import('./view/BirthdaysPortlet.mjs')}],

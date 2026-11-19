@@ -16,6 +16,8 @@ ModuleRegistry.register({
     // header search results: entity → route below "#notes/"
     routes    : {Note: id => 'note/' + id},
     mainView  : () => import('./view/NotesMain.mjs'),
+    // "Add link" menu of other items' details: a new linked note
+    linkWindows: [{title: t('Note'), icon: 'sticky_note_2', open: ctx => import('./linkWindow.mjs').then(m => m.default(ctx))}],
     // card in My account
     userSettings: {
         title  : t('Notes'),

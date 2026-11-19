@@ -137,7 +137,7 @@ class NoteDetail extends Container {
         me.getReference('moreButton').disabled = !note;
         me.getReference('moreButton').setMenuItemDisabled('delete', level < LEVEL_DELETE);
 
-        me.getReference('addLinkButton').setEntity(note ? 'Note' : null, note?.id || null);
+        me.getReference('addLinkButton').setEntity(note ? 'Note' : null, note?.id || null, note);
 
         if (me.getReference('linkBrowseButton').target?.entityId !== note?.id) {
             me.getReference('linkBrowseButton').setEntity(note ? 'Note' : null, note?.id || null)

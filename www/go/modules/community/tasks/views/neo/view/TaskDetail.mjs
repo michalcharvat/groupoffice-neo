@@ -178,7 +178,7 @@ class TaskDetail extends Container {
         me.getReference('bottomBar').hidden        = !task || level < LEVEL_WRITE;
         me.getReference('card').hidden             = !task;
 
-        me.getReference('addLinkButton').setEntity(type, id);
+        me.getReference('addLinkButton').setEntity(type, id, task);
 
         if (me.getReference('linkBrowseButton').target?.entityId !== id) {
             me.getReference('linkBrowseButton').setEntity(type, id)

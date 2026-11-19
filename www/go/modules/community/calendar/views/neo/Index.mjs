@@ -19,6 +19,8 @@ ModuleRegistry.register({
     // count on the module tab and main menu item (src/Badges.mjs): open invitations (GOUI showBadge())
     badge     : {entities: ['CalendarEvent'], count: () => client.call('CalendarEvent/countMine')},
     mainView  : () => import('./view/CalendarMain.mjs'),
+    // "Add link" menu of other items' details: a new linked event
+    linkWindows: [{title: t('Event'), icon: 'event', open: ctx => import('./linkWindow.mjs').then(m => m.default(ctx))}],
     // notification area: invitations and reminders (src/alerts/Alerts.mjs)
     alerts    : args => import('./alerts.mjs').then(m => m.default(args)),
     // e-mail message view (www/modules/email/views/neo): invitations (GOUI GO.email.handleITIP)

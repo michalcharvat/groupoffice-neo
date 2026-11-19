@@ -109,7 +109,8 @@ class ChipsField extends Field {
                 text = null
             }
 
-            me.chipTexts.set(ChipsField.key(v), String(text ?? v))
+            // the field may be destroyed meanwhile (its dialog saved and closed)
+            me.isDestroyed || me.chipTexts.set(ChipsField.key(v), String(text ?? v))
         }));
 
         !me.isDestroyed && me.renderControl()

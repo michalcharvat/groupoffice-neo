@@ -125,7 +125,8 @@ class EventDetail extends Container {
         me.getReference('toolbar').hidden = !real;
         me.getReference('editButton').hidden = !real || !item.mayChange;
 
-        ['addLinkButton', 'linkBrowseButton'].forEach(ref => me.getReference(ref).setEntity(real ? 'CalendarEvent' : null, real ? id : null));
+        me.getReference('addLinkButton').setEntity(real ? 'CalendarEvent' : null, real ? id : null, real ? item.data : null);
+        me.getReference('linkBrowseButton').setEntity(real ? 'CalendarEvent' : null, real ? id : null);
         me.getReference('links').setEntity(real ? 'CalendarEvent' : null, real ? id : null, real ? item.data : null);
         me.getReference('customFields').setEntity(real ? 'CalendarEvent' : null, real ? id : null);
 

@@ -19,6 +19,8 @@ ModuleRegistry.register({
     // count on the module tab and main menu item (src/Badges.mjs): open tasks of the default list due today or without a date (ExtJS showBadge())
     badge     : {entities: ['Task'], count: () => client.call('Task/countMine')},
     mainView  : () => import('./view/TasksMain.mjs'),
+    // "Add link" menu of other items' details: a new linked task
+    linkWindows: [{title: t('Task'), icon: 'check_circle', open: ctx => import('./linkWindow.mjs').then(m => m.default(ctx))}],
     // notification area: assignments and reminders (src/alerts/Alerts.mjs)
     alerts    : args => import('./alerts.mjs').then(m => m.default(args)),
     // start page (legacy summary module)
