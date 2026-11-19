@@ -74,9 +74,12 @@ export async function loadNames(fields, records) {
         const entity = getType(field).nameEntity;
 
         entity && records.forEach(record => {
-            const id = record.customFields?.[field.databaseName];
+            const value = record.customFields?.[field.databaseName];
 
-            id !== null && id !== undefined && id !== '' && (wanted[entity] ??= new Set()).add(String(id))
+            // MultiContact: a list of ids
+            (Array.isArray(value) ? value : [value]).forEach(id => {
+                id !== null && id !== undefined && id !== '' && (wanted[entity] ??= new Set()).add(String(id))
+            })
         })
     });
 
