@@ -422,7 +422,7 @@ class EventDetail extends Container {
 
         Object.entries(participants).forEach(([id, p]) => {
             // already invited under another key: replaced by the organizer entry
-            if (id !== String(principal.id) && p.email?.toLowerCase() === email) {
+            if (id !== String(principal.id) && p.kind !== 'resource' && p.email?.toLowerCase() === email) {
                 changes[`participants/${id}`] = null;
                 delete participants[id]
             } else if (p.roles?.owner) {
