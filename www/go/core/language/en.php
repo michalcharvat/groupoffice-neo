@@ -454,4 +454,7 @@ If you did not request a new password please delete this mail.',
   'This application runs on your own computer. Only allow it if you started it yourself.' => 'This application runs on your own computer. Only allow it if you started it yourself.',
   'The authorization request expired. Please connect the application again.' => 'The authorization request expired. Please connect the application again.',
   'The search took too long. Please use a longer or more specific search text.' => 'The search took too long. Please use a longer or more specific search text.',
+  'Browse files' => 'Browse files',
+  '\'{file}\' exists already and was not replaced.' => '\'{file}\' exists already and was not replaced.',
+  '{name} at {date}' => '{name} at {date}',
 );
