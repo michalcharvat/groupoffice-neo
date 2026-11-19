@@ -6,6 +6,7 @@ import GroupCheckList from '../groups/GroupCheckList.mjs';
 import client         from '../jmap/Client.mjs';
 import ModuleRegistry from '../ModuleRegistry.mjs';
 import {t}            from '../Translate.mjs';
+import {generatePassword, loadCoreSettings} from './password.mjs';
 import FormWindow     from '../view/FormWindow.mjs';
 
 /** User::USERNAME_REGEX */
@@ -21,18 +22,6 @@ const EVERYONE = '2';
  */
 function stack(items) {
     return {ntype: 'container', cls: ['go-fieldset'], layout: {ntype: 'vbox', align: 'stretch'}, flex: 'none', items}
-}
-
-/**
- * A random password of the given length (go.form.PasswordGeneratorField)
- * @param {Number} length
- * @returns {String}
- */
-function generatePassword(length) {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*-_+=?',
-          bytes = crypto.getRandomValues(new Uint32Array(length));
-
-    return Array.from(bytes, n => chars[n % chars.length]).join('')
 }
 
 /**
@@ -190,8 +179,7 @@ class CreateUserDialog extends FormWindow {
         let me = this;
 
         try {
-            const {list} = await client.queryGet('Module', {filter: {package: 'core', name: 'core'}, properties: ['id', 'package', 'name', 'settings']}),
-                  settings = list[0]?.settings || {};
+            const settings = await loadCoreSettings();
 
             await me.readyPromise;
 
