@@ -42,3 +42,30 @@
         }
     }
 }
+
+// group headers (groupBy, GOUI tr.group): the first row of a group is one header taller, the
+// band sits above its cells
+.go-grid .neo-grid-body .neo-grid-row {
+    .go-grid-group-header {
+        align-items  : center;
+        border-bottom: 1px solid var(--fg-line);
+        box-sizing   : border-box;
+        color        : var(--fg-secondary-text);
+        display      : flex;
+        font-size    : go.sp(14);
+        height       : go.dp(40);
+        left         : 0;
+        overflow     : hidden;
+        padding      : 0 go.dp(16);
+        position     : absolute;
+        right        : 0;
+        text-overflow: ellipsis;
+        top          : 0;
+        white-space  : nowrap;
+    }
+
+    &.go-grid-group-start .neo-grid-cell {
+        height: calc(100% - #{go.dp(40)});
+        top   : go.dp(40);
+    }
+}

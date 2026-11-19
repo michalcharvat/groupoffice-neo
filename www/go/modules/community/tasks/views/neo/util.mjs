@@ -159,7 +159,9 @@ export class EntityCache {
 /** Shared by the main view, the detail and the dialogs */
 export const principals = new EntityCache('Principal', ['id', 'name', 'avatarId']),
              taskLists  = new EntityCache('TaskList', ['id', 'name', 'color', 'aclId']),
-             categories = new EntityCache('TaskCategory', ['id', 'name']);
+             categories = new EntityCache('TaskCategory', ['id', 'name']),
+             // headers of the task lists in the west panel (ExtJS TasklistsGrid)
+             groupings  = new EntityCache('TaskListGrouping', ['id', 'name']);
 
 /**
  * Module rights (Module.php rights(): mayChangeTasklists, mayChangeCategories)

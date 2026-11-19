@@ -106,6 +106,11 @@ Bookmarks has no grid and no `Bookmark/export`, so neither applies there.
 - Configs redeclared with a trailing `_` in a subclass: neo refuses them ("Invalid config ... already
   defined as reactive by a parent class") once neo declares the same config higher up. 13.4 moved
   `required_` to `form.field.Base`, so `GO.form.field.Field` and `HtmlField` only hook `afterSetRequired`.
+- `src/grid/Grid.mjs` group headers (`groupBy`): neo's grid has no group rows. The grid turns on
+  `contentSizedRows`, gives the first row of a group the height of row + header
+  (`view.setRowHeights()`, keyed by record id) and wraps instance methods of neo's Body
+  (`createRowPool`, `isEditorEvent`) and Row (`createVdom`, which appends the header band as the
+  row's last child). Check these against Body.mjs / Row.mjs after a bump.
 
 ## Left to build (2026-11-19)
 

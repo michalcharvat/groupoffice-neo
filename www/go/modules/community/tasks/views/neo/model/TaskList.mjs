@@ -15,6 +15,8 @@ class TaskList extends Model {
             {name: 'aclId',           type: 'Int'},
             {name: 'ownerId',         type: 'String'},
             {name: 'tasklistId',      type: 'String'},
+            // TaskListGrouping, null when the list has none
+            {name: 'groupingId'},
             {name: 'permissionLevel', type: 'Int'}
         ]
     }

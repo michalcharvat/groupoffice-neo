@@ -158,8 +158,9 @@ class TasksMain extends MainThreeColumnPanel {
                     model     : TaskListModel,
                     // GOUI TasklistGrid: subscribed lists of the "list" role
                     jmapFilter: {role: 'list', isSubscribed: true},
-                    jmapSort  : [{property: 'name', isAscending: true}],
-                    properties: ['id', 'name', 'color', 'aclId', 'permissionLevel']
+                    // ExtJS TasklistsGrid: grouped by TaskListGrouping, then by name
+                    jmapSort  : [{property: 'group', isAscending: true}, {property: 'name', isAscending: true}],
+                    properties: ['id', 'name', 'color', 'aclId', 'permissionLevel', 'groupingId']
                 }
             }, {
                 module: Toolbar,
@@ -273,6 +274,9 @@ class TasksMain extends MainThreeColumnPanel {
                     jmapFilter: {role: 'list'}
                 },
                 stateId: 'tasks-taskGrid',
+                // GOUI TaskGrid groupBy "tasklist": a header per list in the list's colour
+                groupBy      : 'tasklistId',
+                groupRenderer: ({value}) => TasksMain.listHeaderHtml(value),
                 // a column per custom field, hidden ones in the column menu
                 customFieldsEntity: 'Task',
                 columns: [{
@@ -403,6 +407,28 @@ class TasksMain extends MainThreeColumnPanel {
             module   : TaskDetail,
             reference: 'detail'
         }
+    }
+
+    /**
+     * GOUI TaskGrid groupByRenderer: "List: <name>" in the list's colour
+     * @param {String|null} tasklistId
+     * @returns {String} HTML
+     */
+    static listHeaderHtml(tasklistId) {
+        if (tasklistId === null || tasklistId === undefined || tasklistId === '') {
+            return escapeHtml(t('List: None'))
+        }
+
+        // empty until loadNames() has the list
+        const list = taskLists.get(tasklistId);
+
+        if (!list) {
+            return ''
+        }
+
+        const text = escapeHtml(t('List') + ': ' + (list.name ?? ''));
+
+        return /^[0-9a-f]{6}$/i.test(list.color || '') ? `<span style="color:#${list.color}">${text}</span>` : text
     }
 
     /**
@@ -978,7 +1004,8 @@ class TasksMain extends MainThreeColumnPanel {
             grid = me.getReference('grid');
 
         if (grid && await me.fetchNames(grid.store.items) && !me.isDestroyed && !grid.isDestroyed) {
-            grid.body?.createViewData();
+            // forced: a row with the same record keeps its vdom otherwise (also the group headers)
+            grid.refreshRows();
             // the detail shows the same names
             me.getReference('detail').renderTask()
         }
