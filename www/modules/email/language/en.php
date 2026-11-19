@@ -24,4 +24,8 @@ return array (
   'This message has been identified as spam.' => 'This message has been identified as spam.',
   'Unchanged' => 'Unchanged',
   '{count} messages' => '{count} messages',
+  'Add unknown recipients' => 'Add unknown recipients',
+  'You sent an e-mail to recipients that are not in your address book. Select the ones you want to add as a contact.' => 'You sent an e-mail to recipients that are not in your address book. Select the ones you want to add as a contact.',
+  'Don\'t show this window next time' => 'Don\'t show this window next time',
+  'Add to existing contact' => 'Add to existing contact',
 );

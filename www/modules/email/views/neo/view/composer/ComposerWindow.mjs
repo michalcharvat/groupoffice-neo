@@ -964,8 +964,7 @@ class ComposerWindow extends Dialog {
             const {default: dialog} = await import('../message/UnknownRecipientsDialog.mjs');
             dialog?.show?.({appName: me.appName, windowId: me.windowId, recipients})
         } catch (e) {
-            // not ported yet
-            console.info('UnknownRecipientsDialog not available', e?.message)
+            console.warn('UnknownRecipientsDialog not available', e)
         }
     }
 
