@@ -2,8 +2,8 @@ import client from '../../../../views/neo/src/jmap/Client.mjs';
 
 /**
  * The legacy routes of the sieve module (www/modules/sieve/controller/SieveController.php).
- * Every route except accountAliases connects to the account's ManageSieve server and needs
- * manage permission on the account.
+ * Every route needs manage permission on the account, and every route except accountAliases
+ * connects to the account's ManageSieve server.
  */
 
 /**

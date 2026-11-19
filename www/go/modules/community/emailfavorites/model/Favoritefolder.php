@@ -7,6 +7,7 @@ use go\core\jmap\Entity;
 use go\core\model\Acl;
 use go\core\orm\Filters;
 use go\core\orm\Mapping;
+use go\core\orm\Query;
 
 class Favoritefolder extends Entity
 {
@@ -28,6 +29,16 @@ class Favoritefolder extends Entity
 			->add('userId', function (Criteria $criteria, $value) {
 				$criteria->where('userId', '=', $value);
 			});
+	}
+
+	/**
+	 * Favorites are personal: only the user they belong to may see them, like internalGetPermissionLevel(). The
+	 * permissionLevel filter calls it, so Favoritefolder/query doesn't return the ids of other users' favorites.
+	 */
+	public static function applyAclToQuery(Query $query, int $level = Acl::LEVEL_READ, int|null $userId = null, array|null $groups = null): Query
+	{
+		$query->andWhere('eff.userId', '=', $userId ?? go()->getUserId());
+		return $query;
 	}
 
 	protected function internalGetPermissionLevel(): int
