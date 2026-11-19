@@ -233,6 +233,7 @@ Backlog cards created by this audit (project groupoffice26-neo):
 | neo-ui: notes encryption | 20261119-045956-neo-ui-notes-encryption |
 | neo-ui: HtmlField image paste/upload | 20261119-045956-neo-ui-htmlfield-image-paste-upload |
 | neo-ui: main menu badges | 20261119-045956-neo-ui-main-menu-badges |
+| neo-ui: email unread badge and mail check | 20261119-045455-neo-ui-email-unread-badge-and-mail-check |
 | neo-ui: calendar swipe and availability drag | 20261119-045956-neo-ui-calendar-swipe-and-availability-d |
 | neo-ui: calendar event detail, participants and paste | 20261119-045956-neo-ui-calendar-event-detail-participant |
 | neo-ui: multi_instance login as administrator | 20261119-045956-neo-ui-multi-instance-login-as-administr |

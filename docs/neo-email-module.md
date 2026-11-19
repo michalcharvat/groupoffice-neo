@@ -31,9 +31,10 @@ Styles: `www/views/neo/resources/scss/src/apps/go/email/<path of the className>.
 |---|---|---|
 | `Index.mjs` | ModuleRegistry registration (package `legacy`, name `email`, capability `go:legacy:email`, quickAdd, `showComposer`, `portlets`, settings cards) | 1, 10 |
 | `util.mjs` | `t` (= `translator('legacy', 'email')`), `LEVEL_DELEGATED` (15), `unescapeHtml()`, `imapText()`, `imapDate()`, `routePath()`, `parseRoutePath()` | 1 |
+| `checker.mjs` | the mail check (singleton): `email/account/checkUnseen` every `checker_interval` also while the module is closed, the module badge (`badge: {count: () => checker.count()}` in `Index.mjs`), the "New email" notification (notification area + desktop + `message-new-email` sound, only with `emailSettings.notify_new_email`, muted by `mute_new_mail_sound`), `check()`, `onStatus(fn)`, `setUnseen(accountId, mailbox, n)` | badge card |
 | `api.mjs` | the legacy routes as functions (tree, checkUnseen, saveTreeState, saveSort, messageStore, setFlag, moveToAccount, moveToSpam, moveToInbox, labels, folder create/rename/delete/truncate/markAsRead/move), `serverNodeId()`, `nodeUnseen()` | 1, others add routes |
 | `data/MessageStore.mjs` | `GO.email.data.MessageStore`: neo Store over `email/message/store`, infinite scroll (`loadMore()`), `setParams()`, `load({keepCount, extra})`, `response` | 1 |
-| `view/EmailMain.mjs` | `GO.email.EmailMain` (MainThreeColumnPanel): tree / grid / message view, actions, search, routes, unseen polling | 1 |
+| `view/EmailMain.mjs` | `GO.email.EmailMain` (MainThreeColumnPanel): tree / grid / message view, actions, search, routes, folder counts from `checker.onStatus()` | 1 |
 | `view/AccountTree.mjs` | `GO.email.AccountTree` (GO.tree.Tree): accounts, folders, counts, row menu, `emailTreeSections` | 1 |
 | `view/FolderPickerDialog.mjs` | `FolderPickerDialog.ask({accountId, allowRoot, exclude})` → `{accountId, mailbox}` | 1 (card 2 may reuse for "Move/Copy email to…") |
 | `view/PromptDialog.mjs` | `PromptDialog.ask({title, labelText, value})` → text or null | 1 |
@@ -251,8 +252,6 @@ other modules.
 
 Left (board backlog cards, parent 20261119-011401-neo-ui-email-module):
 
-- **Unread badge on the module tab and polling while the e-mail module is closed**: the neo shell has
-  no badge API; EmailMain polls `email/account/checkUnseen` only while it is open.
 - **Files ↔ e-mail**: "E-mail files" and "E-mail download link" in the neo files module
   (`showComposer()` with `afterLoad` / `loadUrl: 'files/file/emailDownloadLink'`), and "Save (all) to
   personal folder" in the attachment menus (waits for a neo files folder picker).
@@ -317,10 +316,14 @@ ExtJS files: `EmailClient.js` (module panel, store, toolbar, checker), `Accounts
 - Unread counts: `email/account/checkUnseen` (ExtJS `GO.checker`, every `checker_interval`, default
   120 s) → `email_status: {total_unseen, has_new, unseen: [{account_id, mailbox, unseen}]}` for each
   account's `check_mailboxes` (INBOX by default). `has_new` → ExtJS desktop notification
-  "You have %d unread email(s)" and the module tab badge. neo: EmailMain polls every 120 s while the
-  module is open and after a push reconnect (`stateChange {reconnect}`), toast on `has_new`.
-  **Gap:** no module tab badge and no polling while the e-mail module is closed — the shell has no
-  badge API yet (see Status).
+  "You have %d unread email(s)" and the module tab badge. neo: `checker.mjs` checks from login on
+  (first `Badges` count, then every `checker_interval` through `badges.refresh('email')`, and after a
+  push reconnect only when the last check is older than the interval — the push connection
+  reconnects regularly), sets the badge to `total_unseen` and tells the open EmailMain
+  (`onStatus()`: folder counts, grid reload). EmailMain passes the counts it learns (read, flags,
+  folder load) to `checker.setUnseen()`, so the badge follows without another IMAP check. The
+  notification follows ExtJS `countEmailShown`: on `has_new` (or the first check) when the total
+  went up, with a new id each time (the notification center notifies once per id).
 - Counts also come with `email/message/store` (`unseen: {mailbox: n}`, also for the target of a move)
   and `email/message/setFlag` (`unseen`).
 - Account menu (AccountContextMenu): Add folder (disabled with `noinferiors`), Subscribe to folders,

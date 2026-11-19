@@ -25,7 +25,8 @@ const ADDON = 'WS/Notifications';
  *         snooze    : seconds => Promise,       // adds the Snooze menu (src/alerts/snooze.mjs)
  *         onDismiss : () => Promise,            // removes it on the server (close, Dismiss, Dismiss all)
  *         notify    : true,                     // desktop notification + sound, once per id
- *         sound     : 'dialog-question'         // views/Extjs3/themes/Paper/sounds/<sound>.mp3, null: silent
+ *         sound     : 'dialog-question',        // views/Extjs3/themes/Paper/sounds/<sound>.mp3, null: silent
+ *         muteSound : 'mute_reminder_sound'     // user property that mutes the sound besides mute_sound
  *     });
  *
  * Views listen to 'change'. Desktop notifications and sounds go through one GO main
@@ -72,7 +73,7 @@ class NotificationCenter {
     add(message) {
         let me = this;
 
-        message = {persistent: false, progress: null, buttons: [], notify: true, sound: 'dialog-question', ...message};
+        message = {persistent: false, progress: null, buttons: [], notify: true, sound: 'dialog-question', muteSound: 'mute_reminder_sound', ...message};
         message.time = message.time ? new Date(message.time) : new Date();
 
         me.#messages.set(message.id, message);
@@ -249,8 +250,8 @@ class NotificationCenter {
                 windowId
             });
 
-            // GO.Notifier.playSound(): the user's "mute all sounds" and "mute reminder sounds"
-            if (message.sound && !user.mute_sound && !user.mute_reminder_sound) {
+            // GO.Notifier.playSound(): the user's "mute all sounds" and e.g. "mute reminder sounds"
+            if (message.sound && !user.mute_sound && !(message.muteSound && user[message.muteSound])) {
                 addon.playSound({url: (Neo.config.goBaseUrl || '/') + 'views/Extjs3/themes/Paper/sounds/' + message.sound + '.mp3', windowId})
             }
         } catch (e) {
