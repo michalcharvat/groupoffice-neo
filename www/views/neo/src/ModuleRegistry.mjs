@@ -34,6 +34,10 @@ import client from './jmap/Client.mjs';
  *     // ExtJS linkWindow): open() shows the module's dialog for a new item and links it to the
  *     // entity on save (FormWindow.addLinkOnSave()). record is the entity's data (name, addressBookId…).
  *     linkWindows: [{title: 'Note', icon: 'sticky_note_2', open: async ({appName, windowId, entity, entityId, record}) => {}}],
+ *     // optional: cards of the detail panels for links to the module's entities (link/LinkCards.mjs,
+ *     // ExtJS/GOUI linkDetailCards), e.g. GO.link.LinkListCard configs; the generic "Links" card
+ *     // leaves out links to `entities`. cards() resolves to the card configs (module, title…).
+ *     linkDetailCards: {entities: ['Task'], cards: () => import('./linkDetailCards.mjs').then(m => m.default())},
  *     // optional, called with each window's main view after login (e.g. a dialog to show then)
  *     onMainView: mainView => {},
  *     // optional, called with each new src/users/CreateUserDialog (e.g. an extra card)

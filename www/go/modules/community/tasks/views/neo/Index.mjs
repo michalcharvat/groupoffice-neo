@@ -21,6 +21,8 @@ ModuleRegistry.register({
     mainView  : () => import('./view/TasksMain.mjs'),
     // "Add link" menu of other items' details: a new linked task
     linkWindows: [{title: t('Task'), icon: 'check_circle', open: ctx => import('./linkWindow.mjs').then(m => m.default(ctx))}],
+    // cards of other items' details: incomplete and completed linked tasks
+    linkDetailCards: {entities: ['Task'], cards: () => import('./linkDetailCards.mjs').then(m => m.default())},
     // notification area: assignments and reminders (src/alerts/Alerts.mjs)
     alerts    : args => import('./alerts.mjs').then(m => m.default(args)),
     // start page (legacy summary module)

@@ -12,7 +12,7 @@ import FilesPanel    from '../../../../../../../views/neo/src/detail/FilesPanel.
 import HistoryPanel  from '../../../../../../../views/neo/src/detail/HistoryPanel.mjs';
 import AddLinkButton    from '../../../../../../../views/neo/src/link/AddLinkButton.mjs';
 import LinkBrowseButton from '../../../../../../../views/neo/src/link/LinkBrowseButton.mjs';
-import LinkDetail       from '../../../../../../../views/neo/src/link/LinkDetail.mjs';
+import LinkCards        from '../../../../../../../views/neo/src/link/LinkCards.mjs';
 import DetailFieldsets  from '../../../../../../../views/neo/src/customfields/DetailFieldsets.mjs';
 import PasswordPrompt   from '../../../../../../../views/neo/src/view/PasswordPrompt.mjs';
 import {translator} from '../../../../../../../views/neo/src/Translate.mjs';
@@ -92,7 +92,7 @@ class NoteDetail extends Container {
                 hidden   : true
             }, {
                 // shows itself when the note has links
-                module   : LinkDetail,
+                module   : LinkCards,
                 reference: 'links',
                 flex     : 'none'
             }, {

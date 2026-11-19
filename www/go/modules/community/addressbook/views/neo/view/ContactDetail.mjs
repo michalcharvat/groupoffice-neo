@@ -11,7 +11,7 @@ import DateField     from '../../../../../../../views/neo/src/form/field/DateFie
 import client        from '../../../../../../../views/neo/src/jmap/Client.mjs';
 import AddLinkButton    from '../../../../../../../views/neo/src/link/AddLinkButton.mjs';
 import LinkBrowseButton from '../../../../../../../views/neo/src/link/LinkBrowseButton.mjs';
-import LinkDetail       from '../../../../../../../views/neo/src/link/LinkDetail.mjs';
+import LinkCards        from '../../../../../../../views/neo/src/link/LinkCards.mjs';
 import DetailFieldsets  from '../../../../../../../views/neo/src/customfields/DetailFieldsets.mjs';
 import {showComposer} from '../../../../../../../views/neo/src/Mail.mjs';
 import {notify, notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
@@ -121,7 +121,7 @@ class ContactDetail extends Container {
                 flex     : 'none',
                 hidden   : true
             }, {
-                module   : LinkDetail,
+                module   : LinkCards,
                 reference: 'links',
                 flex     : 'none'
             }, {

@@ -1,4 +1,4 @@
-// GO links: LinkDetail card, LinkBrowser, SelectSearchDialog and the rows of src/link/links.mjs
+// GO links: LinkDetail, LinkListCard and tasks' TaskLinkCard cards, LinkBrowser, SelectSearchDialog and the rows of src/link/links.mjs
 .neo-theme-go {
     .go-link-group + .go-link-group {
         margin-top: .8rem;
@@ -63,7 +63,8 @@
         white-space: nowrap;
     }
 
-    .go-link-unlink {
+    .go-link-unlink,
+    .go-link-more {
         color     : var(--fg-secondary-text);
         cursor    : pointer;
         flex      : none;
@@ -71,11 +72,13 @@
         visibility: hidden;
     }
 
-    .go-link:hover .go-link-unlink {
+    .go-link:hover .go-link-unlink,
+    .go-link:hover .go-link-more {
         visibility: visible;
     }
 
-    .go-link-unlink:hover {
+    .go-link-unlink:hover,
+    .go-link-more:hover {
         color: var(--fg-main);
     }
 
