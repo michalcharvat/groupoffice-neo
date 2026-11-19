@@ -190,11 +190,12 @@ class Acl extends Controller {
 					$items = $cls::find()->where('id', 'IN', $ids);
 				}
 				foreach($items as $item) {
-					$names[$item->id] = $item->title();
+					// ids repeat across entity types
+					$names[$typeId . '-' . $item->id] = $item->title();
 				}
 			}
 			foreach($acgs as $record) {
-				$record->name = isset($names[$record->entityId]) ? $names[$record->entityId] : go()->t("Unknown");
+				$record->name = $names[$record->typeId . '-' . $record->entityId] ?? go()->t("Unknown");
 			}
 		}
 

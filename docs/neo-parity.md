@@ -193,7 +193,7 @@ hook), user defaults, import, export, edit, login as, archive, delete.
 
 | Area | 26.x feature | 26.x ref | neo | Status |
 |---|---|---|---|---|
-| More menu | Permissions overview (AclOverviewGrid) | x/users/SystemSettingsUserGrid.js:226; x/permissions/AclOverviewGrid.js | missing | card "neo-ui: users permissions overview" |
+| More menu | Permissions overview (AclOverviewGrid) | x/users/SystemSettingsUserGrid.js:226; x/permissions/AclOverviewGrid.js | `src/permissions/AclOverviewDialog.mjs` (admins) | done (card "neo-ui: users permissions overview") |
 | Grid | Delete several users (multi-select, Delete key) | x/grid/GridTrait.js:12,318 | one row only | fixed |
 
 ### Groups
