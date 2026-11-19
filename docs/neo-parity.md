@@ -63,21 +63,21 @@ calendar/category/resource/subscribe/webcal dialogs).
 | Preferences / print | "Print week and workweek in a grid with hours" | goui/script/PreferencesPanel.ts:57, Main.ts:503 | missing | fixed |
 | Preferences | "Mark invitation / updates as read and archive" | goui/script/PreferencesPanel.ts:99-111 | missing | fixed |
 | Preferences | Help texts under the fields | goui/script/PreferencesPanel.ts:59,61,100,108 | missing | fixed |
-| Context menu | "Paste '{title}' at {date}", "Paste at original time" | goui/script/CalendarView.ts:176-258, CalendarItem.ts:1060 | plain "Paste" | card "neo-ui: calendar event detail, participants and paste" |
+| Context menu | "Paste '{title}' at {date}", "Paste at original time" | goui/script/CalendarView.ts:176-258, CalendarItem.ts:1060 | done | fixed |
 | Delete / RSVP | Deleting an invitation declines it; recurring: "Decline this instance / entire series" | goui/script/CalendarItem.ts:1113-1150 | destroys it | fixed |
-| Saved views | Opening a view doesn't change `isVisible`; "Close views" bar restores the route | goui/script/Main.ts:414-440, 571 | sets `isVisible` on the server, no close bar | card "neo-ui: calendar event detail, participants and paste" |
-| Event detail | Move to another calendar inline | goui/script/EventDetail.ts:121-147 | missing | card "neo-ui: calendar event detail, participants and paste" |
-| Event detail | Edit alerts inline | goui/script/EventDetail.ts:60-99 | read-only | card "neo-ui: calendar event detail, participants and paste" |
-| Event detail | Change organizer (`mayChangeOrganizer`) | goui/script/EventDetail.ts:198-293 | missing | card "neo-ui: calendar event detail, participants and paste" |
+| Saved views | Opening a view doesn't change `isVisible`; "Close views" bar restores the route | goui/script/Main.ts:414-440, 571 | done | fixed |
+| Event detail | Move to another calendar inline | goui/script/EventDetail.ts:121-147 | done | fixed |
+| Event detail | Edit alerts inline | goui/script/EventDetail.ts:60-99 | done | fixed |
+| Event detail | Change organizer (`mayChangeOrganizer`) | goui/script/EventDetail.ts:198-293 | done | fixed |
 | Event detail | Print | goui/script/EventDetail.ts:246 | missing | fixed |
-| Participants | "Add attendees" with RecipientPicker | goui/script/ParticipantField.ts:78-93 | missing | card "neo-ui: calendar event detail, participants and paste" |
-| Participants | Booked resource makes the field invalid | goui/script/ParticipantField.ts:207 | red row only, save not blocked | card "neo-ui: calendar event detail, participants and paste" |
+| Participants | "Add attendees" with RecipientPicker | goui/script/ParticipantField.ts:78-93 | done | fixed |
+| Participants | Booked resource makes the field invalid | goui/script/ParticipantField.ts:207 | done | fixed |
 | Event dialog | New linked event takes the item's name as title | goui/script/EventWindow.ts:402 | done (calendar `linkWindow.mjs`) | fixed |
 | Filter panel | "Calendars" filter | goui/script/Index.ts:302-329 | missing | card "neo-ui: FilterDialog …" |
 | Links | New event from another item (contact becomes participant) | goui/script/Index.ts:331-357 | done | fixed |
 | Links | "Upcoming / Past appointments" cards in linked details | goui/script/Index.ts:358-384 | done: `GO.link.LinkListCard` via ModuleRegistry `linkDetailCards` | fixed |
 | Main menu | Badge with open invitations count | goui/script/Index.ts:403-413 | toolbar inbox only | fixed |
-| Views | Rich hover tooltip (`showTooltips`) | goui/script/CalendarView.ts:318 | plain `title` | card "neo-ui: calendar event detail, participants and paste" |
+| Views | Rich hover tooltip (`showTooltips`) | goui/script/CalendarView.ts:318 | done | fixed |
 | Views | Swipe to previous/next period | goui/script/Main.ts:327,378 | missing | card "neo-ui: calendar swipe and availability drag" |
 | Availability | Drag the event on the timeline | goui/script/AvailabilityWindow.ts:61-96 | click only | card "neo-ui: calendar swipe and availability drag" |
 | Participant status | "Invite not sent yet" | goui/script/Index.ts:137 | key misspelled "Invite not send yet" | fixed |
