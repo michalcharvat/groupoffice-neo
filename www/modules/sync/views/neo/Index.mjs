@@ -41,12 +41,12 @@ async function checkForNewDevices(mainView) {
                 appName : mainView.appName,
                 windowId: mainView.windowId,
                 title   : t('New ActiveSync device'),
-                message : t('A new account was setup on your mobile device. Please confirm that it was you to enable this device') +
+                message : t('A new account was set up on your mobile device. Please confirm that it was you to enable this device') +
                     ': ' + (device.version || device.name || '')
             });
 
-            clients[id] = {...device, status: yes ? 'allowed' : 'denied'};
-            await client.set('User', {update: {[user.id]: {clients}}})
+            // only this client's status: the map may have changed meanwhile (other sessions, new devices)
+            await client.set('User', {update: {[user.id]: {[`clients/${id}/status`]: yes ? 'allowed' : 'denied'}}})
         }
     } catch (e) {
         notifyError(mainView, e)

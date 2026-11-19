@@ -13,5 +13,5 @@ Best regards,
 
 {TITLE}',
   'New ActiveSync device' => 'New ActiveSync device',
-  'A new account was setup on your mobile device. Please confirm that it was you to enable this device' => 'A new account was setup on your mobile device. Please confirm that it was you to enable this device',
+  'A new account was set up on your mobile device. Please confirm that it was you to enable this device' => 'A new account was set up on your mobile device. Please confirm that it was you to enable this device',
 );
