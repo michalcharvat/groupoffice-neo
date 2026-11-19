@@ -26,12 +26,12 @@ import {t} from '../Translate.mjs';
  */
 export function exportFormats() {
     return {
-        vcf : {text: 'vCard (Virtual Contact File)', icon: 'contact_page'},
-        ics : {text: 'vCalendar',                    icon: 'calendar_today'},
-        xlsx: {text: 'Microsoft Excel',              icon: 'table_view'},
-        csv : {text: 'Comma Separated Values',       icon: 'csv'},
-        html: {text: t('Web page') + ' (HTML)',      icon: 'html'},
-        json: {text: 'JSON',                         icon: 'data_object'}
+        vcf : {text: t('vCard (Virtual Contact File)'), icon: 'contact_page'},
+        ics : {text: t('vCalendar'),                    icon: 'calendar_today'},
+        xlsx: {text: t('Microsoft Excel'),              icon: 'table_view'},
+        csv : {text: t('Comma Separated Values'),       icon: 'csv'},
+        html: {text: t('Web page') + ' (HTML)',         icon: 'html'},
+        json: {text: t('JSON'),                         icon: 'data_object'}
     }
 }
 
@@ -88,18 +88,19 @@ export async function exportEntities(owner, {entity, extension, ids = null, quer
         const alert  = await job,
               blobId = alertBlobId(alert);
 
-        dismissAlert(alert);
-
-        // "Export error": the alert says why
-        if (!blobId) {
-            throw new Error(String(alert.data?.body || alert.data?.title || t('Error')).replace(/<[^>]*>/g, ' '))
-        }
-
+        // the window was closed meanwhile: keep the alert, it links the file
         if (owner.isDestroyed) {
             return false
         }
 
+        // "Export error": the alert says why
+        if (!blobId) {
+            dismissAlert(alert);
+            throw new Error(String(alert.data?.body || alert.data?.title || t('Error')).replace(/<[^>]*>/g, ' '))
+        }
+
         await download(owner.windowId, client.baseUrl + 'api/download.php?blob=' + encodeURIComponent(blobId));
+        dismissAlert(alert);
 
         return true
     } catch (e) {

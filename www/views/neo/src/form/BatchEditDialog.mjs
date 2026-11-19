@@ -2,7 +2,7 @@ import FormContainer from '../../node_modules/neo.mjs/src/form/Container.mjs';
 import Toolbar       from '../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import Button        from '../button/Button.mjs';
 import customFields  from '../customfields/customFields.mjs';
-import {createFormItem} from '../customfields/types.mjs';
+import {createFormItem, getType} from '../customfields/types.mjs';
 import {escapeHtml}  from '../Format.mjs';
 import client        from '../jmap/Client.mjs';
 import {notify, notifyError} from '../Notify.mjs';
@@ -13,9 +13,13 @@ import DataSourceForm from './DataSourceForm.mjs';
 
 /**
  * @param {Object} field GO Field entity
- * @returns {Boolean} the type has a form field (not a read-only display)
+ * @returns {Boolean} the type has a form field with a value (not a read-only display or form notes)
  */
 function isEditable(field) {
+    if (getType(field).noValue) {
+        return false
+    }
+
     const config = createFormItem(field);
     return !!config && !config.goReadOnly
 }
