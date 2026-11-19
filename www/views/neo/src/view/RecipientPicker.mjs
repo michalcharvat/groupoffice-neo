@@ -141,6 +141,7 @@ class RecipientPicker extends Dialog {
                 module     : Grid,
                 reference  : 'grid-' + key,
                 flex       : 1,
+                rowLines   : 2, // avatar column
                 multiSelect: true,
                 store      : {
                     module    : JmapStore,

@@ -61,6 +61,7 @@ class DuplicateDialog extends Dialog {
             module     : Grid,
             reference  : 'grid',
             flex       : 1,
+            rowLines   : 2, // avatar column
             multiSelect: true,
             store      : {
                 module    : JmapStore,
