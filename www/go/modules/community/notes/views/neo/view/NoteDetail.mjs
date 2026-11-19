@@ -5,7 +5,7 @@ import Button      from '../../../../../../../views/neo/src/button/Button.mjs';
 import {escapeHtml, sanitizeHtml} from '../../../../../../../views/neo/src/Format.mjs';
 import {notify} from '../../../../../../../views/neo/src/Notify.mjs';
 import {print} from '../../../../../../../views/neo/src/print.mjs';
-import {contentToHtml} from '../../../../../../../views/neo/src/Markdown.mjs';
+import {blobImages, contentToHtml} from '../../../../../../../views/neo/src/Markdown.mjs';
 import {enableImageZoom} from '../../../../../../../views/neo/src/view/ImageWindow.mjs';
 import CommentsPanel from '../../../../../../../views/neo/src/detail/CommentsPanel.mjs';
 import FilesPanel    from '../../../../../../../views/neo/src/detail/FilesPanel.mjs';
@@ -223,7 +223,7 @@ class NoteDetail extends Container {
             return
         }
 
-        me.renderBody(note, note.type === 'markdown' ? contentToHtml(content, 'markdown') : sanitizeHtml(content))
+        me.renderBody(note, note.type === 'markdown' ? contentToHtml(content, 'markdown') : sanitizeHtml(blobImages(content)))
     }
 
     async onDecryptClick() {

@@ -1,4 +1,5 @@
 import {marked}       from '../node_modules/marked/lib/marked.esm.js';
+import client         from './jmap/Client.mjs';
 import {sanitizeHtml} from './Format.mjs';
 
 /**
@@ -37,7 +38,27 @@ export function markdownToHtml(markdown) {
  * @returns {String}
  */
 export function contentToHtml(content, type = 'html') {
-    return type === 'markdown' ? markdownToHtml(content) : (content || '')
+    return type === 'markdown' ? markdownToHtml(content) : blobImages(content || '')
+}
+
+/**
+ * Images with data-blob-id get the blob's download URL as src when they have none or an
+ * object URL ("blob:…"): GOUI HtmlField saves pasted images with the object URL of the
+ * upload, which is gone after a reload (GOUI Image.replaceImages()).
+ * @param {String} html
+ * @returns {String}
+ */
+export function blobImages(html) {
+    return String(html || '').replace(/<img\b[^>]*>/gi, tag => {
+        const blobId = /\sdata-blob-id\s*=\s*"([a-f0-9]{40})"/i.exec(tag)?.[1],
+              src    = /\ssrc\s*=\s*"([^"]*)"/i.exec(tag)?.[1];
+
+        if (!blobId || (src && !/^\s*blob:/i.test(src))) {
+            return tag
+        }
+
+        return tag.replace(/\ssrc\s*=\s*"[^"]*"/i, '').replace(/^<img/i, `<img src="${client.apiUrl}download.php?blob=${blobId}"`)
+    })
 }
 
 /**
