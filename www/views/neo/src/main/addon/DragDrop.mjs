@@ -1,8 +1,12 @@
 import Base      from '../../../node_modules/neo.mjs/src/main/addon/Base.mjs';
 import DomEvents from '../../../node_modules/neo.mjs/src/main/DomEvents.mjs';
 
-/** class of the drop target under the pointer */
-const OVER_CLS = 'go-drop-over';
+/** classes of the drop target under the pointer, by drop position */
+const POSITION_CLS = {on: 'go-drop-over', before: 'go-drop-before', after: 'go-drop-after'};
+/** class of the dragged element (GOUI .drag-src) */
+const DRAG_SRC_CLS = 'go-drag-src';
+/** ms the pointer rests on a target before "goDragHover" (a tree expands the node) */
+const HOVER_DELAY = 1000;
 
 /**
  * Main thread side of drag and drop (GOUI DragAndDrop / ExtJS DD in the file browser):
@@ -15,9 +19,17 @@ const OVER_CLS = 'go-drop-over';
  *   the root (or with an empty selector) the root itself is the target
  * - data-go-drop-group="<name>": drags are accepted from roots with the same group only
  * - data-go-files="true": files dragged from the desktop can be dropped
+ * - data-go-drop-pos="on|between|both": drop on a target (default), between targets
+ *   (sorting: before / after, GOUI Sortable dropBetween) or both (the outer quarters of a
+ *   target are before / after, the middle is on)
+ * - data-go-drop-horizontal="true": targets are side by side, before / after go by x
+ * - data-go-drop-hover="true": resting on a target for a second sends "goDragHover"
+ *   {targetId, targetRecordId} (a tree expands the node, GOUI Tree.setupExpandOnDragOver())
  *
  * A drop sends the custom DOM event "goDrop" to the drop root's component:
- * {targetId, targetRecordId, files, source: {rootId, itemId, recordId}|null, copy}.
+ * {targetId, targetRecordId, position, files, source: {rootId, itemId, recordId}|null, copy}.
+ * position is "on", "before" or "after"; a drop on the root itself (outside the targets) is
+ * always "on".
  * File objects survive postMessage (structured clone).
  *
  * Loaded per window: await Neo.Main.importAddon({name: 'WS/DragDrop', windowId})
@@ -38,6 +50,15 @@ class DragDrop extends Base {
      * @member {HTMLElement|null} over=null
      */
     over = null
+    /**
+     * Drop position on `over`: on, before or after
+     * @member {String|null} position=null
+     */
+    position = null
+    /**
+     * @member {Number|null} hoverTimer=null
+     */
+    hoverTimer = null
     /**
      * Removes the document listeners on destroy
      * @member {AbortController|null} domListeners=null
@@ -94,6 +115,7 @@ class DragDrop extends Base {
         }
 
         this.dragging = drag;
+        drag.item.classList.add(DRAG_SRC_CLS);
         e.dataTransfer.effectAllowed = 'copyMove';
         // Firefox starts a drag only with data
         e.dataTransfer.setData('text/plain', drag.item.textContent.trim().slice(0, 200))
@@ -101,7 +123,8 @@ class DragDrop extends Base {
 
     /**
      * @param {DragEvent} e
-     * @returns {{root: HTMLElement, target: HTMLElement}|null} where a drop would go
+     * @returns {{root: HTMLElement, target: HTMLElement, position: String}|null} where a drop
+     *          would go
      */
     dropTarget(e) {
         let me    = this,
@@ -124,10 +147,37 @@ class DragDrop extends Base {
             }
         }
 
-        const selector = root.dataset.goDrop,
-              target   = selector && e.target.closest(selector);
+        let selector = root.dataset.goDrop,
+            target   = selector && e.target.closest(selector);
 
-        return {root, target: target && root.contains(target) ? target : root}
+        target = target && root.contains(target) ? target : root;
+
+        return {root, target, position: target === root ? 'on' : me.dropPosition(e, root, target)}
+    }
+
+    /**
+     * @param {DragEvent} e
+     * @param {HTMLElement} root
+     * @param {HTMLElement} target
+     * @returns {String} on, before or after
+     */
+    dropPosition(e, root, target) {
+        const mode = root.dataset.goDropPos || 'on';
+
+        if (mode !== 'between' && mode !== 'both') {
+            return 'on'
+        }
+
+        const rect       = target.getBoundingClientRect(),
+              horizontal = root.dataset.goDropHorizontal === 'true',
+              size       = horizontal ? rect.width : rect.height,
+              offset     = horizontal ? e.clientX - rect.left : e.clientY - rect.top;
+
+        if (mode === 'between') {
+            return offset < size / 2 ? 'before' : 'after'
+        }
+
+        return offset < size / 4 ? 'before' : (offset > size * 3 / 4 ? 'after' : 'on')
     }
 
     onDragOver(e) {
@@ -147,7 +197,7 @@ class DragDrop extends Base {
 
         e.preventDefault();
         e.dataTransfer.dropEffect = me.dragging && !(e.ctrlKey || e.altKey || e.metaKey) ? 'move' : 'copy';
-        me.setOver(drop.target)
+        me.setOver(drop.target, drop.position, drop.root)
     }
 
     onDragLeave(e) {
@@ -176,6 +226,7 @@ class DragDrop extends Base {
             type          : 'goDrop',
             targetId      : drop.target.id,
             targetRecordId: drop.target.dataset.recordId ?? null,
+            position      : drop.position,
             files         : drag ? [] : [...e.dataTransfer.files],
             source        : drag ? {rootId: drag.root.id, itemId: drag.item.id, recordId: drag.item.dataset.recordId ?? null} : null,
             copy          : !!(e.ctrlKey || e.altKey || e.metaKey)
@@ -183,20 +234,47 @@ class DragDrop extends Base {
     }
 
     /**
+     * Marks the drop target under the pointer, and starts the hover timer of a root with
+     * data-go-drop-hover when the pointer moves on to another target
      * @param {HTMLElement|null} el
+     * @param {String} [position='on']
+     * @param {HTMLElement} [root]
      */
-    setOver(el) {
+    setOver(el, position='on', root) {
         let me = this;
 
-        if (me.over !== el) {
-            me.over?.classList.remove(OVER_CLS);
-            el?.classList.add(OVER_CLS);
-            me.over = el
+        if (me.over === el && me.position === position) {
+            return
         }
+
+        me.over?.classList.remove(POSITION_CLS[me.position]);
+        el?.classList.add(POSITION_CLS[position]);
+
+        if (me.over !== el) {
+            clearTimeout(me.hoverTimer);
+            me.hoverTimer = null;
+
+            if (el && el !== root && root?.dataset.goDropHover === 'true') {
+                me.hoverTimer = setTimeout(() => {
+                    me.hoverTimer = null;
+                    me.over === el && DomEvents.sendMessageToApp({
+                        id            : root.id,
+                        path          : DomEvents.getPathFromElement(el).map(node => DomEvents.getTargetData(node)),
+                        type          : 'goDragHover',
+                        targetId      : el.id,
+                        targetRecordId: el.dataset.recordId ?? null
+                    })
+                }, HOVER_DELAY)
+            }
+        }
+
+        me.over     = el;
+        me.position = el ? position : null
     }
 
     reset() {
         this.setOver(null);
+        this.dragging?.item.classList.remove(DRAG_SRC_CLS);
         this.dragging = null
     }
 }

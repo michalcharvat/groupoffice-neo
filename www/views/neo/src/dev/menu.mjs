@@ -15,7 +15,7 @@ export default [
     {id: 'layout',      text: 'Layout',        level: 0, status: 'neo',  neo: 'neo layout/* (hbox, vbox, card)', goui: 'Layout.ts'},
     {id: 'data',        text: 'Data',          level: 0, status: 'neo',  neo: 'GO.data.JmapStore',               goui: 'Data.ts'},
     {id: 'router',      text: 'Router',        level: 0, status: 'neo',  neo: 'MainView + module route()',       goui: 'Router.ts'},
-    {id: 'draganddrop', text: 'Drag and drop', level: 0, status: 'done', neo: 'GO.neo component/dragDrop.mjs enableDragDrop() + addon WS/DragDrop',     goui: 'DragAndDrop.ts'},
+    {id: 'draganddrop', text: 'Drag and drop', level: 0, status: 'done', demo: 'DragAndDrop', neo: 'GO.neo component/dragDrop.mjs enableDragDrop(), dropIndex() + addon WS/DragDrop; GO.tree.Tree dragNodes/dropOn/dropBetween',     goui: 'DragAndDrop.ts'},
 
     {id: 'component',     text: 'Components',     level: 0, header: true},
     {id: 'buttons',       text: 'Buttons',        level: 1, status: 'neo',  neo: 'GO.button.Button, SearchButton', goui: 'Button.ts'},

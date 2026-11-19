@@ -1,5 +1,6 @@
 import List      from '../../node_modules/neo.mjs/src/list/Base.mjs';
 import Store     from '../../node_modules/neo.mjs/src/data/Store.mjs';
+import {enableDragDrop} from '../component/dragDrop.mjs';
 import {escapeHtml} from '../Format.mjs';
 import {t}       from '../Translate.mjs';
 
@@ -22,6 +23,19 @@ import {t}       from '../Translate.mjs';
  *
  * Events: expand / collapse ({node}), checkChange ({node, checked}), select via the list
  * (itemClick {record}; getNode(record.id) gives the node).
+ *
+ * Drag and drop (GOUI Tree draggable / dropOn / dropBetween): `dragNodes` lets nodes be
+ * dragged, `dropOn` / `dropBetween` accept drops on a node or before / after it. A node
+ * resting under the pointer for a second expands. The tree only fires `drop`; the
+ * listener saves the move (and reloads, or calls moveNode() for the local tree):
+ *
+ *     {module: Tree, dragNodes: true, dropOn: true, dropBetween: true, listeners: {
+ *         drop: ({dragNode, node, position}) => {} // node null: dropped below the nodes
+ *     }}
+ *
+ * `dragNode` is the dragged node of this tree, or null for rows of another component of the
+ * same `dragGroup` (then `source` is the {rootId, itemId, recordId} of WS/DragDrop). A node
+ * can't be dropped into itself or its own subtree.
  */
 class Tree extends List {
     static config = {
@@ -44,6 +58,26 @@ class Tree extends List {
          * @member {Boolean} autoLoad=true
          */
         autoLoad: true,
+        /**
+         * Nodes can be dragged
+         * @member {Boolean} dragNodes=false
+         */
+        dragNodes: false,
+        /**
+         * Drops on a node are allowed
+         * @member {Boolean} dropOn=false
+         */
+        dropOn: false,
+        /**
+         * Drops before / after a node are allowed (sorting)
+         * @member {Boolean} dropBetween=false
+         */
+        dropBetween: false,
+        /**
+         * Drags are accepted from components of the same group only (default: this tree)
+         * @member {String|null} dragGroup=null
+         */
+        dragGroup: null,
         store: {
             module     : Store,
             keyProperty: 'id',
@@ -72,7 +106,127 @@ class Tree extends List {
 
     onConstructed() {
         super.onConstructed();
-        this.autoLoad && this.reload().catch(e => console.error('Tree', e))
+
+        let me = this;
+
+        me.autoLoad && me.reload().catch(e => console.error('Tree', e));
+
+        if (me.dragNodes || me.dropOn || me.dropBetween) {
+            const drop = me.dropOn || me.dropBetween;
+
+            enableDragDrop(me, {
+                drag    : me.dragNodes ? '.' + me.itemCls : undefined,
+                drop    : drop ? '.' + me.itemCls : undefined,
+                group   : me.dragGroup || me.id,
+                position: me.dropOn && me.dropBetween ? 'both' : (me.dropBetween ? 'between' : 'on'),
+                onHover : drop ? ({targetId}) => me.onDragHover(targetId) : undefined,
+                onDrop  : event => me.onNodeDrop(event)
+            }).catch(e => console.error('Tree drag and drop', e))
+        }
+    }
+
+    /**
+     * Expands a collapsed node the pointer rests on during a drag
+     * @param {String} itemId
+     * @protected
+     */
+    onDragHover(itemId) {
+        const id = this.getItemRecordId(itemId);
+
+        id !== undefined && id !== null && this.expand(id).catch(e => console.error('Tree expand', e))
+    }
+
+    /**
+     * @param {Object} event goDrop of WS/DragDrop
+     * @protected
+     */
+    onNodeDrop(event) {
+        let me       = this,
+            targetId = event.targetId === me.id ? null : me.getItemRecordId(event.targetId),
+            node     = targetId === undefined || targetId === null ? null : me.getNode(targetId) || null,
+            dragId   = event.source?.rootId === me.id ? me.getItemRecordId(event.source.itemId) : null,
+            dragNode = dragId === undefined || dragId === null ? null : me.getNode(dragId) || null,
+            position = node ? event.position || 'on' : 'on';
+
+        if (node && ((position === 'on' && !me.dropOn) || (position !== 'on' && !me.dropBetween))) {
+            return
+        }
+
+        // a node can't go into its own subtree
+        if (dragNode && node && me.isAncestor(dragNode, node)) {
+            return
+        }
+
+        me.fire('drop', {dragNode, node, position, source: event.source, files: event.files, copy: event.copy})
+    }
+
+    /**
+     * @param {Object} ancestor
+     * @param {Object} node
+     * @returns {Boolean} node is ancestor itself or in its subtree
+     */
+    isAncestor(ancestor, node) {
+        for (let current = node; current; current = this.getParentNode(current.id)) {
+            if (current === ancestor) {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    /**
+     * Moves a node in the local tree, e.g. after its move was saved, without asking the
+     * nodeProvider again (GOUI TreeStore move)
+     *
+     * @param {String|Number} id the node to move
+     * @param {String|Number|null} targetId the node to put it on (into), before or after;
+     *        null with "on" appends it to the root nodes
+     * @param {String} [position='on'] on, before or after
+     * @returns {Boolean} false when it can't move there
+     */
+    moveNode(id, targetId, position='on') {
+        let me     = this,
+            node   = me.getNode(id),
+            target = targetId === null || targetId === undefined ? null : me.getNode(targetId);
+
+        if (!node || (targetId !== null && targetId !== undefined && !target) || (!target && position !== 'on') ||
+            (target && me.isAncestor(node, target))) {
+            return false
+        }
+
+        const parent   = position === 'on' ? target : me.getParentNode(target.id),
+              siblings = list => list === null ? me.roots : list.children,
+              from     = siblings(me.getParentNode(node.id));
+
+        // a node whose children aren't loaded yet gets them from the provider on expand
+        if (parent && !Array.isArray(parent.children)) {
+            from.splice(from.indexOf(node), 1);
+            me.unregister(node);
+            me.refresh();
+            return true
+        }
+
+        from.splice(from.indexOf(node), 1);
+
+        const to = siblings(parent);
+
+        to.splice(position === 'on' ? to.length : to.indexOf(target) + (position === 'after' ? 1 : 0), 0, node);
+        me.parents.set(node.id, parent);
+        me.refresh();
+        return true
+    }
+
+    /**
+     * Forgets a node and its loaded subtree
+     * @param {Object} node
+     * @protected
+     */
+    unregister(node) {
+        this.nodes.delete(node.id);
+        this.parents.delete(node.id);
+        this.expandedIds.delete(node.id);
+        Array.isArray(node.children) && node.children.forEach(child => this.unregister(child))
     }
 
     /**
