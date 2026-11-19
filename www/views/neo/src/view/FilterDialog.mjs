@@ -7,6 +7,7 @@ import Button        from '../button/Button.mjs';
 import client        from '../jmap/Client.mjs';
 import TextList      from '../list/TextList.mjs';
 import Dialog        from './Dialog.mjs';
+import {customFieldFilters, filterType} from './filterTypes.mjs';
 import {t} from '../Translate.mjs';
 
 /**
@@ -14,9 +15,9 @@ import {t} from '../Translate.mjs';
  * go.filter.FilterDialog: a name and conditions "<filter> <value>" combined with AND.
  *
  * Filter definitions come from the module (GOUI modules.register({entities: [{filters}]})):
- * [{name, title, type: 'string'|'date'|'number', multiple}]. String values match with
- * wildcards like GO's (go.util.Filters.normalize: every string filter but "text").
- * Sub groups and link filters are kept as they are but cannot be edited here.
+ * [{name, title, type, multiple}], see filterTypes.mjs for the types and their editors.
+ * The custom fields of the entity are added as filters. Sub groups and values an editor
+ * can't show (e.g. more than one user) are kept as they are but cannot be edited here.
  */
 class FilterDialog extends Dialog {
     static config = {
@@ -111,66 +112,102 @@ class FilterDialog extends Dialog {
 
     onConstructed() {
         super.onConstructed();
+        this.loadConditions()
+    }
 
+    /**
+     * Adds the custom field filters of the entity, then a row per saved condition
+     * @protected
+     */
+    async loadConditions() {
         let me         = this,
+            button     = me.getReference('saveButton'),
             conditions = me.record?.filter?.conditions || [];
 
-        // conditions this dialog cannot show (sub groups) are saved back unchanged
+        // conditions this dialog cannot show (sub groups, unknown filters) are saved back unchanged
         me.keptConditions = [];
 
-        conditions.forEach(condition => {
-            const [name, value] = Object.entries(condition)[0] || [];
+        // a save before the rows are there would drop the conditions
+        button.disabled = true;
 
-            if (condition.operator || !me.getDefinition(name)) {
-                me.keptConditions.push(condition)
+        try {
+            const custom = await customFieldFilters(me.entity),
+                  known  = new Set(me.filters.map(f => f.name.toLowerCase()));
+
+            me.filters = [...me.filters, ...custom.filter(f => !known.has(f.name.toLowerCase()))]
+        } catch (e) {
+            // without the custom fields their conditions are kept unchanged
+            me.isDestroyed || (me.getReference('error').text = e.message)
+        }
+
+        if (me.isDestroyed) {
+            return
+        }
+
+        conditions.forEach(condition => {
+            const entries       = Object.entries(condition),
+                  [name, value] = entries[0] || [],
+                  // a condition with more than one filter ({gender, isOrganization}) is one group
+                  def           = condition.operator || entries.length !== 1 ? null : me.getDefinition(name);
+
+            if (def && filterType(def).accepts(value, def)) {
+                me.addCondition(def.name, value)
             } else {
-                me.addCondition(name, me.toInput(name, value))
+                me.keptConditions.push(condition)
             }
         });
 
-        conditions.length || me.addCondition()
+        conditions.length || me.addCondition();
+
+        button.disabled = false
     }
 
     getDefinition(name) {
         return this.filters.find(f => f.name.toLowerCase() === String(name).toLowerCase())
     }
 
-    usesWildcards(name) {
-        const def = this.getDefinition(name);
-        return def?.type === 'string' && def.name.toLowerCase() !== 'text'
-    }
-
-    toInput(name, value) {
-        let v = Array.isArray(value) ? value.join(', ') : String(value ?? '');
-
-        // "contains" (%x%) shows as x; other patterns (x%, exact) keep their % so saving keeps them
-        if (this.usesWildcards(name)) {
-            v = v.split(', ').map(s => /^%.*%$/.test(s) ? s.slice(1, -1) : s).join(', ')
-        }
-
-        return v
-    }
-
-    fromInput(name, text) {
+    /**
+     * Value editor of a condition, without a label
+     * @param {String} name filter name
+     * @param {*} [value] saved value, undefined for a new condition
+     * @returns {Object}
+     * @protected
+     */
+    createValueField(name, value) {
         const def = this.getDefinition(name);
 
-        let values = def?.multiple ? text.split(',').map(s => s.trim()).filter(Boolean) : [text.trim()];
-
-        // GO's wildcard filters: plain text means "contains", a value with % is a pattern
-        if (this.usesWildcards(name)) {
-            values = values.map(v => v.includes('%') ? v : `%${v}%`)
+        return {
+            ...def ? filterType(def).field(def, value) : {module: TextField},
+            labelText    : t('Value'),
+            labelPosition: 'inline',
+            flex         : 1,
+            goFilter     : name
         }
+    }
 
-        return def?.multiple ? values : values[0]
+    /**
+     * Another filter picked: its editor replaces the value field
+     * @param {Neo.container.Base} row
+     * @param {Object|String|null} picked a combo's value is the record when it was picked from the list
+     * @protected
+     */
+    onFieldChange(row, picked) {
+        const name = typeof picked === 'object' && picked ? picked.name : picked;
+
+        if (name && row.items[1]?.goFilter !== name) {
+            row.removeAt(1);
+            row.insert(1, this.createValueField(name))
+        }
     }
 
     /**
      * @param {String} [name]
-     * @param {String} [value]
+     * @param {*} [value] saved value
      */
-    addCondition(name, value='') {
-        let me = this,
-            id = ++me.rowCount;
+    addCondition(name, value) {
+        let me   = this,
+            id   = ++me.rowCount,
+            def  = me.getDefinition(name || me.filters[0]?.name);
 
         me.getReference('conditions').add({
             module   : Container,
@@ -180,7 +217,6 @@ class FilterDialog extends Dialog {
             style    : {gap: '8px'},
             items    : [{
                 module       : ComboBox,
-                reference    : 'field-' + id,
                 labelText    : t('Field'),
                 labelPosition: 'inline',
                 width        : 200,
@@ -189,19 +225,15 @@ class FilterDialog extends Dialog {
                 displayField : 'title',
                 valueField   : 'name',
                 listConfig   : {module: TextList},
-                value        : name || me.filters[0]?.name || null,
+                value        : def?.name || null,
                 store        : {
                     keyProperty: 'name',
-                    data       : me.filters.map(f => ({name: f.name, title: f.title || f.name}))
-                }
-            }, {
-                module       : TextField,
-                reference    : 'value-' + id,
-                labelText    : t('Value'),
-                labelPosition: 'inline',
-                flex         : 1,
-                value
-            }, {
+                    data       : me.filters
+                        .map(f => ({name: f.name, title: f.title || f.name}))
+                        .sort((a, b) => a.title.localeCompare(b.title))
+                },
+                listeners: {change: ({component, value}) => me.onFieldChange(component.up(), value)}
+            }, me.createValueField(def?.name, value), {
                 module : Button,
                 icon   : 'delete',
                 tooltip: t('Remove'),
@@ -215,14 +247,11 @@ class FilterDialog extends Dialog {
         let me = this;
 
         return me.getReference('conditions').items.map(row => {
-            const id    = row.reference.split('-')[1],
-                  name  = me.getReference('field-' + id)?.value,
-                  text  = me.getReference('value-' + id)?.value || '';
+            const valueField = row.items[1],
+                  def        = me.getDefinition(valueField?.goFilter),
+                  value      = def ? filterType(def).read(def, valueField) : undefined;
 
-            // a combo's value is the record when it was picked from the list
-            const field = typeof name === 'object' && name ? name.name : name;
-
-            return field && text.trim() ? {[field]: me.fromInput(field, text)} : null
+            return value === undefined ? null : {[def.name]: value}
         }).filter(Boolean)
     }
 

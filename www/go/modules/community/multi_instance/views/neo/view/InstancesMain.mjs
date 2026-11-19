@@ -9,9 +9,23 @@ import {notify, notifyError} from '../../../../../../../views/neo/src/Notify.mjs
 import ConfirmDialog from '../../../../../../../views/neo/src/view/ConfirmDialog.mjs';
 import {escapeHtml, formatUserDateTime, smartDateTime} from '../../../../../../../views/neo/src/Format.mjs';
 import {fmt, t as coreT, translator} from '../../../../../../../views/neo/src/Translate.mjs';
+import {searchFilter} from '../../../../../../../views/neo/src/view/filterTypes.mjs';
 import InstanceDialog from './InstanceDialog.mjs';
 
 const t = translator('community', 'multi_instance');
+
+// "name:value" filters of the toolbar search (ExtJS Module.js entity filters)
+const INSTANCE_FILTERS = [
+    {name: 'text',             type: 'string', multiple: false, title: coreT('Query')},
+    {name: 'modifiedat',       type: 'date',   multiple: false, title: coreT('Modified at')},
+    {name: 'modifiedBy',       type: 'string', multiple: true,  title: coreT('Modified by')},
+    {name: 'createdat',        type: 'date',   multiple: false, title: coreT('Created at')},
+    {name: 'createdby',        type: 'string', multiple: true,  title: coreT('Created by')},
+    {name: 'adminEmail',       type: 'string', multiple: true,  title: coreT('E-mail')},
+    {name: 'adminDisplayName', type: 'string', multiple: true,  title: t('Admin name')},
+    {name: 'isTrial',          type: 'select', multiple: false, title: t('Is trial'),
+        options: [{value: 1, title: coreT('Yes')}, {value: 0, title: coreT('No')}]}
+];
 
 const PAGE_SIZE = 50;
 
@@ -109,7 +123,7 @@ class InstancesMain extends Container {
                 handler  : () => me.deleteSelected()
             }, {
                 module   : SearchButton,
-                listeners: {search: ({text}) => me.setFilter({text: text || undefined})}
+                listeners: {search: ({text}) => me.onSearch(text)}
             }, {
                 module : Button,
                 icon   : 'add',
@@ -206,6 +220,18 @@ class InstancesMain extends Container {
      */
     setFilter(filter) {
         this.getReference('grid').store.setFilter(filter).catch(() => {})
+    }
+
+    /**
+     * Toolbar search, also with GO's "name:value" syntax (parseQuery()), e.g. "adminEmail: piet"
+     * @param {String} text
+     */
+    async onSearch(text) {
+        const gen    = this.searchGen = (this.searchGen || 0) + 1,
+              filter = await searchFilter(text, INSTANCE_FILTERS);
+
+        // a newer search may have finished first
+        gen !== this.searchGen || this.isDestroyed || this.setFilter(filter)
     }
 
     /**

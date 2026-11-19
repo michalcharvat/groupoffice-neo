@@ -16,6 +16,7 @@ import {escapeHtml, formatUserDateTime, smartDateTime} from '../../../../../../.
 import {notifyError}    from '../../../../../../../views/neo/src/Notify.mjs';
 import ConfirmDialog    from '../../../../../../../views/neo/src/view/ConfirmDialog.mjs';
 import FilterPanel      from '../../../../../../../views/neo/src/view/FilterPanel.mjs';
+import {searchFilter} from '../../../../../../../views/neo/src/view/filterTypes.mjs';
 import MainThreeColumnPanel from '../../../../../../../views/neo/src/view/MainThreeColumnPanel.mjs';
 import {fmt, translator} from '../../../../../../../views/neo/src/Translate.mjs';
 import NoteBookModel from '../model/NoteBook.mjs';
@@ -42,6 +43,7 @@ const NOTE_FILTERS = [
     {name: 'text',        type: 'string', multiple: false, title: t('Query')},
     {name: 'name',        type: 'string', multiple: true,  title: t('Name')},
     {name: 'content',     type: 'string', multiple: true,  title: t('Content')},
+    {name: 'link',        type: 'link',   multiple: false, title: t('Has links to...')},
     {name: 'commentedat', type: 'date',   multiple: false, title: t('Commented at')},
     {name: 'modifiedat',  type: 'date',   multiple: false, title: t('Modified at')},
     {name: 'createdat',   type: 'date',   multiple: false, title: t('Created at')},
@@ -571,8 +573,16 @@ class NotesMain extends MainThreeColumnPanel {
         this.getReference('grid').store.setFilter({savedFilter: filter}).catch(() => {})
     }
 
-    onSearch(text) {
-        this.getReference('grid').store.setFilter({text: text || undefined}).catch(() => {})
+    /**
+     * Toolbar search, also with GO's "name:value" syntax (parseQuery())
+     * @param {String} text
+     */
+    async onSearch(text) {
+        const gen    = this.searchGen = (this.searchGen || 0) + 1,
+              filter = await searchFilter(text, NOTE_FILTERS, 'Note');
+
+        // a newer search may have finished first
+        gen !== this.searchGen || this.isDestroyed || this.getReference('grid').store.setFilter(filter).catch(() => {})
     }
 
     onNoteSelectionChange({records}) {

@@ -63,7 +63,7 @@ Status: **neo** = neo.mjs 13.4 ships it, usable as is (maybe GO styling);
 | MainThreeColumnPanel, TableTitle | GO.neo |
 | DetailPanel | GO.neo (`detail/Card` + panels); `Card` `capability` hides a card without module access (history, comments, files) |
 | Comments, Files (legacy files), History | GO.neo (`CommentsPanel`, `FilesPanel`, `HistoryPanel` + `HistoryDetailDialog`). `FilesPanel` takes files dropped from the desktop; with the files module's neo UI a click opens the file with the user's file handler (ModuleRegistry hook `openFile`) and "Browse files" opens the entity's folder in `#files/folder/<id>` |
-| FilterPanel (saved EntityFilters) | GO.neo (`FilterPanel`, `FilterDialog`) |
+| FilterPanel (saved EntityFilters) | GO.neo (`FilterPanel`, `FilterDialog`; value editors per filter `type` in `view/filterTypes.mjs`: string/number/date, `select` {options}, `user`, `group`, `entity` {entity, jmapFilter}, `link`; the entity's custom fields are added as filters. `searchFilter(text, filters, entity)` gives a toolbar search GO's `name:value` syntax, ExtJS go.util.Filters.parseQueryString) |
 | Global search | GO.neo (`GlobalSearch`) |
 | FormWindow (entity dialog: load, save, validation, links, custom fields) | GO.neo (`view/FormWindow.mjs`; `view/LegacyFormWindow.mjs` for a record of a legacy controller: caller passes `values`, subclass implements `save(modified, values)`) |
 | PrincipalCombo, GroupCombo | GO.neo (`form/field/PrincipalCombo`, `GroupCombo`, `PrincipalList`) |
