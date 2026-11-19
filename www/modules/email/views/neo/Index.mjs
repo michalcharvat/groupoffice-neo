@@ -1,4 +1,5 @@
 import ModuleRegistry from '../../../../views/neo/src/ModuleRegistry.mjs';
+import checker from './checker.mjs';
 import {t} from './util.mjs';
 
 /**
@@ -16,6 +17,10 @@ ModuleRegistry.register({
     icon      : 'email',
     // header "+" menu: the main view's onQuickAdd() opens the composer
     quickAdd  : {text: t('E-mail'), icon: 'email'},
+    // count on the module tab and main menu item (src/Badges.mjs): unseen mails of the
+    // checked folders, checked every checker_interval also while the module is closed (ExtJS
+    // GO.checker email/account/checkUnseen + GO.mainLayout.setNotification())
+    badge     : {count: () => checker.count()},
     mainView  : () => import('./view/EmailMain.mjs'),
     /**
      * Opens the composer (ExtJS go.showComposer / GO.email.showComposer), for core

@@ -6,7 +6,6 @@ import TableTitle    from '../../../../../views/neo/src/component/TableTitle.mjs
 import Grid          from '../../../../../views/neo/src/grid/Grid.mjs';
 import MultiSelectToolbar from '../../../../../views/neo/src/grid/MultiSelectToolbar.mjs';
 import {selectRow}   from '../../../../../views/neo/src/grid/selectRow.mjs';
-import client        from '../../../../../views/neo/src/jmap/Client.mjs';
 import MenuList      from '../../../../../views/neo/src/menu/List.mjs';
 import ModuleRegistry from '../../../../../views/neo/src/ModuleRegistry.mjs';
 import {escapeHtml, fileSize, formatUserDateTime, smartDateTime} from '../../../../../views/neo/src/Format.mjs';
@@ -16,6 +15,7 @@ import {fmt, t as coreT} from '../../../../../views/neo/src/Translate.mjs';
 import ConfirmDialog from '../../../../../views/neo/src/view/ConfirmDialog.mjs';
 import MainThreeColumnPanel from '../../../../../views/neo/src/view/MainThreeColumnPanel.mjs';
 import * as api      from '../api.mjs';
+import checker       from '../checker.mjs';
 import MessageStore  from '../data/MessageStore.mjs';
 import {imapText, LEVEL_DELEGATED, parseRoutePath, routePath, t} from '../util.mjs';
 import * as accountActions from './account/accountActions.mjs';
@@ -26,11 +26,6 @@ import AccountTree   from './AccountTree.mjs';
 import FolderPickerDialog from './FolderPickerDialog.mjs';
 import PromptDialog  from './PromptDialog.mjs';
 import SearchDialog  from './SearchDialog.mjs';
-
-/**
- * ExtJS checker interval (GO config checker_interval, default 120 s)
- */
-const CHECK_INTERVAL = 120000;
 
 /**
  * Quick search types (ExtJS MessagesGrid search type menu, GO.email.search_type)
@@ -364,8 +359,7 @@ class EmailMain extends MainThreeColumnPanel {
     destroy(...args) {
         let me = this;
 
-        clearInterval(me.checkTimer);
-        me.removeStateListener?.();
+        me.removeCheckListener?.();
         me.dialogs.forEach(dialog => dialog.isDestroyed || dialog.close());
         super.destroy(...args)
     }
@@ -437,9 +431,8 @@ class EmailMain extends MainThreeColumnPanel {
         panel.getReference('toolbar').insert(0, me.showCenterButton());
         panel.on('load', ({message}) => me.onMessageLoaded(message));
 
-        // ExtJS GO.checker "email/account/checkUnseen", and after the computer slept
-        me.checkTimer = setInterval(() => me.checkUnseen(), CHECK_INTERVAL);
-        me.removeStateListener = client.on('stateChange', ({reconnect}) => reconnect && me.checkUnseen());
+        // the mail check of the module (../checker.mjs, ExtJS GO.checker "email/account/checkUnseen")
+        me.removeCheckListener = checker.onStatus(status => me.onMailStatus(status));
 
         getState('email-search', me.windowId).then(state => {
             if (!me.isDestroyed && state?.searchType && SEARCH_TYPES.some(([type]) => type === state.searchType)) {
@@ -1723,50 +1716,45 @@ class EmailMain extends MainThreeColumnPanel {
 
         unseen = Number(unseen) || 0;
         me.unseenCounts.set(key, unseen);
-        me.getReference('tree').setUnseen(accountId, mailbox, unseen)
+        me.getReference('tree').setUnseen(accountId, mailbox, unseen);
+        // the module's badge
+        checker.setUnseen(accountId, mailbox, unseen)
+    }
+
+    /**
+     * Checks the mail now (../checker.mjs), e.g. after flags changed: the folder counts and
+     * the module's badge follow
+     * @returns {Promise<Object|null>}
+     */
+    checkUnseen() {
+        return checker.check()
     }
 
     /**
      * ExtJS GO.checker email/account/checkUnseen: counts of the checked folders; new mail
-     * in the open folder reloads the grid, new mail at all shows a toast
+     * in the open folder reloads the grid (the notification comes from ../checker.mjs)
+     * @param {Object} status email_status {total_unseen, has_new, unseen: [{account_id, mailbox, unseen}]}
      */
-    async checkUnseen() {
-        let me = this;
+    onMailStatus(status) {
+        let me         = this,
+            reloadGrid = false;
 
-        if (me.checking) {
+        if (me.isDestroyed) {
             return
         }
 
-        me.checking = true;
+        (status.unseen || []).forEach(({account_id, mailbox, unseen}) => {
+            const key = `${account_id}:${mailbox}`,
+                  old = me.unseenCounts.get(key);
 
-        try {
-            const status = await api.checkUnseen();
-
-            if (me.isDestroyed) {
-                return
+            if (old !== undefined && old !== Number(unseen) && Number(account_id) === me.accountId && mailbox === me.mailbox) {
+                reloadGrid = true
             }
 
-            let reloadGrid = false;
+            me.setUnseen(account_id, mailbox, unseen)
+        });
 
-            (status.unseen || []).forEach(({account_id, mailbox, unseen}) => {
-                const key = `${account_id}:${mailbox}`,
-                      old = me.unseenCounts.get(key);
-
-                if (old !== undefined && old !== Number(unseen) && Number(account_id) === me.accountId && mailbox === me.mailbox) {
-                    reloadGrid = true
-                }
-
-                me.setUnseen(account_id, mailbox, unseen)
-            });
-
-            reloadGrid && me.reload();
-
-            status.has_new && status.total_unseen > 0 && notify(me, t('You have %d unread email(s)').replace('%d', status.total_unseen), {iconCls: 'fa fa-envelope'})
-        } catch (e) {
-            console.error('email/account/checkUnseen', e)
-        } finally {
-            me.checking = false
-        }
+        reloadGrid && me.reload()
     }
 
     onCompose() {
