@@ -1361,6 +1361,9 @@ Settings -> Accounts -> Double click account -> Folders.", "email");
 		$response['isDraft'] = $params['mailbox'] == $account->drafts;
 		$response['account_id'] = intval($params['account_id']);
 		$response['do_not_mark_as_read'] = $account->do_not_mark_as_read;
+		// The neo client decides which actions to show from these, also for a message in its own window
+		$response['permission_level'] = $account->getPermissionLevel();
+		$response['always_respond_to_notifications'] = !empty(GO::config()->get_setting('email_always_respond_to_notifications', GO::user()->id));
 		$response = $this->_getContactInfo($imapMessage, $params, $response, $account);
 
 		if (!$plaintext) {

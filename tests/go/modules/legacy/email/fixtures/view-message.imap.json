@@ -1,0 +1,29 @@
+{
+	"greeting": "* OK IMAP4rev1 Server GreenMail v2.1.3 ready\r\n",
+	"commands": [
+		{
+			"command": "LOGIN \"owner\" \"secret\"",
+			"response": "{TAG} OK LOGIN completed.\r\n"
+		},
+		{
+			"command": "SELECT \"UnitTest\"",
+			"response": "* FLAGS (\\Answered \\Deleted \\Draft \\Flagged \\Seen)\r\n* 1 EXISTS\r\n* 1 RECENT\r\n* OK [UIDVALIDITY 1795052560]\r\n* OK [UIDNEXT 2]\r\n* OK [UNSEEN 1] Message 1 is the first unseen\r\n* OK [PERMANENTFLAGS (\\Answered \\Deleted \\Draft \\Flagged \\Seen \\*)]\r\n{TAG} OK [READ-WRITE] SELECT completed.\r\n"
+		},
+		{
+			"command": "UID FETCH 1 (FLAGS INTERNALDATE RFC822.SIZE BODY.PEEK[HEADER.FIELDS (SUBJECT FROM DATE CONTENT-TYPE X-PRIORITY TO CC BCC REPLY-TO DISPOSITION-NOTIFICATION-TO CONTENT-TRANSFER-ENCODING MESSAGE-ID REFERENCES IN-REPLY-TO AUTO-SUBMITTED)])",
+			"response": "* 1 FETCH (FLAGS () INTERNALDATE \"19-Nov-2026 01:42:40 +0000\" RFC822.SIZE 15 UID 1 BODY[HEADER.FIELDS (SUBJECT FROM DATE CONTENT-TYPE X-PRIORITY TO CC BCC REPLY-TO DISPOSITION-NOTIFICATION-TO CONTENT-TRANSFER-ENCODING MESSAGE-ID REFERENCES IN-REPLY-TO AUTO-SUBMITTED)] {256}\r\nFrom: Rita Receipt <rita@example.com>\r\nTo: neotest@neo.test\r\nSubject: Read receipt test\r\nDate: Thu, 19 Nov 2026 10:00:00 +0000\r\nMessage-ID: <receipt-test@example.com>\r\nDisposition-Notification-To: rita@example.com\r\nContent-Type: text/plain; charset=utf-8\r\n)\r\n{TAG} OK FETCH completed.\r\n"
+		},
+		{
+			"command": "UID FETCH 1 BODYSTRUCTURE",
+			"response": "* 1 FETCH (BODYSTRUCTURE (\"text\" \"plain\" (\"charset\" \"utf-8\") NIL NIL \"7BIT\" 15 1 NIL NIL NIL) UID 1)\r\n{TAG} OK FETCH completed.\r\n"
+		},
+		{
+			"command": "UID FETCH 1 BODY.PEEK[1]",
+			"response": "* 1 FETCH (UID 1 BODY[1] {15}\r\nPlease confirm.)\r\n{TAG} OK FETCH completed.\r\n"
+		},
+		{
+			"command": "LOGOUT",
+			"response": "* BYE IMAP4rev1 Server logging out\r\n{TAG} OK LOGOUT completed.\r\n"
+		}
+	]
+}
