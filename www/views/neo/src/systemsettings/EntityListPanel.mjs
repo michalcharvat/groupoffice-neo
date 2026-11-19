@@ -48,6 +48,11 @@ class EntityListPanel extends Container {
          */
         jmapSort: [],
         /**
+         * Entity/query filter
+         * @member {Object|null} jmapFilter=null
+         */
+        jmapFilter: null,
+        /**
          * ActionTable columns
          * @member {Object[]} columns=[]
          */
@@ -139,7 +144,7 @@ class EntityListPanel extends Container {
         let me = this;
 
         try {
-            const {list} = await client.queryGet(me.entity, {sort: me.jmapSort, properties: me.properties}),
+            const {list} = await client.queryGet(me.entity, {filter: me.jmapFilter || undefined, sort: me.jmapSort, properties: me.properties}),
                   records = await me.prepareRecords(list);
 
             me.isDestroyed || (me.getReference('table').records = records)

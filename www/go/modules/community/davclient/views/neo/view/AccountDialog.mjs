@@ -49,7 +49,7 @@ class AccountDialog extends FormWindow {
                 valueField  : 'id',
                 editable    : false,
                 listConfig  : {module: TextList},
-                store       : {keyProperty: 'id', data: [{id: 15, name: t('Every quarter')}, {id: 60, name: t('Every hour')}]}
+                store       : {keyProperty: 'id', data: [{id: 15, name: t('Every 15 minutes')}, {id: 60, name: t('Every hour')}]}
             }),
             {ntype: 'component', reference: 'lastError', cls: ['go-davclient-error'], hidden: true}
         ]
@@ -72,7 +72,7 @@ class AccountDialog extends FormWindow {
                 flex     : 'none',
                 emptyText: t('Connect to find the calendars of the account'),
                 columns  : [
-                    {text: '', render: c => c.lastError ? '⚠' : ''},
+                    {text: '', vdom: c => [{tag: 'span', title: c.lastError || null, text: c.lastError ? '⚠' : ''}]},
                     {text: t('Name'), flex: true, render: c => `${c.name || ''}${c.uri ? ' (' + c.uri + ')' : ''}`},
                     {text: t('Last Sync'), render: c => c.lastSync ? formatUserDateTime(c.lastSync) : t('Never')}
                 ],
