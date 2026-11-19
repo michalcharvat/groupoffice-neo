@@ -341,7 +341,18 @@ class AccountController extends \GO\Base\Controller\AbstractModelController
 			$account = \GO\Email\Model\Account::model()->findByPk($accountId);
 
 			if($type=="account"){
-				$response=$this->_getMailboxTreeNodes($account->getRootMailboxes(true));
+				try {
+					$response=$this->_getMailboxTreeNodes($account->getRootMailboxes(true));
+				} catch (\GO\Base\Mail\Exception\ImapAuthenticationFailedException $e) {
+					// The clients ask for a new password (ExtJS AccountsTree, neo accountActions.promptImapPassword()).
+					// Without the debugger the generic exception response hides both the message and the class.
+					return [
+						'success' => false,
+						'feedback' => $e->getMessage(),
+						'exceptionClass' => get_class($e),
+						'imapAuthFailed' => true
+					];
+				}
 			}else{
 				$mailbox = new \GO\Email\Model\ImapMailbox($account, array('name' => $mailboxName));
 				$response = $this->_getMailboxTreeNodes($mailbox->getChildren());
@@ -538,6 +549,30 @@ class AccountController extends \GO\Base\Controller\AbstractModelController
 		$store->setStatement($stmt);
 
 		return $store->getData();
+	}
+
+	/**
+	 * The settings the account dialog of the neo client needs. The ExtJS client gets them as
+	 * globals from scripts.inc.php (GO.email.defaultSmtpHost, GO.email.disableAliases,
+	 * GO.settings.modules.email.write_permission). Module access: the values are the same for
+	 * every user of the module, and none of them is a secret.
+	 *
+	 * @return array{success: bool, data: array{default_smtp_host: string, disable_aliases: bool, enable_labels: bool, module_write: bool}}
+	 */
+	protected function actionClientSettings(): array
+	{
+		$module = \GO::modules()->isInstalled('email');
+
+		return [
+			'success' => true,
+			'data' => [
+				'default_smtp_host' => (string) \GO::config()->smtp_server,
+				'disable_aliases' => !empty(\GO::config()->email_disable_aliases),
+				'enable_labels' => !empty(\GO::config()->email_enable_labels),
+				// only users with write permission on the module may add accounts and change servers
+				'module_write' => $module && $module->permissionLevel >= \GO\Base\Model\Acl::WRITE_PERMISSION
+			]
+		];
 	}
 
 	protected function actionSavePassword(array $params)
