@@ -8,6 +8,11 @@ import {avatarColor, initials} from '../../../src/Format.mjs';
 import client         from '../../../src/jmap/Client.mjs';
 import GlobalSearch   from '../../../src/view/GlobalSearch.mjs';
 import ModuleRegistry from '../../../src/ModuleRegistry.mjs';
+import activityWatcher    from '../../../src/alerts/ActivityWatcher.mjs';
+import alerts             from '../../../src/alerts/Alerts.mjs';
+import notificationCenter from '../../../src/alerts/NotificationCenter.mjs';
+import NotificationPanel  from '../../../src/alerts/NotificationPanel.mjs';
+import reminders          from '../../../src/alerts/Reminders.mjs';
 import {notifyError}           from '../../../src/Notify.mjs';
 import {closePopup, openPopup} from '../../../src/Popup.mjs';
 import {applyTheme}            from '../../../src/Preferences.mjs';
@@ -36,6 +41,11 @@ class MainView extends Container {
             // GO's header search, over the top bar
             module   : GlobalSearch,
             reference: 'search',
+            flex     : 'none'
+        }, {
+            // go.Notifier's notification area, opened by the bell in the top bar
+            module   : NotificationPanel,
+            reference: 'notifications',
             flex     : 'none'
         }, {
             ntype    : 'container',
@@ -107,6 +117,15 @@ class MainView extends Container {
             handler  : () => me.closeModule(m.name)
         }]),
         '->', {
+            // go.Notifier status icon: shown while there are notifications, the count on it
+            module   : GoButton,
+            icon     : 'notifications',
+            cls      : ['go-header-button', 'go-notification-button'],
+            reference: 'notificationButton',
+            tooltip  : t('Notifications'),
+            hidden   : true,
+            handler  : () => me.toggleNotifications()
+        }, {
             // GO #secondary-menu: search, add, main menu, user
             module : GoButton,
             icon   : 'search',
@@ -199,8 +218,48 @@ class MainView extends Container {
             me.getReference('modules').layout.activeIndex = 0
         }
 
+        // notifications: core alerts and popup reminders of the user, desktop notifications through this window
+        notificationCenter.attach(me.windowId);
+        me.removeNotificationListener = notificationCenter.onChange(({messages}) => me.updateNotificationButton(messages));
+        me.updateNotificationButton(notificationCenter.messages, false);
+        alerts.start();
+        reminders.start();
+        activityWatcher.register(me.windowId);
+
+        // a click outside the notification area closes it (the ExtJS east panel slides in)
+        me.getReference('modules').addDomListeners({click: () => me.getReference('notifications').hidden || me.getReference('notifications').close()});
+
         // modules that act after login (OTP: setup enforced by the administrator)
         ModuleRegistry.callHook('onMainView', me)
+    }
+
+    /**
+     * Bell in the top bar: hidden without messages, the count on it, "unseen" after a new one
+     * @param {Object[]} messages
+     * @param {Boolean} [flash=true]
+     */
+    updateNotificationButton(messages, flash = true) {
+        let me     = this,
+            button = me.getReference('notificationButton'),
+            ids    = new Set(messages.map(m => m.id)),
+            added  = [...ids].some(id => !me.seenNotifications?.has(id));
+
+        me.seenNotifications = ids;
+        button.hidden = !messages.length;
+        button.text   = messages.length ? String(messages.length) : '';
+
+        if (flash && added && me.getReference('notifications').hidden) {
+            button.addCls('go-unseen')
+        }
+
+        messages.length || me.getReference('notifications').close()
+    }
+
+    toggleNotifications() {
+        let me = this;
+
+        me.getReference('notificationButton').removeCls('go-unseen');
+        me.getReference('notifications').toggle()
     }
 
     /**
@@ -256,6 +315,9 @@ class MainView extends Container {
 
     destroy(...args) {
         HashHistory.un('change', this.hashListenerId);
+        this.removeNotificationListener?.();
+        notificationCenter.detach(this.windowId);
+        activityWatcher.unregister(this.windowId);
         super.destroy(...args)
     }
 

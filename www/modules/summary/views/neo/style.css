@@ -1,0 +1,218 @@
+/* Start page (legacy summary module), neo.mjs UI (www/modules/summary/views/neo). 1dp = .1rem (GOUI density).
+   The .go-portlet-* list classes are shared by the portlets of other modules (tasks, address book). */
+.go-start-page {
+    background-color: var(--bg-mid);
+}
+
+.go-start-page .go-start-page-tbar {
+    background-color: var(--bg-low);
+    border-bottom   : 1px solid var(--fg-line);
+    padding         : .8rem 1.6rem;
+}
+
+.go-start-page .go-start-page-title {
+    color      : var(--fg-text);
+    font-size  : 1.8rem;
+    font-weight: bold;
+}
+
+/* two columns, one on small screens */
+.go-start-page .go-start-columns {
+    align-items          : start;
+    box-sizing           : border-box;
+    display              : grid;
+    gap                  : 1.6rem;
+    grid-template-columns: 1fr 1fr;
+    overflow-y           : auto;
+    padding              : 1.6rem;
+}
+
+@media (max-width: 800px) {
+    .go-start-page .go-start-columns {
+        grid-template-columns: 1fr;
+    }
+}
+
+.go-start-page .go-start-column {
+    gap       : 1.6rem;
+    min-height: 4rem;
+    min-width : 0;
+}
+
+.go-portlet {
+    background-color: var(--bg-lowest);
+    border          : 1px solid var(--fg-line);
+    border-radius   : .8rem;
+    overflow        : hidden;
+}
+
+.go-portlet .go-portlet-header {
+    border-bottom: 1px solid var(--fg-line);
+    gap          : .4rem;
+    padding      : .4rem .4rem .4rem 1.6rem;
+}
+
+.go-portlet .go-portlet-title {
+    align-items: center;
+    color      : var(--fg-text);
+    display    : flex;
+    font-weight: bold;
+    gap        : .8rem;
+    min-width  : 0;
+}
+
+.go-portlet .go-portlet-title .go-icon {
+    color: var(--c-primary);
+}
+
+.go-portlet .go-portlet-title span {
+    overflow     : hidden;
+    text-overflow: ellipsis;
+    white-space  : nowrap;
+}
+
+.go-portlet .go-portlet-body {
+    max-height: 60rem;
+    overflow-y: auto;
+}
+
+/* rows of the list portlets */
+.go-portlet-list .go-portlet-row {
+    align-items: center;
+    cursor     : pointer;
+    display    : flex;
+    gap        : 1.2rem;
+    padding    : .8rem 1.6rem;
+}
+
+.go-portlet-list .go-portlet-row:hover {
+    background-color: var(--bg-hover);
+}
+
+.go-portlet-list .go-portlet-group {
+    color      : var(--fg-secondary-text);
+    font-size  : 1.2rem;
+    font-weight: bold;
+    padding    : 1.2rem 1.6rem .4rem;
+}
+
+.go-portlet-list .go-portlet-icon {
+    color: var(--fg-secondary-text);
+}
+
+.go-portlet-list .go-portlet-time {
+    color      : var(--fg-secondary-text);
+    flex       : none;
+    font-size  : 1.2rem;
+    min-width  : 9rem;
+}
+
+.go-portlet-list .go-portlet-text {
+    display       : flex;
+    flex          : 1;
+    flex-direction: column;
+    line-height   : 1.3;
+    min-width     : 0;
+}
+
+.go-portlet-list .go-portlet-text > b,
+.go-portlet-list .go-portlet-text > small {
+    overflow     : hidden;
+    text-overflow: ellipsis;
+    white-space  : nowrap;
+}
+
+.go-portlet-list .go-portlet-text > small,
+.go-portlet-list .go-portlet-meta {
+    color    : var(--fg-secondary-text);
+    font-size: 1.2rem;
+}
+
+.go-portlet-list .go-portlet-meta {
+    flex      : none;
+    text-align: right;
+}
+
+.go-portlet-list .go-overdue {
+    color: var(--fg-error);
+}
+
+.go-portlet-list .go-empty .go-icon {
+    font-size: 3.2rem;
+}
+
+/* announcements */
+.go-announcements-portlet .go-announcement {
+    padding: 1.2rem 1.6rem;
+}
+
+.go-announcements-portlet .go-announcement + .go-announcement {
+    border-top: 1px solid var(--fg-line);
+}
+
+.go-announcements-portlet .go-announcement-title {
+    color      : var(--fg-text);
+    font-size  : 1.6rem;
+    font-weight: bold;
+}
+
+.go-announcements-portlet .go-announcement-meta {
+    color    : var(--fg-secondary-text);
+    font-size: 1.2rem;
+    margin   : .2rem 0 .8rem;
+}
+
+.go-announcements-portlet .go-announcement-content img,
+.go-rss-portlet .go-rss-item-text img {
+    height   : auto;
+    max-width: 100%;
+}
+
+/* notes */
+.go-note-portlet {
+    height : 24rem;
+    padding: .8rem;
+}
+
+.go-note-portlet textarea {
+    min-height: 20rem;
+}
+
+/* news */
+.go-rss-portlet .go-rss-tabs {
+    border-bottom: 1px solid var(--fg-line);
+    flex-wrap    : wrap;
+    padding      : .4rem .8rem;
+}
+
+.go-rss-portlet .go-rss-item {
+    padding: .8rem 1.6rem;
+}
+
+.go-rss-portlet .go-rss-item + .go-rss-item {
+    border-top: 1px solid var(--fg-line);
+}
+
+.go-rss-portlet .go-rss-item-head {
+    align-items    : baseline;
+    display        : flex;
+    gap            : 1.2rem;
+    justify-content: space-between;
+}
+
+.go-rss-portlet .go-rss-item-text {
+    color    : var(--fg-secondary-text);
+    font-size: 1.3rem;
+    margin-top: .4rem;
+}
+
+/* dialogs: the theme's .neo-form-container padding outranks one class */
+.neo-theme-go .go-announcement-form.neo-form-container {
+    gap    : .8rem;
+    padding: 1.6rem;
+}
+
+.neo-theme-go .go-feeds-form.neo-form-container {
+    border-top: 1px solid var(--fg-line);
+    padding   : 1.6rem 1.6rem 0;
+}

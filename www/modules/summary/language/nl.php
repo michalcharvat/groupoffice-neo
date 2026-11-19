@@ -32,4 +32,7 @@ return array (
   'note' => 'notitie',
   'Confirmed' => 'Bevestigd',
   'Tentative' => 'Voorlopig',
+  'No announcements' => 'Geen aankondigingen',
+  'No appointments' => 'Geen afspraken',
+  'Visible calendars' => 'Zichtbare agenda\'s',
 );

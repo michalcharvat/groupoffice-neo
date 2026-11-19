@@ -16,6 +16,10 @@ ModuleRegistry.register({
     // header search results: entity → route below "#tasks/"
     routes    : {Task: id => 'task/' + id},
     mainView  : () => import('./view/TasksMain.mjs'),
+    // notification area: assignments and reminders (src/alerts/Alerts.mjs)
+    alerts    : args => import('./alerts.mjs').then(m => m.default(args)),
+    // start page (legacy summary module)
+    portlets  : [{id: 'portlet-tasks', title: t('Tasks'), icon: 'check_circle', view: () => import('./view/TasksPortlet.mjs')}],
     // card in My account
     userSettings: {
         title  : t('Tasks'),

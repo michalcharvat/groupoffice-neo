@@ -23,6 +23,10 @@ import client from './jmap/Client.mjs';
  *     // optional: custom field types and field set extensions for the custom fields admin
  *     // (registerFieldType() / registerFieldSetExtension(), src/customfields/admin/), loaded when it opens
  *     customFieldsAdmin: () => import('./customfields/admin.mjs'),
+ *     // optional: changes the notification of the module's core alerts (src/alerts/Alerts.mjs)
+ *     alerts: async ({alert, entity, message}) => message,  // false: not shown
+ *     // optional: start page portlets (modules/summary/views/neo), id as in the ExtJS GO.summary.portlets
+ *     portlets: [{id: 'portlet-notes', title: 'Notes', icon: 'sticky_note_2', view: () => import('./view/NotesPortlet.mjs')}],
  *     // optional, called with each window's main view after login (e.g. a dialog to show then)
  *     onMainView: mainView => {},
  *     // optional, awaited after login before the main view is built: may register more modules

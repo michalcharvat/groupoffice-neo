@@ -258,6 +258,8 @@ class Neo {
 			'goHolidaySets' => \go\core\model\Holiday::getHolidaySets(),
 			'goLostPasswordUrl' => go()->getSettings()->lostPasswordURL ?: null,
 			'goLogoutWhenInactive' => intval(go()->getSettings()->logoutWhenInactive),
+			// seconds between popup reminder checks (GO.Checker, src/alerts/Reminders.mjs)
+			'goCheckerInterval' => intval(GO::config()->checker_interval),
 			// login screen "Sign in with ..." buttons of modules (views/neo/login.php)
 			'goLoginButtons' => $this->loginButtons(),
 			// set in a popup window opened by GO.view.Dialog: id of the dialog to adopt

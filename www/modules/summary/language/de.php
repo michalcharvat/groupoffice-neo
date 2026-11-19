@@ -39,4 +39,7 @@ return array (
   'note' => 'Notiz',
   'Confirmed' => 'Bestätigt',
   'Tentative' => 'Vorläufig',
+  'No announcements' => 'Keine Ankündigungen',
+  'No appointments' => 'Keine Termine',
+  'Visible calendars' => 'Sichtbare Kalender',
 );

@@ -37,6 +37,8 @@ ModuleRegistry.register({
     userSettings: typeof ModuleRegistry.loadSettingsPanels === 'function' ? userSettings : userSettings[0],
     // Contact field types and the contact field set filter for the custom fields admin
     customFieldsAdmin: () => import('./customFieldsAdmin.mjs'),
+    // start page (legacy summary module)
+    portlets: [{id: 'portlet-birthdays', title: t('Upcoming birthdays'), icon: 'cake', view: () => import('./view/BirthdaysPortlet.mjs')}],
     // card in System settings (ExtJS systemSettingsPanels)
     systemSettings: {
         title  : t('Address book'),
