@@ -1,0 +1,10 @@
+@use "../../../go/go";
+
+// GO.view.RecipientPicker: groups left of the users grid
+.neo-theme-go .go-recipient-picker {
+    .go-recipient-picker-groups {
+        border-right: 1px solid var(--fg-line);
+        overflow-y  : auto;
+        width       : go.dp(260);
+    }
+}

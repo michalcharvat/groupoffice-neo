@@ -2303,4 +2303,5 @@ Klikněte na níže uvedený odkaz (nebo jej vložte do prohlížeče) a změňt
 %s
 
 Pokud jste o nové heslo nežádali, tento e-mail prosím smažte.',
+  'Add selected' => 'Přidat vybrané',
 );

@@ -1,0 +1,72 @@
+@use "../../../../../go/go";
+
+// GO.form.field.RecipientsField: ChipsField with suggestions below and a "Select people" button
+.neo-theme-go .go-recipientsfield {
+    .go-field-box {
+        position: relative;
+    }
+
+    .go-chip-invalid {
+        background-color: var(--bg-error, var(--bg-mid));
+        box-shadow      : inset 0 0 0 1px var(--fg-error);
+        color           : var(--fg-error);
+    }
+
+    .go-chips-trigger {
+        background   : transparent;
+        border       : 0;
+        border-radius: 50%;
+        color        : var(--fg-secondary-text);
+        cursor       : pointer;
+        display      : inline-flex;
+        margin-left  : auto;
+        padding      : go.dp(2);
+
+        &:hover {
+            background-color: var(--bg-hover);
+            color           : var(--fg-text);
+        }
+    }
+
+    .go-recipients-suggestions {
+        background-color: var(--bg-lowest);
+        border-radius   : go.dp(8);
+        box-shadow      : 0 4px 16px rgba(0, 0, 0, .2);
+        left            : 0;
+        list-style      : none;
+        margin          : 0;
+        max-height      : go.dp(320);
+        overflow-y      : auto;
+        padding         : go.dp(4) 0;
+        position        : absolute;
+        right           : 0;
+        top             : 100%;
+        z-index         : 100;
+
+        > li {
+            align-items: center;
+            cursor     : pointer;
+            display    : flex;
+            gap        : go.dp(12);
+            padding    : go.dp(6) go.dp(16);
+
+            &.active, &:hover {
+                background-color: var(--bg-hover);
+            }
+
+            > .go-icon {
+                color: var(--fg-secondary-text);
+            }
+
+            > span {
+                display       : flex;
+                flex-direction: column;
+                min-width     : 0;
+
+                > small {
+                    color: var(--fg-secondary-text);
+                }
+            }
+        }
+    }
+}
