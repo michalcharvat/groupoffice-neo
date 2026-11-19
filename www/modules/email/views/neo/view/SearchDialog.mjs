@@ -23,7 +23,7 @@ class SearchDialog extends Dialog {
         headerConfig: headerTools('close'),
         resizable: true,
         title    : t('Advanced search'),
-        wrapperStyle: {left: 'calc(50vw - 230px)', maxHeight: '90vh', top: '5vh', width: 'min(460px, 100vw)'},
+        wrapperStyle: {left: 'max(0px, calc(50vw - 230px))', maxHeight: '90vh', top: '5vh', width: 'min(460px, 100vw)'},
         containerConfig: {
             layout: {ntype: 'vbox', align: 'stretch'}
         },

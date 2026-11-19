@@ -582,7 +582,15 @@ class EmailMain extends MainThreeColumnPanel {
             me.labels = null;
             grid.view.selectionModel.clear?.();
             me.getReference('messagePanel').reset();
-            me.updateTitle()
+            // no actions on the old folder's rows while (or when failing) to load the new one
+            me.permissionLevel = 0;
+            store.response     = {};
+            store.totalCount   = 0;
+            me.clearingStore   = true;
+            store.data         = [];
+            me.clearingStore   = false;
+            me.updateTitle();
+            me.updateButtons()
         }
 
         me.syncTreeSelection();
@@ -791,7 +799,7 @@ class EmailMain extends MainThreeColumnPanel {
             panel = me.getReference('messagePanel'),
             uid   = me.pendingUid || (panel.message?.accountId === me.accountId && panel.message?.mailbox === me.mailbox ? panel.message.uid : null);
 
-        if (me.isDestroyed) {
+        if (me.isDestroyed || me.clearingStore) {
             return
         }
 
@@ -899,15 +907,18 @@ class EmailMain extends MainThreeColumnPanel {
      * @param {Object} message email/message/view response
      */
     onMessageLoaded(message) {
-        let me     = this,
-            record = me.getReference('grid').store.items.find(r => r.uid === Number(message.uid) && r.mailbox === message.mailbox);
+        let me        = this,
+            accountId = Number(message.account_id),
+            record    = me.getReference('grid').store.items.find(r => r.account_id === accountId && r.uid === Number(message.uid) && r.mailbox === message.mailbox),
+            // a window may show a message of another account than the grid
+            level     = Number(me.getReference('tree').getAccountNode(accountId)?.data?.permission_level) || 0;
 
         if (message.seen || message.do_not_mark_as_read || (record && record.seen)) {
             return
         }
 
-        if (me.permissionLevel >= LEVEL_DELEGATED) {
-            me.setSeen(record ? [record] : [{uid: Number(message.uid), mailbox: message.mailbox, account_id: Number(message.account_id)}], true, {silent: true})
+        if (level >= LEVEL_DELEGATED) {
+            me.setSeen(record ? [record] : [{uid: Number(message.uid), mailbox: message.mailbox, account_id: accountId}], true, {silent: true, level})
         }
     }
 
@@ -940,8 +951,9 @@ class EmailMain extends MainThreeColumnPanel {
      * @param {Boolean} seen
      * @param {Object} [opts]
      * @param {Boolean} [opts.silent] no error toast for a missing permission
+     * @param {Number} [opts.level] permission level on the messages' account (default: the open one)
      */
-    async setSeen(records, seen, {silent=false}={}) {
+    async setSeen(records, seen, {silent=false, level=null}={}) {
         let me = this;
 
         records = records.filter(r => r.seen !== seen);
@@ -950,7 +962,7 @@ class EmailMain extends MainThreeColumnPanel {
             return
         }
 
-        if (me.permissionLevel < (seen ? LEVEL_DELEGATED : LEVEL_CREATE)) {
+        if ((level ?? me.permissionLevel) < (seen ? LEVEL_DELEGATED : LEVEL_CREATE)) {
             silent || notifyError(me, new Error(coreT("You don't have permission to perform this action")));
             return
         }
@@ -1097,7 +1109,11 @@ class EmailMain extends MainThreeColumnPanel {
             return
         }
 
-        // another account: email/message/move copies in batches (ExtJS progress box)
+        // another account: email/message/move copies in batches (ExtJS progress box); the
+        // source is fixed now, the user may open another folder meanwhile
+        const fromAccountId = me.accountId,
+              fromMailbox   = me.mailbox;
+
         try {
             let left = uids;
 
@@ -1105,9 +1121,9 @@ class EmailMain extends MainThreeColumnPanel {
 
             while (left.length) {
                 const response = await api.moveToAccount({
-                    from_account_id: me.accountId,
+                    from_account_id: fromAccountId,
                     to_account_id  : accountId,
-                    from_mailbox   : me.mailbox,
+                    from_mailbox   : fromMailbox,
                     to_mailbox     : mailbox,
                     messages       : left,
                     total          : uids.length
@@ -1327,7 +1343,8 @@ class EmailMain extends MainThreeColumnPanel {
             text    : t('Add folder'),
             icon    : 'create_new_folder',
             disabled: level < LEVEL_CREATE || !!node.data?.noinferiors,
-            handler : () => me.createFolder(node.accountId, '', node)
+            // the account's root (mbroot, e.g. "INBOX" on servers with folders below INBOX)
+            handler : () => me.createFolder(node.accountId, node.data?.mailbox || '', node)
         }, {
             text    : t('Subscribe to folders'),
             icon    : 'checklist',
@@ -1482,10 +1499,8 @@ class EmailMain extends MainThreeColumnPanel {
         try {
             await api.renameFolder(node.accountId, node.mailbox, name);
 
-            // the open folder has a new name: open it under that name
-            if (me.accountId === node.accountId && (me.mailbox === node.mailbox || me.mailbox.startsWith(node.mailbox + (node.data?.delimiter || '')))) {
-                me.accountId = null
-            }
+            // the open folder (or one below it) has a new name: open the INBOX
+            me.isOpenFolderIn(node) && (me.accountId = null)
 
             await me.reloadTree();
             me.accountId || me.openDefaultFolder(node.accountId)
@@ -1514,9 +1529,7 @@ class EmailMain extends MainThreeColumnPanel {
         try {
             await api.moveFolder(node.accountId, node.mailbox, target.mailbox);
 
-            if (me.accountId === node.accountId && me.mailbox === node.mailbox) {
-                me.accountId = null
-            }
+            me.isOpenFolderIn(node) && (me.accountId = null);
 
             await me.reloadTree();
             me.accountId || me.openDefaultFolder(node.accountId)
@@ -1586,7 +1599,7 @@ class EmailMain extends MainThreeColumnPanel {
             trash = tree.getFolderNodes(node.accountId).find(n => n.special === 'trash'),
             // the trash can't have subfolders: the folder is deleted, not moved there (ExtJS)
             trashable = !trash?.data?.noinferiors,
-            inTrash   = !!trash && node.mailbox.startsWith(trash.mailbox);
+            inTrash   = !!trash && me.isBelow(node, trash);
 
         if (!trashable || inTrash || !trash) {
             const confirmed = await ConfirmDialog.ask({
@@ -1603,9 +1616,7 @@ class EmailMain extends MainThreeColumnPanel {
         try {
             await api.deleteFolder(node.accountId, node.mailbox, trashable);
 
-            if (me.accountId === node.accountId && (me.mailbox === node.mailbox || me.mailbox.startsWith(node.mailbox))) {
-                me.accountId = null
-            }
+            me.isOpenFolderIn(node) && (me.accountId = null)
 
             await me.reloadTree();
             me.accountId || me.openDefaultFolder(node.accountId)
@@ -1613,6 +1624,36 @@ class EmailMain extends MainThreeColumnPanel {
             me.showError(e);
             me.reloadTree()
         }
+    }
+
+    /**
+     * Whether `node` is `ancestor` or below it in the tree
+     * @param {Object} node
+     * @param {Object} ancestor
+     * @returns {Boolean}
+     */
+    isBelow(node, ancestor) {
+        const tree = this.getReference('tree');
+
+        for (let current = node; current; current = tree.getParentNode(current.id)) {
+            if (current.id === ancestor.id) {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    /**
+     * Whether the open folder is `node` or below it
+     * @param {Object} node folder node
+     * @returns {Boolean}
+     */
+    isOpenFolderIn(node) {
+        let me   = this,
+            open = me.accountId && me.getReference('tree').getFolderNode(me.accountId, me.mailbox);
+
+        return me.accountId === node.accountId && (me.mailbox === node.mailbox || (!!open && me.isBelow(open, node)))
     }
 
     /**

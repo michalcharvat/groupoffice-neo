@@ -19,7 +19,7 @@ class MessageDialog extends Dialog {
         resizable   : true,
         headerConfig: headerTools('maximize', 'close'),
         title       : t('E-mail'),
-        wrapperStyle: {height: '80vh', left: 'calc(50vw - 400px)', top: '10vh', width: 'min(800px, 100vw)'},
+        wrapperStyle: {height: '80vh', left: 'max(0px, calc(50vw - 400px))', top: '10vh', width: 'min(800px, 100vw)'},
         containerConfig: {
             layout: 'fit'
         }

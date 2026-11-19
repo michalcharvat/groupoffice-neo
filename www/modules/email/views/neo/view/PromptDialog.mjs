@@ -18,7 +18,7 @@ class PromptDialog extends Dialog {
         headerConfig: headerTools('close'),
         resizable: false,
         // no animateTarget: position explicitly, .neo-floating parks it off-screen
-        wrapperStyle: {left: 'calc(50vw - 200px)', top: '30vh', width: '400px'},
+        wrapperStyle: {left: 'max(0px, calc(50vw - 200px))', top: '30vh', width: 'min(400px, 100vw)'},
         containerConfig: {
             layout: {ntype: 'vbox', align: 'stretch'}
         },

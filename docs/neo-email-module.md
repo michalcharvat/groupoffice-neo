@@ -121,7 +121,7 @@ and `data` (the `email/account/tree` node: `permission_level`, `noselect`, `noin
 
 `#email/<accountId>/<mailbox>[/<uid>]`, the mailbox `encodeURIComponent()`-ed (IMAP names contain
 `/` or `.`); see `util.mjs` routePath()/parseRoutePath(). `#email` alone opens the first account's
-INBOX (ExtJS). A uid that is not on the first page is loaded into the message view directly.
+INBOX when no folder is open yet (ExtJS); later it keeps the open folder. A uid that is not on the first page is loaded into the message view directly.
 
 ## Card 1: shell, account/folder tree, message grid (ExtJS inventory)
 

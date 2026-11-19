@@ -24,7 +24,7 @@ class FolderPickerDialog extends Dialog {
         modal    : true,
         headerConfig: headerTools('close'),
         resizable: true,
-        wrapperStyle: {height: '70vh', left: 'calc(50vw - 200px)', top: '15vh', width: 'min(400px, 100vw)'},
+        wrapperStyle: {height: '70vh', left: 'max(0px, calc(50vw - 200px))', top: '15vh', width: 'min(400px, 100vw)'},
         containerConfig: {
             layout: {ntype: 'vbox', align: 'stretch'}
         },
@@ -103,12 +103,14 @@ class FolderPickerDialog extends Dialog {
                     text     : a.name || a.text,
                     icon     : 'account_box',
                     accountId: Number(a.account_id),
-                    mailbox  : '',
+                    isAccount: true,
+                    // the account's root folder (mbroot), '' on most servers
+                    mailbox  : a.mailbox || '',
                     expanded : true
                 }))
         }
 
-        const children = await api.tree(node.mailbox === '' ? api.serverNodeId(node.accountId) : api.serverNodeId(node.accountId, node.mailbox));
+        const children = await api.tree(node.isAccount ? api.serverNodeId(node.accountId) : api.serverNodeId(node.accountId, node.mailbox));
 
         return children.filter(f => f.mailbox !== me.exclude).map(f => ({
             id       : `f:${f.account_id}:${f.mailbox}`,
@@ -116,6 +118,7 @@ class FolderPickerDialog extends Dialog {
             icon     : f.mailbox === 'INBOX' ? 'inbox' : 'folder',
             accountId: Number(f.account_id),
             mailbox  : f.mailbox,
+            isAccount: false,
             noselect : !!f.noselect,
             // the server sends the children of expanded folders; we load on expand
             children : Array.isArray(f.children) && !f.children.length ? [] : undefined
@@ -125,7 +128,7 @@ class FolderPickerDialog extends Dialog {
     onPick(record) {
         let me   = this,
             node = record && me.getReference('tree').getNode(record.id),
-            ok   = !!node && (node.mailbox !== '' ? !node.noselect : me.allowRoot);
+            ok   = !!node && (node.isAccount ? me.allowRoot : !node.noselect);
 
         me.picked = ok ? {accountId: node.accountId, mailbox: node.mailbox} : null;
         me.getReference('okButton').disabled = !ok
