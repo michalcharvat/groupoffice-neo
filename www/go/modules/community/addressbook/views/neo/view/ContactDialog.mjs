@@ -10,6 +10,7 @@ import FormWindow     from '../../../../../../../views/neo/src/view/FormWindow.m
 import {t}            from '../util.mjs';
 import ColorField     from '../../../../../../../views/neo/src/form/field/ColorField.mjs';
 import ImageField     from '../../../../../../../views/neo/src/form/field/ImageField.mjs';
+import {icdOptions}   from './icd.mjs';
 import {addressList, dateList, emailList, phoneList, select, text, urlList} from './fields.mjs';
 
 const NAME_PARTS = ['firstName', 'middleName', 'lastName'];
@@ -54,6 +55,8 @@ class ContactDialog extends FormWindow {
             cls      : ['go-form-card', 'go-scroll'],
             items    : [
                 fieldset(t('Information'), [
+                    // ExtJS ICDCombo: the schemes of the first address's country
+                    select('icd', t('ICD'), [], {reference: 'icdField', editable: true}),
                     text('registrationNumber', t('Registration number')),
                     text('debtorNumber', t('Customer number'))
                 ]),
@@ -73,6 +76,10 @@ class ContactDialog extends FormWindow {
         });
 
         me.form.on('fieldChange', me.onFieldChange, me);
+
+        // the ICD options before the values are set, so the loaded scheme shows its name
+        me.form.on('beforeload', ({data}) => me.updateIcdOptions(data.addresses, data.icd));
+        me.updateIcdOptions();
 
         // another address book: the groups belong to the old one (ExtJS onBeforeSubmit)
         me.form.on('beforesave', ({data, isNew}) => {
@@ -257,7 +264,32 @@ class ContactDialog extends FormWindow {
             }
         }
 
+        if (['addresses', 'countryCode'].includes(component?.name)) {
+            const icd = me.getReference('icdField');
+            me.updateIcdOptions(me.getReference('addressesField').getSubmitValue(), icd.getSubmitValue())
+        }
+
         component?.name === 'name' || NAME_PARTS.includes(component?.name) ? me.updateTitle() : null
+    }
+
+    /**
+     * ICD combo: the schemes of the first address with a country (ExtJS loadCountry() on
+     * focus, with a "Please add an address with a country" alert when there is none)
+     * @param {Object[]} [addresses]
+     * @param {String|null} [value] the current ICD, kept as an option
+     */
+    updateIcdOptions(addresses, value = null) {
+        const field       = this.getReference('icdField'),
+              countryCode = (addresses || []).find(a => a?.countryCode)?.countryCode || null,
+              options     = icdOptions(countryCode, value);
+
+        field.store.data      = options;
+        field.placeholderText = countryCode ? '' : t('Please add an address with a country');
+
+        // the store's records changed: select the value's new record
+        if (value && options.some(o => o.id === value)) {
+            field.value = value
+        }
     }
 
     /**
