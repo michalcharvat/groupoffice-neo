@@ -1,6 +1,7 @@
 import Container    from '../../../node_modules/neo.mjs/src/container/Base.mjs';
 import BoolCheckBox from '../../form/field/BoolCheckBox.mjs';
 import {fieldset}   from '../../form/fieldset.mjs';
+import {parseCondition} from '../conditions.mjs';
 import FormWindow   from '../../view/FormWindow.mjs';
 import {t}          from '../../Translate.mjs';
 import {getFieldType, note, text, textArea} from './fieldTypes.mjs';
@@ -36,13 +37,12 @@ export function toDatabaseName(value) {
  * @returns {Boolean}
  */
 export function isValidCondition(value) {
-    if (!value) {
+    try {
+        parseCondition(value);
         return true
+    } catch (e) {
+        return false
     }
-
-    return String(value).split(/ (AND|OR) /).every(part => part === 'AND' || part === 'OR' ||
-        String(part).split(/(={1,2}|<|>|!=|>=|<=)/).length === 3 ||
-        /^\w+ is (not )?empty$/.test(part.replace(/\s{2,}/g, ' ').trim()))
 }
 
 const check = (name, valueLabel, config = {}) => ({module: BoolCheckBox, name, valueLabel, flex: 'none', ...config});

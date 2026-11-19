@@ -1,3 +1,4 @@
+import {conditionValue} from './conditions.mjs';
 import customFields from './customFields.mjs';
 import FormFieldset from './FormFieldset.mjs';
 
@@ -7,7 +8,9 @@ import FormFieldset from './FormFieldset.mjs';
  * the others go below the general fields. Loads `customFields` with the entity.
  *
  * Fieldsets follow their filter: shown only while the entity values match (e.g.
- * noteBookId), checked on load and when a filtered property changes.
+ * noteBookId), checked on load and when a filtered property changes. Fields with a
+ * condition (relatedFieldCondition) become required or hidden while it matches,
+ * checked on load and when a field the condition reads changes.
  *
  * @param {GO.view.FormWindow} win
  * @returns {Promise<void>} resolves once the fields exist (before the form loads)
@@ -93,18 +96,44 @@ export async function addCustomFieldsTo(win) {
         })
     };
 
+    // conditions (relatedFieldCondition) read form fields by name or custom field databaseName
+    const conditionNames = new Set(fieldsets.flatMap(({fieldset}) => fieldset.getConditionFieldNames()));
+
+    const applyConditions = async () => {
+        if (win.isDestroyed || !conditionNames.size) {
+            return
+        }
+
+        const byName = new Map((await form.getFields()).filter(f => f.name).map(f => [f.name, f])),
+              data   = form.entityData || {},
+              get    = name => conditionValue(
+                  byName.get(name) || byName.get('customFields.' + name) || null,
+                  name.split('.').reduce((v, key) => v?.[key], data) ?? data.customFields?.[name]
+              );
+
+        win.isDestroyed || fieldsets.forEach(({fieldset}) => fieldset.applyConditions(get))
+    };
+
+    const isConditionField = f => conditionNames.has(f.name) ||
+        (f.name?.startsWith('customFields.') && conditionNames.has(f.name.slice(13)));
+
     let listening = false;
 
     form.on('load', async () => {
         await refresh();
+        await applyConditions();
 
-        // filtered properties (e.g. the note book combo) switch fieldsets live
         if (!listening && !win.isDestroyed) {
             listening = true;
 
-            (await form.getFields())
-                .filter(f => filterProps.includes(f.name) && !f.goCustomField)
-                .forEach(f => f.on('change', refresh))
+            const fields = await form.getFields();
+
+            // filtered properties (e.g. the note book combo) switch fieldsets live
+            fields.filter(f => filterProps.includes(f.name) && !f.goCustomField)
+                .forEach(f => f.on('change', refresh));
+
+            // fields a condition reads make other fields required or hidden live
+            fields.filter(isConditionField).forEach(f => f.on('change', applyConditions))
         }
     })
 }

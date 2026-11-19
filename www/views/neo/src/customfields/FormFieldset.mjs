@@ -1,6 +1,7 @@
 import Container from '../../node_modules/neo.mjs/src/container/Base.mjs';
 import {escapeHtml} from '../Format.mjs';
 import customFields, {matchesFilter} from './customFields.mjs';
+import {conditionFieldNames, evaluateCondition, parseCondition} from './conditions.mjs';
 import {createFormItem, getType} from './types.mjs';
 
 /**
@@ -9,6 +10,7 @@ import {createFormItem, getType} from './types.mjs';
  *
  * applyFilter(values) shows the fieldset only for entities matching its filter
  * (e.g. some note books); a hidden fieldset's fields are not required.
+ * applyConditions() makes fields required or hidden by their relatedFieldCondition.
  */
 class FormFieldset extends Container {
     static config = {
@@ -116,21 +118,69 @@ class FormFieldset extends Container {
         me.filterVisible = visible;
         me.isCard || (me.hidden = !visible);
 
-        me.getCustomFieldComponents().forEach(cmp => {
-            if (!('required' in cmp)) {
+        me.getCustomFieldComponents().forEach(cmp => me.syncField(cmp));
+
+        return visible
+    }
+
+    /**
+     * Evaluates the fields' conditions (relatedFieldCondition): a conditionally
+     * required field is required while its condition matches, a conditionally hidden
+     * one hidden.
+     * @param {Function} getValue field name → {value, texts}, see evaluateCondition()
+     */
+    applyConditions(getValue) {
+        this.getCustomFieldComponents().forEach(cmp => {
+            const tree = conditionOf(cmp);
+
+            if (tree === null) {
                 return
             }
 
-            if (!visible) {
-                cmp.goWasRequired = cmp.required;
-                cmp.required      = false
-            } else if (cmp.goWasRequired !== undefined) {
-                cmp.required = cmp.goWasRequired;
-                delete cmp.goWasRequired
-            }
-        });
+            const matches = evaluateCondition(tree, getValue);
 
-        return visible
+            if (matches !== cmp.goConditionMatches) {
+                cmp.goConditionMatches = matches;
+                this.syncField(cmp)
+            }
+        })
+    }
+
+    /**
+     * Sets `hidden` and `required` of a field from its definition, its condition and
+     * the fieldset filter: a field that can't be seen is never required
+     * @param {Neo.component.Base} cmp
+     * @protected
+     */
+    syncField(cmp) {
+        const field   = cmp.goCustomField,
+              matches = !!cmp.goConditionMatches,
+              hidden  = !!field.conditionallyHidden && matches;
+
+        if (field.conditionallyHidden) {
+            // a read-only display also stays hidden without a value (showReadOnlyValues())
+            const hide = hidden || (!!cmp.goReadOnly && !cmp.html);
+
+            cmp.hidden !== hide && (cmp.hidden = hide)
+        }
+
+        if ('required' in cmp) {
+            const required = this.filterVisible && !hidden && (!!field.required || (!!field.conditionallyRequired && matches));
+
+            cmp.required !== required && (cmp.required = required)
+        }
+    }
+
+    /**
+     * Names of the fields the conditions of this fieldset read
+     * @returns {String[]}
+     */
+    getConditionFieldNames() {
+        const names = new Set();
+
+        this.getCustomFieldComponents().forEach(cmp => conditionFieldNames(conditionOf(cmp)).forEach(n => names.add(n)));
+
+        return [...names]
     }
 
     /**
@@ -145,11 +195,34 @@ class FormFieldset extends Container {
 
                 if (!cmp.isDestroyed) {
                     cmp.html   = html ? `<label>${escapeHtml(field.name)}</label><div>${html}</div>` : '';
-                    cmp.hidden = !html
+                    cmp.hidden = !html || (!!field.conditionallyHidden && !!cmp.goConditionMatches)
                 }
             }
         }
     }
+}
+
+/**
+ * The parsed condition of a field that has an effect, cached on the component
+ * @param {Neo.component.Base} cmp
+ * @returns {Object|null} null without condition or when it doesn't parse
+ */
+function conditionOf(cmp) {
+    if (cmp.goCondition === undefined) {
+        const field = cmp.goCustomField;
+
+        cmp.goCondition = null;
+
+        if (field.relatedFieldCondition && (field.conditionallyRequired || field.conditionallyHidden)) {
+            try {
+                cmp.goCondition = parseCondition(field.relatedFieldCondition)
+            } catch (e) {
+                console.error(`Condition "${field.relatedFieldCondition}" of custom field ${field.databaseName}: ${e.message}`)
+            }
+        }
+    }
+
+    return cmp.goCondition
 }
 
 export default Neo.setupClass(FormFieldset);
