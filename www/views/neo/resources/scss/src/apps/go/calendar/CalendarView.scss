@@ -86,6 +86,20 @@
 }
 
 // tooltip / quick info (CalendarItem.quickText)
+.neo-tooltip.go-cal-tooltip {
+    background-color: var(--bg-low);
+    border          : 1px solid var(--fg-line);
+    border-radius   : .8rem;
+    box-shadow      : 0 4px 12px rgba(0, 0, 0, .16);
+    color           : var(--fg-text);
+    height          : auto;
+    line-height     : 1.5;
+    max-width       : 60rem;
+    padding         : .8rem 1.2rem;
+    word-break      : break-word;
+    z-index         : 10000;
+}
+
 .go-cal-quick-title {
     margin : 0;
     padding: 0;

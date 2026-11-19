@@ -1,4 +1,5 @@
 import Component from '../../../../../../../views/neo/node_modules/neo.mjs/src/component/Base.mjs';
+import Tooltip   from '../../../../../../../views/neo/node_modules/neo.mjs/src/tooltip/Base.mjs';
 import MenuList  from '../../../../../../../views/neo/src/menu/List.mjs';
 import {formatDate, formatUserDateTime, userFormat} from '../../../../../../../views/neo/src/Format.mjs';
 import {translator} from '../../../../../../../views/neo/src/Translate.mjs';
@@ -67,6 +68,48 @@ class CalendarView extends Component {
 
         // the browser menu would cover ours
         Neo.main.DomEvents.registerPreventDefaultTargets({name: 'contextmenu', cls: ['go-cal'], windowId: this.windowId})
+    }
+
+    afterSetMounted(value, oldValue) {
+        super.afterSetMounted(value, oldValue);
+
+        value && !this.hoverTip && this.createTooltip()
+    }
+
+    /**
+     * Rich hover info of an event (GOUI eventHtml() tooltip with quickText), unless the
+     * "Show pop-up info when hovering over appointments" preference is off
+     */
+    createTooltip() {
+        let me = this;
+
+        if (calendarData.prefs.showTooltips === false) {
+            return
+        }
+
+        /** @member {Neo.tooltip.Base|null} hoverTip (not "tooltip": a Component config) */
+        me.hoverTip = Neo.create({
+            module     : Tooltip,
+            appName    : me.appName,
+            windowId   : me.windowId,
+            cls        : ['go-cal-tooltip'],
+            componentId: me.id,
+            showDelay  : 500,
+            delegate   : '[data-uid]',
+            listeners  : {
+                targetOver: ({data}) => {
+                    const node = data.path.find(n => n.id === data.currentTarget),
+                          item = node && me.itemsByUid.get(node.data?.uid);
+
+                    me.hoverTip.html = item && !me.drag ? item.quickText : ''
+                }
+            }
+        })
+    }
+
+    destroy(...args) {
+        this.hoverTip?.destroy();
+        super.destroy(...args)
     }
 
     get rowHeight() {
@@ -164,7 +207,6 @@ class CalendarView extends Component {
             tag       : 'div',
             id        : `${me.id}__ev_${item.uid}${part ? '_' + part : ''}`,
             'data-uid': item.uid,
-            title     : calendarData.prefs.showTooltips === false ? null : CalendarView.tooltipText(item),
             cls       : [
                 ...cls,
                 allDay ? 'allday' : null,
@@ -178,24 +220,7 @@ class CalendarView extends Component {
             cn
         };
 
-        // neo would render title="null"
-        node.title || delete node.title;
-
         return node
-    }
-
-    /**
-     * Plain text for the title attribute
-     * @param {CalendarItem} item
-     * @returns {String}
-     */
-    static tooltipText(item) {
-        const lines = [item.title, ...item.humanReadableDate().filter(Boolean)];
-
-        item.cal?.name && lines.push(item.cal.name);
-        item.patched.location && lines.push(t('Location') + ': ' + item.patched.location);
-
-        return lines.join('\n')
     }
 
     /**
@@ -312,6 +337,8 @@ class CalendarView extends Component {
             item   = me.itemFromEvent(data),
             target = {x: data.clientX, y: data.clientY, width: 1, height: 1};
 
+        me.hoverTip?.hide();
+
         if (item) {
             me.selectItem(item);
 
@@ -353,6 +380,8 @@ class CalendarView extends Component {
     }
 
     onDragDown(data) {
+        this.hoverTip?.hide();
+
         if (data.button !== 0 || CalendarView.dataFromEvent(data, 'action')) {
             return
         }
