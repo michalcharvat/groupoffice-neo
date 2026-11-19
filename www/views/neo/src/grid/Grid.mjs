@@ -240,9 +240,11 @@ class Grid extends GridContainer {
      * @protected
      */
     onGridKeyDown(data) {
-        const tag = data.target?.tagName;
+        // DomEvents serialises tag names in lower case; any editable node on the path counts
+        const editable = (data.path || [data.target]).some(node =>
+            ['input', 'textarea', 'select'].includes(node?.tagName) || node?.isContentEditable);
 
-        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+        if (editable) {
             return
         }
 
@@ -461,9 +463,12 @@ class Grid extends GridContainer {
     async switchState(stateId) {
         let me = this;
 
-        if (stateId === me.stateId) {
+        // compare with the last requested state: a switch may still be saving
+        if (stateId === (me.requestedStateId ?? me.stateId)) {
             return
         }
+
+        me.requestedStateId = stateId;
 
         // a pending change still goes to the old state
         if (me.saveStateTimer) {
@@ -472,12 +477,17 @@ class Grid extends GridContainer {
             await me.saveColumnState()
         }
 
+        // a later switch took over while saving
+        if (me.isDestroyed || me.requestedStateId !== stateId) {
+            return
+        }
+
         me.stateId    = stateId;
         me.touchedColumns.clear();
         me.allColumns = me.defaultColumns.map(column => ({...column}));
 
         await me.applyColumns();
-        !me.isDestroyed && await me.restoreColumnState()
+        !me.isDestroyed && me.requestedStateId === stateId && await me.restoreColumnState()
     }
 
     /**
