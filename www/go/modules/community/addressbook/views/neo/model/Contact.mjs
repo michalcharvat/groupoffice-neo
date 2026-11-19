@@ -49,7 +49,9 @@ class Contact extends Model {
             {name: 'modifiedBy',      type: 'String'},
             {name: 'permissionLevel', type: 'Int'},
             {name: 'filesFolderId'},
-            {name: 'goUserId'}
+            {name: 'goUserId'},
+            // {databaseName: value}: custom field columns
+            {name: 'customFields'}
         ]
     }
 }

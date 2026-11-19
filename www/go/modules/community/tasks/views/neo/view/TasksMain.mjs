@@ -273,6 +273,8 @@ class TasksMain extends MainThreeColumnPanel {
                     jmapFilter: {role: 'list'}
                 },
                 stateId: 'tasks-taskGrid',
+                // a column per custom field, hidden ones in the column menu
+                customFieldsEntity: 'Task',
                 columns: [{
                     dataField: 'complete',
                     text     : '',

@@ -273,6 +273,8 @@ class AddressBookMain extends MainThreeColumnPanel {
                     properties: CONTACT_PROPERTIES
                 },
                 stateId: 'contact-grid',
+                // a column per custom field, hidden ones in the column menu
+                customFieldsEntity: 'Contact',
                 columns: me.createColumns()
             }]
         }

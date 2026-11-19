@@ -32,7 +32,9 @@ class Task extends Model {
             {name: 'createdBy',         type: 'String'},
             {name: 'modifiedBy',        type: 'String'},
             {name: 'permissionLevel',   type: 'Int'},
-            {name: 'filesFolderId',     type: 'String'}
+            {name: 'filesFolderId',     type: 'String'},
+            // {databaseName: value}: custom field columns
+            {name: 'customFields'}
         ]
     }
 }
