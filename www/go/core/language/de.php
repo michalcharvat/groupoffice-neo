@@ -2349,4 +2349,5 @@ Sollten Sie kein neues Kennwort angefordert haben, können Sie diese Nachricht e
   'Saved' => 'Gespeichert',
   'Open in new window' => 'In neuem Fenster öffnen',
   'Choose a file to import' => 'Wählen Sie eine Datei zum Importieren',
+  'Show options' => 'Optionen anzeigen',
 );

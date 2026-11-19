@@ -2250,4 +2250,5 @@ Als u niet om een nieuw wachtwoord heeft gevraagd verwijder dan deze e-mail.',
   'Saved' => 'Opgeslagen',
   'Open in new window' => 'Openen in nieuw venster',
   'Choose a file to import' => 'Kies een bestand om te importeren',
+  'Show options' => 'Opties tonen',
 );
