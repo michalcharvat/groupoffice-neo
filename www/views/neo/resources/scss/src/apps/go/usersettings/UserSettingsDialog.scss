@@ -29,4 +29,24 @@
     .go-usersettings-reset {
         align-self: flex-start;
     }
+
+    // Account: avatar left of the user fields, under them on narrow screens
+    .go-usersettings-user {
+        column-gap: 2.4rem;
+        flex-wrap : wrap;
+
+        .go-usersettings-userfields {
+            min-width: 28rem;
+        }
+    }
+
+    .go-usersettings-generate,
+    .go-usersettings-convert {
+        align-self: flex-start;
+    }
+
+    .go-usersettings-generated {
+        font-family: monospace;
+        user-select: all;
+    }
 }
