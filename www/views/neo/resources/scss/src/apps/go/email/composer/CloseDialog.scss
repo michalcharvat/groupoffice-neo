@@ -1,0 +1,5 @@
+// GO.email.composer.CloseDialog: the question of GO.view.ConfirmDialog, whose stylesheet
+// neo only loads with a ConfirmDialog
+.neo-theme-go .go-email-composer-close-dialog .go-confirm-message {
+    padding: 2rem 1.6rem;
+}

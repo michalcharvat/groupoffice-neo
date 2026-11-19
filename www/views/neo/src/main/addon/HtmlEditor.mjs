@@ -96,7 +96,7 @@ class HtmlEditor extends Base {
      * @param {Boolean} [data.mentions] "@name" asks the worker for suggestions ("mentionQuery"), see showMentions()
      * @returns {Boolean} false when the field's DOM is missing
      */
-    createInstance({id, value = '', labels = {}, token = null, mentions = false}) {
+    createInstance({id, value = '', labels = {}, token = null, mentions = false, pasteImages = false}) {
         let me   = this,
             root = DomAccess.getElement(id);
 
@@ -139,6 +139,7 @@ class HtmlEditor extends Base {
             me.sync(id)
         });
         on(item.editor, 'keydown', e => me.onKeyDown(id, e));
+        pasteImages && on(item.editor, 'paste', e => me.onPasteImages(id, e));
         // on the root, which neo keeps while the field lives: toolbar nodes may get re-rendered
         const inToolbar = e => e.target.closest?.('.go-htmlfield-toolbar');
 
@@ -232,6 +233,39 @@ class HtmlEditor extends Base {
         });
 
         editor.replaceChildren(...[...doc.body.childNodes].map(node => document.importNode(node, true)))
+    }
+
+    /**
+     * Pasted image files (no HTML on the clipboard) become data: images at the caret
+     * (createInstance() with pasteImages)
+     * @param {String} id
+     * @param {ClipboardEvent} e
+     */
+    onPasteImages(id, e) {
+        const data  = e.clipboardData,
+              files = [...data?.files || []].filter(file => /^image\/(png|gif|jpe?g|webp)$/i.test(file.type));
+
+        if (!files.length || data.types.includes('text/html')) {
+            return
+        }
+
+        e.preventDefault();
+
+        files.forEach(file => {
+            const reader = new FileReader();
+
+            reader.onload = () => {
+                const item = this.map[id];
+
+                if (item && typeof reader.result === 'string') {
+                    item.editor.focus();
+                    document.execCommand('insertImage', false, reader.result);
+                    this.scheduleSync(id)
+                }
+            };
+
+            reader.readAsDataURL(file)
+        })
     }
 
     /**

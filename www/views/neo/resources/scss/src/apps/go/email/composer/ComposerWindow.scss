@@ -1,0 +1,40 @@
+// GO.email.composer.ComposerWindow (ExtJS GO.email.EmailComposer): toolbar, header fields,
+// body editor filling the window, attachments and the error line
+.neo-theme-go .go-email-composer {
+    .go-email-composer-toolbar {
+        border-bottom: 1px solid var(--fg-line);
+        gap          : .4rem;
+        padding      : .4rem .8rem;
+    }
+
+    // "create links" open: the link field takes the bar, like the FormWindow button bar
+    .go-email-composer-toolbar.go-email-composer-linking > :not(.go-create-link) {
+        display: none;
+    }
+
+    .go-email-composer-form {
+        gap       : .8rem;
+        min-height: 0;
+        overflow-y: auto;
+        padding   : 1.2rem 1.6rem;
+    }
+
+    .go-email-composer-body {
+        min-height: 20rem;
+    }
+
+    .go-email-composer-plain textarea {
+        font-family: var(--font-mono, monospace);
+        height     : 100%;
+        min-height : 20rem;
+        resize     : none;
+    }
+
+    .go-email-composer-error {
+        background-color: var(--bg-low);
+        border-top      : 1px solid var(--fg-line);
+        color           : var(--fg-error);
+        padding         : .8rem 1.6rem;
+        white-space     : pre-line;
+    }
+}

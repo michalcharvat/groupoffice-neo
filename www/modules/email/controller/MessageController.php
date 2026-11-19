@@ -939,13 +939,32 @@ Settings -> Accounts -> Double click account -> Folders.", "email");
 		return '> ' . str_replace("\n", "\n> ", $text);
 	}
 
+	/**
+	 * The draft_uid that send and save delete from the Drafts folder after storing the new
+	 * version. Only a message of the Drafts folder replaces itself: a message opened from
+	 * another folder (e.g. Sent items, which the clients open like a draft) is a new message,
+	 * and its UID would delete an unrelated draft.
+	 *
+	 * @param string $mailbox folder the message was opened from
+	 * @param string|null $draftsFolder the account's Drafts folder
+	 * @param int $uid
+	 * @return int 0 when the message is no draft
+	 */
+	public static function draftUid(string $mailbox, ?string $draftsFolder, int $uid): int
+	{
+		return !empty($draftsFolder) && $mailbox === $draftsFolder ? $uid : 0;
+	}
+
 	protected function actionOpenDraft(array $params)
 	{
 		if (!empty($params['uid'])) {
 			$account = Account::model()->findByPk($params['account_id']);
 			$message = ImapMessage::model()->findByUid($account, $params['mailbox'], $params['uid']);
 			$message->createTempFilesForAttachments();
-			$response['sendParams']['draft_uid'] = $message->uid;
+			$draftUid = self::draftUid((string) $params['mailbox'], $account->drafts, (int) $message->uid);
+			if ($draftUid) {
+				$response['sendParams']['draft_uid'] = $draftUid;
+			}
 		} else {
 			$message = \GO\Email\Model\SavedMessage::model()->createFromReadableMimeFile($params['path']);
 		}

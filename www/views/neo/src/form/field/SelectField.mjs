@@ -1,5 +1,6 @@
 import Field    from './Field.mjs';
 import MenuList from '../../menu/List.mjs';
+import {escapeHtml} from '../../Format.mjs';
 
 /**
  * GOUI SelectField: fixed options in the GO field box. Looks like the neo combo boxes
@@ -132,7 +133,8 @@ class SelectField extends Field {
             width   : rect?.width || 240,
             items   : me.options.map((o, i) => ({
                 id     : 'option-' + i,
-                text   : o.text,
+                // menu items render their text as HTML
+                text   : escapeHtml(o.text),
                 // a blank icon on the others keeps the texts in line
                 icon   : i === selected ? 'check' : ' ',
                 // the field may have been locked while the menu was open
