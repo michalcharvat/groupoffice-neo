@@ -7,6 +7,7 @@ import HtmlField     from '../form/field/HtmlField.mjs';
 import JmapComboBox  from '../form/field/JmapComboBox.mjs';
 import PrincipalCombo from '../form/field/PrincipalCombo.mjs';
 import TextList      from '../list/TextList.mjs';
+import AttachmentsField from '../form/field/AttachmentsField.mjs';
 import client        from '../jmap/Client.mjs';
 import {decodeEntities, escapeHtml, formatDate, formatUserDateTime, sanitizeHtml, userFormat} from '../Format.mjs';
 import {t}           from '../Translate.mjs';
@@ -137,6 +138,82 @@ function decimalsOf(field) {
     return isNaN(decimals) ? 2 : decimals
 }
 
+/**
+ * Attachments of an Attachments field (ExtJS type/Attachments.js renderDetailView()):
+ * download links, or thumbnails when the field accepts images
+ * @param {Object} field
+ * @param {Object[]} value [{blobId, name, description}]
+ * @returns {String|null}
+ */
+function attachmentsHtml(field, value) {
+    if (!Array.isArray(value) || !value.length) {
+        return null
+    }
+
+    const url = a => escapeHtml(client.apiUrl + 'download.php?blob=' + encodeURIComponent(a.blobId) + '&inline=1'),
+          caption = a => escapeHtml(a.description || a.name || a.blobId);
+
+    if (!String(field.options?.accept || '').includes('image')) {
+        return '<span class="go-cf-attachments">' + value.map(a =>
+            `<a class="go-cf-attachment" target="_blank" rel="noopener" href="${url(a)}"><span class="go-icon">attachment</span>${caption(a)}</a>`
+        ).join('') + '</span>'
+    }
+
+    return '<span class="go-cf-thumbs">' + value.map(a => {
+        const thumb = escapeHtml(client.baseUrl + 'api/thumb.php?blob=' + encodeURIComponent(a.blobId) + '&w=480&h=270&zc=1');
+
+        return `<a class="go-cf-thumb" target="_blank" rel="noopener" href="${url(a)}" title="${caption(a)}">` +
+            `<img alt="" src="${thumb}"><span>${caption(a)}</span></a>`
+    }).join('') + '</span>'
+}
+
+/**
+ * HTML of a JSON value (ExtJS type/Data.js renderJsonValue()): lists, "key value"
+ * lines and date-times formatted
+ * @param {*} data
+ * @returns {String}
+ */
+function jsonHtml(data) {
+    if (data === null || data === undefined) {
+        return '<i>null</i>'
+    }
+
+    if (typeof data === 'string' && /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(data)) {
+        return escapeHtml(formatUserDateTime(data))
+    }
+
+    if (Array.isArray(data)) {
+        return '<ul class="go-cf-data-list">' + data.map(v => `<li>${jsonHtml(v)}</li>`).join('') + '</ul>'
+    }
+
+    if (typeof data === 'object') {
+        return Object.entries(data).map(([key, v]) => `<b>${escapeHtml(key)}</b> ${jsonHtml(v)}`).join('<br>')
+    }
+
+    return escapeHtml(String(data))
+}
+
+/**
+ * Detail HTML of a Data field: its JSON text rendered, the text itself when it isn't JSON
+ * @param {*} value
+ * @returns {String|null}
+ */
+function dataHtml(value) {
+    if (value === null || value === undefined || value === '') {
+        return null
+    }
+
+    if (typeof value !== 'string') {
+        return jsonHtml(value)
+    }
+
+    try {
+        return jsonHtml(JSON.parse(value))
+    } catch (e) {
+        return text(value).replace(/\n/g, '<br>')
+    }
+}
+
 const TYPES = {
     Text: {
         formField : f => ({...baseConfig(f), module: TextField, maxLength: Number(f.options?.maxLength) || null}),
@@ -260,11 +337,37 @@ const TYPES = {
         noColumn  : true
     },
     Attachments: {
-        // shown like FALLBACK; a JSON list, the server cannot sort it
+        // ExtJS type/Attachments.js: files with a description, kept in a table of their own
+        formField : f => {
+            const accept = f.options?.accept;
+
+            return {
+                ...baseConfig(f),
+                module        : AttachmentsField,
+                accept        : accept && accept !== '*/*' ? accept : null,
+                multiple      : !!f.options?.multiFileSelect,
+                hasDescription: true,
+                hasDisposition: false
+            }
+        },
+        detailHtml: attachmentsHtml,
+        // the names, the server cannot sort the list
+        cellHtml  : (f, v) => Array.isArray(v) ? escapeHtml(v.map(a => a.description || a.name).join(', ')) : '',
+        column    : {sortable: false}
+    },
+    Data: {
+        // JSON written by code (ExtJS type/Data.js): shown, never edited
         formField : () => null,
         readOnly  : true,
-        detailHtml: (f, v) => FALLBACK.detailHtml(f, v),
-        column    : {sortable: false}
+        detailHtml: (f, v) => dataHtml(v),
+        cellHtml  : (f, v) => text(typeof v === 'object' && v !== null ? JSON.stringify(v) : v) ?? ''
+    },
+    TemplateField: {
+        // text the server renders from the field's template on save (ExtJS TemplateField.js)
+        formField : () => null,
+        readOnly  : true,
+        detailHtml: (f, v) => TYPES.TextArea.detailHtml(f, v),
+        cellHtml  : (f, v) => TYPES.TextArea.cellHtml(f, v)
     }
 };
 

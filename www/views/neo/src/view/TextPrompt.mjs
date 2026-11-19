@@ -47,7 +47,12 @@ class TextPrompt extends Dialog {
          * (value) => error text or null
          * @member {Function|null} validator=null
          */
-        validator: null
+        validator: null,
+        /**
+         * Accept an empty text (e.g. to clear a description)
+         * @member {Boolean} allowEmpty=false
+         */
+        allowEmpty: false
     }
 
     /**
@@ -77,7 +82,7 @@ class TextPrompt extends Dialog {
                 labelText    : me.label,
                 labelPosition: 'inline',
                 value        : me.value,
-                required     : true
+                required     : !me.allowEmpty
             }]
         }, {
             ntype    : 'component',
@@ -126,7 +131,7 @@ class TextPrompt extends Dialog {
     onOk() {
         let me    = this,
             value = String(me.getReference('text').value ?? '').trim(),
-            error = !value ? t('This field is required') : me.validator?.(value) || null;
+            error = !value ? (me.allowEmpty ? null : t('This field is required')) : me.validator?.(value) || null;
 
         me.getReference('error').text = error || '';
 
@@ -139,7 +144,7 @@ class TextPrompt extends Dialog {
     }
 
     /**
-     * @param {Object} config appName, windowId, title, message, label, value, select, validator
+     * @param {Object} config appName, windowId, title, message, label, value, select, validator, allowEmpty
      * @returns {Promise<String|null>}
      */
     static ask(config) {
