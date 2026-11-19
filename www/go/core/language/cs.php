@@ -2302,4 +2302,8 @@ Klikněte na níže uvedený odkaz (nebo jej vložte do prohlížeče) a změňt
 %s
 
 Pokud jste o nové heslo nežádali, tento e-mail prosím smažte.',
+  'Check the fields to change in {count} items.' => 'Zaškrtněte pole, která chcete změnit u {count} položek.',
+  'There are no fields to edit' => 'Nejsou žádná pole k úpravě',
+  'Check the fields to change first' => 'Nejprve zaškrtněte pole, která chcete změnit',
+  '{count} items were not saved' => '{count} položek nebylo uloženo',
 );

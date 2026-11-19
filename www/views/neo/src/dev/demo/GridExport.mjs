@@ -3,6 +3,7 @@ import Container          from '../../../node_modules/neo.mjs/src/container/Base
 import Toolbar            from '../../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import JmapStore          from '../../data/JmapStore.mjs';
 import {exportEntities, exportMenuItem} from '../../export/exportEntities.mjs';
+import BatchEditButton    from '../../grid/BatchEditButton.mjs';
 import Grid               from '../../grid/Grid.mjs';
 import MultiSelectToolbar from '../../grid/MultiSelectToolbar.mjs';
 import MenuList           from '../../menu/List.mjs';
@@ -11,7 +12,8 @@ import {escapeHtml, formatUserDateTime} from '../../Format.mjs';
 /**
  * Dev demo: the reusable grid export on the user's notes. ⋮ → Export exports what the
  * grid shows; spreadsheets and HTML ask for the columns first. With two or more rows
- * selected the MultiSelectToolbar exports only those.
+ * selected the MultiSelectToolbar exports only those, or batch edits their custom fields
+ * (GO.grid.BatchEditButton → GO.form.BatchEditDialog).
  */
 class GridExportDemo extends Container {
     static config = {
@@ -29,7 +31,8 @@ class GridExportDemo extends Container {
             ntype: 'component',
             flex : 'none',
             html : '<p>Notes of the user. ⋮ → Export exports the grid\'s query (Excel, CSV and HTML ask for the columns). ' +
-                   'Select two or more rows (ctrl/⌘ + click) to export only those as JSON.</p>'
+                   'Select two or more rows (ctrl/⌘ + click) to export only those as JSON, or to batch edit their custom fields ' +
+                   '(the button shows when Note has custom fields).</p>'
         }, {
             ntype : 'container',
             flex  : 1,
@@ -52,6 +55,10 @@ class GridExportDemo extends Container {
                     module   : MultiSelectToolbar,
                     reference: 'mstb',
                     items    : [{
+                        module   : BatchEditButton,
+                        entity   : 'Note',
+                        listeners: {save: () => me.getReference('grid').store.load().catch(e => console.error(e))}
+                    }, {
                         module : Button,
                         icon   : 'cloud_download',
                         tooltip: 'Export selected (JSON)',

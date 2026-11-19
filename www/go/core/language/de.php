@@ -2335,4 +2335,8 @@ Sollten Sie kein neues Kennwort angefordert haben, können Sie diese Nachricht e
   'This panel expects an address list ID that is positive, but did not receive one. Please contact the administrator.' => 'Dieses Panel erwartet eine positive Adresslisten-ID, hat aber keine erhalten. Bitte wenden Sie sich an den Administrator.',
   'Total remaining' => 'Gesamt verbleibend',
   'There are no address books' => 'Es gibt keine Adressbücher',
+  'Check the fields to change in {count} items.' => 'Markieren Sie die Felder, die Sie bei {count} Elementen ändern möchten.',
+  'There are no fields to edit' => 'Es gibt keine Felder zum Bearbeiten',
+  'Check the fields to change first' => 'Markieren Sie zuerst die Felder, die Sie ändern möchten',
+  '{count} items were not saved' => '{count} Elemente wurden nicht gespeichert',
 );
