@@ -41,7 +41,8 @@ class FilesPanel extends Card {
             html     : ''
         }, {
             ntype : 'container',
-            cls   : ['go-detail-card-buttons'],
+            // controls are left out of print (src/print.mjs)
+            cls   : ['go-detail-card-buttons', 'go-print-hide'],
             layout: {ntype: 'hbox', align: 'center'},
             items : [{
                 module   : UploadButton,
@@ -140,7 +141,7 @@ class FilesPanel extends Card {
                     <small title="${escapeHtml(formatUserDateTime(f.mtime))}">${escapeHtml(fmt(t('{name} at {date}'), {name: f.musername || '', date: isNaN(Date.parse(f.mtime)) ? (f.mtime || '') : smartDateTime(f.mtime)}))}</small></span>
                 </a>`
             }).join('')
-            : `<div class="go-dropzone">${escapeHtml(t('Drop files here'))}</div>`
+            : `<div class="go-dropzone go-print-hide">${escapeHtml(t('Drop files here'))}</div>`
     }
 
     clearData() {

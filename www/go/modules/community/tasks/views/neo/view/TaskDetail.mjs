@@ -5,6 +5,7 @@ import Button      from '../../../../../../../views/neo/src/button/Button.mjs';
 import client      from '../../../../../../../views/neo/src/jmap/Client.mjs';
 import {escapeHtml} from '../../../../../../../views/neo/src/Format.mjs';
 import {notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
+import {print} from '../../../../../../../views/neo/src/print.mjs';
 import CommentsPanel from '../../../../../../../views/neo/src/detail/CommentsPanel.mjs';
 import FilesPanel    from '../../../../../../../views/neo/src/detail/FilesPanel.mjs';
 import HistoryPanel  from '../../../../../../../views/neo/src/detail/HistoryPanel.mjs';
@@ -88,7 +89,8 @@ class TaskDetail extends Container {
                         // GOUI: the status chip opens a menu that sets the progress
                         module   : Button,
                         reference: 'progressButton',
-                        cls      : ['go-tasks-status'],
+                        // the status is printed (renderTask() sets the cls)
+                        cls      : ['go-tasks-status', 'go-print-show'],
                         text     : ''
                     }]
                 }, {
@@ -146,7 +148,11 @@ class TaskDetail extends Container {
 
         let me = this;
 
-        me.getReference('moreButton').menu = [{text: t('Delete'), icon: 'delete', handler: () => me.onDelete()}];
+        me.getReference('moreButton').menu = [
+            {text: t('Print'), icon: 'print', handler: () => me.onPrint()},
+            {separator: true},
+            {id: 'delete', text: t('Delete'), icon: 'delete', handler: () => me.onDelete()}
+        ];
         me.getReference('progressButton').menu = Object.entries(PROGRESS).map(([value, text]) => ({
             text   : t(text),
             handler: () => me.setProgress(value)
@@ -165,7 +171,8 @@ class TaskDetail extends Container {
         me.task = task;
 
         me.getReference('editButton').disabled     = !task || level < LEVEL_WRITE;
-        me.getReference('moreButton').disabled     = !task || level < LEVEL_DELETE;
+        me.getReference('moreButton').disabled     = !task;
+        me.getReference('moreButton').setMenuItemDisabled('delete', level < LEVEL_DELETE);
         me.getReference('assignMeButton').hidden   = !task || !!task.responsibleUserId || level < LEVEL_WRITE;
         me.getReference('progressButton').disabled = !task || level < LEVEL_WRITE;
         me.getReference('bottomBar').hidden        = !task || level < LEVEL_WRITE;
@@ -216,7 +223,7 @@ class TaskDetail extends Container {
 
         me.getReference('title').text = task.title || '';
         progressButton.text = t(PROGRESS[task.progress] || task.progress || '');
-        progressButton.cls  = ['go-tasks-status', 'go-tasks-status-' + task.progress];
+        progressButton.cls  = ['go-tasks-status', 'go-tasks-status-' + task.progress, 'go-print-show'];
 
         const field = (label, value) => value ? `<div class="go-tasks-field"><label>${escapeHtml(label)}</label><div>${value}</div></div>` : '',
               names = (task.categories || []).map(id => categories.get(id)?.name).filter(Boolean),
@@ -266,6 +273,13 @@ class TaskDetail extends Container {
 
     onDelete() {
         this.task && this.fire('delete', {task: this.task})
+    }
+
+    /**
+     * Prints the task with its cards (GOUI TaskDetail print())
+     */
+    onPrint() {
+        this.task && print(this.getReference('scroller'), {title: this.task.title})
     }
 
     onContinue() {

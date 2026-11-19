@@ -152,6 +152,10 @@ text (no rich text editor, labels, attachments), no import/export menu. Dark mod
 - **Downloads**: use `download(windowId, url)` from `src/download.mjs` (a clicked
   `<a download>` in the main thread). `Neo.Main.redirectTo()` to an attachment URL fires
   beforeunload: neo disconnects the window from the shared worker and the page stops reacting.
+- **Printing**: `print(component, {title})` from `src/print.mjs` prints a mounted component
+  (detail panels: their `scroller`) through the `WS/Print` addon: a hidden iframe with the
+  page's style sheets and the ancestors' classes, light colours, full height. Buttons, inputs
+  and `.go-print-hide` are left out (`.go-print-show` keeps a button, e.g. the task status).
 - **No `route` on buttons**: neo renders `route` as `<a href="#x">`, and `<base href>` turns
   it into `views/neo/apps/go/#x` (403). Use `handler: () => Neo.Main.setRoute(...)`.
 - **Selecting by id**: `selectionModel.select()` takes a record; a string is read as

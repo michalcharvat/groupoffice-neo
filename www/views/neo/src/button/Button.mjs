@@ -37,6 +37,21 @@ class Button extends NeoButton {
         super.afterSetMenu(value, oldValue)
     }
 
+    /**
+     * Enables or disables one item of the menu, e.g. "Delete" by the permission level
+     * of the shown entity, without building the menu again
+     * @param {String} id the item's `id`
+     * @param {Boolean} disabled
+     * @returns {Promise<void>}
+     */
+    async setMenuItemDisabled(id, disabled) {
+        await this.menuListReady;
+
+        const record = this.menuList?.store.get(id);
+
+        record && (record.disabled = disabled)
+    }
+
     afterSetIcon(value, oldValue) {
         let me         = this,
             {iconNode} = me;

@@ -9,6 +9,7 @@ import client        from '../../../../../../../views/neo/src/jmap/Client.mjs';
 import AddLinkButton from '../../../../../../../views/neo/src/link/AddLinkButton.mjs';
 import LinkBrowseButton from '../../../../../../../views/neo/src/link/LinkBrowseButton.mjs';
 import LinkDetail    from '../../../../../../../views/neo/src/link/LinkDetail.mjs';
+import {print}       from '../../../../../../../views/neo/src/print.mjs';
 import {translator}  from '../../../../../../../views/neo/src/Translate.mjs';
 import CalendarItem, {participantStatusIcon} from '../CalendarItem.mjs';
 import calendarData  from '../data.mjs';
@@ -99,6 +100,7 @@ class EventDetail extends Container {
         let me = this;
 
         me.getReference('moreButton').menu = [
+            {text: t('Print'), icon: 'print', handler: () => me.onPrint()},
             {text: t('Download ICS'), icon: 'import_export', handler: () => me.item?.downloadIcs()},
             {separator: true},
             {text: t('Delete'), icon: 'delete', handler: () => me.item?.remove()}
@@ -239,6 +241,13 @@ class EventDetail extends Container {
             me.isDestroyed || (me.renderStatus(), me.fire('changed', {}))
         }).catch(e => (me.item?.ui || CalendarItem.ui).error(e));
         me.renderStatus()
+    }
+
+    /**
+     * Prints the event with its cards (GOUI EventDetail print())
+     */
+    onPrint() {
+        this.item && print(this.getReference('scroller'), {title: this.item.title || t('Event')})
     }
 
     onAccept()  {this.updateStatus('accepted')}

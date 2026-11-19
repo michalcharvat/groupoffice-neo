@@ -1155,6 +1155,16 @@ class AddressBookMain extends MainThreeColumnPanel {
             handler : () => me.emailContacts(records)
         });
 
+        // the detail prints the contact it shows (ExtJS: the detail body)
+        const detail = me.getReference('detail');
+
+        items.push({
+            text    : t('Print'),
+            icon    : 'print',
+            disabled: !single || String(detail.contact?.id) !== String(single.id),
+            handler : () => detail.print()
+        });
+
         ModuleRegistry.getConfigs('showComposer').length && items.push({
             text   : t('Send') + ' (vCard)',
             icon   : 'attach_file',

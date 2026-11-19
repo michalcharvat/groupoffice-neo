@@ -18,7 +18,7 @@ These show up in several modules; each has one board card.
 
 | Gap | Where it shows | 26.x ref | Status |
 |---|---|---|---|
-| Print of the detail panel (no print helper in `www/views/neo/src`) | notes, tasks, contacts (detail more menu / context menu) | goui/script/NoteDetail.ts:69, TaskDetail.ts:213; addressbook extjs3/ContactContextMenu.js:66 | card "neo-ui: print of detail panels" |
+| Print of the detail panel (no print helper in `www/views/neo/src`) | notes, tasks, contacts (detail more menu / context menu) | goui/script/NoteDetail.ts:69, TaskDetail.ts:213; addressbook extjs3/ContactContextMenu.js:66 | fixed (`src/print.mjs`) |
 | "New linked item" from another entity's detail (`linkWindow` registry) | notes, tasks, contacts, all detail panels | notes goui/script/Index.ts:96-108; tasks extjs3/Module.js:16; addressbook extjs3/ContactDetail.js:344 | card "neo-ui: create new linked item from a detail panel" |
 | Saved filter types other than string/date/number (select, principal, combo, link entity, custom fields, input variables) | contacts (type, gender, address book, groups, has e-mail…), tasks (responsible, list, progress), notes (has links to) | addressbook extjs3/Module.js:98-320; tasks extjs3/Module.js:90-140; notes goui/script/Index.ts:63 | card "neo-ui: FilterDialog select/principal/link/custom field filters" |
 | Grid group headers (`groupBy`) | tasks grid per list, task lists by grouping | tasks goui/script/TaskGrid.ts:289; extjs3/TasklistsGrid.js:15 | card "neo-ui: grid and list group headers" |
@@ -45,7 +45,7 @@ full detail, dialogs, three settings cards, birthdays portlet, quick add, routes
 | Contact dialog | Language combo | extjs3/ContactDialog.js:333 | missing | fixed |
 | Contact dialog | ICD combo (per country) | extjs3/ContactDialog.js:84, ICDCombo.js | missing | card "neo-ui: addressbook ICD combo and MultiContact custom field" |
 | Custom field type | MultiContact | extjs3/customfield/MultiContact.js | missing in `www/views/neo/src/customfields/types.mjs` | card "neo-ui: addressbook ICD combo and MultiContact custom field" |
-| Context menu | Print | extjs3/ContactContextMenu.js:66 | missing | card "neo-ui: print of detail panels" |
+| Context menu | Print | extjs3/ContactContextMenu.js:66 | missing | fixed |
 | Detail | "+" new linked contact/organization | extjs3/ContactDetail.js:344 | only existing item / e-mail | card "neo-ui: create new linked item …" |
 
 ## calendar
@@ -69,7 +69,7 @@ calendar/category/resource/subscribe/webcal dialogs).
 | Event detail | Move to another calendar inline | goui/script/EventDetail.ts:121-147 | missing | card "neo-ui: calendar event detail, participants and paste" |
 | Event detail | Edit alerts inline | goui/script/EventDetail.ts:60-99 | read-only | card "neo-ui: calendar event detail, participants and paste" |
 | Event detail | Change organizer (`mayChangeOrganizer`) | goui/script/EventDetail.ts:198-293 | missing | card "neo-ui: calendar event detail, participants and paste" |
-| Event detail | Print | goui/script/EventDetail.ts:246 | missing | card "neo-ui: print of detail panels" |
+| Event detail | Print | goui/script/EventDetail.ts:246 | missing | fixed |
 | Participants | "Add attendees" with RecipientPicker | goui/script/ParticipantField.ts:78-93 | missing | card "neo-ui: calendar event detail, participants and paste" |
 | Participants | Booked resource makes the field invalid | goui/script/ParticipantField.ts:207 | red row only, save not blocked | card "neo-ui: calendar event detail, participants and paste" |
 | Event dialog | New linked event takes the item's name as title | goui/script/EventWindow.ts:402 | missing | card "neo-ui: calendar event detail, participants and paste" |
@@ -99,7 +99,7 @@ continue task, comments, files, links, history; settings, portlet, quick add).
 | Grid | Group headers per list | goui/script/TaskGrid.ts:289 | sorted only | card "neo-ui: grid and list group headers" |
 | West | Lists grouped by TaskListGrouping | extjs3/TasklistsGrid.js:15 | flat list | card "neo-ui: grid and list group headers" |
 | Saved filters | Created by, modified by, responsible, list, progress | extjs3/Module.js:90-140 | missing | card "neo-ui: FilterDialog …" |
-| Detail | Print | goui/script/TaskDetail.ts:213 | missing | card "neo-ui: print of detail panels" |
+| Detail | Print | goui/script/TaskDetail.ts:213 | missing | fixed |
 | Links | "Incomplete / Completed tasks" cards with row menu in other details | extjs3/TaskLinkDetail.js | generic LinkDetail | card "neo-ui: link detail cards (tasks, appointments)" |
 | Links | New linked task from another entity | extjs3/Module.js:16 | missing | card "neo-ui: create new linked item …" |
 | Projects | Project column, combo, detail link (business/projects3) | goui/script/TaskGrid.ts:171, TaskDialog.ts:130 | missing; business modules not in this checkout | open (with the projects3 neo port) |
@@ -119,7 +119,7 @@ HTML/Markdown, image zoom, full detail, settings, deep link, quick add).
 | Notebook menu | Delete also needs `mayChangeNoteBooks` | goui/script/Main.ts:102 | only MANAGE checked | fixed |
 | HTML editor | Pasted images uploaded as blobs | goui/script/NoteDialog.ts:171 | not pasted | card "neo-ui: HtmlField image paste/upload" |
 | Saved filters | Has links to… | goui/script/Index.ts:63 | missing | card "neo-ui: FilterDialog …" |
-| Detail | Print | goui/script/NoteDetail.ts:69 | missing | card "neo-ui: print of detail panels" |
+| Detail | Print | goui/script/NoteDetail.ts:69 | missing | fixed |
 
 ## bookmarks
 

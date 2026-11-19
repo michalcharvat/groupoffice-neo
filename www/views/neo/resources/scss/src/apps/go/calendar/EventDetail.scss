@@ -6,7 +6,8 @@
     background-color: var(--bg-low);
     min-width       : 0;
 
-    .go-card {
+    // the event card, not the cards below it (links, comments: .go-detail-card)
+    .go-card:not(.go-detail-card) {
         > h3 {
             margin: 0 0 go.dp(8);
         }

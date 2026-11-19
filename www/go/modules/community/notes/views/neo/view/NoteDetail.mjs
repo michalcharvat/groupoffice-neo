@@ -4,6 +4,7 @@ import {LEVEL_DELETE, LEVEL_WRITE} from '../../../../../../../views/neo/src/Acl.
 import Button      from '../../../../../../../views/neo/src/button/Button.mjs';
 import {escapeHtml, sanitizeHtml} from '../../../../../../../views/neo/src/Format.mjs';
 import {notify} from '../../../../../../../views/neo/src/Notify.mjs';
+import {print} from '../../../../../../../views/neo/src/print.mjs';
 import {contentToHtml} from '../../../../../../../views/neo/src/Markdown.mjs';
 import {enableImageZoom} from '../../../../../../../views/neo/src/view/ImageWindow.mjs';
 import CommentsPanel from '../../../../../../../views/neo/src/detail/CommentsPanel.mjs';
@@ -115,7 +116,11 @@ class NoteDetail extends Container {
 
         me.getReference('body').addDomListeners([{click: me.onDecryptClick, delegate: '.go-notes-decrypt', scope: me}]);
 
-        me.getReference('moreButton').menu = [{text: t('Delete'), icon: 'delete', handler: () => me.onDelete()}]
+        me.getReference('moreButton').menu = [
+            {text: t('Print'), icon: 'print', handler: () => me.onPrint()},
+            {separator: true},
+            {id: 'delete', text: t('Delete'), icon: 'delete', handler: () => me.onDelete()}
+        ]
     }
 
     /**
@@ -129,7 +134,8 @@ class NoteDetail extends Container {
         me.note = note;
 
         me.getReference('editButton').disabled = !note || isLegacyEncrypted(note) || level < LEVEL_WRITE;
-        me.getReference('moreButton').disabled = !note || level < LEVEL_DELETE;
+        me.getReference('moreButton').disabled = !note;
+        me.getReference('moreButton').setMenuItemDisabled('delete', level < LEVEL_DELETE);
 
         me.getReference('addLinkButton').setEntity(note ? 'Note' : null, note?.id || null);
 
@@ -243,6 +249,13 @@ class NoteDetail extends Container {
 
     onDelete() {
         this.note && this.fire('delete', {note: this.note})
+    }
+
+    /**
+     * Prints the note with its cards (GOUI NoteDetail print())
+     */
+    onPrint() {
+        this.note && print(this.getReference('scroller'), {title: this.note.name})
     }
 }
 

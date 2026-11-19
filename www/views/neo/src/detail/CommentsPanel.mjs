@@ -74,7 +74,8 @@ class CommentsPanel extends Card {
         }, {
             module     : HtmlField,
             reference  : 'input',
-            cls        : ['go-comment-editor'],
+            // controls are left out of print (src/print.mjs)
+            cls        : ['go-comment-editor', 'go-print-hide'],
             placeholder: t('Add a comment...'),
             toolbar    : ['bold', 'italic', 'underline', '-', 'insertOrderedList', 'insertUnorderedList', '-', 'createLink'],
             plugins    : [{module: HtmlFieldMentionPlugin}]
@@ -82,13 +83,13 @@ class CommentsPanel extends Card {
             // labels picked for the new comment, a click removes one
             ntype    : 'container',
             reference: 'pickedLabels',
-            cls      : ['go-comment-picked-labels'],
+            cls      : ['go-comment-picked-labels', 'go-print-hide'],
             layout   : {ntype: 'hbox', align: 'center', wrap: 'wrap'},
             hidden   : true,
             items    : []
         }, {
             ntype : 'container',
-            cls   : ['go-detail-card-buttons'],
+            cls   : ['go-detail-card-buttons', 'go-print-hide'],
             layout: {ntype: 'hbox', align: 'center'},
             items : [{
                 module   : Button,
