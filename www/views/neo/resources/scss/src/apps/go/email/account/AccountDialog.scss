@@ -1,0 +1,12 @@
+// GO.email.account.AccountDialog (ExtJS GO.email.AccountDialog)
+.neo-theme-go .go-email-account-dialog {
+    /* the aliases, filters and labels lists fill their card and scroll themselves */
+    .go-form-card.go-email-account-records {
+        gap    : 0;
+        padding: 0;
+    }
+
+    .go-email-account-subscribe {
+        align-self: flex-start;
+    }
+}

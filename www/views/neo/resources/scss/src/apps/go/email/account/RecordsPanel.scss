@@ -1,0 +1,10 @@
+// GO.email.account.RecordsPanel: aliases, filters and labels of an account
+.neo-theme-go .go-email-records-panel {
+    min-height: 0;
+
+    .go-email-records-hint {
+        color    : var(--fg-secondary-text);
+        font-size: 1.2rem;
+        padding  : 0 .8rem;
+    }
+}
