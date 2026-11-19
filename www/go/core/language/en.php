@@ -469,4 +469,7 @@ If you did not request a new password please delete this mail.',
   'Move down' => 'Move down',
   'Move to the other column' => 'Move to the other column',
   'No changes' => 'No changes',
+  'Saved' => 'Saved',
+  'Open in new window' => 'Open in new window',
+  'Failed to delete' => 'Failed to delete',
 );

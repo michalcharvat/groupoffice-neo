@@ -23,6 +23,8 @@ ModuleRegistry.register({
      * cfg: see view/composer/compose.mjs (appName and windowId required).
      */
     showComposer: async cfg => (await import('./view/composer/compose.mjs')).compose(cfg),
+    // start page portlet (ExtJS GO.summary.portlets['portlet-email'], Portlet.js)
+    portlets: [{id: 'portlet-email', title: t('E-mail'), icon: 'email', view: () => import('./view/portlet/EmailPortlet.mjs')}],
     userSettings: {
         title  : t('E-mail'),
         iconCls: 'fa fa-envelope',

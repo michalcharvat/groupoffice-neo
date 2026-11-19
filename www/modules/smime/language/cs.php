@@ -54,4 +54,8 @@ return array (
   'No OCSP URI found' => 'Nebyla nalezena URI OCSP',
   'No issuer URI found' => 'Nebyla nalezena URI vydavatele',
   'The certificate has been revoked!' => 'Certifikát byl zneplatněn!',
+  'Decrypt' => 'Dešifrovat',
+  'SMIME support' => 'Podpora SMIME',
+  'Select a certificate file' => 'Vyberte soubor s certifikátem',
+  'Select a PKCS12 file (.p12 or .pfx) with your certificate and private key and enter its password. A certificate without a password is not accepted.' => 'Vyberte soubor PKCS12 (.p12 nebo .pfx) s vaším certifikátem a soukromým klíčem a zadejte jeho heslo. Certifikát bez hesla nelze použít.',
 );

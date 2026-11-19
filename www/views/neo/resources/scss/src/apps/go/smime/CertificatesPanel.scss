@@ -1,0 +1,19 @@
+// GO.smime.CertificatesPanel: the PKCS#12 certificates in the account dialog's SMIME card
+.neo-theme-go .go-smime-certificates {
+    min-height: 0;
+
+    .go-smime-certificates-title {
+        color    : var(--fg-secondary-text);
+        font-size: 1.2rem;
+        padding  : 0 .8rem;
+    }
+
+    // the serial number is a long hex string: wrap it instead of widening the card
+    .go-actiontable {
+        width: 100%;
+
+        td:first-child {
+            overflow-wrap: anywhere;
+        }
+    }
+}

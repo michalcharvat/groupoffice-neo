@@ -72,9 +72,11 @@
     }
 }
 
-// neo's .neo-masked (load mask) sets position: relative and comes after .neo-floating
+// neo's .neo-masked (load mask) and, since neo.mjs 13.4, .neo-store-loading (store load
+// mask of the StoreLoading mixin) set position: relative and come after .neo-floating
 // (position: fixed) with the same specificity: a dialog that masks itself while saving
 // drops into the page flow for a frame and flashes at the right edge. Keep it floating.
-:root .neo-theme-go .neo-dialog.neo-floating.neo-masked {
+:root .neo-theme-go .neo-dialog.neo-floating.neo-masked,
+:root .neo-theme-go .neo-dialog.neo-floating.neo-store-loading {
     position: fixed;
 }

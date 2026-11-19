@@ -1,0 +1,27 @@
+// GO.smime.SmimeBar: the encrypted / signed line above a message body (ExtJS
+// smi-encrypt-notification, smi-sign-notification) and the verify verdict
+.neo-theme-go .go-smime-bar {
+    background-color: var(--bg-low);
+    gap             : .8rem;
+    padding         : .4rem 1.6rem;
+
+    .go-smime-bar-icon {
+        color: var(--fg-secondary-text);
+    }
+
+    .go-smime-bar-text {
+        min-width: 0;
+    }
+
+    &.go-smime-valid .go-smime-bar-icon {
+        color: var(--hue-green);
+    }
+
+    &.go-smime-mismatch .go-smime-bar-icon {
+        color: var(--fg-warning);
+    }
+
+    &.go-smime-invalid .go-smime-bar-icon {
+        color: var(--fg-error);
+    }
+}

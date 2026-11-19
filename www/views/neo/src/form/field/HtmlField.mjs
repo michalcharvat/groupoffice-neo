@@ -69,11 +69,6 @@ class HtmlField extends Field {
          */
         readOnly_: false,
         /**
-         * isValid() is false while empty
-         * @member {Boolean} required_=false
-         */
-        required_: false,
-        /**
          * Commands, '-' = separator. See COMMANDS.
          * @member {String[]} toolbar=DEFAULT_TOOLBAR
          */

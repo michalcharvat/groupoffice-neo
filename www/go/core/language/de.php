@@ -2346,4 +2346,6 @@ Sollten Sie kein neues Kennwort angefordert haben, können Sie diese Nachricht e
   'Move up' => 'Nach oben',
   'Move down' => 'Nach unten',
   'Move to the other column' => 'In die andere Spalte verschieben',
+  'Saved' => 'Gespeichert',
+  'Open in new window' => 'In neuem Fenster öffnen',
 );

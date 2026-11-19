@@ -6,7 +6,7 @@
   "type": "module",
   "dependencies": {
     "marked": "^18.2.1",
-    "neo.mjs": "13.2.0"
+    "neo.mjs": "13.4.0"
   },
   "devDependencies": {
     "@fortawesome/fontawesome-free": "^7.3.1",

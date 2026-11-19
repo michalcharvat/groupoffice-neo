@@ -53,4 +53,8 @@ return array (
   'The certificate has been revoked!' => 'Het certificaat is ingetrokken!',
   'The certificate must be in PEM format' => 'Het certificaat moet in PEM-formaat zijn',
   'This certificate already exists' => 'Dit certificaat bestaat al',
+  'Decrypt' => 'Ontsleutelen',
+  'SMIME support' => 'SMIME-ondersteuning',
+  'Select a certificate file' => 'Selecteer een certificaatbestand',
+  'Select a PKCS12 file (.p12 or .pfx) with your certificate and private key and enter its password. A certificate without a password is not accepted.' => 'Selecteer een PKCS12-bestand (.p12 of .pfx) met uw certificaat en privésleutel en voer het wachtwoord ervan in. Een certificaat zonder wachtwoord wordt niet geaccepteerd.',
 );

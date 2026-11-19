@@ -8,6 +8,7 @@ import MultiSelectToolbar from '../../../../../views/neo/src/grid/MultiSelectToo
 import {selectRow}   from '../../../../../views/neo/src/grid/selectRow.mjs';
 import client        from '../../../../../views/neo/src/jmap/Client.mjs';
 import MenuList      from '../../../../../views/neo/src/menu/List.mjs';
+import ModuleRegistry from '../../../../../views/neo/src/ModuleRegistry.mjs';
 import {escapeHtml, fileSize, formatUserDateTime, smartDateTime} from '../../../../../views/neo/src/Format.mjs';
 import {notify, notifyError} from '../../../../../views/neo/src/Notify.mjs';
 import {getState, setState} from '../../../../../views/neo/src/State.mjs';
@@ -1252,6 +1253,26 @@ class EmailMain extends MainThreeColumnPanel {
     }
 
     /**
+     * Items other modules add to the ⋮ menu without a selection (ExtJS MessagesGrid
+     * settingsMenu, e.g. smime "Public SMIME certificates"): ModuleRegistry key
+     * `emailMenuItems`, a function (emailMain) => GO.menu.List items
+     * @returns {Object[]}
+     * @protected
+     */
+    extraMenuItems() {
+        const items = ModuleRegistry.getConfigs('emailMenuItems').flat().flatMap(fn => {
+            try {
+                return fn(this) || []
+            } catch (e) {
+                console.error('emailMenuItems', e);
+                return []
+            }
+        });
+
+        return items.length ? [{separator: true}, ...items] : []
+    }
+
+    /**
      * Actions on messages (ExtJS MessageContextMenu, the parts of the message list)
      * @param {Object[]} records
      * @param {String} target DOM id
@@ -1267,7 +1288,8 @@ class EmailMain extends MainThreeColumnPanel {
         if (!records.length) {
             MenuList.showAt({appName: me.appName, windowId: me.windowId, target, items: [
                 {text: coreT('Refresh'), icon: 'refresh', handler: () => me.refresh(true)},
-                {text: t('Accounts'), icon: 'manage_accounts', handler: () => me.openAccounts()}
+                {text: t('Accounts'), icon: 'manage_accounts', handler: () => me.openAccounts()},
+                ...me.extraMenuItems()
             ]});
             return
         }
