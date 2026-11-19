@@ -14,7 +14,7 @@ Status: **neo** = neo.mjs 13.4 ships it, usable as is (maybe GO styling);
 |---|---|---|
 | Button, SearchButton | button/Base, Split, Menu | GO.neo (`GO.button.Button`, `SearchButton`) |
 | Menu, AbstractMenu | menu/List, button menu | GO.neo (`GO.menu.List`) |
-| ColorMenu | – | missing (small) |
+| ColorMenu | – | GO.neo (`GO.menu.ColorMenu`: GOUI palette + Auto, `colorSelect` {color} (neo lists already fire `select`), the menu's button takes the colour) |
 | Window | dialog/Base | GO.neo (`GO.view.Dialog`: mask fixes, popout) |
 | Panel, CardContainer, CardMenu | container/Panel, layout card, tab/Container | neo |
 | Splitter | component/Splitter | GO.neo (`GO.component.Splitter`, state) |
@@ -23,11 +23,11 @@ Status: **neo** = neo.mjs 13.4 ships it, usable as is (maybe GO styling);
 | List, ListPicker | list/Base | GO.neo (`TextList`, `CheckList`) |
 | Table, TableColumns, RowSelect | grid/Container (buffered) | GO.neo (`GO.grid.Grid`, `selectRow`; row height in px from the measured density: dp(40) one-line = 35px Paper / 29px Compact, `rowLines: 2` (avatar or two lines: users, address book, duplicates, RecipientPicker) dp(56) = 48px / 40px; follows `Preferences.applyTheme()` live); keys: `enterKey` / `deleteKey` (Delete, Ctrl/Cmd+Backspace) events with `{records}` outside inputs; `switchState(stateId)` swaps the column state, e.g. addressbook organizations view; `customFieldsEntity: 'Note'` adds a column per custom field (`customfields/gridColumns.mjs`: renderer per type from `types.mjs` `cellHtml()`, names of user/group/contact fields loaded per page, GOUI state key = databaseName, server sort on `customFields.<databaseName>`, "Hidden in grid" = hidden; the model needs a `customFields` field, neo drops undeclared keys) |
 | SelectAllCheckboxField, MultiSelectToolbar | – | GO.neo (`GO.grid.Grid` `multiSelect`, `RowSelectionModel` with `selectAll()`, `MultiSelectToolbar`; Notes deletes several notes) |
-| Tree, TreeStore, TreeColumn | tree/List, tree/Accordion (basic) | GO.neo (`GO.tree.Tree`: lazy `nodeProvider`, checkboxes; no drag and drop, no extra columns) |
+| Tree, TreeStore, TreeColumn | tree/List, tree/Accordion (basic) | GO.neo (`GO.tree.Tree`: lazy `nodeProvider`, checkboxes, drag and drop with `dragNodes` / `dropOn` / `dropBetween` (fires `drop` {dragNode, node, position}, expands a node after 1 s, `moveNode()`; not `draggable`, that is neo List's own DragZone); no extra columns) |
 | DescriptionList | – | GO.neo (`GO.component.DescriptionList`) |
 | Avatar | – | partial (`Format.avatarHtml`, HTML only) |
 | ToolTip | tooltip/Base | neo |
-| Sortable, DraggableComponent | draggable/DragZone, DropZone | neo (not wired: drag rows to notebooks, sort lists) |
+| Sortable, DraggableComponent | draggable/DragZone, DropZone | GO.neo (`enableDragDrop()` with `position: 'between'` (or `'both'`), `horizontal`, `dropIndex()`; module sorting, notes onto note books, Dev demo DragAndDrop) |
 | MaterialIcon | – | GO.neo (`go-icon` CSS) |
 | CollapseButton | – | GO.neo (`GO.detail.Card`) |
 | Notifier | component/Toast | GO.neo (`Notify.mjs`: toasts; `alerts/NotificationCenter.mjs` + `NotificationPanel.mjs`: the bell's notification area with core alerts over SSE, legacy reminders, snooze/dismiss, desktop notifications and sound via addon `WS/Notifications`; `alerts/ActivityWatcher.mjs`: logout on inactivity) |
@@ -48,10 +48,10 @@ Status: **neo** = neo.mjs 13.4 ships it, usable as is (maybe GO styling);
 | DateField, DateTimeField, DateRangeField, DurationField | form/field/Date (native input + picker) | GO.neo (`GO.form.field.*`; DateRangeField: custom range/from/until in a dialog instead of picker submenus) |
 | HtmlField (rich text) | – | GO.neo (`HtmlField`, main-thread addon; `HtmlFieldMentionPlugin`: "@name" suggestions at the caret, owned by the addon, provider in the worker) |
 | MarkdownField | – | GO.neo (`MarkdownField`: textarea + main-thread addon `MarkdownEditor`, toolbar, preview, image paste / drop / upload; `src/Markdown.mjs` renders with `marked` + `Format.sanitizeHtml()`; no EasyMDE/CodeMirror) |
-| ChipsField, AutocompleteChips, AutocompleteField | form/field/Chip (basic) | ChipsField: GO.neo (`GO.form.field.ChipsField`, async textInputToValue/chipRenderer); AutocompleteChips: GO.neo (`GO.form.field.AutocompleteChips`, entity ids, ▾ menu; tasks categories); AutocompleteField: missing; AutocompleteChips `properties` = fetched properties |
-| ArrayField, ContainerField, MapField, ListField | – | ArrayField, ContainerField: GO.neo (`src/form/nestedFields.mjs`); MapField, ListField: missing |
-| CheckboxGroup | – | missing (small) |
-| DatePicker / MonthPicker / WeekPicker | component/DateSelector | neo (month/week: missing) |
+| ChipsField, AutocompleteChips, AutocompleteField | form/field/Chip (basic) | ChipsField: GO.neo (`GO.form.field.ChipsField`, async textInputToValue/chipRenderer); AutocompleteChips: GO.neo (`GO.form.field.AutocompleteChips`, entity ids, ▾ menu; tasks categories); AutocompleteField: GO.neo (`GO.form.field.AutocompleteField`, JMAP entity or `fetch(text)`, `valueProperty`, `valueToText`); AutocompleteChips `properties` = fetched properties |
+| ArrayField, ContainerField, MapField, ListField | – | ArrayField, ContainerField: GO.neo (`src/form/nestedFields.mjs`); MapField: GO.neo (`GO.form.field.MapField`, object keyed by id, `keyFieldName` / `valueFieldName`); ListField: GO.neo (`GO.form.field.ListField`, `renderValue` HTML, records of a `store`) |
+| CheckboxGroup | – | GO.neo (`GO.form.field.CheckboxGroup`: legend + toggle-button checkboxes, one field per option) |
+| DatePicker / MonthPicker / WeekPicker | component/DateSelector | neo; MonthPicker, WeekPicker: GO.neo (`GO.component.MonthPicker` / `WeekPicker`, ISO weeks, `select` {date}) |
 
 ## GO core (GOUI `groupoffice-core`)
 
@@ -71,7 +71,7 @@ Status: **neo** = neo.mjs 13.4 ships it, usable as is (maybe GO styling);
 | customfields/ (FormFieldset, DetailFieldset, Types, admin) | GO.neo (`src/customfields/`) |
 | permissions/SharePanel (ACL) | GO.neo (`permissions/SharePanel.mjs`; `setAclId(aclId, value)` for a legacy ACL without a JMAP entity, e.g. a files folder; `readOnly` without manage permission; the people button of a row opens `groups/GroupMemberDialog.mjs` with all members, ExtJS `go.groups.GroupMemberWindow`) |
 | prompt() (one line of text) | GO.neo (`view/TextPrompt.mjs`: `TextPrompt.ask({title, label, value, select: 'all'\|'name', validator})`, `null` when cancelled) |
-| Drag and drop (native) | GO.neo (`component/dragDrop.mjs` `enableDragDrop(component, {drag, drop, group, files, onDrop})` + addon `WS/DragDrop`: rows and tree nodes onto drop targets of the same group, desktop files; the worker gets a `goDrop` DOM event) |
+| Drag and drop (native) | GO.neo (`component/dragDrop.mjs` `enableDragDrop(component, {drag, drop, group, files, position, horizontal, onHover, onDrop})` + addon `WS/DragDrop`: rows and tree nodes onto, before or after drop targets of the same group, desktop files; the worker gets a `goDrop` DOM event with `position`, `goDragHover` after a second on a target) |
 | RecurrenceField, RecurrencePicker | GO.neo (`GO.form.field.RecurrenceField`: presets menu + "Customize" dialog) |
 | Image (blob images, zoom) | GO.neo (`view/ImageWindow.mjs`: `enableImageZoom()` + addon `WS/ImageZoom`, `ImageWindow.show()`; images load by URL with the session cookie, no `getBlobURL()` needed) |
 | HtmlFieldMentionPlugin | GO.neo (`form/field/HtmlFieldMentionPlugin.mjs`, a neo plugin on `HtmlField`; default provider: users, inserts `@username`; `CommentsPanel` uses it, the server alerts mentioned users who can read the item; demo `#dev/form/HtmlField`) |
@@ -119,8 +119,8 @@ Bookmarks has no grid and no `Bookmark/export`, so neither applies there.
    ~~**Create link while creating**~~ — done: `CreateLinkButton` in FormWindow (notes, tasks, contacts, calendar events).
 3. ~~**Upload with progress**~~ — done: `jmap/Uploader.mjs` + `UploadPanel` (progress, abort, size limit).
 4. ~~**HtmlField mentions** and **RecipientPicker**~~ — done: `HtmlFieldMentionPlugin` (comments), `RecipientsField` + `RecipientPicker` (used by the e-mail composer).
-5. **Drag and drop** — rows and tree nodes onto targets and desktop files: done (`enableDragDrop()`, used by the files module and `FilesPanel`); sortable lists still missing.
-6. Small fields: AutocompleteField, MapField, ListField, CheckboxGroup, ColorMenu, Month/WeekPicker.
+5. ~~**Drag and drop**~~ — done: `enableDragDrop()` (files, e-mail, address book, tasks, notes onto note books), sortable lists (`position: 'between'`, `dropIndex()`, module sorting), `GO.tree.Tree` node drag and drop.
+6. ~~Small fields~~ — done: AutocompleteField, MapField, ListField, CheckboxGroup, ColorMenu, Month/WeekPicker (Dev demos).
 7. Chart, EntityTypeTable. ~~Alerts/notifications, reminders, session activity watcher, start page~~ — done: `src/alerts/`, module `alerts` renderers (calendar invitations, tasks), `modules/summary/views/neo` (the files portlet waits for that module; e-mail has `portlet-email`).
 8. ~~**E-mail client**~~ — done: `www/modules/email/views/neo` + sieve, smime, emailfavorites, core `src/Mail.mjs`. Files ↔ e-mail (Email files, Email download link, Save to personal folder) done too; see `docs/neo-email-module.md` → Status.
 
@@ -143,3 +143,14 @@ Bookmarks has no grid and no `Bookmark/export`, so neither applies there.
 - A neo `ComboBox` is 150px wide by default; give it `width: null` to stretch in a vbox.
 - `PrincipalCombo`'s value is the list record (`id`, `name`), without `email`: fetch the
   Principal when you need the address (calendar `EventDetail.onOrganizerChange()`).
+
+## Gotchas from drag and drop and the small fields (2026-11-19)
+
+- neo's `List` has a `draggable_` config that turns on its own pointer DragZone: a subclass
+  config of the same name (GOUI Tree `draggable`) breaks native drag and drop. `GO.tree.Tree`
+  calls it `dragNodes`.
+- neo lists (menus too) fire `select` for their selection: a list subclass needs another name
+  for its own event (`GO.menu.ColorMenu` fires `colorSelect`).
+- `{...record}` of a neo Record is empty: the fields are getters. Copy them by name.
+- Headless Playwright drives native drag and drop with `dragTo()`, but with `mouse.move()` the
+  last move often sends no `dragover`: move once more before `mouse.up()`.
