@@ -294,10 +294,17 @@ class EventDialog extends FormWindow {
         // pasted (copy / cut): a change, not loaded values
         const pasted = {};
 
+        let pastedAllDay = null;
+
         if (item.pasteValues) {
-            const {start, end, calendarId} = item.pasteValues;
-            pasted.start      = allDay ? ymd(start) : ymdhis(start);
-            pasted.end        = allDay ? ymd(addDays(end, -1)) : ymdhis(end);
+            const {start, end, calendarId, showWithoutTime} = item.pasteValues,
+                  pasteAllDay = showWithoutTime ?? allDay;
+
+            // pasted on the all day row or a time slot of the week view
+            pasteAllDay !== allDay && (pastedAllDay = pasteAllDay);
+
+            pasted.start      = pasteAllDay ? ymd(start) : ymdhis(start);
+            pasted.end        = pasteAllDay ? ymd(addDays(end, -1)) : ymdhis(end);
             pasted.calendarId = String(calendarId);
             delete item.pasteValues
         }
@@ -309,6 +316,11 @@ class EventDialog extends FormWindow {
             if (item.key && !item.isNew()) {
                 Object.entries(values).forEach(([path, value]) => form.setOriginalValue(path, value))
             }
+        }
+
+        if (pastedAllDay !== null) {
+            await form.setValues({showWithoutTime: pastedAllDay});
+            me.onAllDayChange()
         }
 
         Object.keys(pasted).length && await form.setValues(pasted);
@@ -450,6 +462,9 @@ class EventDialog extends FormWindow {
             end    = me.getReference('endField').getValueAsDate(),
             orig   = me.form.originalValues?.participants || {};
 
+        // a newer check (other time or participants) wins over a slower older answer
+        const generation = me.availabilityGeneration = (me.availabilityGeneration || 0) + 1;
+
         if (!start || !end) {
             return
         }
@@ -457,6 +472,7 @@ class EventDialog extends FormWindow {
         const ids = Object.keys(field.participants).filter(id => !(id in orig) && (id.startsWith('Calendar:') || !isNaN(+id)));
 
         if (!ids.length) {
+            Object.keys(field.busy).length && field.setBusy({});
             return
         }
 
@@ -473,7 +489,7 @@ class EventDialog extends FormWindow {
             }
         }));
 
-        me.isDestroyed || field.setBusy(busy)
+        me.isDestroyed || generation !== me.availabilityGeneration || field.setBusy(busy)
     }
 
     async addOnlineMeeting(service) {

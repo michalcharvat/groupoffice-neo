@@ -135,3 +135,11 @@ Bookmarks has no grid and no `Bookmark/export`, so neither applies there.
 - `EntityListPanel` takes a `jmapFilter` for its query (davclient: own accounts only).
 - `client.user.confirmOnMove` is loaded (`USER_PROPERTIES`); moves of contacts and files ask
   only when it is set.
+- Rich hover info: a `Neo.tooltip.Base` with `componentId` and a string `delegate` such as
+  `'[data-uid]'`, its `html` set in `targetOver` (calendar `CalendarView.createTooltip()`).
+  Don't keep it in a property called `tooltip`: that is a reactive Component config and
+  assigning to it recurses until the stack overflows. A function `delegate` must return
+  `undefined` for no match; `null` crashes `DomEvent.verifyDelegationPath()`.
+- A neo `ComboBox` is 150px wide by default; give it `width: null` to stretch in a vbox.
+- `PrincipalCombo`'s value is the list record (`id`, `name`), without `email`: fetch the
+  Principal when you need the address (calendar `EventDetail.onOrganizerChange()`).

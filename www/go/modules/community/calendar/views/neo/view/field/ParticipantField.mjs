@@ -11,7 +11,8 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /**
  * Participants of an event (GOUI ParticipantField): the list with their status and a
  * menu (optional, remove, write e-mail), an input that suggests users, contacts and
- * resources (Principal) and takes a typed e-mail address on Enter.
+ * resources (Principal) and takes a typed e-mail address on Enter, and "Add attendees"
+ * that picks users and contacts in GO.view.RecipientPicker.
  *
  * Value: CalendarEvent.participants, {principalId|email: Participant}.
  *
@@ -32,7 +33,68 @@ class ParticipantField extends SuggestField {
     construct(config) {
         config.placeholder ??= t('Invite people') + ' / ' + t('Resource request');
         super.construct(config);
-        this.addDomListeners({click: this.onRowMenuClick, delegate: '.go-cal-participant-menu', scope: this})
+        this.addDomListeners([
+            {click: this.onRowMenuClick, delegate: '.go-cal-participant-menu', scope: this},
+            {click: this.openPicker,     delegate: '.go-cal-participant-add',  scope: this}
+        ])
+    }
+
+    createControl() {
+        let me    = this,
+            items = super.createControl();
+
+        if (!me.readOnly && !me.disabled) {
+            const label = t('Add attendees'),
+                  index = items.findIndex(node => node.id === me.inputId);
+
+            items.splice(index + 1, 0, {
+                tag         : 'button',
+                type        : 'button',
+                id          : me.id + '__add',
+                cls         : ['go-field-tool', 'go-cal-participant-add'],
+                title       : label,
+                'aria-label': label,
+                cn          : [{tag: 'i', cls: ['go-icon'], 'aria-hidden': 'true', text: 'person_add'}]
+            })
+        }
+
+        return items
+    }
+
+    /**
+     * "Add attendees": users and contacts with an e-mail address (GOUI RecipientPicker)
+     */
+    async openPicker() {
+        let me = this;
+
+        me.closeSuggestions();
+
+        const {default: RecipientPicker} = await import('../../../../../../../../views/neo/src/view/RecipientPicker.mjs');
+
+        if (me.isDestroyed) {
+            return
+        }
+
+        Neo.create(RecipientPicker, {
+            appName  : me.appName,
+            windowId : me.windowId,
+            listeners: {
+                select: ({recipients}) => me.isDestroyed || me.addRecipients(recipients)
+            }
+        })
+    }
+
+    /**
+     * @param {Object[]} recipients RecipientPicker: {entity, id, name, email}
+     */
+    addRecipients(recipients) {
+        recipients.filter(r => r.email).forEach(r => this.addParticipant({
+            // Principal ids: a user's id, "Contact:<id>" for a contact
+            id   : r.entity === 'Contact' ? 'Contact:' + r.id : String(r.id),
+            name : r.name,
+            email: r.email,
+            type : 'individual'
+        }))
     }
 
     beforeSetValue(value) {
@@ -152,7 +214,12 @@ class ParticipantField extends SuggestField {
 
         me.fire('beforeAdd', {principal, empty: !Object.keys(me.participants).length});
 
-        if (String(principal.id) === me.organizerId || me.participants[principal.id]) {
+        // a person invited already under another id (a contact and the user); resources
+        // carry their owner's address
+        const email = principal.type !== 'resource' && principal.email?.toLowerCase();
+
+        if (String(principal.id) === me.organizerId || me.participants[principal.id] ||
+            (email && Object.values(me.participants).some(p => p.kind !== 'resource' && p.email?.toLowerCase() === email))) {
             return
         }
 
@@ -203,8 +270,24 @@ class ParticipantField extends SuggestField {
      * @param {Object} busy id → true
      */
     setBusy(busy) {
-        this.busy = busy;
-        this.renderControl()
+        let me = this;
+
+        me.busy = busy;
+        me.renderControl();
+        // a booked resource blocks saving (GOUI checkAvailability())
+        me.validate(!me.bookedResource)
+    }
+
+    /**
+     * A resource in the list that is booked in the period
+     * @returns {Boolean}
+     */
+    get bookedResource() {
+        return Object.keys(this.participants).some(id => id.startsWith('Calendar:') && this.busy[id])
+    }
+
+    getError() {
+        return super.getError() || (this.bookedResource ? t('Resource already booked') : null)
     }
 }
 
