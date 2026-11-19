@@ -2308,4 +2308,6 @@ Pokud jste o nové heslo nežádali, tento e-mail prosím smažte.',
   'There are no fields to edit' => 'Nejsou žádná pole k úpravě',
   'Check the fields to change first' => 'Nejprve zaškrtněte pole, která chcete změnit',
   '{count} items were not saved' => '{count} položek nebylo uloženo',
+  'Enable desktop notifications' => 'Povolit oznámení na ploše',
+  'No notifications' => 'Žádná oznámení',
 );

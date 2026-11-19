@@ -462,4 +462,6 @@ If you did not request a new password please delete this mail.',
   'Browse files' => 'Browse files',
   '\'{file}\' exists already and was not replaced.' => '\'{file}\' exists already and was not replaced.',
   '{name} at {date}' => '{name} at {date}',
+  'Enable desktop notifications' => 'Enable desktop notifications',
+  'No notifications' => 'No notifications',
 );

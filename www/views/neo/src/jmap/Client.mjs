@@ -13,7 +13,7 @@ import {t}          from '../Translate.mjs';
 
 /** User properties the shell keeps in client.user */
 export const USER_PROPERTIES = ['id', 'username', 'displayName', 'avatarId', 'dateFormat', 'timeFormat', 'language',
-    'start_module', 'theme', 'themeColorScheme', 'isAdmin'];
+    'start_module', 'theme', 'themeColorScheme', 'isAdmin', 'mute_sound', 'mute_reminder_sound'];
 
 class Client {
     /** Web root of Group Office, e.g. "/" */

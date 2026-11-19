@@ -1,0 +1,138 @@
+// GO.alerts.NotificationPanel: go.Notifier's notification area (east slide-out, .notifications)
+.neo-theme-go {
+    .go-notification-panel {
+        background-color: var(--bg-low);
+        border-left     : 1px solid var(--fg-line);
+        bottom          : 0;
+        box-shadow      : -4px 0 12px rgba(0, 0, 0, .16);
+        max-width       : 100%;
+        position        : absolute;
+        right           : 0;
+        top             : 6.4rem;
+        width           : 40rem;
+        z-index         : 19;
+    }
+
+    .go-notification-panel-header {
+        border-bottom: 1px solid var(--fg-line);
+        gap          : .4rem;
+        padding      : .8rem .8rem .8rem 1.6rem;
+    }
+
+    .go-notification-panel-title {
+        color      : var(--fg-text);
+        font-size  : 1.6rem;
+        font-weight: bold;
+    }
+
+    .go-notification-list {
+        gap       : .8rem;
+        overflow-y: auto;
+        padding   : .8rem;
+    }
+
+    .go-notification {
+        background-color: var(--bg-lowest);
+        border          : 1px solid var(--fg-line);
+        border-radius   : .8rem;
+        flex            : none;
+        padding         : 1.2rem 1.2rem .8rem;
+
+        &.go-notification-link .go-notification-head,
+        &.go-notification-link .go-notification-body {
+            cursor: pointer;
+        }
+
+        &.go-notification-link:hover {
+            background-color: var(--bg-hover);
+        }
+    }
+
+    .go-notification-head {
+        align-items: center;
+        display    : flex;
+        gap        : .8rem;
+    }
+
+    .go-notification-icon {
+        color: var(--c-primary);
+    }
+
+    .go-notification-title {
+        color        : var(--fg-text);
+        flex         : 1;
+        font-weight  : bold;
+        min-width    : 0;
+        overflow     : hidden;
+        text-overflow: ellipsis;
+        white-space  : nowrap;
+    }
+
+    .go-notification-time {
+        color      : var(--fg-secondary-text);
+        font-size  : 1.2rem;
+        white-space: nowrap;
+    }
+
+    .go-notification-close {
+        color : var(--fg-secondary-text);
+        cursor: pointer;
+
+        &:hover {
+            color: var(--fg-main);
+        }
+    }
+
+    .go-notification-body {
+        color      : var(--fg-text);
+        padding    : .4rem 0 .4rem 3.2rem;
+        word-break : break-word;
+    }
+
+    .go-notification-progress {
+        align-items: center;
+        display    : flex;
+        gap        : .8rem;
+        padding    : .4rem 0 .4rem 3.2rem;
+
+        progress {
+            flex: 1;
+        }
+
+        span {
+            color    : var(--fg-secondary-text);
+            font-size: 1.2rem;
+        }
+    }
+
+    .go-notification-buttons {
+        flex-wrap: wrap;
+        gap      : .4rem;
+    }
+
+    // the count on the bell in the top bar
+    .go-topbar .go-notification-button .neo-button-text {
+        background-color: var(--c-accent, #e53935);
+        border-radius   : .9rem;
+        color           : #fff;
+        font-size       : 1.1rem;
+        line-height     : 1.8rem;
+        margin-left     : -.8rem;
+        min-width       : 1.8rem;
+        padding         : 0 .4rem;
+        text-align      : center;
+    }
+
+    .go-topbar .go-notification-button.go-unseen .go-icon {
+        animation: go-notification-ring 1s ease-in-out 3;
+        color    : #fff;
+    }
+
+    @keyframes go-notification-ring {
+        0%, 100% { transform: rotate(0); }
+        20%      { transform: rotate(18deg); }
+        40%      { transform: rotate(-16deg); }
+        60%      { transform: rotate(10deg); }
+        80%      { transform: rotate(-6deg); }
+    }
+}

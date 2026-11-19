@@ -2241,4 +2241,6 @@ Als u niet om een nieuw wachtwoord heeft gevraagd verwijder dan deze e-mail.',
   'There are no fields to edit' => 'Er zijn geen velden om te bewerken',
   'Check the fields to change first' => 'Vink eerst de velden aan die u wilt wijzigen',
   '{count} items were not saved' => '{count} items zijn niet opgeslagen',
+  'Enable desktop notifications' => 'Bureaubladmeldingen inschakelen',
+  'No notifications' => 'Geen notificaties',
 );

@@ -1,5 +1,6 @@
 import BaseViewport from '../../../node_modules/neo.mjs/src/container/Viewport.mjs';
 import {adopt}      from '../../../src/Popup.mjs';
+import activityWatcher from '../../../src/alerts/ActivityWatcher.mjs';
 import {t} from '../../../src/Translate.mjs';
 
 /**
@@ -34,6 +35,9 @@ class PopupView extends BaseViewport {
 
         me.entry = adopt(me.popupId, me);
 
+        // typing in a popped out dialog is activity too (go.ActivityWatcher.registerDocument())
+        activityWatcher.register(me.windowId);
+
         // reloaded popup: the component went back to the opener with the old window
         me.entry || me.add({
             ntype: 'component',
@@ -51,6 +55,7 @@ class PopupView extends BaseViewport {
 
         this.entry = null;
         entry?.onClose(this);
+        activityWatcher.unregister(this.windowId);
 
         super.destroy(...args)
     }

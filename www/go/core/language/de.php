@@ -2340,4 +2340,6 @@ Sollten Sie kein neues Kennwort angefordert haben, können Sie diese Nachricht e
   'There are no fields to edit' => 'Es gibt keine Felder zum Bearbeiten',
   'Check the fields to change first' => 'Markieren Sie zuerst die Felder, die Sie ändern möchten',
   '{count} items were not saved' => '{count} Elemente wurden nicht gespeichert',
+  'Enable desktop notifications' => 'Desktop-Benachrichtigungen aktivieren',
+  'No notifications' => 'Keine Benachrichtigungen',
 );

@@ -4,7 +4,7 @@ import client from '../jmap/Client.mjs';
  * Entity/export and Entity/import run after the response (PostResponseProcessor) and
  * report through a core Alert of the user: "Exporting" with progress, then "Export
  * finished" whose body links the blob (AbstractConverter notifyStart/notifyEnd). The
- * ExtJS client shows them as notifications; neo has none yet, so the caller waits:
+ * notification area shows them (src/alerts/Alerts.mjs); the caller also waits for it:
  *
  *     const alert  = await runBackgroundJob(() => client.call('Contact/export', {extension: 'csv', ids, background: true}));
  *     const blobId = alertBlobId(alert); // the export file, null for an "Export error"
