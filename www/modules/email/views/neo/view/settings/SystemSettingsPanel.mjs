@@ -1,10 +1,12 @@
 import Container from '../../../../../../views/neo/node_modules/neo.mjs/src/container/Base.mjs';
-import {t}       from '../../util.mjs';
+import {t} from '../../util.mjs';
+import TemplatesGrid from '../template/TemplatesGrid.mjs';
 
 /**
- * E-mail card of System settings (ExtJS GO.email.SystemSettingsPanel).
- *
- * STUB of card 1: card 5 (settings) replaces this file and keeps the class name.
+ * E-mail card of System settings (ExtJS GO.email.SystemSettingsPanel), shown to
+ * administrators and managers of the e-mail module: the e-mail templates and their groups.
+ * The ExtJS panel only held a templates grid (and was not loaded); the server wide e-mail
+ * options are config.php settings (email_enable_labels, email_disable_aliases, …) without UI.
  */
 class SystemSettingsPanel extends Container {
     static config = {
@@ -13,8 +15,13 @@ class SystemSettingsPanel extends Container {
         layout   : {ntype: 'vbox', align: 'stretch'},
         items    : [{
             ntype: 'component',
-            cls  : ['go-email-stub'],
-            text : t('These settings are not available yet')
+            tag  : 'h3',
+            cls  : ['go-fieldset-legend'],
+            flex : 'none',
+            text : t('E-mail templates')
+        }, {
+            module: TemplatesGrid,
+            flex  : 1
         }]
     }
 }
