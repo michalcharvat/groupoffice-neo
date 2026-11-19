@@ -7,6 +7,7 @@ import HtmlField     from '../form/field/HtmlField.mjs';
 import JmapComboBox  from '../form/field/JmapComboBox.mjs';
 import PrincipalCombo from '../form/field/PrincipalCombo.mjs';
 import TextList      from '../list/TextList.mjs';
+import AutocompleteChips from '../form/field/AutocompleteChips.mjs';
 import AttachmentsField from '../form/field/AttachmentsField.mjs';
 import client        from '../jmap/Client.mjs';
 import {decodeEntities, escapeHtml, formatDate, formatUserDateTime, sanitizeHtml, userFormat} from '../Format.mjs';
@@ -111,6 +112,46 @@ async function entityName(entity, id, property = 'name') {
     } catch (e) {
         return null
     }
+}
+
+/**
+ * Contact filter of a Contact / MultiContact field (options isOrganization, addressBookId)
+ * @param {Object} field
+ * @returns {Object}
+ */
+function contactFilter(field) {
+    const filter = {};
+
+    field.options?.isOrganization !== undefined && field.options.isOrganization !== null && (filter.isOrganization = !!field.options.isOrganization);
+    field.options?.addressBookId?.length && (filter.addressBookId = field.options.addressBookId);
+
+    return filter
+}
+
+/**
+ * Detail HTML of a MultiContact field (ExtJS customfield/MultiContact.js renderDetailView()):
+ * the contacts as links, in the order of the value
+ * @param {Number[]} ids
+ * @returns {Promise<String|null>}
+ */
+async function contactLinksHtml(ids) {
+    if (!Array.isArray(ids) || !ids.length || !client.hasCapability('go:community:addressbook')) {
+        return null
+    }
+
+    let records;
+
+    try {
+        records = await client.get('Contact', ids.map(String), ['id', 'name', 'addressBookId'])
+    } catch (e) {
+        return escapeHtml(t('Not found or no access'))
+    }
+
+    const byId  = new Map(records.map(r => [String(r.id), r])),
+          links = ids.map(id => byId.get(String(id))).filter(Boolean)
+              .map(r => `<a href="#addressbook/contact/${encodeURIComponent(r.id)}">${escapeHtml(r.name || '#' + r.id)}</a>`);
+
+    return links.length ? links.join(', ') : escapeHtml(t('Not found or no access'))
 }
 
 const text = v => v === null || v === undefined || v === '' ? null : escapeHtml(String(v));
@@ -304,24 +345,36 @@ const TYPES = {
                 return null
             }
 
-            const filter = {};
-
-            f.options?.isOrganization !== undefined && (filter.isOrganization = !!f.options.isOrganization);
-            f.options?.addressBookId?.length && (filter.addressBookId = f.options.addressBookId);
-
             return {
                 ...baseConfig(f),
                 module      : JmapComboBox,
                 entity      : 'Contact',
                 displayField: 'name',
                 properties  : ['id', 'name'],
-                jmapFilter  : filter,
+                jmapFilter  : contactFilter(f),
                 jmapSort    : [{property: 'name', isAscending: true}]
             }
         },
         readOnly  : true,
         detailHtml: async (f, v) => text(await entityName('Contact', v)),
         nameEntity: 'Contact'
+    },
+    MultiContact: {
+        // ExtJS customfield/MultiContact.js: chips of contacts, saved as a list of ids
+        formField: f => client.hasCapability('go:community:addressbook') ? {
+            ...baseConfig(f),
+            module     : AutocompleteChips,
+            entity     : 'Contact',
+            // an AclItemEntity: Contact/get needs addressBookId among the properties
+            properties : ['id', 'name', 'addressBookId'],
+            jmapFilter : contactFilter(f),
+            jmapSort   : [{property: 'name', isAscending: true}]
+        } : null,
+        readOnly  : true,
+        detailHtml: (f, v) => contactLinksHtml(v),
+        nameEntity: 'Contact',
+        // a list of ids, the server cannot sort it
+        column    : {sortable: false}
     },
     Html: {
         formField : f => ({...baseConfig(f), module: HtmlField, height: 200}),
@@ -403,8 +456,9 @@ export function cellHtml(field, value, names) {
     const type = getType(field);
 
     if (type.nameEntity) {
-        const empty = value === null || value === undefined || value === '';
-        return empty ? '' : text(names?.get(type.nameEntity + ':' + value)) ?? ''
+        // MultiContact: a list of ids
+        const ids = (Array.isArray(value) ? value : [value]).filter(id => id !== null && id !== undefined && id !== '');
+        return ids.map(id => names?.get(type.nameEntity + ':' + id)).filter(Boolean).map(name => text(name)).join(', ')
     }
 
     const html = (type.cellHtml || type.detailHtml)(field, value);
