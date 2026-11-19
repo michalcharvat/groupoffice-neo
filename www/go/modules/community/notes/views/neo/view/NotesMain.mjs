@@ -43,8 +43,13 @@ const NOTE_FILTERS = [
     {name: 'content',     type: 'string', multiple: true,  title: t('Content')},
     {name: 'commentedat', type: 'date',   multiple: false, title: t('Commented at')},
     {name: 'modifiedat',  type: 'date',   multiple: false, title: t('Modified at')},
-    {name: 'createdat',   type: 'date',   multiple: false, title: t('Created at')}
+    {name: 'createdat',   type: 'date',   multiple: false, title: t('Created at')},
+    {name: 'modifiedBy',  type: 'string', multiple: true,  title: t('Modified by')},
+    {name: 'createdby',   type: 'string', multiple: true,  title: t('Created by')}
 ];
+
+/** module right (Module.php rights()): delete notebooks */
+const mayChangeNoteBooks = () => !!client.session?.capabilities?.['go:community:notes']?.mayChangeNoteBooks;
 
 /**
  * Notes main panel: notebooks | notes grid | note detail, laid out like the GOUI notes
@@ -292,6 +297,14 @@ class NotesMain extends MainThreeColumnPanel {
 
         grid.view.selectionModel.on('selectionChange', me.onNoteSelectionChange, me);
         me.getReference('multiSelectToolbar').setGrid(grid);
+        // GOUI NoteGrid "delete": the Delete key deletes the selected notes
+        grid.on('deleteKey', ({records}) => {
+            if (records.length > 1) {
+                me.onDeleteSelected()
+            } else if (records[0].permissionLevel >= LEVEL_DELETE) {
+                me.deleteNote(records[0])
+            }
+        });
         // GO.grid.RowSelectionModel keeps a clicked row selected (no selectionChange): tapping
         // the open note again (a phone after "close") must show it
         grid.on('rowClick', event => {
@@ -509,7 +522,8 @@ class NotesMain extends MainThreeColumnPanel {
         }, {
             text    : t('Delete'),
             icon    : 'delete',
-            disabled: !manage,
+            // GOUI Main: also the module right
+            disabled: !manage || !mayChangeNoteBooks(),
             handler : () => this.deleteNoteBook(record)
         }]
     }
@@ -755,12 +769,26 @@ class NotesMain extends MainThreeColumnPanel {
         }
     }
 
+    /**
+     * GOUI Main "Import": CSV, XLSX or JSON (go.util.importFile)
+     */
+    async openImport() {
+        const {default: ImportFileDialog} = await import('../../../../../../../views/neo/src/import/ImportFileDialog.mjs');
+
+        Neo.create(ImportFileDialog, {
+            appName : this.appName,
+            windowId: this.windowId,
+            entity  : 'Note',
+            accept  : '.csv,.json,.xlsx'
+        })
+    }
+
     showError(error) {
         notifyError(this, error)
     }
 
     /**
-     * ⋮ of the grid toolbar: export what the grid shows (GOUI Main "Export" menu)
+     * ⋮ of the grid toolbar: import, export what the grid shows (GOUI Main more menu)
      */
     showMoreMenu() {
         let me = this;
@@ -769,7 +797,11 @@ class NotesMain extends MainThreeColumnPanel {
             appName : me.appName,
             windowId: me.windowId,
             target  : me.getReference('moreButton').id,
-            items   : [me.exportMenuItem({entity: 'Note', store: me.getReference('grid').store, formats: ['xlsx', 'csv', 'html', 'json']})]
+            items   : [{
+                text   : t('Import'),
+                icon   : 'cloud_upload',
+                handler: () => me.openImport()
+            }, me.exportMenuItem({entity: 'Note', store: me.getReference('grid').store, formats: ['xlsx', 'csv', 'html', 'json']})]
         })
     }
 }

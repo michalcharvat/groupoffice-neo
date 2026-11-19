@@ -154,7 +154,7 @@ class NoteDetail extends Container {
         }
 
         const html = note.password
-            ? '<p class="go-empty"><i class="go-icon">lock</i> This note is encrypted. Open it in the classic UI to decrypt.</p>'
+            ? `<p class="go-empty"><i class="go-icon">lock</i> ${escapeHtml(t('This note is encrypted. Open it in the classic UI to decrypt.'))}</p>`
             : contentToHtml(note.content, note.type);
 
         body.html = `

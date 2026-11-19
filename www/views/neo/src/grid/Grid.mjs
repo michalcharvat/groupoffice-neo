@@ -30,6 +30,9 @@ import {t}           from '../Translate.mjs';
  * click on any header adds sorting (GO 6.8 header menu). showColumnMenu(targetId) from a button. neo's grid cannot hide a column, so the grid keeps the full list and
  * renders the visible ones. With a `stateId`, hidden columns and widths are stored like
  * GOUI's Table state: "state-<stateId>" → {columns: {<stateKey>: {hidden, width (dp)}}}.
+ *
+ * Keyboard (ExtJS GridTrait, GOUI Table "delete"): with selected rows, Delete or ctrl/⌘+Backspace
+ * fires `deleteKey` and Enter fires `enterKey`, both {records}; the module decides what they do.
  */
 class Grid extends GridContainer {
     static config = {
@@ -220,12 +223,32 @@ class Grid extends GridContainer {
 
         me.headerToolbar?.addCls('go-grid-header');
         me.headerToolbar?.addDomListeners({contextmenu: me.onHeaderContextMenu, scope: me});
+        me.addDomListeners({keydown: me.onGridKeyDown, scope: me});
 
         me.decorateHeader();
 
         me.measureRowHeight();
 
         me.stateId && await me.restoreColumnState()
+    }
+
+    /**
+     * Delete / ctrl+Backspace → `deleteKey`, Enter → `enterKey` (not while typing in a field)
+     * @param {Object} data neo DOM event
+     * @protected
+     */
+    onGridKeyDown(data) {
+        const tag = data.target?.tagName;
+
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+            return
+        }
+
+        const isDelete = data.key === 'Delete' || (data.key === 'Backspace' && (data.ctrlKey || data.metaKey)),
+              name     = isDelete ? 'deleteKey' : (data.key === 'Enter' ? 'enterKey' : null),
+              records  = name ? this.getSelectedRecords() : [];
+
+        records.length && this.fire(name, {records})
     }
 
     /**
