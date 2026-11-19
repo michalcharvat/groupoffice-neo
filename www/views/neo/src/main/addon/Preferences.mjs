@@ -10,6 +10,7 @@ const SCHEMES = ['light', 'dark', 'system'];
  * - clearState(): removes the GOUI-compatible component state ("state-*" in
  *   localStorage), the "Reset windows and grids" button of Look & feel
  * - setBodyStyle(): CSS variables on <body>, the colour preview of System settings → Appearance
+ * - rootFontSize(): px of one rem = dp(10), the density of the theme and the device
  *
  * Neo.php sets the classes of a logged-in user's page already and lets "system"
  * follow the OS; this addon changes them without a reload. Loaded per window:
@@ -24,6 +25,7 @@ class Preferences extends Base {
             app: [
                 'applyTheme',
                 'clearState',
+                'rootFontSize',
                 'setBodyStyle'
             ]
         }
@@ -42,6 +44,14 @@ class Preferences extends Base {
             document.body.classList.add(colorScheme);
             colorScheme === 'system' ? this.syncSystemScheme() : document.body.classList.toggle('dark', colorScheme === 'dark')
         }
+    }
+
+    /**
+     * html font-size: --density, or --mobile-density on small devices (Global.scss)
+     * @returns {Number} px
+     */
+    rootFontSize() {
+        return parseFloat(getComputedStyle(document.documentElement).fontSize) || 0
     }
 
     /**
