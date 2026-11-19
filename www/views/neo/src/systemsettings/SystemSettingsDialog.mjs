@@ -22,7 +22,8 @@ const CORE_CARDS = () => [
     ['groups',         t('Groups'),          'fa fa-users',        () => import('../groups/GroupsPanel.mjs'), () => client.mayChangeGroups],
     ['customfields',   t('Custom fields'),   'fa fa-database',     () => import('../customfields/admin/CustomFieldsPanel.mjs'), () => client.isAdmin || client.mayChangeCustomFields],
     ['defaultpermissions', t('Default permissions'), 'fa fa-share-nodes', () => import('../defaultpermissions/DefaultPermissionsPanel.mjs'), () => client.isAdmin],
-    ['modules',        t('Modules'),         'fa fa-puzzle-piece', () => import('./ModulesPanel.mjs'),        () => client.isAdmin]
+    ['modules',        t('Modules'),         'fa fa-puzzle-piece', () => import('./ModulesPanel.mjs'),        () => client.isAdmin],
+    ['tools',          t('Tools'),           'fa fa-screwdriver-wrench', () => import('./ToolsPanel.mjs'),    () => client.isAdmin]
 ];
 
 /**

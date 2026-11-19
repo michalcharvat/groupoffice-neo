@@ -179,7 +179,7 @@ Groups, Custom fields, Default permissions, Modules, module cards.
 
 | Area | 26.x feature | 26.x ref | neo | Status |
 |---|---|---|---|---|
-| Tools | System check, database check, rebuild search index, principals, duplicates, file system / search sync, holiday cache | x/systemsettings/Dialog.js:135; x/tools/SystemSettingsTools.js | missing | card "neo-ui: System settings tools tab" |
+| Tools | System check, database check, rebuild search index, principals, duplicates, file system / search sync, holiday cache | x/systemsettings/Dialog.js:135; x/tools/SystemSettingsTools.js | systemsettings/ToolsPanel.mjs | done (holiday cache not ported: needs the legacy calendar module, which 26.x no longer registers, so 26.x never shows it either) |
 | OAuth | OAuth 2.0 clients | x/oauth/SystemSettingsPanel.js | missing | card "neo-ui: System settings OAuth 2.0 clients and cron tabs" |
 | Cron | Task scheduler (grid, dialog with parameters) | x/cron/SystemSettingsCronGrid.js, CronDialog.js | missing | card "neo-ui: System settings OAuth 2.0 clients and cron tabs" |
 | Modules | Trial license dialog | x/modules/SystemSettingsModuleGrid.js:69, x/license/LicenseDialog.js | missing | card "neo-ui: System settings modules license and sort order" |
