@@ -59,6 +59,12 @@ class HtmlField extends Field {
          */
         placeholder_: null,
         /**
+         * Pasted image files (screenshots) are inserted as data: images. Chrome ignores
+         * them otherwise. For the e-mail composer: the server embeds data: images on send.
+         * @member {Boolean} pasteImages=false
+         */
+        pasteImages: false,
+        /**
          * @member {Boolean} readOnly_=false
          */
         readOnly_: false,
@@ -290,6 +296,7 @@ class HtmlField extends Field {
                 id      : me.id,
                 labels  : me.getEditorLabels(),
                 mentions: !!me.mentionPlugin,
+                pasteImages: !!me.pasteImages,
                 token   : generation,
                 value   : sent,
                 windowId
