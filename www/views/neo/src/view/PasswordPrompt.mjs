@@ -47,7 +47,7 @@ class PasswordPrompt extends Dialog {
         }, {
             module   : FormContainer,
             reference: 'form',
-            keys     : {Enter: 'up.onOk'},
+            keys     : {Enter: () => me.onOk()},
             items    : [{
                 module      : PasswordField,
                 name        : 'password',
