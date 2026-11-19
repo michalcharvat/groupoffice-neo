@@ -20,7 +20,7 @@ export default [
     {id: 'component',     text: 'Components',     level: 0, header: true},
     {id: 'buttons',       text: 'Buttons',        level: 1, status: 'neo',  neo: 'GO.button.Button, SearchButton', goui: 'Button.ts'},
     {id: 'cardcontainer', text: 'Card container', level: 1, status: 'neo',  neo: 'neo layout card, tab/Container', goui: 'CardContainer.ts'},
-    {id: 'datepicker',    text: 'DatePicker',     level: 1, status: 'neo',  neo: 'neo component/DateSelector',     goui: 'DatePickerPage.ts'},
+    {id: 'datepicker',    text: 'DatePicker',     level: 1, status: 'done', demo: 'PeriodPickers', neo: 'neo component/DateSelector; GO.component.MonthPicker, WeekPicker', goui: 'DatePickerPage.ts'},
     {id: 'form',          text: 'Form',           level: 1, status: 'neo',  neo: 'GO.form.DataSourceForm',         goui: 'Form.ts'},
 
     {id: 'form/ArrayField',      text: 'ArrayField',         level: 2, status: 'done', demo: 'ArrayField', neo: 'GO.form.field.ArrayField', goui: 'form/ArrayFieldPage.ts'},

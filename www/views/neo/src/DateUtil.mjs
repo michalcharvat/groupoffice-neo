@@ -87,6 +87,21 @@ export function weekStart(date) {
     return addDays(d, -((d.getDay() + 6) % 7))
 }
 
+/**
+ * ISO 8601 week number (PHP date "W"): weeks start on Monday, week 1 holds January 4th
+ * @param {Date} date
+ * @returns {Number}
+ */
+export function weekOfYear(date) {
+    const d   = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())),
+          day = d.getUTCDay() || 7;
+
+    // the Thursday of the week decides its year
+    d.setUTCDate(d.getUTCDate() + 4 - day);
+
+    return Math.ceil(((d - Date.UTC(d.getUTCFullYear(), 0, 1)) / 86400000 + 1) / 7)
+}
+
 /** JMAP / iCalendar weekdays, index = Date#getDay() */
 export const DAY_KEYS = ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa'];
 
