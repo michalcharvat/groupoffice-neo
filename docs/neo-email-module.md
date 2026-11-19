@@ -99,8 +99,16 @@ Other modules (each registers in its own `views/neo/Index.mjs`):
 ## Extension points
 
 All are ModuleRegistry keys a module sets in its own `views/neo/Index.mjs`; `getConfigs()` only
-returns them when the user has that module's capability. A key takes one object or an array.
-Hooks are wrapped in try/catch by the host: a failing plugin logs and does not break the e-mail client.
+returns them when the user has that module's capability. The descriptor keys (`emailTreeSections`,
+`emailMessagePanelPlugins`, `emailComposerPlugins`, `emailAccountDialogCards`, `emailMenuItems`,
+`portlets`) take one object or an array. `showComposer` and `openIcs` are a single function: the host
+calls `getConfigs(key)[0](…)`, so register a function, not an array.
+
+Error handling differs per hook: composer hooks are try/catch guarded, but only synchronous throws
+(a rejected Promise is not caught); `emailMenuItems` and the account dialog's `isAvailable`, `load` and
+`afterSave` log errors; an error in `beforeSave` aborts the account save; the tree section callbacks
+(`nodes`, `onSelect`, `rowMenu`, `folderMenuItems`) are not guarded. Catch your own errors where a
+failure should not break the e-mail client.
 
 | Key | Host | Used by |
 |---|---|---|
@@ -172,7 +180,7 @@ emailMessagePanelPlugins: {
 ```
 
 `message` is the `email/message/view` response; `panel` the `GO.email.message.MessagePanel`
-(`panel.message` = `{accountId, mailbox, uid}`, `panel.load()` reloads it). Users: calendar (`itip`:
+(`panel.message` = `{accountId, mailbox, uid}`, `panel.reload(extra)` reloads it, also an attached message; `load()` needs `{accountId, mailbox, uid}`). Users: calendar (`itip`:
 `view/ItipPanel.mjs` as a part with Accept / Maybe / Decline / Import), smime (password before view,
 `SmimeBar` part with verify and certificate details, decrypt).
 
@@ -217,7 +225,7 @@ Events: `load {response}`, `save {response}`, `send {response}`.
 | `target` | `'properties'` or `'server'`: the items go into that core card instead of a new tab |
 | `replaces` | `'filters'`, `'aliases'`, `'labels'`, `'server'` or `'permissions'`: that core card hides while this card is available (sieve hides the client-side filters) |
 | `items(dialog)` | neo item configs of the card |
-| `isAvailable(account, dialog)` | false (or a Promise of false) hides the card; `account` is `null` for a new account |
+| `isAvailable(account, dialog)` | false (or a Promise of false) hides the card and keeps `replaces` from hiding the core card; `account` is `null` for a new account. It does not hide items placed with `target`, and `beforeSave` / `afterSave` still run: such plugins handle their own visibility and check availability in their save hooks |
 | `load({account, dialog, card})` | after every account load (also after each save) |
 | `beforeSave({params, dialog, card, isNew})` | may add params to `email/account/submit` |
 | `afterSave({accountId, response, isNew, dialog, card})` | errors are logged and don't block the save |
@@ -254,6 +262,8 @@ Left (board backlog cards, parent 20261119-011401-neo-ui-email-module):
   use the parent uid).
 - **HTML layout of mails**: `Format.sanitizeHtml()` strips `style` attributes, HTML mails lose their
   layout; an e-mail specific sanitizer option is open.
+- **Empty folder keeps the previous count**: opening an empty folder after a full one leaves the
+  subtitle at the old folder's count (MessageStore fires no `load` for an empty result on an empty store).
 - **Unknown recipients dialog** (ExtJS UnknownRecipientsDialog: add the recipients of a sent mail to
   the address book): the composer imports `view/message/UnknownRecipientsDialog.mjs` and calls
   `default.show({appName, windowId, recipients})`, but the file does not exist yet, so nothing shows.
