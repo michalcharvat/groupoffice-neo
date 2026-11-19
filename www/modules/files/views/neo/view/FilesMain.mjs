@@ -17,7 +17,7 @@ import TextPrompt   from '../../../../../views/neo/src/view/TextPrompt.mjs';
 import MainThreeColumnPanel from '../../../../../views/neo/src/view/MainThreeColumnPanel.mjs';
 import {fmt, translator} from '../../../../../views/neo/src/Translate.mjs';
 import FolderStore  from '../data/FolderStore.mjs';
-import {decodeEntities, fileIcon, isFolder, isValidName, splitFileName, treeIcon} from '../util.mjs';
+import {decodeEntities, fileIcon, isFolder, isValidName, splitFileName, toTreeNode} from '../util.mjs';
 import FileDetail   from './FileDetail.mjs';
 import OverwriteDialog from './OverwriteDialog.mjs';
 import {downloadUrl, getHandlers, openFile, openUrl, runHandler, submitFile} from '../fileHandlers.mjs';
@@ -25,6 +25,10 @@ import FilePropertiesDialog   from './FilePropertiesDialog.mjs';
 import FolderPropertiesDialog from './FolderPropertiesDialog.mjs';
 import TextList     from '../../../../../views/neo/src/list/TextList.mjs';
 import Store        from '../../../../../views/neo/node_modules/neo.mjs/src/data/Store.mjs';
+import {showComposer} from '../../../../../views/neo/src/Mail.mjs';
+import ModuleRegistry from '../../../../../views/neo/src/ModuleRegistry.mjs';
+import DownloadLinkDialog from './DownloadLinkDialog.mjs';
+import SelectFilesDialog  from './SelectFilesDialog.mjs';
 
 const t = translator('legacy', 'files');
 
@@ -393,28 +397,7 @@ class FilesMain extends MainThreeColumnPanel {
 
         const nodes = await client.legacy('files/folder/tree', params);
 
-        return (Array.isArray(nodes) ? nodes : []).map(n => me.toTreeNode(n))
-    }
-
-    /**
-     * @param {Object} n ExtJS tree node
-     * @returns {Object} GO.tree.Tree node
-     */
-    toTreeNode(n) {
-        const children = Array.isArray(n.children) ? n.children.map(c => this.toTreeNode(c)) : undefined;
-
-        return {
-            id       : String(n.id),
-            text     : decodeEntities(n.text),
-            icon     : treeIcon(n.iconCls),
-            children,
-            expanded : !!n.expanded && !!children?.length,
-            path     : n.path,
-            parentId : n.parent_id,
-            readonly : !!n.readonly,
-            allowDrop: n.allowDrop !== false,
-            draggable: !!n.draggable
-        }
+        return (Array.isArray(nodes) ? nodes : []).map(toTreeNode)
     }
 
     /**
@@ -948,10 +931,126 @@ class FilesMain extends MainThreeColumnPanel {
 
         single && items.push({text: t('Properties'), icon: 'info', handler: () => me.openProperties(single)});
 
+        const email = me.emailItems(records);
+        email.length && items.push({separator: true}, ...email);
+
         items.length && items.push({separator: true});
         items.push(...me.editItems(records));
 
         MenuList.showAt({appName: me.appName, windowId: me.windowId, target, items})
+    }
+
+    /**
+     * "Email files" and "Email download link" (ExtJS ContextMenu share menu) when the user has
+     * the e-mail composer. Trash rows are no files of a folder.
+     * @param {Object[]} records
+     * @returns {Object[]} menu items
+     */
+    emailItems(records) {
+        let me    = this,
+            files = records.filter(r => !isFolder(r));
+
+        if (!records.length || me.folderId === 'trash' || !ModuleRegistry.getConfigs('showComposer').length) {
+            return []
+        }
+
+        return [{
+            text   : t('Email files'),
+            icon   : 'attach_email',
+            handler: () => me.emailFiles(records)
+        }, {
+            // links exist for files only (ExtJS hides it for folders)
+            text    : t('Email download link'),
+            icon    : 'link',
+            disabled: files.length !== records.length,
+            handler : () => me.emailDownloadLink(files)
+        }]
+    }
+
+    /**
+     * Opens the composer with the files attached (ExtJS FileBrowser.emailFiles(),
+     * GO.email.emailFiles()). For a folder the user picks its files first (ExtJS
+     * GO.email.openFolderTree()). The composer sends them as attachments "from file storage":
+     * email/message/send reads them again and checks read permission.
+     * @param {Object[]} records list records
+     * @returns {Promise<void>}
+     */
+    async emailFiles(records) {
+        let me    = this,
+            open  = ModuleRegistry.getConfigs('showComposer')[0],
+            owner = {appName: me.appName, windowId: me.windowId},
+            files = [];
+
+        if (!open) {
+            return
+        }
+
+        for (const record of records) {
+            if (isFolder(record)) {
+                const picked = await SelectFilesDialog.ask({...owner, folderId: record.id});
+
+                if (picked === null || me.isDestroyed) {
+                    return
+                }
+
+                // raw tree paths: email/message/send decodes tmp_file (html_entity_decode)
+                files.push(...picked.map(f => ({...f, path: escapeHtml(f.path)})))
+            } else {
+                // list paths come HTML encoded and are sent as they are, like ExtJS; a search
+                // result's name has the path below the searched folder
+                files.push({name: decodeEntities(record.path || record.name || '').split('/').pop(), path: record.path || '', size: record.size})
+            }
+        }
+
+        if (!files.length) {
+            return
+        }
+
+        try {
+            await open({
+                ...owner,
+                afterLoad: composer => {
+                    const field = composer.getReference('attachmentsField');
+
+                    field.value = [...field.value || [], ...files.map(f => ({
+                        name             : f.name,
+                        tmp_file         : f.path,
+                        size             : f.size,
+                        from_file_storage: true,
+                        attachment       : true
+                    }))]
+                }
+            })
+        } catch (e) {
+            me.showError(e)
+        }
+    }
+
+    /**
+     * Asks when the links expire and opens the composer with them (ExtJS ExpireDateDialog with
+     * emailDownloadLink: files/file/emailDownloadLink, which needs read permission per file)
+     * @param {Object[]} files list records of files
+     * @returns {Promise<void>}
+     */
+    async emailDownloadLink(files) {
+        let me    = this,
+            owner = {appName: me.appName, windowId: me.windowId};
+
+        if (!files.length) {
+            return
+        }
+
+        const link = await DownloadLinkDialog.ask(owner);
+
+        if (!link || me.isDestroyed) {
+            return
+        }
+
+        await showComposer({
+            ...owner,
+            loadUrl   : 'files/file/emailDownloadLink',
+            loadParams: {ids: JSON.stringify(files.map(f => Number(f.id))), ...link}
+        })
     }
 
     /**
