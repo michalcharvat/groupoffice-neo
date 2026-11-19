@@ -1,0 +1,53 @@
+// GO.form.field.CheckboxGroup: legend above checkboxes that look like toggle buttons
+// (GOUI .checkbox-group, checkbox type "button")
+.neo-theme-go .go-checkboxgroup {
+    .go-checkboxgroup-legend {
+        font-size  : 1.4rem;
+        font-weight: 500;
+        margin     : 0 0 .8rem;
+    }
+
+    .go-checkboxgroup-group {
+        gap: .8rem;
+    }
+
+    .go-checkboxgroup-option {
+        .neo-checkbox-input,
+        .neo-checkbox-icon {
+            display: none;
+        }
+
+        .neo-checkbox-label {
+            align-items  : center;
+            border       : 1px solid var(--fg-outline);
+            border-radius: 1.8rem;
+            cursor       : pointer;
+            display      : inline-flex;
+            padding      : .6rem 1.4rem;
+            user-select  : none;
+
+            &:hover {
+                background-color: var(--bg-hover);
+            }
+
+            &:has(.neo-checkbox-input:focus-visible) {
+                outline: .2rem solid var(--c-primary);
+            }
+
+            &:has(.neo-checkbox-input:checked) {
+                background-color: var(--c-primary);
+                border-color    : var(--c-primary);
+                color           : #fff;
+            }
+
+            &:has(.neo-checkbox-input:disabled) {
+                cursor : default;
+                opacity: .5;
+            }
+        }
+
+        .neo-checkbox-value-label {
+            margin: 0;
+        }
+    }
+}
