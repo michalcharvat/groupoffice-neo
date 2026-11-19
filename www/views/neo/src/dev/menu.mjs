@@ -39,6 +39,7 @@ export default [
     {id: 'form/Select',          text: 'Select fields',      level: 2, status: 'done', demo: 'JmapCombo', neo: 'GO.form.field.JmapComboBox, PrincipalCombo, GroupCombo', goui: 'form/SelectPage.ts'},
     {id: 'form/TextField',       text: 'TextField',          level: 2, status: 'neo',  neo: 'neo form/field/Text, TextArea', goui: 'form/TextFieldPage.ts'},
 
+    {id: 'menu/ColorMenu', text: 'ColorMenu', level: 1, status: 'done', demo: 'ColorMenu', neo: 'GO.menu.ColorMenu', goui: 'goui/script/component/menu/ColorMenu.ts'},
     {id: 'descriptionlist', text: 'DescriptionList', level: 1, status: 'done', demo: 'DescriptionList', neo: 'GO.component.DescriptionList', goui: 'DescriptionList.ts'},
     {id: 'list',     text: 'List',     level: 1, status: 'neo',  neo: 'GO.list.TextList, CheckList', goui: 'List.ts'},
     {id: 'panel',    text: 'Panel',    level: 1, status: 'neo',  neo: 'neo container/Panel',         goui: 'Panel.ts'},
