@@ -2250,4 +2250,6 @@ Als u niet om een nieuw wachtwoord heeft gevraagd verwijder dan deze e-mail.',
   'Saved' => 'Opgeslagen',
   'Open in new window' => 'Openen in nieuw venster',
   'Choose a file to import' => 'Kies een bestand om te importeren',
+  'Show options' => 'Opties tonen',
+  'Every key may only be used once' => 'Elke sleutel mag maar één keer worden gebruikt',
 );

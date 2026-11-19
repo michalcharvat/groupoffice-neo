@@ -1,0 +1,28 @@
+// GO.form.field.AutocompleteField: a text input with a ▾ button that lists the suggestions
+.neo-theme-go .go-autocompletefield {
+    .go-field-box {
+        align-items: center;
+        display    : flex;
+    }
+
+    .go-autocomplete-input {
+        flex     : 1 1 auto;
+        min-width: 0;
+    }
+
+    .go-field-trigger {
+        background   : transparent;
+        border       : 0;
+        border-radius: 50%;
+        color        : var(--fg-secondary-text);
+        cursor       : pointer;
+        display      : inline-flex;
+        flex         : none;
+        padding      : .2rem;
+
+        &:hover {
+            background-color: var(--bg-hover);
+            color           : var(--fg-text);
+        }
+    }
+}

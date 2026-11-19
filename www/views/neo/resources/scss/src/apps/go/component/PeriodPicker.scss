@@ -1,0 +1,70 @@
+// GO.component.MonthPicker / WeekPicker (GOUI .monthpicker, .weekpicker): the year with
+// previous / next above a grid of periods
+.neo-theme-go .go-periodpicker {
+    display       : flex;
+    flex-direction: column;
+    gap           : .8rem;
+
+    .go-periodpicker-head {
+        align-items    : center;
+        display        : flex;
+        gap            : .8rem;
+        justify-content: center;
+    }
+
+    .go-periodpicker-year {
+        font-weight: 500;
+        min-width  : 5rem;
+        text-align : center;
+    }
+
+    .go-periodpicker-nav,
+    .go-periodpicker-cell {
+        background   : transparent;
+        border       : 1px solid transparent;
+        border-radius: 1.8rem;
+        color        : var(--fg-text);
+        cursor       : pointer;
+        font         : inherit;
+
+        &:hover {
+            background-color: var(--bg-hover);
+        }
+    }
+
+    .go-periodpicker-nav {
+        display: inline-flex;
+        padding: .4rem;
+    }
+
+    .go-periodpicker-grid {
+        display              : grid;
+        gap                  : .4rem;
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .go-periodpicker-cell {
+        padding    : .6rem .8rem;
+        white-space: nowrap;
+
+        small {
+            color    : var(--fg-secondary-text);
+            font-size: 1.1rem;
+        }
+    }
+
+    .go-periodpicker-current {
+        border-color: var(--c-primary);
+    }
+
+    .go-periodpicker-selected,
+    .go-periodpicker-selected:hover {
+        background-color: var(--c-primary);
+        border-color    : var(--c-primary);
+        color           : #fff;
+
+        small {
+            color: inherit;
+        }
+    }
+}

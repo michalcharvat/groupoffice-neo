@@ -1,0 +1,30 @@
+// GO.menu.ColorMenu: "Auto" over a grid of colour swatches (GOUI .goui-menu-color)
+.neo-theme-go .go-colormenu.neo-menu-list {
+    display              : grid;
+    gap                  : .4rem;
+    grid-template-columns: repeat(5, 2.8rem);
+    padding              : .8rem;
+
+    .neo-list-item {
+        border-radius: .4rem;
+        padding      : .2rem;
+    }
+
+    .neo-list-item:first-child {
+        grid-column: 1 / -1;
+        padding    : .4rem .8rem;
+    }
+
+    .go-colormenu-swatch {
+        border       : 1px solid var(--fg-line);
+        border-radius: .4rem;
+        display      : block;
+        height       : 2.4rem;
+        width        : 2.4rem;
+    }
+
+    .go-colormenu-selected {
+        outline       : .2rem solid var(--c-primary);
+        outline-offset: -.1rem;
+    }
+}
