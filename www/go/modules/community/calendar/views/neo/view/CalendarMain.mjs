@@ -11,6 +11,7 @@ import {fmt, translator} from '../../../../../../../views/neo/src/Translate.mjs'
 import ConfirmDialog from '../../../../../../../views/neo/src/view/ConfirmDialog.mjs';
 import FilterPanel   from '../../../../../../../views/neo/src/view/FilterPanel.mjs';
 import MainThreeColumnPanel from '../../../../../../../views/neo/src/view/MainThreeColumnPanel.mjs';
+import {showComposer} from '../../../../../../../views/neo/src/Mail.mjs';
 import CalendarAdapter from '../CalendarAdapter.mjs';
 import CalendarItem  from '../CalendarItem.mjs';
 import calendarData  from '../data.mjs';
@@ -1280,7 +1281,8 @@ class CalendarMain extends MainThreeColumnPanel {
             mask      : () => {masks++ === 0 && (me.isLoading = t('Saving...'))},
             unmask    : () => {--masks <= 0 && (masks = 0, me.isLoading = false)},
             download  : blobId => me.download(blobId),
-            mailTo    : to => me.openUrl('mailto:' + to),
+            // the e-mail composer, mailto: without the e-mail module (GOUI go.showComposer)
+            mailTo    : to => showComposer({...base(), to}),
             openExceptions: (item, overrides) => me.openExceptions(item, overrides),
             openAvailability: eventDialog => me.openAvailability(eventDialog),
             noWritableCalendar: () => me.noWritableCalendar()

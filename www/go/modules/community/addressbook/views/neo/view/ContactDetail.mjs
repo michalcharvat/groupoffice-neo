@@ -13,6 +13,7 @@ import AddLinkButton    from '../../../../../../../views/neo/src/link/AddLinkBut
 import LinkBrowseButton from '../../../../../../../views/neo/src/link/LinkBrowseButton.mjs';
 import LinkDetail       from '../../../../../../../views/neo/src/link/LinkDetail.mjs';
 import DetailFieldsets  from '../../../../../../../views/neo/src/customfields/DetailFieldsets.mjs';
+import {showComposer} from '../../../../../../../views/neo/src/Mail.mjs';
 import {notify, notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
 import {contactAvatarHtml, downloadUrl, t, transformUrl, typeName} from '../util.mjs';
 
@@ -146,7 +147,30 @@ class ContactDetail extends Container {
 
         let me = this;
 
-        me.getReference('actionDate').on('change', ({value}) => me.onActionDateChange(value))
+        me.getReference('actionDate').on('change', ({value}) => me.onActionDateChange(value));
+        me.getReference('body').addDomListeners({click: me.onBodyClick, scope: me})
+    }
+
+    /**
+     * An e-mail address opens the composer (ExtJS ContactDetail: go.showComposer), which
+     * falls back to mailto: without the e-mail module
+     * @param {Object} data
+     */
+    onBodyClick(data) {
+        let me      = this,
+            contact = me.contact,
+            node    = (data.path || []).find(n => n.cls?.includes('go-addressbook-email')),
+            address = node && contact?.emailAddresses?.[Number(node.data?.email)];
+
+        address?.email && showComposer({
+            appName : me.appName,
+            windowId: me.windowId,
+            to      : address.email,
+            name    : contact.name,
+            // the composer fills the template's contact tags
+            entity  : 'Contact',
+            entityId: contact.id
+        })
     }
 
     /**
@@ -164,7 +188,7 @@ class ContactDetail extends Container {
         me.getReference('starButton').disabled = !contact;
         me.showStarred(!!contact?.starred);
 
-        me.getReference('addLinkButton').setEntity(contact ? 'Contact' : null, id);
+        me.getReference('addLinkButton').setEntity(contact ? 'Contact' : null, id, contact);
 
         if (me.getReference('linkBrowseButton').target?.entityId !== id) {
             me.getReference('linkBrowseButton').setEntity(contact ? 'Contact' : null, id)
@@ -252,7 +276,8 @@ class ContactDetail extends Container {
               sub    = [c.jobTitle, c.department].filter(Boolean).join(' - '),
               urls   = (c.urls || []).map(u => `<a class="go-addressbook-url" href="${e(transformUrl(u.url, u.type))}" target="_blank" rel="noopener" title="${e(typeName('urlTypes', u.type))}: ${e(u.url)}"><i class="go-icon">${u.type === 'homepage' ? 'home' : 'link'}</i></a>`).join('');
 
-        const emails = (c.emailAddresses || []).map(m => item(`<a href="mailto:${e(m.email)}">${e(m.email)}</a>`, typeName('emailTypes', m.type))),
+        // no href: a mailto: link would leave the composer out (onBodyClick())
+        const emails = (c.emailAddresses || []).map((m, i) => item(`<a class="go-addressbook-email" data-email="${i}" role="button" tabindex="0">${e(m.email)}</a>`, typeName('emailTypes', m.type))),
               phones = (c.phoneNumbers || []).map(p => item(`<a href="tel:${e(String(p.number || '').replace(/[^0-9+]/g, ''))}">${e(p.number)}</a>`, typeName('phoneTypes', p.type))),
               addresses = (c.addresses || []).map(a => {
                   const text = a.formatted || [a.address, [a.zipCode, a.city].filter(Boolean).join(' '), a.state, a.country].filter(Boolean).join('\n');

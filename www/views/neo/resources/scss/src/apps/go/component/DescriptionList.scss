@@ -22,4 +22,14 @@
         overflow-wrap: anywhere;
         padding      : 0;
     }
+
+    // {email} values: open the composer (no href)
+    a.go-dl-email {
+        color : var(--c-primary);
+        cursor: pointer;
+
+        &:hover {
+            text-decoration: underline;
+        }
+    }
 }
