@@ -1,6 +1,7 @@
 import TextField      from '../../../../../../../views/neo/node_modules/neo.mjs/src/form/field/Text.mjs';
 import PrincipalCombo from '../../../../../../../views/neo/src/form/field/PrincipalCombo.mjs';
 import FormWindow     from '../../../../../../../views/neo/src/view/FormWindow.mjs';
+import SecretDialog   from '../../../../../../../views/neo/src/view/SecretDialog.mjs';
 import {translator}   from '../../../../../../../views/neo/src/Translate.mjs';
 
 const t = translator('community', 'apikeys');
@@ -39,8 +40,14 @@ class KeyDialog extends FormWindow {
         await super.afterSave(data);
 
         if (token) {
-            const {default: TokenDialog} = await import('./TokenDialog.mjs');
-            Neo.create(TokenDialog, {appName: this.appName, windowId: this.windowId, token})
+            Neo.create(SecretDialog, {
+                appName : this.appName,
+                windowId: this.windowId,
+                title   : t('Access token'),
+                message : t("Copy the access token now. It's not possible to view it again."),
+                label   : t('Access token'),
+                secret  : token
+            })
         }
     }
 

@@ -32,7 +32,9 @@ class AuthenticationPanel extends SettingsPanel {
                 numberField('logoutWhenInactive', t('Logout when inactive'), {minValue: 0}),
                 hint(t("Logout users when inactive for more than this number of seconds. This will also disable the 'Remember my login' checkbox in the login dialog. 0 disables this setting.")),
                 textField('lostPasswordURL', t('Lost password URL')),
-                hint(t('You can set an URL to handle lost passwords in an alternative way'))
+                hint(t('You can set an URL to handle lost passwords in an alternative way')),
+                checkField('forceAppPasswords', t('Force app passwords')),
+                hint(t('Force external apps like WebDAV and ActiveSync to authenticate with app passwords, these can be created in the user settings.'))
             ]),
             fieldset(t('Allowed groups'), [
                 {

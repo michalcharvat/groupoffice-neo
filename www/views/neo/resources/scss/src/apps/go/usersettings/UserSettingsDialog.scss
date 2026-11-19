@@ -49,4 +49,41 @@
         font-family: monospace;
         user-select: all;
     }
+
+    // Account: app passwords (an EntityListPanel inside the fieldset)
+    .go-entity-list-panel.go-apppasswords {
+        overflow: visible;
+        padding : 0;
+    }
+
+    // Account: authorized clients, a status select per client
+    .go-authorizedclients-header {
+        color      : var(--fg-secondary-text);
+        column-gap : 1.6rem;
+        font-weight: 500;
+    }
+
+    .go-authorizedclients-row {
+        border-bottom: 1px solid var(--fg-outline);
+        column-gap   : 1.6rem;
+        padding      : .8rem 0;
+    }
+
+    .go-authorizedclients-status {
+        width: 14rem;
+    }
+
+    .go-authorizedclients-seen {
+        color: var(--fg-secondary-text);
+    }
+
+    .go-usersettings-logoutall {
+        align-self: flex-start;
+        margin-top: .8rem;
+    }
+}
+
+// New app password
+.neo-theme-go .go-apppassword-protocols {
+    margin: .8rem 0 0;
 }
