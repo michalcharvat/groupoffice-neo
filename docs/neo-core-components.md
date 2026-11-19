@@ -5,7 +5,7 @@ webclient. The live per-component status is the Dev module (`src/dev/menu.mjs`, 
 `views/goui/groupoffice-core/script` = GO core), plus ExtJS-only core parts
 (`go/core/views/extjs3`).
 
-Status: **neo** = neo.mjs 13.2 ships it, usable as is (maybe GO styling);
+Status: **neo** = neo.mjs 13.4 ships it, usable as is (maybe GO styling);
 **GO.neo** = we have a GO class in `views/neo/src`; **missing** = to build.
 
 ## Base library (GOUI `goui`)
@@ -90,6 +90,19 @@ grid export (`src/export/exportEntities.mjs`: `exportMenuItem()` / `exportEntiti
 (`GO.form.BatchEditDialog` + `GO.grid.BatchEditButton` in a MultiSelectToolbar: the entity's
 custom fields, like ExtJS; notes, tasks, address book). Downloads use `src/download.mjs`.
 Bookmarks has no grid and no `Bookmark/export`, so neither applies there.
+
+## neo.mjs upgrades
+
+`neo.mjs` is pinned in `views/neo/package.json` (13.4.0). After a bump run `npm install`,
+`npm run build-themes` and check what we patch or override against the new neo source:
+
+- `src/form/field/textAutoComplete.mjs`: replaces `Text.afterSetAutoComplete` (string values).
+- `src/view/Dialog.mjs`: overrides `close`, `closeOrHide`, `revertFocus`, `onKeyDownEscape`, `afterSetHidden`.
+- `resources/scss/go/dialog/Base.scss`: keeps a `.neo-floating` dialog `position: fixed` against neo's
+  `position: relative` on `.neo-masked` and (13.4+) `.neo-store-loading`.
+- Configs redeclared with a trailing `_` in a subclass: neo refuses them ("Invalid config ... already
+  defined as reactive by a parent class") once neo declares the same config higher up. 13.4 moved
+  `required_` to `form.field.Base`, so `GO.form.field.Field` and `HtmlField` only hook `afterSetRequired`.
 
 ## Left to build (2026-11-19)
 
