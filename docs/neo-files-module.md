@@ -99,9 +99,17 @@ no JMAP backend for files yet.
 | Lock / unlock, favorites (bookmarks) below the tree | done |
 | Open / "Open with": the server's handlers (`files/file/handlers`) | done (`fileHandlers.mjs`: Download, Inline, ImageViewer built in; a handler whose JavaScript opens a URL, like WOPI Collabora / Office Online, opens that URL; modules add their own handler classes via ModuleRegistry `fileHandlers`) |
 | Files in detail panels: open with the user's handler, "Browse files", drop upload | done (core `FilesPanel`, ModuleRegistry hook `openFile`) |
-| Thumbnails view, folder upload (subfolders), keyboard shortcuts (Ctrl+C/X/V, Delete), download links, compress / decompress, templates, batch edit, e-mail files, column state per folder | not ported |
+| Email files (a folder: pick its files in `SelectFilesDialog`, ExtJS `openFolderTree`), Email download link (`DownloadLinkDialog`, `files/file/emailDownloadLink`) in the item menu when the user has the e-mail composer | done (`FilesMain.emailItems()`) |
+| Folder picker for other modules (ExtJS SelectFolderDialog / SaveAsDialog, asks before overwriting): `ModuleRegistry.getConfigs('selectFolder')[0]({appName, windowId, title?, fileName?})` → `{id, path, fileName?}` or null | done (`SelectFolderDialog`; used by e-mail "Save to personal folder") |
+| Thumbnails view, folder upload (subfolders), keyboard shortcuts (Ctrl+C/X/V, Delete), create download link / copy direct link (Share menu without e-mail), compress / decompress, templates, batch edit, column state per folder | not ported |
 
 ### neo gotchas
+
+- `files/folder/tree` with `showFiles` returns file nodes whose ids collide with folder ids:
+  `toTreeNode()` (util.mjs) makes them `f:<id>` and keeps the file id in `fileId`.
+- Theme CSS beats a module rule of equal specificity (`.neo-theme-go .neo-form-container
+  {padding: 0}` loads later): add the component class to the selector
+  (`.my-dialog .neo-form-container.my-form`).
 
 - The home folder is listed as `folder_id: ''`; its id comes from the tree's first root
   (`resolveHomeFolder()`). The first load must not write the route: a deep link waits for
