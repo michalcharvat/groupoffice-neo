@@ -38,6 +38,8 @@ const COMMANDS = {
     indent             : {icon: 'format_indent_increase', title: 'Indent'},
     outdent            : {icon: 'format_indent_decrease', title: 'Outdent'},
     createLink         : {icon: 'link',                   title: 'Create link'},
+    // added by GO.form.field.HtmlFieldMentionPlugin
+    mention            : {icon: 'alternate_email',        title: 'Mention user'},
     removeFormat       : {icon: 'format_clear',           title: 'Remove formatting'}
 };
 
@@ -85,6 +87,12 @@ class HtmlField extends Field {
             {cls: ['go-htmlfield-editor'], contenteditable: 'true', role: 'textbox', 'aria-multiline': 'true', spellcheck: 'true'}
         ]}
     }
+
+    /**
+     * Set by GO.form.field.HtmlFieldMentionPlugin: the editor reports "@name" ("mentionQuery")
+     * @member {GO.form.field.HtmlFieldMentionPlugin|null} mentionPlugin=null
+     */
+    mentionPlugin = null
 
     /**
      * Window the main thread editor was created in, null while there is none
@@ -149,10 +157,12 @@ class HtmlField extends Field {
      */
     getEditorLabels() {
         return {
-            cancel: t('Cancel'),
-            ok    : t('Ok'),
-            unlink: t('Remove link'),
-            url   : t('URL')
+            cancel   : t('Cancel'),
+            mention  : t('Mention user'),
+            noResults: t('No results found'),
+            ok       : t('Ok'),
+            unlink   : t('Remove link'),
+            url      : t('URL')
         }
     }
 
@@ -277,10 +287,11 @@ class HtmlField extends Field {
             const sent = me.value || '';
 
             await me.addon.createInstance({
-                id    : me.id,
-                labels: me.getEditorLabels(),
-                token : generation,
-                value : sent,
+                id      : me.id,
+                labels  : me.getEditorLabels(),
+                mentions: !!me.mentionPlugin,
+                token   : generation,
+                value   : sent,
                 windowId
             });
 

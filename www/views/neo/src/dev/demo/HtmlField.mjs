@@ -1,12 +1,14 @@
 import Button    from '../../button/Button.mjs';
 import Container from '../../../node_modules/neo.mjs/src/container/Base.mjs';
 import HtmlField from '../../form/field/HtmlField.mjs';
+import HtmlFieldMentionPlugin from '../../form/field/HtmlFieldMentionPlugin.mjs';
 import Toolbar   from '../../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 
 const escape = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'})[c]);
 
 /**
- * Dev tab: GO.form.field.HtmlField with get / set value
+ * Dev tab: GO.form.field.HtmlField with get / set value and "@name" mentions
+ * (GO.form.field.HtmlFieldMentionPlugin)
  */
 class HtmlFieldDemo extends Container {
     static config = {
@@ -25,7 +27,8 @@ class HtmlFieldDemo extends Container {
             reference  : 'field',
             name       : 'content',
             labelText  : 'Content',
-            placeholder: 'Type something…',
+            placeholder: 'Type something… "@" mentions a user',
+            plugins    : [{module: HtmlFieldMentionPlugin}],
             flex       : 1,
             value      : '<p>Hello <b>world</b></p><ul><li>one</li><li>two</li></ul>'
         }, {

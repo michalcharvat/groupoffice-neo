@@ -25,4 +25,9 @@
     .go-comment-text img {
         max-width: 100%;
     }
+
+    // the editor for a new comment: smaller than a form's HtmlField
+    .go-comment-editor.go-htmlfield {
+        min-height: 12rem;
+    }
 }
