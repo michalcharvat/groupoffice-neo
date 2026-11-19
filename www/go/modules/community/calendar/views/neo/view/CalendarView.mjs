@@ -1,5 +1,6 @@
 import Component from '../../../../../../../views/neo/node_modules/neo.mjs/src/component/Base.mjs';
 import MenuList  from '../../../../../../../views/neo/src/menu/List.mjs';
+import {formatDate, formatUserDateTime, userFormat} from '../../../../../../../views/neo/src/Format.mjs';
 import {translator} from '../../../../../../../views/neo/src/Translate.mjs';
 import CalendarItem from '../CalendarItem.mjs';
 import calendarData from '../data.mjs';
@@ -559,23 +560,53 @@ class CalendarView extends Component {
     }
 
     /**
-     * GOUI CalendarView.contextMenuEmpty
+     * The week view tells a time slot from the all day row (GOUI dataSet.viewSupportsTime)
+     * @returns {Boolean}
+     */
+    get viewSupportsTime() {
+        return false
+    }
+
+    /**
+     * GOUI CalendarView.contextMenuEmpty: paste at the clicked date (and time), or at the
+     * clicked day with the original time
      * @param {String} date "Y-m-d" or "Y-m-dTH:i:s"
      * @param {Object} target
      */
     showEmptyMenu(date, target) {
-        const clip = CalendarItem.clipboard;
+        const clip          = CalendarItem.clipboard,
+              supportsTime  = this.viewSupportsTime,
+              items         = [{
+                  text   : t('Appointment'),
+                  icon   : 'add',
+                  handler: () => this.createAt(date)
+              }, {separator: true}];
 
-        this.showMenu([{
-            text   : t('Appointment'),
-            icon   : 'add',
-            handler: () => this.createAt(date)
-        }, {separator: true}, {
-            text    : clip ? t('Paste') + ' ' + clip.title : t('Paste'),
-            icon    : 'content_paste',
-            disabled: !clip,
-            handler : () => CalendarItem.paste(CalendarView.selectedCalendarId, date)
-        }], target)
+        if (!clip) {
+            items.push({text: t('Paste'), icon: 'content_paste', disabled: true});
+        } else {
+            const dateHasTime  = date.length > 10,
+                  withTime     = supportsTime ? dateHasTime : (dateHasTime || !clip.data.showWithoutTime),
+                  start        = CalendarItem.pasteGetStart(date),
+                  dateStr      = withTime ? formatUserDateTime(start) : formatDate(start, userFormat.dateFormat),
+                  origWithTime = dateHasTime || !clip.data.showWithoutTime,
+                  origStart    = CalendarItem.pasteGetStart(date.substring(0, 10)),
+                  origDateStr  = origWithTime ? formatUserDateTime(origStart) : formatDate(origStart, userFormat.dateFormat);
+
+            items.push({
+                text   : t("Paste '{title}' at {date}").replace('{date}', dateStr).replace('{title}', clip.title),
+                icon   : 'content_paste',
+                handler: () => CalendarItem.paste(CalendarView.selectedCalendarId, date, supportsTime)
+            });
+
+            origDateStr !== dateStr && items.push({
+                text   : t('Paste at original time ({time})').replace('{time}', formatTime(origStart)),
+                icon   : 'content_paste',
+                handler: () => CalendarItem.paste(CalendarView.selectedCalendarId, date.substring(0, 10), false)
+            })
+        }
+
+        this.showMenu(items, target)
     }
 
     /**

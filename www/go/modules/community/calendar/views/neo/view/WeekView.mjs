@@ -177,6 +177,14 @@ class WeekView extends CalendarView {
     }
 
     /**
+     * A time slot pastes a timed event, the all day row an all day one
+     * @returns {Boolean}
+     */
+    get viewSupportsTime() {
+        return true
+    }
+
+    /**
      * Right click in a day column: that time; in the all day row: the day
      */
     contextDate(data) {

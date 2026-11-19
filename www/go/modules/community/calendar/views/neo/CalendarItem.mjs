@@ -919,31 +919,55 @@ export default class CalendarItem {
     }
 
     /**
-     * Opens the clipboard item in the editor at another date
-     * @param {String} calendarId
-     * @param {String} date "Y-m-d" (keeps the time) or "Y-m-dTH:i…"
+     * Start of the clipboard item pasted at a date (GOUI pasteGetStart())
+     * @param {String} date "Y-m-d" (keeps the item's time) or "Y-m-dTH:i…"
+     * @returns {Date}
      */
-    static async paste(calendarId, date) {
-        const item = CalendarItem.clipboard;
+    static pasteGetStart(date) {
+        let start = new Date(CalendarItem.clipboard.start);
 
-        if (!item) {
-            return
-        }
-
-        const withoutTime = date.length === 10;
-        let start = new Date(item.start);
-
-        if (withoutTime) {
+        if (date.length === 10) {
             const day = parseDate(date);
             start.setFullYear(day.getFullYear(), day.getMonth(), day.getDate())
         } else {
             start = parseDate(date)
         }
 
-        const end = addDuration(start, item.data.duration || 'PT1H');
+        return start
+    }
+
+    /**
+     * Opens the clipboard item in the editor at another date (GOUI paste())
+     * @param {String} calendarId
+     * @param {String} date "Y-m-d" (keeps the time) or "Y-m-dTH:i…"
+     * @param {Boolean} [viewSupportsTime] the week view: a day makes it all day, a time makes it timed
+     */
+    static async paste(calendarId, date, viewSupportsTime = false) {
+        const item = CalendarItem.clipboard;
+
+        if (!item) {
+            return
+        }
+
+        const start = CalendarItem.pasteGetStart(date);
+
+        let allDay   = !!item.data.showWithoutTime,
+            duration = item.data.duration || 'PT1H';
+
+        if (viewSupportsTime) {
+            const newAllDay = date.length === 10;
+
+            newAllDay && !allDay && (duration = 'P1D');
+            allDay = newAllDay
+        }
+
+        // a timed event pasted on a timed slot keeps its length; all day → timed: one hour
+        !allDay && /^P\d+D$/.test(duration) && item.data.showWithoutTime && (duration = 'PT1H');
+
+        const end = addDuration(start, duration);
 
         item.data.calendarId = calendarId || item.data.calendarId;
-        item.pasteValues     = {start, end, calendarId: item.data.calendarId};
+        item.pasteValues     = {start, end, calendarId: item.data.calendarId, showWithoutTime: allDay};
 
         await item.open()
     }
