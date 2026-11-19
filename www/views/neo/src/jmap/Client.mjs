@@ -36,6 +36,15 @@ class Client {
         return this.baseUrl + 'api/'
     }
 
+    /**
+     * The session's CSRF token (go.User.session.CSRFToken), for pages outside the
+     * webclient that post to the API themselves, e.g. the PDF editor's viewer
+     * @returns {String|null}
+     */
+    get csrfToken() {
+        return this.#csrfToken
+    }
+
     on(event, fn) {
         (this.#listeners[event] ??= new Set()).add(fn);
         return () => this.#listeners[event].delete(fn)
