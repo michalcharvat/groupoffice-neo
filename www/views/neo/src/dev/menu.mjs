@@ -32,6 +32,7 @@ export default [
     {id: 'form/DisplayField',    text: 'DisplayField',       level: 2, status: 'neo',  neo: 'neo form/field/Display',  goui: 'form/DisplayFieldPage.ts'},
     {id: 'form/HtmlField',       text: 'HtmlField',          level: 2, status: 'done', demo: 'HtmlField', neo: 'GO.form.field.HtmlField', goui: 'form/HtmlFieldPage.ts'},
     {id: 'form/MarkdownField',   text: 'MarkdownField',      level: 2, status: 'done', demo: 'MarkdownField', neo: 'GO.form.field.MarkdownField, src/Markdown.mjs', goui: 'groupoffice-core/script/components/form/MarkdownField.ts'},
+    {id: 'form/ListField',       text: 'ListField',          level: 2, status: 'done', demo: 'ListField', neo: 'GO.form.field.ListField', goui: 'goui/script/component/form/ListField.ts'},
     {id: 'form/MapField',        text: 'MapField',           level: 2, status: 'done', demo: 'MapField', neo: 'GO.form.field.MapField', goui: 'form/MapFieldPage.ts'},
     {id: 'form/NumberField',     text: 'NumberField',        level: 2, status: 'neo',  neo: 'neo form/field/Number',   goui: 'form/NumberFieldPage.ts'},
     {id: 'form/Select',          text: 'Select fields',      level: 2, status: 'done', demo: 'JmapCombo', neo: 'GO.form.field.JmapComboBox, PrincipalCombo, GroupCombo', goui: 'form/SelectPage.ts'},

@@ -59,3 +59,12 @@
 .neo-theme-go .go-dev-intro {
     max-width: 64rem;
 }
+
+// colour dot in demo values (ListField renderValue)
+.neo-theme-go .go-dev-swatch {
+    border-radius : 50%;
+    display       : inline-block;
+    height        : 1.2rem;
+    vertical-align: middle;
+    width         : 1.2rem;
+}

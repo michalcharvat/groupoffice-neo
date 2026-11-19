@@ -1,0 +1,42 @@
+// GO.form.field.ListField: the value as HTML and a ▾ button; a click opens the records
+.neo-theme-go .go-listfield {
+    .go-field-box {
+        align-items: center;
+        cursor     : pointer;
+        display    : flex;
+        min-height : 4rem;
+    }
+
+    &.go-readonly .go-field-box {
+        cursor: default;
+    }
+
+    .go-listfield-value {
+        flex         : 1 1 auto;
+        min-width    : 0;
+        overflow     : hidden;
+        padding      : 0 .8rem;
+        text-overflow: ellipsis;
+        white-space  : nowrap;
+    }
+
+    .go-listfield-empty {
+        color: var(--fg-secondary-text);
+    }
+
+    .go-field-trigger {
+        background   : transparent;
+        border       : 0;
+        border-radius: 50%;
+        color        : var(--fg-secondary-text);
+        cursor       : pointer;
+        display      : inline-flex;
+        flex         : none;
+        padding      : .2rem;
+
+        &:hover {
+            background-color: var(--bg-hover);
+            color           : var(--fg-text);
+        }
+    }
+}
