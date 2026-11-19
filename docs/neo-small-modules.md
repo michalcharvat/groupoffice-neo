@@ -19,7 +19,7 @@ where a module has one, else ExtJS3.
 | dokuwiki | main module (wiki in an iframe, Refresh) + System settings card | ExtJS | the module title follows the setting after login |
 | multi_instance | main module (instances grid: filters, search, edit, (de)activate, e-mail, delete, site config) + instance dialog with allowed modules | ExtJS | "Login as administrator" is missing: it POSTs an access token to the instance in a popup, which needs a main-thread addon |
 | pwned | System settings card (group to check) | ExtJS | |
-| serverclient | — | ExtJS | open: extends the "create user" dialog (mailboxes per domain), which neo does not have yet (card "správa uživatelů a skupin"); its domains reach ExtJS through `App::EVENT_HEAD`, which `Neo.php` does not render |
+| serverclient | "Mailboxes" card in Create user (checkbox per domain, e-mail and recovery e-mail follow the username, mailboxes created after the save) | ExtJS | domains from the read-only JMAP method `Serverclient/domains` (`Neo.php` doesn't render the `App::EVENT_SCRIPTS` script); `onCreateUserDialog` hook, see below |
 | email, emailfavorites | — | — | open: depend on the legacy email module (outside community) |
 
 Not browser-tested: everything admin-only (System settings cards, history, multi_instance,
@@ -47,6 +47,31 @@ user: OTP enable (wrong / right code), login with the OTP step (wrong / right co
 - A getter in a registration (`get userSettings() {...}`) is read when the cards load, after
   login: davclient shows its card only with the calendar capability.
 
+## Remaining ExtJS-only screens (card "neo-ui: small ExtJS-only modules", 2026-11-19)
+
+| Module | neo UI | Notes |
+|---|---|---|
+| dev (`community/dev`) | login step of the "dummy" authenticator | registered as `community-dev`: `dev` is the neo playground (`#dev`) |
+| pdfeditor | file handler "PDF editor": opens pdf.js in a new window | `client.csrfToken` for the viewer's request; needs the module's access right (admins only by default) |
+| customcss (legacy) | main module: CSS and JavaScript text areas, Save | "Select file" (insert a file URL) not ported; neo itself doesn't load the custom CSS/JS |
+| comments | System settings card "Comments": labels (name, colour); label picker and label icons in `CommentsPanel` | the admin gear of the comments card opens the System settings card |
+| sync (legacy) | My account card "Synchronization": deletes, e-mail account, note books and address books with a default; confirmation of a new ActiveSync device after login (`onMainView`) | calendar and task lists are left out: GO 26 has no legacy calendar/tasks modules |
+| zpushadmin (legacy) | main module "ActiveSync": devices (status, user, type, version, IP, first/last sync, comment), search, delete, details from Z-Push, edit (may connect, comment), resync | the store and display actions send HTML entities: `Format.decodeEntities()` |
+| serverclient | see above | |
+| googleauthenticator, carddav, autoconfig, test, activesync, z-push | — | no user-facing UI (activesync/z-push settings are the sync and zpushadmin screens) |
+| syncfusion | — | not in this repository (separate groupoffice26 repo, has a GOUI UI) |
+
+New shared pieces: `GO.view.LegacyFormWindow` (FormWindow over a legacy controller, moved from
+the files module), `Format.decodeEntities()`, `ActionTable` column `vdom`, CreateUserDialog hook
+`onCreateUserDialog: dialog => {}` (references `username`, `email`, `recoveryEmail`, `password`).
+
+Tested in the browser as neoadmin (admin screens) and neotest on a worktree container:
+the dummy login step through a local auth proxy, the PDF viewer, customcss save, comment labels,
+the sync card (no false "unsaved" question), zpushadmin with a temporary `zpa_devices` row
+(edit, resync error, delete), the new-device question (Yes → allowed, No → denied) and the
+Mailboxes card with temporary `serverclient_domains` (setMailbox reached the server, which
+refused without `serverclient_token`). Test data, module installs and config were removed.
+
 ## Gotchas
 
 - `fieldChange` of a neo form passes `{component, value, oldValue}`, not `field`.
@@ -57,3 +82,8 @@ user: OTP enable (wrong / right code), login with the OTP step (wrong / right co
 - The OTP secret only comes back in the `User/set` response that requested it
   (`otp.requestSecret`): a later `User/get` returns no secret.
 - Read-only text fields still show neo's clear trigger: set `clearable: false`.
+- A FormWindow resets **every** field, named or not, when it is ready (`form.create()`) and
+  after a save (`applyData()`): set a starting state after `await dialog.readyPromise` (with
+  `reset(value)`, so it isn't dirty) and read what you need in the form's `beforesave`, not in `save`.
+- `console.log()` of the shared worker doesn't reach Playwright's page console; `console.error()` does.
+- `ConfirmDialog` shows `message` as text: don't HTML-escape it.

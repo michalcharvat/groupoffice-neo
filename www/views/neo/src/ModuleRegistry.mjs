@@ -25,6 +25,8 @@ import client from './jmap/Client.mjs';
  *     customFieldsAdmin: () => import('./customfields/admin.mjs'),
  *     // optional, called with each window's main view after login (e.g. a dialog to show then)
  *     onMainView: mainView => {},
+ *     // optional, called with each new src/users/CreateUserDialog (e.g. an extra card)
+ *     onCreateUserDialog: dialog => {},
  *     // optional, awaited after login before the main view is built: may register more modules
  *     onLogin     : async () => {}
  * });
