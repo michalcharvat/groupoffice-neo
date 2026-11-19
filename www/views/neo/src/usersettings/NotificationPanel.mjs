@@ -1,11 +1,14 @@
 import Container    from '../../node_modules/neo.mjs/src/container/Base.mjs';
 import BoolCheckBox from '../form/field/BoolCheckBox.mjs';
 import {fieldset}   from '../form/fieldset.mjs';
+import client       from '../jmap/Client.mjs';
 import {t}          from '../Translate.mjs';
 
 /**
  * "Notifications" card of My account (go.usersettings.NoticiationPanel): mail
- * reminders and sounds; "Mute all sounds" disables the single sound options.
+ * reminders, with the e-mail module a desktop notification for new e-mails
+ * (emailSettings.notify_new_email), and sounds; "Mute all sounds" disables the
+ * single sound options.
  */
 class NotificationPanel extends Container {
     static config = {
@@ -21,7 +24,13 @@ class NotificationPanel extends Container {
 
         me.items = [
             fieldset(t('Notifications'), [
-                {module: BoolCheckBox, name: 'mail_reminders', valueLabel: t('Mail reminders')}
+                {module: BoolCheckBox, name: 'mail_reminders', valueLabel: t('Mail reminders')},
+                // the e-mail module adds emailSettings to the User
+                ...client.hasCapability('go:legacy:email') ? [{
+                    module    : BoolCheckBox,
+                    name      : 'emailSettings.notify_new_email',
+                    valueLabel: t('Create desktop notification for new e-mails')
+                }] : []
             ]),
             fieldset(t('Sounds'), [{
                 module    : BoolCheckBox,
