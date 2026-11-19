@@ -7,7 +7,7 @@ emailfavorites). The backend stays the legacy GO\Base controllers (`email/accoun
 
 | Card | Scope |
 |---|---|
-| 1 | module shell, account/folder tree, message grid, stubs (this document) |
+| 1 | module shell, account/folder tree, message grid, stubs |
 | 2 | message view (`view/message/*`) |
 | 3 | composer (`view/composer/*`, core `src/Mail.mjs` showComposer) |
 | 4 | accounts, aliases, filters, labels, folders dialogs, IMAP ACL (`view/account/*`) |
@@ -29,7 +29,7 @@ Styles: `www/views/neo/resources/scss/src/apps/go/email/<path of the className>.
 
 | File | Class / exports | Card |
 |---|---|---|
-| `Index.mjs` | ModuleRegistry registration (package `legacy`, name `email`, capability `go:legacy:email`, quickAdd, `showComposer`, settings cards) | 1 (shared: only card 1 edits it, later cards ask in a board note) |
+| `Index.mjs` | ModuleRegistry registration (package `legacy`, name `email`, capability `go:legacy:email`, quickAdd, `showComposer`, `portlets`, settings cards) | 1, 10 |
 | `util.mjs` | `t` (= `translator('legacy', 'email')`), `LEVEL_DELEGATED` (15), `unescapeHtml()`, `imapText()`, `imapDate()`, `routePath()`, `parseRoutePath()` | 1 |
 | `api.mjs` | the legacy routes as functions (tree, checkUnseen, saveTreeState, saveSort, messageStore, setFlag, moveToAccount, moveToSpam, moveToInbox, labels, folder create/rename/delete/truncate/markAsRead/move), `serverNodeId()`, `nodeUnseen()` | 1, others add routes |
 | `data/MessageStore.mjs` | `GO.email.data.MessageStore`: neo Store over `email/message/store`, infinite scroll (`loadMore()`), `setParams()`, `load({keepCount, extra})`, `response` | 1 |
@@ -38,50 +38,82 @@ Styles: `www/views/neo/resources/scss/src/apps/go/email/<path of the className>.
 | `view/FolderPickerDialog.mjs` | `FolderPickerDialog.ask({accountId, allowRoot, exclude})` → `{accountId, mailbox}` | 1 (card 2 may reuse for "Move/Copy email to…") |
 | `view/PromptDialog.mjs` | `PromptDialog.ask({title, labelText, value})` → text or null | 1 |
 | `view/SearchDialog.mjs` | `SearchDialog.ask({labels, values})` → `{query, searchIn, values}` | 1 |
-| `view/message/MessagePanel.mjs` | `GO.email.message.MessagePanel` **stub** | 2 |
-| `view/message/openMessageWindow.mjs` | `openMessageWindow({appName, windowId, accountId, mailbox, uid})` **stub** | 2 |
-| `view/composer/compose.mjs` | `compose(cfg)` **stub** | 3 |
-| `view/account/accountActions.mjs` | `openAccountDialog`, `openAccountsDialog`, `openFoldersDialog`, `openImapAclDialog`, `openFolderDialog`, `openMoveOldMailDialog` **stubs** | 4 |
-| `view/settings/UserSettingsPanel.mjs`, `SystemSettingsPanel.mjs` | empty cards **stubs** | 5 |
+| `view/message/MessagePanel.mjs` | `GO.email.message.MessagePanel`: header, warnings, body, attachments, toolbar, `emailMessagePanelPlugins` | 2 |
+| `view/message/messageHtml.mjs`, `messageApi.mjs`, `attachments.mjs`, `addressMenu.mjs` | HTML of header/body/attachments; the `email/message/*` routes of the view; attachment open/download/save/zip and their menus (`openIcs`, vcf import); address menu (compose, search sender, add to contacts) | 2 |
+| `view/message/openMessageWindow.mjs` | `GO.email.message.MessageDialog`, `openMessageWindow(cfg)`, `openAttachedMessageWindow(cfg)` (an attached .eml) | 2 |
+| `view/composer/compose.mjs` | `compose(cfg)`, `loadEmailSettings()` | 3 |
+| `view/composer/ComposerWindow.mjs`, `ComposerAttachmentsField.mjs`, `CloseDialog.mjs`, `composerUtil.mjs` | `GO.email.composer.ComposerWindow` (From alias, RecipientsField to/cc/bcc, HtmlField with `pasteImages`, signatures, templates, attachments, auto save to Drafts, `emailComposerPlugins`), save-before-close dialog, address and signature helpers | 3 |
+| `view/account/accountActions.mjs`, `accountApi.mjs` | dialog openers (see below), `promptImapPassword()`, `isImapAuthError()`, `openCopyMailToDialog()`; the `email/account|alias|filter|label|folder/*` routes | 4 |
+| `view/account/*Dialog.mjs`, `RecordsPanel.mjs`, `LegacyFormWindow.mjs` | `AccountDialog` (cards properties, server, aliases, filters, labels, permissions, `emailAccountDialogCards`), `AccountsDialog`, `AliasDialog`, `FilterDialog`, `LabelDialog`, `FoldersDialog` (subscriptions), `FolderDialog`, `ImapAclDialog` + `ImapAclUserDialog`, `MoveOldMailDialog`; `LegacyFormWindow` = FormWindow over a legacy load/submit route (copy of the files module's) | 4 |
+| `view/settings/UserSettingsPanel.mjs`, `SystemSettingsPanel.mjs` | My account → E-mail (JMAP `User.emailSettings`, templates grid); System settings → E-mail (templates and groups, admins and module managers) | 5 |
+| `view/template/*` | `TemplatesGrid`, `EmailTemplateDialog` (Autodata menu, attachments, permissions), `TemplateGroupsDialog`, `TemplateCombo`; `api.mjs` (`email/template/*`, `defaultTemplateId()`, `setDefaultTemplate()`) | 5 |
+| `view/portlet/EmailPortlet.mjs`, `PortletFoldersDialog.mjs` | start page portlet `portlet-email` (`email/portlet/*`): newest messages of the chosen folders | 5 |
 
-## Stubs: the APIs later cards keep
+Other modules (each registers in its own `views/neo/Index.mjs`):
 
-- **`MessagePanel`** (card 2): `load({accountId, mailbox, uid})` → Promise of the `email/message/view`
+| Module | Files | Plugs into |
+|---|---|---|
+| emailfavorites (`www/go/modules/community/emailfavorites/views/neo`) | `view/favorites.mjs` (section nodes, row menu, folder menu item), `view/FavoritefolderDialog.mjs` (rename) | `emailTreeSections` |
+| sieve (`www/modules/sieve/views/neo`) | `sieveApi.mjs` (`sieve/sieve/*`), `util.mjs` (criteria/actions), `view/SieveRulesPanel.mjs`, `RuleDialog`, `CriteriumDialog`, `ActionDialog`, `RulePartsPanel`, `OutOfOfficePanel` + `outOfOffice.mjs` | `emailAccountDialogCards` "Filters" (`replaces: 'filters'`) and "Out of office" |
+| smime (`www/modules/smime/views/neo`) | `api.mjs` (`smime/certificate/*`, `smime/publicCertificate/*`), `view/CertificatesPanel`, `UploadDialog`, `composerPlugin.mjs`, `messagePlugin.mjs` + `SmimeBar`, `CertificateDetailWindow`, `PublicCertsDialog`, `ImportDialog` | `emailAccountDialogCards`, `emailComposerPlugins`, `emailMessagePanelPlugins`, `emailMenuItems` |
+| calendar (`www/go/modules/community/calendar/views/neo`) | `view/ItipPanel.mjs`, `ui.mjs` `windowUi()` | `emailMessagePanelPlugins` (`itip`), `openIcs` |
+| oauth2client (`www/go/modules/community/oauth2client/views/neo/emailAccount.mjs`) | OAuth2 client combo + "Refresh token" | `emailAccountDialogCards` (`target: 'properties'`, hides the Server card) |
+| addressbook, other modules | "Send e-mail" (contact menu), e-mail values in `DescriptionList` (`{email, name, …}`), `AddLinkButton` "E-mail" | core `showComposer()` (`www/views/neo/src/Mail.mjs`) |
+
+## Public APIs of the e-mail client
+
+- **`MessagePanel`**: `load({accountId, mailbox, uid})` → Promise of the `email/message/view`
   response (null when a newer load replaced it), `reset()`, `message` ({accountId, mailbox, uid} shown),
   reference `toolbar` (EmailMain inserts the phone's close button at 0), events
   `load {message}` (EmailMain marks the message as read unless `message.seen` or
   `message.do_not_mark_as_read`) and `loadError {error}`.
-- **`openMessageWindow(cfg)`** (card 2): returns the dialog; its reference `messagePanel` fires `load`.
-- **`compose(cfg)`** (card 3): `{appName, windowId, accountId, values: {to, cc, bcc, subject, body},
-  loadUrl, loadParams, links: [{entity, entityId}], isHtml}`. EmailMain calls it for the compose
-  button, the header "+" (quickAdd) and a double click in drafts / sent items
-  (`loadUrl: 'email/message/openDraft'`, `loadParams: {account_id, mailbox, uid}`; ExtJS task `opendraft`).
-- **`showComposer`** registration key (card 3): `ModuleRegistry.getConfigs('showComposer')[0](cfg)`
-  imports compose.mjs and calls `compose(cfg)`. Core `src/Mail.mjs` (card 3) uses it when the e-mail
-  module is available and `use_desktop_composer` is off, else a mailto: link. (Registered as a config
-  key instead of from `onLogin`: getConfigs() already filters on the user's capability.)
-- **`accountActions`** (card 4): every function takes the component that opens the dialog
+- **`openMessageWindow(cfg)`**: returns the dialog; its reference `messagePanel` fires `load`.
+- **`compose(cfg)`** (`view/composer/compose.mjs`, the docblock lists every key):
+  `{appName, windowId}` (required), `accountId` / `from`, `values: {to, cc, bcc, subject, body}`
+  (address strings, arrays of them or of `{name, email}`), `loadUrl` + `loadParams` (a legacy route
+  that fills the composer: `email/message/reply|forward|openDraft|template`, `files/file/emailDownloadLink`,
+  …) or ExtJS style `task` (reply | reply_all | forward | opendraft | template) + `uid`, `mailbox`,
+  `template_id`, `contact_id` / `company_id` (template tags), `addEmailAsAttachmentList` (forward
+  as attachment), `blobs` (attach JMAP blobs), `links: [{entity, entityId}]`, `isHtml`, `afterLoad(composer)`.
+  EmailMain calls it for the compose button, the header "+" (quickAdd), reply/forward and a double
+  click in drafts / sent items (`loadUrl: 'email/message/openDraft'`).
+- **`showComposer`** registration key: `ModuleRegistry.getConfigs('showComposer')[0](cfg)` imports
+  compose.mjs and calls `compose(cfg)`. Other modules call core `showComposer(cfg)` from
+  `www/views/neo/src/Mail.mjs` instead: it uses the e-mail composer when the module is available and
+  `emailSettings.use_desktop_composer` is off, else a `mailto:` link opened with
+  `Neo.Main.windowOpen` (a hidden iframe is blocked by GO's CSP, `location` fires `beforeunload`).
+  It also takes `to` / `name` (string or array of addresses) like ExtJS `go.showComposer`.
+- **`accountActions`**: every function takes the component that opens the dialog
   (`owner`, for appName/windowId) and resolves `true` when something was saved; EmailMain then
   reloads the tree. `openAccountDialog(owner, accountId?)` (no id: new account),
   `openAccountsDialog(owner)`, `openFoldersDialog(owner, accountId)` (subscriptions),
   `openImapAclDialog(owner, accountId, mailbox)` (shown only when the INBOX node has
   `acl_supported` and the user manages the account), `openFolderDialog(owner, accountId, mailbox)`
   (ExtJS FolderDialog "Properties"), `openMoveOldMailDialog(owner, accountId, mailbox)`
-  (ExtJS MoveOldMailDialog, `email/message/moveOld`).
-- **Settings panels** (card 5): default-export a class; registered as `userSettings` /
-  `systemSettings` in Index.mjs.
+  (`email/message/moveOld`), `openCopyMailToDialog(owner, messages, {move})` (FolderPickerDialog, then
+  `email/account/copyMailTo`; no button uses it yet), `promptImapPassword()` when
+  `email/account/tree` answers `imapAuthFailed`.
+- **Settings panels**: default-export a class; registered as `userSettings` /
+  `systemSettings` in Index.mjs. `UserSettingsPanel` keeps `client.user.emailSettings` current after a save.
 
 ## Extension points
 
-| Key | Host | Card |
-|---|---|---|
-| `emailTreeSections` | AccountTree / EmailMain | 1 (emailfavorites) |
-| `emailMessagePanelPlugins` | MessagePanel | 2 (smime, calendar ITIP) |
-| `emailComposerPlugins` | composer | 3 (smime) |
-| `emailAccountDialogCards` | account dialog | 4 (sieve, smime, oauth2client) |
-| `showComposer` | Index.mjs of the e-mail module | 3 (core Mail.mjs, other modules) |
+All are ModuleRegistry keys a module sets in its own `views/neo/Index.mjs`; `getConfigs()` only
+returns them when the user has that module's capability. A key takes one object or an array.
+Hooks are wrapped in try/catch by the host: a failing plugin logs and does not break the e-mail client.
 
-### `emailTreeSections` (card 1)
+| Key | Host | Used by |
+|---|---|---|
+| `emailTreeSections` | `AccountTree` / `EmailMain` | emailfavorites |
+| `emailMessagePanelPlugins` | `MessagePanel` | smime, calendar (ITIP) |
+| `openIcs` | `message/attachments.mjs` (click on an .ics attachment) | calendar |
+| `emailComposerPlugins` | `ComposerWindow` | smime |
+| `emailAccountDialogCards` | `AccountDialog` | sieve (2 cards), smime, oauth2client |
+| `emailMenuItems` | `EmailMain` ⋮ menu without a selection | smime ("Public SMIME certificates") |
+| `showComposer` | Index.mjs of the e-mail module | core `src/Mail.mjs` |
+| `portlets` | start page (`modules/summary/views/neo`) | e-mail (`portlet-email`) |
+
+### `emailTreeSections`
 
 A module adds nodes to the account tree by registering (in its own `views/neo/Index.mjs`)
 `emailTreeSections: {…}` or an array of them; `ModuleRegistry.getConfigs()` only returns them when
@@ -116,6 +148,128 @@ as `nodeId`. `tree.reloadSection(id)` reloads one section; `tree.setUnseen(accou
 updates every node of that folder, section nodes included. Folder nodes (`folderMenuItems`) have
 `accountId`, `mailbox`, `special` ('inbox' | 'sent' | 'drafts' | 'trash' | 'spam' | null), `unseen`
 and `data` (the `email/account/tree` node: `permission_level`, `noselect`, `noinferiors`, …).
+
+Known limit: a section **without** header that had no nodes is appended at the end of the roots
+when it gets its first node through a push (`reloadSection()`), below the accounts, until the next
+tree reload. emailfavorites works around it with `tree.reload()` for its first favourite.
+
+### `emailMessagePanelPlugins`
+
+```js
+emailMessagePanelPlugins: {
+    id: 'itip',
+    // optional: extra email/message/view params (or a Promise of them), e.g. smime's password
+    beforeLoad: (params, panel) => ({}),
+    // optional, after every load; parts and buttons are replaced on every load
+    onLoad: async (message, panel) => ({
+        parts       : [/* neo configs shown above the body */],
+        toolbarItems: [/* buttons inserted after Forward */],
+        menuItems   : [/* items of the "more" menu */]
+    }),
+    // optional: extra items of an attachment's menu (smime "Add to SMIME certificates")
+    attachmentMenuItems: (attachment, message, panel) => []
+}
+```
+
+`message` is the `email/message/view` response; `panel` the `GO.email.message.MessagePanel`
+(`panel.message` = `{accountId, mailbox, uid}`, `panel.load()` reloads it). Users: calendar (`itip`:
+`view/ItipPanel.mjs` as a part with Accept / Maybe / Decline / Import), smime (password before view,
+`SmimeBar` part with verify and certificate details, decrypt).
+
+### `openIcs`
+
+`openIcs: ({accountId, mailbox, uid, partId, encoding, blobId}, panel) => void` — a click on an
+`.ics` attachment calls the first registered one (calendar: `CalendarEvent/loadICS` → event
+dialog); without it the file downloads. Not for attachments of an attached message.
+
+### `emailComposerPlugins`
+
+```js
+emailComposerPlugins: {
+    id: 'smime',
+    init         : composer => {},                     // once, after the window is built
+    menuItems    : composer => [],                     // GO.menu.List items appended to "Extra options"
+                                                       // (more_vert); rebuilt on every open, so return
+                                                       // the current check state; escape user text
+    onAliasChange: (composer, alias) => {},            // From changed, also on load; alias = email/alias/store
+                                                       // record (smime adds has_smime_cert, always_sign)
+    afterLoad    : (composer, response) => {},         // after every load (new, reply, forward, draft,
+                                                       // template switch); response.sendParams is merged
+                                                       // into composer.sendParams already
+    beforeSend   : (composer, {draft}) => {},          // false | Promise<false> cancels Send / manual Save
+                                                       // (not the auto save), after the recipient checks
+    submitParams : (composer, params, {draft, autoSave}) => {} // mutate the POST params of
+                                                       // email/message/send|save (booleans become 1/0)
+}
+```
+
+All hooks are optional. Composer state for plugins: `composer.sendParams` (extra keys are posted,
+e.g. `sign_smime` / `encrypt_smime`), `composer.alias`, `composer.accountId`, `composer.isHtml`.
+Events: `load {response}`, `save {response}`, `send {response}`.
+
+### `emailAccountDialogCards`
+
+| Key | Meaning |
+|---|---|
+| `id` | required |
+| `header` | `{text}` of the card's tab |
+| `order` | core cards: properties 10, server 20, aliases 30, filters 40, labels 50, permissions 90; default 60 |
+| `target` | `'properties'` or `'server'`: the items go into that core card instead of a new tab |
+| `replaces` | `'filters'`, `'aliases'`, `'labels'`, `'server'` or `'permissions'`: that core card hides while this card is available (sieve hides the client-side filters) |
+| `items(dialog)` | neo item configs of the card |
+| `isAvailable(account, dialog)` | false (or a Promise of false) hides the card; `account` is `null` for a new account |
+| `load({account, dialog, card})` | after every account load (also after each save) |
+| `beforeSave({params, dialog, card, isNew})` | may add params to `email/account/submit` |
+| `afterSave({accountId, response, isNew, dialog, card})` | errors are logged and don't block the save |
+
+Every dialog works on copies of the descriptors, so `card` belongs to one dialog. `dialog.level`
+is the user's permission level on the account.
+
+### `emailMenuItems`
+
+`emailMenuItems: emailMain => [/* GO.menu.List items */]` — appended after a separator to the
+e-mail ⋮ menu that shows without a selection (Refresh, Accounts, …); ExtJS MessagesGrid `settingsMenu`.
+
+## Status: left and different from ExtJS (2026-11-19)
+
+Ported: accounts/folders tree with unread counts, message grid (search, labels, flags, infinite
+scroll, multi select, move to a folder picked in a dialog), message view (attachments, blocked images,
+spam bar, read receipts, labels, links), composer (aliases, templates, signatures, inline pasted
+images, drafts with auto save, attachments from disk / blobs / forwarded messages),
+accounts / aliases / filters / labels / subscriptions / folder properties / IMAP ACL / move old mail,
+user and system settings, templates, start page portlet, emailfavorites, sieve filters and out of
+office, S/MIME (sign, encrypt, decrypt, verify, certificates), ITIP, OAuth2 accounts, compose from
+other modules.
+
+Left (board backlog cards, parent 20261119-011401-neo-ui-email-module):
+
+- **Unread badge on the module tab and polling while the e-mail module is closed**: the neo shell has
+  no badge API; EmailMain polls `email/account/checkUnseen` only while it is open.
+- **Files ↔ e-mail**: "E-mail files" and "E-mail download link" in the neo files module
+  (`showComposer()` with `afterLoad` / `loadUrl: 'files/file/emailDownloadLink'`), and "Save (all) to
+  personal folder" in the attachment menus (waits for a neo files folder picker).
+- **savemailas / LinkedEmail** is not in this repository: no "Save as" menu, message links stay
+  empty; `AddLinkButton` "E-mail" only shows with capability `go:legacy:savemailas`.
+- **Attached e-mails** (eml in eml): zip, save to item and vcf/ics import are hidden (the routes would
+  use the parent uid).
+- **HTML layout of mails**: `Format.sanitizeHtml()` strips `style` attributes, HTML mails lose their
+  layout; an e-mail specific sanitizer option is open.
+- **Unknown recipients dialog** (ExtJS UnknownRecipientsDialog: add the recipients of a sent mail to
+  the address book): the composer imports `view/message/UnknownRecipientsDialog.mjs` and calls
+  `default.show({appName, windowId, recipients})`, but the file does not exist yet, so nothing shows.
+- **Drag and drop** of messages onto tree folders / favourites and of accounts (ExtJS): neo moves
+  through "Move email to…" and the account menu's Move up / down.
+- Copy/move all results of a search (`openCopyMailToDialog`) has no button yet.
+- No message threads (GO 26 has none either), no favourites ordering (`em_folders_favorites` has no
+  sort column), no "print verifies the signature first" (the S/MIME bar's Verify does it).
+- Address lists (business/newsletters "Add senders to address list") are not ported.
+- `LegacyFormWindow` and `saveAcl` / `loadAcl` in `view/account/accountApi.mjs` are copies of the files
+  module's versions: candidates for `www/views/neo/src`.
+
+Pre-existing backend issues found by the cards (not changed, see the board notes): sieve
+`accountAliases` has no permission check and `isSupported` returns the exception text; emailfavorites
+`Favoritefolder/query` applies no user filter; smime `checkPassword` throws instead of answering
+`passwordCorrect: false`.
 
 ## Routes
 
@@ -156,7 +310,7 @@ ExtJS files: `EmailClient.js` (module panel, store, toolbar, checker), `Accounts
   "You have %d unread email(s)" and the module tab badge. neo: EmailMain polls every 120 s while the
   module is open and after a push reconnect (`stateChange {reconnect}`), toast on `has_new`.
   **Gap:** no module tab badge and no polling while the e-mail module is closed — the shell has no
-  badge API yet (integration card).
+  badge API yet (see Status).
 - Counts also come with `email/message/store` (`unseen: {mailbox: n}`, also for the target of a move)
   and `email/message/setFlag` (`unseen`).
 - Account menu (AccountContextMenu): Add folder (disabled with `noinferiors`), Subscribe to folders,
@@ -511,7 +665,7 @@ Cards 2-10 (inventory). Paths are relative to `www/`. Routes are `module/control
 - MCP tools (`modules/email/mcp`, `EmailToolProvider`): `email_mailboxes` (accounts + folders + unread), `email_query` (search a folder, `unreadOnly` etc.), `email_get` (headers, text, attachment list), `email_draft` (save a draft, not send). Access: READ on the account, CREATE for drafts (`mcp/EmailTool.php:38`, `EmailToolProvider.php:43`).
 - Other controllers: `RegisterController` (`downloadWinXP`/`downloadWin7`: .reg files registering GroupOffice as mailto handler via `email/message/mailto`), `ResponsiveController::actionLoad` (unverified purpose), `MessageController::actionTestSearch`, `actionGet` (view wrapped in `data.message.attributes`), `actionDelete` (no-op returning success).
 - Address book integration: auto-link setting lives in the address book module settings (`go/modules/community/addressbook/model/Settings.php`, `autoLink` on/off/incl/excl + book ids), used by `ImapMessage::autoLink()` on every view.
-- Language: `modules/email/language/en.php` has 2 keys (`name`, `description`); English text is the key, so no other English strings. Translations: 34 language files, e.g. nl 366, de 381, cs 367 entries. sieve: 24 language files (`en.php` 3 keys), smime `en.php` 2 keys, emailfavorites `en.php` 2 keys. Many strings use `t("...", "email")`; some core strings (`t("Delete")`).
+- Language: `modules/email/language/en.php` had only `name` and `description`; the neo strings that were new (no translation in the module or core) were added to `en.php` by card 10, with nl, de and cs. Translations: 34 language files, e.g. nl 366, de 381, cs 367 entries. sieve: 24 language files (`en.php` 3 keys), smime `en.php` 2 keys, emailfavorites `en.php` 2 keys. Many strings use `t("...", "email")`; some core strings (`t("Delete")`).
 - Install: `modules/email/install/install.sql`, `updates.inc.php` + `updatescripts/` (legacy update mechanism, no `updates.php`).
 - Themes/CSS: `modules/email/themes/Default` (legacy styles for message panel, `em-*`, `message-*` classes); smime and sieve have their own `themes`.
 - Dead or external references found: legacy addressbook routes (`addressbook/*`), savemailas routes/entity, `SystemSettingsPanel.js`, `controller/EmailTemplate.php` (JMAP controller for a missing model), sieve `ConditionPanel.js`/`VacationDialog.js`, emailfavorites `AccountsTreeOverride.js` in scripts.txt.
