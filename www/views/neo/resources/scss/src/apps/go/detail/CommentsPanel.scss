@@ -30,4 +30,16 @@
     .go-comment-editor.go-htmlfield {
         min-height: 12rem;
     }
+
+    // CommentLabel icons after the date, coloured by the label (style attribute)
+    .go-comment-label {
+        font-size     : 1.2em;
+        margin-left   : .2rem;
+        vertical-align: middle;
+    }
+
+    .go-comment-picked-labels {
+        gap       : .4rem;
+        margin-top: .4rem;
+    }
 }
