@@ -122,7 +122,7 @@ Bookmarks has no grid and no `Bookmark/export`, so neither applies there.
 5. **Drag and drop** — rows and tree nodes onto targets and desktop files: done (`enableDragDrop()`, used by the files module and `FilesPanel`); sortable lists still missing.
 6. Small fields: AutocompleteField, MapField, ListField, CheckboxGroup, ColorMenu, Month/WeekPicker.
 7. Chart, EntityTypeTable. ~~Alerts/notifications, reminders, session activity watcher, start page~~ — done: `src/alerts/`, module `alerts` renderers (calendar invitations, tasks), `modules/summary/views/neo` (the files portlet waits for that module; e-mail has `portlet-email`).
-8. ~~**E-mail client**~~ — done: `www/modules/email/views/neo` + sieve, smime, emailfavorites, core `src/Mail.mjs`. Left: files ↔ e-mail (E-mail files, Save to personal folder), unknown recipients dialog, message drag and drop; see `docs/neo-email-module.md` → Status.
+8. ~~**E-mail client**~~ — done: `www/modules/email/views/neo` + sieve, smime, emailfavorites, core `src/Mail.mjs`. Left: files ↔ e-mail (E-mail files, Save to personal folder); see `docs/neo-email-module.md` → Status.
 
 ## Gotchas from the parity audit (2026-11-19)
 

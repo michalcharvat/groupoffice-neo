@@ -1,0 +1,43 @@
+// GO.email.message.UnknownRecipientsDialog (ExtJS GO.email.UnknownRecipientsDialog):
+// text, recipients with a checkbox and row buttons, address book, "don't show again"
+.neo-theme-go .go-email-unknown-recipients {
+    .go-email-unknown-recipients-body {
+        padding: 0 1.6rem;
+    }
+
+    .go-email-unknown-recipients-text {
+        padding: 1.6rem 0 1.2rem;
+    }
+
+    .go-email-unknown-recipients-list {
+        border       : 1px solid var(--fg-line, rgba(0, 0, 0, .12));
+        border-radius: .4rem;
+        min-height   : 0;
+    }
+
+    .go-email-unknown-recipients-row {
+        flex       : 0 0 auto;
+        gap        : .4rem;
+        padding    : .4rem .8rem;
+
+        & + .go-email-unknown-recipients-row {
+            border-top: 1px solid var(--fg-line, rgba(0, 0, 0, .12));
+        }
+
+        .neo-checkboxfield {
+            min-width: 0;
+        }
+    }
+
+    .go-email-unknown-recipients-addressbook {
+        margin-top: 1.2rem;
+    }
+
+    .go-email-unknown-recipients-skip {
+        margin-top: .8rem;
+    }
+
+    .go-dialog-buttons {
+        margin: 0 -1.6rem;
+    }
+}

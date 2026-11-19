@@ -41,6 +41,7 @@ Styles: `www/views/neo/resources/scss/src/apps/go/email/<path of the className>.
 | `view/SearchDialog.mjs` | `SearchDialog.ask({labels, values})` → `{query, searchIn, values}` | 1 |
 | `view/message/MessagePanel.mjs` | `GO.email.message.MessagePanel`: header, warnings, body, attachments, toolbar, `emailMessagePanelPlugins` | 2 |
 | `view/message/messageHtml.mjs`, `messageApi.mjs`, `attachments.mjs`, `addressMenu.mjs` | HTML of header/body/attachments; the `email/message/*` routes of the view; attachment open/download/save/zip and their menus (`openIcs`, vcf import); address menu (compose, search sender, add to contacts) | 2 |
+| `view/message/UnknownRecipientsDialog.mjs` | `GO.email.message.UnknownRecipientsDialog` (ExtJS `UnknownRecipientsDialog.js`), shown by the composer after sending when `unknown_recipients` came back: checkbox list, address book (default: `addressBookSettings.defaultAddressBookId`), "Add selected" (one `Contact/set` create, failed ones stay), per row Edit (prefilled `ContactDialog`) and Add to existing contact (picker, appends the address with `Contact/set` update); "Don't show this window next time" saves `emailSettings.skip_unknown_recipients` at once. Differs from ExtJS: several recipients are added in one go | 2 |
 | `view/message/openMessageWindow.mjs` | `GO.email.message.MessageDialog`, `openMessageWindow(cfg)`, `openAttachedMessageWindow(cfg)` (an attached .eml) | 2 |
 | `view/composer/compose.mjs` | `compose(cfg)`, `loadEmailSettings()` | 3 |
 | `view/composer/ComposerWindow.mjs`, `ComposerAttachmentsField.mjs`, `CloseDialog.mjs`, `composerUtil.mjs` | `GO.email.composer.ComposerWindow` (From alias, RecipientsField to/cc/bcc, HtmlField with `pasteImages`, signatures, templates, attachments, auto save to Drafts, `emailComposerPlugins`), save-before-close dialog, address and signature helpers | 3 |
@@ -281,9 +282,6 @@ Left (board backlog cards, parent 20261119-011401-neo-ui-email-module):
   layout; an e-mail specific sanitizer option is open.
 - **Empty folder keeps the previous count**: opening an empty folder after a full one leaves the
   subtitle at the old folder's count (MessageStore fires no `load` for an empty result on an empty store).
-- **Unknown recipients dialog** (ExtJS UnknownRecipientsDialog: add the recipients of a sent mail to
-  the address book): the composer imports `view/message/UnknownRecipientsDialog.mjs` and calls
-  `default.show({appName, windowId, recipients})`, but the file does not exist yet, so nothing shows.
 - Copy/move all results of a search (`openCopyMailToDialog`) has no button yet.
 - No message threads (GO 26 has none either), no favourites ordering (`em_folders_favorites` has no
   sort column), no "print verifies the signature first" (the S/MIME bar's Verify does it).
