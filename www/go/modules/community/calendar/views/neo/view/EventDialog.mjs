@@ -462,6 +462,9 @@ class EventDialog extends FormWindow {
             end    = me.getReference('endField').getValueAsDate(),
             orig   = me.form.originalValues?.participants || {};
 
+        // a newer check (other time or participants) wins over a slower older answer
+        const generation = me.availabilityGeneration = (me.availabilityGeneration || 0) + 1;
+
         if (!start || !end) {
             return
         }
@@ -469,6 +472,7 @@ class EventDialog extends FormWindow {
         const ids = Object.keys(field.participants).filter(id => !(id in orig) && (id.startsWith('Calendar:') || !isNaN(+id)));
 
         if (!ids.length) {
+            Object.keys(field.busy).length && field.setBusy({});
             return
         }
 
@@ -485,7 +489,7 @@ class EventDialog extends FormWindow {
             }
         }));
 
-        me.isDestroyed || field.setBusy(busy)
+        me.isDestroyed || generation !== me.availabilityGeneration || field.setBusy(busy)
     }
 
     async addOnlineMeeting(service) {

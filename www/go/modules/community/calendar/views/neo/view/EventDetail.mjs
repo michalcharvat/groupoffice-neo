@@ -328,12 +328,10 @@ class EventDetail extends Container {
      * Saves a change of the whole event without scheduling messages (GOUI patches the
      * series for the calendar, reminder and organizer too)
      * @param {Object} changes
+     * @param {CalendarItem} [item] default the shown one
      * @returns {Promise<Boolean>} saved
      */
-    async saveChanges(changes) {
-        let me   = this,
-            item = me.item;
-
+    async saveChanges(changes, item = this.item) {
         try {
             await CalendarItem.update(item.data.id, changes, false, item.ui || CalendarItem.ui);
             return true
@@ -366,7 +364,7 @@ class EventDetail extends Container {
             me.fire('changed', {})
         }
 
-        me.isDestroyed || me.setItem(item)
+        me.isDestroyed || me.item !== item || me.setItem(item)
     }
 
     async onAlertChange() {
@@ -386,7 +384,7 @@ class EventDetail extends Container {
             me.fire('changed', {})
         }
 
-        me.isDestroyed || me.renderControls()
+        me.isDestroyed || me.item !== item || me.renderControls()
     }
 
     /**
@@ -400,6 +398,28 @@ class EventDetail extends Container {
         if (me.silent || !item || !picked?.id) {
             return
         }
+
+        const field = me.getReference('organizerField');
+
+        // one change at a time: a second one would start from the same old participants
+        field.disabled = true;
+
+        try {
+            await me.changeOrganizer(item, picked)
+        } finally {
+            if (!me.isDestroyed) {
+                field.disabled = false;
+                me.item === item && me.setItem(item)
+            }
+        }
+    }
+
+    /**
+     * @param {CalendarItem} item
+     * @param {Object} picked PrincipalCombo record {id, name}
+     */
+    async changeOrganizer(item, picked) {
+        let me = this;
 
         // the list record has no e-mail address
         let principal;
@@ -443,14 +463,12 @@ class EventDetail extends Container {
         changes[`participants/${principal.id}`] = organizer;
         participants[principal.id] = organizer;
 
-        if (await me.saveChanges(changes)) {
+        if (await me.saveChanges(changes, item)) {
             item.data.participants = participants;
             item.patched.participants = clone(participants);
             item._calendarPrincipal = undefined;
-            me.fire('changed', {})
+            me.isDestroyed || me.fire('changed', {})
         }
-
-        me.isDestroyed || me.setItem(item)
     }
 
     onEdit() {

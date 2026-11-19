@@ -1090,7 +1090,8 @@ class CalendarMain extends MainThreeColumnPanel {
         // may contain calendars that are not in the list
         me.applyCalendarFilter(ids);
 
-        if (view.defaultView) {
+        // the same route doesn't update the view (setSpan()), the new calendars need it
+        if (view.defaultView && view.defaultView !== me.currentRouteSpan()) {
             me.routeTo(view.defaultView, me.date)
         } else {
             me.updateView()
