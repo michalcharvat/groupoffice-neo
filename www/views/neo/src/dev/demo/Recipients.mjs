@@ -20,10 +20,11 @@ class RecipientsDemo extends FormDemo {
         }, {
             module   : RecipientsField,
             name     : 'cc',
-            labelText: 'Cc (no picker button)',
-            picker   : false
+            labelText: 'Cc (no picker button, initial value)',
+            picker   : false,
+            value    : [{name: 'Jane Roe', email: 'jane@example.org'}]
         }],
-        sample: {to: [{name: 'John Doe', email: 'john@example.com'}, 'not-an-address'], cc: []}
+        sample: {to: [{name: 'John Doe', email: 'john@example.com'}, 'not-an-address']}
     }
 }
 

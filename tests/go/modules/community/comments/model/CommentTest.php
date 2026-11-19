@@ -72,6 +72,11 @@ class CommentTest extends TestCase
 
 	private static function cleanUp(): void
 	{
+		// comments have no foreign key to their item: delete them with it
+		if (isset(self::$note->id)) {
+			Comment::delete(['entityId' => self::$note->id, 'entityTypeId' => Note::entityType()->getId()]);
+		}
+
 		if (isset(self::$noteBook->id)) {
 			NoteBook::delete(['id' => self::$noteBook->id]);
 		}

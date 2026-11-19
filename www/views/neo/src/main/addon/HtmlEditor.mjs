@@ -579,6 +579,8 @@ class HtmlEditor extends Base {
             return
         }
 
+        // the shown names are for the old text until the worker answers: not pickable
+        item.mentionPending = true;
         item.mentionMenu?.isConnected && this.positionMentions(item);
 
         DomEvents.sendMessageToApp({
@@ -603,7 +605,8 @@ class HtmlEditor extends Base {
             return
         }
 
-        item.mentionItems  = items;
+        item.mentionPending = false;
+        item.mentionItems   = items;
         item.mentionActive = 0;
 
         let menu = item.mentionMenu;
@@ -700,8 +703,9 @@ class HtmlEditor extends Base {
      * @param {Object} item
      */
     hideMentions(item) {
-        item.mention      = null;
-        item.mentionItems = null;
+        item.mention        = null;
+        item.mentionItems   = null;
+        item.mentionPending = false;
         item.mentionMenu?.remove();
         item.editor.removeAttribute('aria-activedescendant')
     }
@@ -715,7 +719,21 @@ class HtmlEditor extends Base {
     onMentionKey(item, e) {
         const count = item?.mentionItems?.length;
 
-        if (!item?.mentionMenu?.isConnected || e.isComposing) {
+        if (!item?.mention || e.isComposing) {
+            return false
+        }
+
+        // Escape also while the suggestions are still loading: they must not open afterwards,
+        // and a dialog around the editor must not close
+        if (e.key === 'Escape') {
+            item.mentionSuppress = {node: item.mention.node, start: item.mention.start};
+            this.hideMentions(item);
+            e.preventDefault();
+            e.stopPropagation();
+            return true
+        }
+
+        if (!item.mentionMenu?.isConnected) {
             return false
         }
 
@@ -733,11 +751,8 @@ class HtmlEditor extends Base {
                 if (!count) {
                     return false
                 }
-                this.pickMention(item, item.mentionActive);
-                break;
-            case 'Escape':
-                item.mentionSuppress = {node: item.mention.node, start: item.mention.start};
-                this.hideMentions(item);
+                // names of the previous text: wait for the answer instead of picking a wrong one
+                item.mentionPending || this.pickMention(item, item.mentionActive);
                 break;
             default:
                 return false

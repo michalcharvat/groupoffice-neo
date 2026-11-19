@@ -41,6 +41,8 @@ class RecipientsField extends ChipsField {
     active = -1
     /** bumped per lookup: only the latest answer shows */
     suggestGeneration = 0
+    /** the text the shown suggestions are for: after more typing Enter adds the text instead */
+    suggestText = ''
 
     /**
      * The input is not the last control node: the picker button and the suggestions follow it
@@ -51,12 +53,16 @@ class RecipientsField extends ChipsField {
     }
 
     construct(config) {
+        // before super: an initial value resolves its chip texts during construction
+        config = {
+            chipRenderer    : v => v?.name ? v.name : (v?.email ?? ''),
+            textInputToValue: text => RecipientsField.parse(text),
+            ...config
+        };
+
         super.construct(config);
 
         let me = this;
-
-        me.chipRenderer = v => v?.name ? v.name : (v?.email ?? '');
-        me.textInputToValue = text => RecipientsField.parse(text);
 
         me.addDomListeners([
             {focusout: me.onFocusOut, scope: me}
@@ -223,8 +229,9 @@ class RecipientsField extends ChipsField {
                     return;
                 case 'Enter':
                 case 'Tab':
-                    if (me.active > -1) {
-                        me.pick(me.active);
+                    if (me.active > -1 && me.suggestText === me.inputText.trim()) {
+                        // Tab: the browser moves the focus on (the worker can't prevent it)
+                        me.pick(me.active, data.key === 'Enter');
                         return
                     }
                     break;
@@ -238,7 +245,8 @@ class RecipientsField extends ChipsField {
     }
 
     onFocusOut() {
-        // a click on a suggestion comes after the focus left the input
+        // no lookup after leaving; a click on a suggestion comes after the focus left the input
+        clearTimeout(this.suggestTimer);
         setTimeout(() => this.isDestroyed || this.closeSuggestions(), 200)
     }
 
@@ -306,6 +314,7 @@ class RecipientsField extends ChipsField {
 
         const chosen = new Set((me.value || []).map(RecipientsField.emailKey));
 
+        me.suggestText = text;
         me.suggestions = list.filter(s => !chosen.has(RecipientsField.emailKey(s)));
         me.active      = me.suggestions.length ? 0 : -1;
         me.renderControl()
@@ -313,8 +322,9 @@ class RecipientsField extends ChipsField {
 
     /**
      * @param {Number} index of a suggestion
+     * @param {Boolean} [refocus=true] back to the input (not after Tab)
      */
-    pick(index) {
+    pick(index, refocus = true) {
         let me = this,
             s  = me.suggestions[index];
 
@@ -328,7 +338,7 @@ class RecipientsField extends ChipsField {
         me.suggestGeneration++;
         me.addRecipients([{name: s.name, email: s.email}]);
         me.renderControl();
-        me.focus(me.id + '__input')
+        refocus && me.focus(me.id + '__input')
     }
 
     /**
