@@ -84,6 +84,7 @@ class UsersPanel extends Container {
             module   : Grid,
             reference: 'grid',
             cls      : ['go-users-grid'],
+            rowLines : 2, // avatar, name + user name
             flex     : 1,
             stateId  : 'users-grid',
             store    : {

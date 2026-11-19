@@ -254,6 +254,7 @@ class AddressBookMain extends MainThreeColumnPanel {
                 module     : Grid,
                 reference  : 'grid',
                 cls        : ['go-addressbook-grid'],
+                rowLines   : 2, // avatar column
                 flex       : 1,
                 multiSelect: true,
                 store      : {

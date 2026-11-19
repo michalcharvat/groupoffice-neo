@@ -15,6 +15,35 @@ async function load(windowId) {
     return addon()
 }
 
+/** Callbacks of onThemeChange() */
+const themeListeners = new Set();
+
+/**
+ * Calls fn(windowIds) after applyTheme() changed the theme of windows, e.g. to measure
+ * the density again (GO.grid.Grid row heights)
+ * @param {Function} fn
+ * @returns {Function} removes the listener
+ */
+export function onThemeChange(fn) {
+    themeListeners.add(fn);
+    return () => themeListeners.delete(fn)
+}
+
+/**
+ * px of dp(1) in a window: the html font-size is dp(10), it follows the theme
+ * (Paper 8.64px, Compact 7.125px) and the device (--mobile-density)
+ * @param {String} windowId
+ * @returns {Promise<Number>} 0 when the window can't be measured
+ */
+export async function dpPixels(windowId) {
+    try {
+        return (await (await load(windowId)).rootFontSize({windowId})) / 10
+    } catch (e) {
+        // a window that is closing
+        return 0
+    }
+}
+
 /**
  * Applies the theme in windows of this App worker
  * @param {Object} data
@@ -31,7 +60,9 @@ export async function applyTheme({theme, colorScheme}, windowIds = Object.keys(N
             // a window that is closing
             console.warn('applyTheme', windowId, e)
         }
-    }))
+    }));
+
+    theme && themeListeners.forEach(fn => fn(windowIds))
 }
 
 /**

@@ -3,12 +3,20 @@ import HeaderButton  from './HeaderButton.mjs';
 import MenuList      from '../menu/List.mjs';
 import RowSelectionModel from './RowSelectionModel.mjs';
 import {dpSize, getState, setState} from '../State.mjs';
+import {dpPixels, onThemeChange} from '../Preferences.mjs';
+import client        from '../jmap/Client.mjs';
 import {t}           from '../Translate.mjs';
 
 /**
  * GO grid: neo's grid with the GOUI table metrics (goui/style/_table.scss) —
- * td padding dp(8) around a dp(24) line + 1px divider = 35px rows at the desktop density,
- * no vertical cell lines, dp(16) padding at the outer columns.
+ * td padding dp(8) around a dp(24) line = dp(40) rows, no vertical cell lines, dp(16) padding
+ * at the outer columns.
+ *
+ * Row height: neo's buffered grid needs it in px, so it follows the density of the theme
+ * (html font-size = dp(10)): one-line rows dp(40) = 35px Paper / 29px Compact, two-line rows
+ * (`rowLines: 2`: avatar, name + second line) dp(56) = 48px / 40px. A grid starts with the
+ * density of client.user.theme, then measures its window (the mobile density) and measures again
+ * after Preferences.applyTheme() (Look & feel, live preview).
  *
  * Column chooser (GO 6.8 header menu "Columns", GOUI Table.getVisibleColumnMenu()):
  *
@@ -28,6 +36,11 @@ class Grid extends GridContainer {
         className: 'GO.grid.Grid',
         baseCls  : ['go-grid', 'neo-grid-container'],
         rowHeight: 35,
+        /**
+         * 1: one text line; 2: two lines or an avatar (GOUI avatar rows). Sets the rowHeight.
+         * @member {Number} rowLines_=1
+         */
+        rowLines_: 1,
         /**
          * GOUI multiSelect: ctrl/shift + click select more rows (GO.grid.RowSelectionModel),
          * GO.grid.MultiSelectToolbar shows actions for them
@@ -53,17 +66,119 @@ class Grid extends GridContainer {
      */
     touchedColumns = new Set()
 
+    /**
+     * Row height in dp per rowLines
+     * @member {Object} ROW_DP
+     */
+    static ROW_DP = {1: 40, 2: 56}
+
+    /**
+     * px of dp(1) per theme on a desktop (--density / 10, Global.scss)
+     * @member {Object} THEME_DP
+     */
+    static THEME_DP = {Paper: .864, Compact: .7125}
+
+    /**
+     * px of dp(1) of the last measurement, the start value of new grids
+     * @member {Number|null} measuredDp
+     */
+    static measuredDp = null
+
+    /**
+     * px of dp(1) the rowHeight is based on
+     * @member {Number} dp
+     */
+    dp = 0
+
+    /**
+     * @param {Number} rowLines
+     * @param {Number} dp px of dp(1)
+     * @returns {Number} px
+     */
+    static rowHeightFor(rowLines, dp) {
+        return Math.round((Grid.ROW_DP[rowLines] || Grid.ROW_DP[1]) * dp)
+    }
+
     construct(config) {
-        const all = (config.columns || []).map(column => ({hideable: true, hidden: false, ...column}));
+        const all = (config.columns || []).map(column => ({hideable: true, hidden: false, ...column})),
+              dp  = Grid.measuredDp || Grid.THEME_DP[client.user?.theme] || Grid.THEME_DP.Paper;
 
         super.construct({
+            rowHeight: Grid.rowHeightFor(config.rowLines || 1, dp),
             ...config,
             ...(config.multiSelect ? {viewConfig: {...config.viewConfig, selectionModel: {module: RowSelectionModel}}} : {}),
             columns      : Grid.visibleColumns(all),
             headerToolbar: {...config.headerToolbar, itemDefaults: {module: HeaderButton, ntype: 'go-grid-header-button'}}
         });
 
-        this.allColumns = all
+        this.allColumns = all;
+        this.dp         = dp;
+        this.removeThemeListener = onThemeChange(windowIds => windowIds.includes(this.windowId) && this.measureRowHeight())
+    }
+
+    destroy(...args) {
+        this.removeThemeListener?.();
+        super.destroy(...args)
+    }
+
+    /**
+     * Triggered after the rowLines config got changed
+     * @param {Number} value
+     * @param {Number} oldValue
+     * @protected
+     */
+    afterSetRowLines(value, oldValue) {
+        oldValue !== undefined && this.dp && this.setRowHeight(Grid.rowHeightFor(value, this.dp))
+    }
+
+    /**
+     * Measures the density of the window and fits the row height to it
+     * @returns {Promise<void>}
+     */
+    async measureRowHeight() {
+        let me = this;
+
+        if (!me.windowId) {
+            return
+        }
+
+        const dp = await dpPixels(me.windowId);
+
+        if (dp > 0 && !me.isDestroyed) {
+            Grid.measuredDp = dp;
+            me.dp           = dp;
+            me.setRowHeight(Grid.rowHeightFor(me.rowLines, dp))
+        }
+    }
+
+    /**
+     * Changes the row height of a rendered grid: neo's bodies keep their row count and rows
+     * otherwise
+     * @param {Number} height px
+     * @protected
+     */
+    setRowHeight(height) {
+        let me = this;
+
+        if (!(height > 0) || height === me.rowHeight) {
+            return
+        }
+
+        me.rowHeight = height;
+
+        // neo's afterSetRowHeight() leaves the scrollbar out: its range would stay at the old height
+        me.verticalScrollbar && (me.verticalScrollbar.rowHeight = height);
+
+        [me.body, me.bodyStart, me.bodyEnd].forEach(body => {
+            if (body) {
+                body.skipCreateViewData = true;
+                body.availableHeight > 0 && (body.availableRows = Math.ceil(body.availableHeight / height) - 1);
+                // the rows of the current scroll position: neo only recalculates it on scroll
+                body.startIndex         = Math.floor((body.scrollTop || 0) / height);
+                body.skipCreateViewData = false;
+                body.createViewData(false, true)
+            }
+        })
     }
 
     /**
@@ -107,6 +222,8 @@ class Grid extends GridContainer {
         me.headerToolbar?.addDomListeners({contextmenu: me.onHeaderContextMenu, scope: me});
 
         me.decorateHeader();
+
+        me.measureRowHeight();
 
         me.stateId && await me.restoreColumnState()
     }
