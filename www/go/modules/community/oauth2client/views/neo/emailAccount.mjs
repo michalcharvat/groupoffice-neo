@@ -62,12 +62,25 @@ async function applyConnection(dialog, usesOauth2) {
  * @param {Object} dialog
  * @param {Object|null} value Oauth2Client
  */
-async function onConnectionChange(dialog, value) {
+function onConnectionChange(dialog, value) {
     if (dialog.applying || !dialog.formReady) {
         return
     }
 
-    const id = value?.id ?? value;
+    // beforeSave waits for it
+    dialog.oauth2Pending = applyDefaults(dialog, value)
+}
+
+/**
+ * @param {Object} dialog
+ * @param {Object|null} value Oauth2Client
+ * @returns {Promise<void>}
+ */
+async function applyDefaults(dialog, value) {
+    const id = value?.id ?? value,
+          // a later choice wins over this one's lookups
+          generation = dialog.oauth2Generation = (dialog.oauth2Generation || 0) + 1,
+          current    = () => !dialog.isDestroyed && generation === dialog.oauth2Generation;
 
     await applyConnection(dialog, !!id);
 
@@ -78,6 +91,10 @@ async function onConnectionChange(dialog, value) {
     try {
         const [oauth2Client] = await client.get('Oauth2Client', [id], ['id', 'defaultClientId']),
               [defaults]     = oauth2Client?.defaultClientId ? await client.get('DefaultClient', [oauth2Client.defaultClientId]) : [];
+
+        if (!current()) {
+            return
+        }
 
         const set = async (name, fieldValue) => {
             const field = await dialog.form.getField(name);
@@ -95,7 +112,7 @@ async function onConnectionChange(dialog, value) {
             await set('smtp_encryption', defaults.smtpEncryption)
         }
     } catch (e) {
-        notifyError(dialog, e)
+        current() && notifyError(dialog, e)
     }
 }
 
@@ -128,7 +145,10 @@ export default {
 
     load: ({account, dialog}) => applyConnection(dialog, !!+(account?.oauth2_client_id || 0)),
 
-    beforeSave: ({params, dialog}) => {
+    beforeSave: async ({params, dialog}) => {
+        // the server settings of a connection chosen just before saving
+        await dialog.oauth2Pending;
+
         const field = combo(dialog),
               id    = field?.getSubmitValue?.() ?? field?.value?.id;
 

@@ -3,7 +3,7 @@ import Button    from '../../../../../../../views/neo/src/button/Button.mjs';
 import {translator} from '../../../../../../../views/neo/src/Translate.mjs';
 import CalendarItem from '../CalendarItem.mjs';
 import calendarData from '../data.mjs';
-import {openWithWindowUi, withWindowUi} from '../ui.mjs';
+import {windowUi} from '../ui.mjs';
 import {format, ymd} from '../util/date.mjs';
 
 const t = translator('community', 'calendar');
@@ -78,7 +78,8 @@ class ItipPanel extends Container {
         }[itip.method] || t('Unable to process appointment information.');
 
         if (event && typeof event === 'object') {
-            let item = new CalendarItem({data: event, key: event.id ? String(event.id) : ''});
+            // its dialogs and questions open in this window
+            let item = new CalendarItem({data: event, key: event.id ? String(event.id) : '', ownUi: windowUi(me)});
 
             if (itip.recurrenceId && item.isRecurring) {
                 item = item.patchedInstance(itip.recurrenceId)
@@ -152,7 +153,7 @@ class ItipPanel extends Container {
         let me = this;
 
         try {
-            await withWindowUi(me, () => me.item.updateParticipation(status, () => me.isDestroyed || me.updateButtons()))
+            await me.item.updateParticipation(status, () => me.isDestroyed || me.updateButtons())
         } catch (e) {
             // the save itself shows its errors (CalendarItem.set)
             console.error('ItipPanel', e)
@@ -166,7 +167,7 @@ class ItipPanel extends Container {
      */
     async importEvent() {
         try {
-            await openWithWindowUi(this, () => this.item.open(undefined, true))
+            await this.item.open(undefined, true)
         } catch (e) {
             console.error('ItipPanel', e)
         }

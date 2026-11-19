@@ -148,7 +148,7 @@ class ContactDetail extends Container {
         let me = this;
 
         me.getReference('actionDate').on('change', ({value}) => me.onActionDateChange(value));
-        me.getReference('body').addDomListeners({click: me.onBodyClick, scope: me})
+        me.getReference('body').addDomListeners({click: me.onBodyClick, keydown: me.onBodyKeyDown, scope: me})
     }
 
     /**
@@ -156,6 +156,11 @@ class ContactDetail extends Container {
      * falls back to mailto: without the e-mail module
      * @param {Object} data
      */
+    onBodyKeyDown(data) {
+        // the address links are role=button: Enter and Space activate them
+        (data.key === 'Enter' || data.key === ' ') && this.onBodyClick(data)
+    }
+
     onBodyClick(data) {
         let me      = this,
             contact = me.contact,

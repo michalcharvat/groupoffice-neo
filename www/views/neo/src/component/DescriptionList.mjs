@@ -42,7 +42,11 @@ class DescriptionList extends Component {
 
         let me = this;
 
-        me.addDomListeners({click: me.onEmailClick, delegate: '.go-dl-email', scope: me})
+        me.addDomListeners([
+            {click  : me.onEmailClick, delegate: '.go-dl-email', scope: me},
+            // role=button: Enter and Space activate it
+            {keydown: data => (data.key === 'Enter' || data.key === ' ') && me.onEmailClick(data), delegate: '.go-dl-email', scope: me}
+        ])
     }
 
     afterSetRecords() {

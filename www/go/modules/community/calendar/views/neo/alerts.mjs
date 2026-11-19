@@ -6,7 +6,7 @@ import {notifyError} from '../../../../../../views/neo/src/Notify.mjs';
 import {translator} from '../../../../../../views/neo/src/Translate.mjs';
 import CalendarItem from './CalendarItem.mjs';
 import calendarData from './data.mjs';
-import {withWindowUi} from './ui.mjs';
+import {windowUi} from './ui.mjs';
 
 const t = translator('community', 'calendar');
 
@@ -80,10 +80,10 @@ async function reply(alert, event, status, message, view) {
         await calendarData.init();
 
         const [current] = await client.get('CalendarEvent', [event.id]),
-              item      = new CalendarItem({key: String(event.id), data: current || event, recurrenceId: alert.recurrenceId || undefined});
+              // the questions open in this notification area's window, not in a calendar view of another one
+              item      = new CalendarItem({key: String(event.id), data: current || event, recurrenceId: alert.recurrenceId || undefined, ownUi: windowUi(base)});
 
-        // the questions open in this notification area's window, not in a calendar view of another one
-        await withWindowUi(base, () => item.updateParticipation(status, () => notificationCenter.dismiss(message.id)))
+        await item.updateParticipation(status, () => notificationCenter.dismiss(message.id))
     } catch (e) {
         notifyError(view, e)
     }

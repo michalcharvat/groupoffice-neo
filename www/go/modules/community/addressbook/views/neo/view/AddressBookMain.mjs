@@ -1382,7 +1382,10 @@ class AddressBookMain extends MainThreeColumnPanel {
                 throw new Error(t('Sorry, an unknown error occurred'))
             }
 
-            me.isDestroyed || await showComposer({appName: me.appName, windowId: me.windowId, blobs: [response.blob]})
+            // the e-mail module's composer even with the desktop composer: mailto: can't attach
+            // (ExtJS GO.email.showComposer)
+            const open = ModuleRegistry.getConfigs('showComposer')[0];
+            me.isDestroyed || await open?.({appName: me.appName, windowId: me.windowId, blobs: [response.blob]})
         } catch (e) {
             me.showError(e)
         }

@@ -237,7 +237,7 @@ class EventDetail extends Container {
 
         me.item?.updateParticipation(status, () => {
             me.isDestroyed || (me.renderStatus(), me.fire('changed', {}))
-        }).catch(e => CalendarItem.ui.error(e));
+        }).catch(e => (me.item?.ui || CalendarItem.ui).error(e));
         me.renderStatus()
     }
 

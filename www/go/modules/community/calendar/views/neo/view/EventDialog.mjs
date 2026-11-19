@@ -251,7 +251,7 @@ class EventDialog extends FormWindow {
 
         participants.on('beforeAdd', ({empty}) => empty && me.addOrganiser());
         participants.on('change', () => me.onParticipantsChange());
-        participants.on('writeEmail', ({email}) => CalendarItem.ui.mailTo(email));
+        participants.on('writeEmail', ({email}) => me.item.ui.mailTo(email));
 
         await me.readyPromise;
 
@@ -425,7 +425,7 @@ class EventDialog extends FormWindow {
             const [p] = await client.get('Principal', [me.item.ownerId], ['id', 'name', 'email', 'type']);
             p && !me.isDestroyed && me.getReference('participantField').addOrganiser(p)
         } catch (e) {
-            CalendarItem.ui.error(t('Could not add organizer because the calendar principal could not be read from the server. Do you have permissions?'))
+            this.item.ui.error(t('Could not add organizer because the calendar principal could not be read from the server. Do you have permissions?'))
         }
     }
 
@@ -491,7 +491,7 @@ class EventDialog extends FormWindow {
 
             desc && (desc.value = (desc.value || '') + `\n\n${line}\n${service.joinText?.() || ''}:\n\n${url}\n${line}\n\n`)
         } catch (e) {
-            CalendarItem.ui.error(e)
+            this.item.ui.error(e)
         }
     }
 
@@ -507,18 +507,18 @@ class EventDialog extends FormWindow {
 
             me.isDestroyed || blobs.forEach(blob => field.addBlob(blob))
         } catch (e) {
-            CalendarItem.ui.error(e)
+            this.item.ui.error(e)
         } finally {
             me.isDestroyed || (me.isLoading = false)
         }
     }
 
     openAvailability() {
-        CalendarItem.ui.openAvailability?.(this)
+        this.item.ui.openAvailability?.(this)
     }
 
     openExceptions() {
-        CalendarItem.ui.openExceptions?.(this.item, this.form.entityData?.recurrenceOverrides || {})
+        this.item.ui.openExceptions?.(this.item, this.form.entityData?.recurrenceOverrides || {})
     }
 
     /**
@@ -611,7 +611,7 @@ class EventDialog extends FormWindow {
                 const answer = await item.confirmScheduleMessage(data);
 
                 if (answer) {
-                    const response = await CalendarItem.set({create: {e: item.data}}, answer.send),
+                    const response = await CalendarItem.set({create: {e: item.data}}, answer.send, item.ui),
                           id       = response.created?.e?.id;
 
                     // saved outside the form: create the collected links here
@@ -624,7 +624,7 @@ class EventDialog extends FormWindow {
                 const answer = await item.confirmScheduleMessage(data);
 
                 if (answer) {
-                    await CalendarItem.update(item.data.id, data, answer.send);
+                    await CalendarItem.update(item.data.id, data, answer.send, item.ui);
                     done()
                 }
             }

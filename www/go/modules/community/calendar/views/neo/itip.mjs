@@ -2,7 +2,7 @@ import client from '../../../../../../views/neo/src/jmap/Client.mjs';
 import {notifyError} from '../../../../../../views/neo/src/Notify.mjs';
 import CalendarItem from './CalendarItem.mjs';
 import calendarData from './data.mjs';
-import {openWithWindowUi} from './ui.mjs';
+import {windowUi} from './ui.mjs';
 import {ymdhis} from './util/date.mjs';
 import ItipPanel from './view/ItipPanel.mjs';
 
@@ -48,10 +48,10 @@ export async function openIcs({accountId, mailbox, uid, partId, encoding, fileId
         data.duration        ??= prefs.defaultDuration ?? 'P1D';
         data.calendarId      ??= prefs.defaultCalendarId;
 
-        const item = new CalendarItem({data, key: data.id ? String(data.id) : null});
+        const item = new CalendarItem({data, key: data.id ? String(data.id) : null, ownUi: windowUi(base)});
 
-        // GOUI: the detail window; its edit button opens the editor
-        await openWithWindowUi(base, ui => ui.openDetail(item))
+        // GOUI: the detail window; its edit button opens the editor (in this window too)
+        await item.ui.openDetail(item)
     } catch (e) {
         notifyError(base, e)
     }
