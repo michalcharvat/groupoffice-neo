@@ -130,6 +130,19 @@ export function escapeHtml(value) {
 }
 
 /**
+ * Text of a legacy controller value: their stores and display actions send formatted
+ * attributes with HTML entities (htmlspecialchars / htmlentities)
+ * @param {String} value
+ * @returns {String}
+ */
+export function decodeEntities(value) {
+    return String(value ?? '')
+        .replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+        .replace(/&#(\d+);/g, (m, code) => String.fromCodePoint(+code))
+        .replace(/&amp;/g, '&')
+}
+
+/**
  * GOUI Format.fileSize(): 1536 → "1.50 kB", 0 / empty → ''
  * @param {Number} bytes
  * @returns {String}
