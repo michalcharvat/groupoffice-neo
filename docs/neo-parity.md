@@ -21,7 +21,7 @@ These show up in several modules; each has one board card.
 | Print of the detail panel (no print helper in `www/views/neo/src`) | notes, tasks, contacts (detail more menu / context menu) | goui/script/NoteDetail.ts:69, TaskDetail.ts:213; addressbook extjs3/ContactContextMenu.js:66 | fixed (`src/print.mjs`) |
 | "New linked item" from another entity's detail (`linkWindow` registry) | notes, tasks, contacts, all detail panels | notes goui/script/Index.ts:96-108; tasks extjs3/Module.js:16; addressbook extjs3/ContactDetail.js:344 | card "neo-ui: create new linked item from a detail panel" |
 | Saved filter types other than string/date/number (select, principal, combo, link entity, custom fields, input variables) | contacts (type, gender, address book, groups, has e-mail…), tasks (responsible, list, progress), notes (has links to) | addressbook extjs3/Module.js:98-320; tasks extjs3/Module.js:90-140; notes goui/script/Index.ts:63 | card "neo-ui: FilterDialog select/principal/link/custom field filters" |
-| Grid group headers (`groupBy`) | tasks grid per list, task lists by grouping | tasks goui/script/TaskGrid.ts:289; extjs3/TasklistsGrid.js:15 | card "neo-ui: grid and list group headers" |
+| Grid group headers (`groupBy`) | tasks grid per list, task lists by grouping | tasks goui/script/TaskGrid.ts:289; extjs3/TasklistsGrid.js:15 | fixed: `GO.grid.Grid` `groupBy`, `GO.list.TextList` `groupField` (no collapsing) |
 | Custom field columns in grids | contacts, tasks, notes | www/go/core/views/extjs3/grid/GridPanel.js:31, data/StoreTrait.js:98 | done: `GO.grid.Grid` `customFieldsEntity` |
 | `name:value` search syntax in the toolbar search | multi_instance (adminEmail, isTrial…), any ExtJS tbsearch with `filters` | multi_instance extjs3/Module.js:8-58 | open (core decision, see card "neo-ui: FilterDialog …") |
 
@@ -96,8 +96,8 @@ continue task, comments, files, links, history; settings, portlet, quick add).
 | Grid | Priority and Location columns (hidden by default) | extjs3/TaskGrid.js:206-220, 322 | missing | fixed |
 | Drag and drop | Drag tasks onto a list to move them | goui/script/Main.ts:169, 319-336 | missing | fixed |
 | List dialog | "Sync to device", "Show in calendar", owner (admin) | extjs3/TasklistDialog.js:43-49 | missing | fixed |
-| Grid | Group headers per list | goui/script/TaskGrid.ts:289 | sorted only | card "neo-ui: grid and list group headers" |
-| West | Lists grouped by TaskListGrouping | extjs3/TasklistsGrid.js:15 | flat list | card "neo-ui: grid and list group headers" |
+| Grid | Group headers per list | goui/script/TaskGrid.ts:289 | sorted only | fixed (headers can't be collapsed) |
+| West | Lists grouped by TaskListGrouping | extjs3/TasklistsGrid.js:15 | flat list | fixed |
 | Saved filters | Created by, modified by, responsible, list, progress | extjs3/Module.js:90-140 | missing | card "neo-ui: FilterDialog …" |
 | Detail | Print | goui/script/TaskDetail.ts:213 | missing | fixed |
 | Links | "Incomplete / Completed tasks" cards with row menu in other details | extjs3/TaskLinkDetail.js | generic LinkDetail | card "neo-ui: link detail cards (tasks, appointments)" |

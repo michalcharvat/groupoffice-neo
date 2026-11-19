@@ -35,11 +35,11 @@ Small modules, 2FA login, module hooks: `docs/neo-small-modules.md`.
 | `src/view/Dialog.mjs` | base for GO dialogs (close/mask fixes, see below) |
 | `src/view/MainThreeColumnPanel.mjs` | GO module layout west \| center \| east with resizable, remembered splitters (groupoffice-core's GOUI class) |
 | `src/button/`, `src/component/`, `src/grid/` | GO components derived from neo: `Button` (flat, Material icons), `SearchButton`, `Splitter`, `TableTitle`, `CheckBox` (select all), `UploadButton`, `Grid`, `selectRow()` |
-| `src/list/CheckList.mjs`, `src/menu/List.mjs` | GOUI checkbox table with row menu (notebooks, filters); GO menu with Material `icon` per item, `List.showAt()` for row menus |
+| `src/list/CheckList.mjs`, `src/menu/List.mjs` | GOUI checkbox table with row menu (notebooks, filters), group headers with `groupField` / `groupRenderer` (from `TextList`); GO menu with Material `icon` per item, `List.showAt()` for row menus |
 | `src/view/FilterPanel.mjs`, `FilterDialog.mjs` | west "Filters": saved `EntityFilter`s (type fixed), checked ones ANDed into the grid filter |
 | `src/view/GlobalSearch.mjs` | header search over core `Search`; modules map entities to routes (`routes` in the registry) |
 | `src/detail/` | detail cards below an entity: `CommentsPanel`, `FilesPanel` (legacy files controllers), `HistoryPanel` (LogEntry grid like GOUI LogEntryGrid, loads on scroll, reloads on a push for the shown entity type) |
-| `src/grid/Grid.mjs`, `HeaderButton.mjs` | `GO.grid.Grid`: column chooser on ⋮ in the last column header, right click on a header: sort asc/desc + columns (GO 6.8) (`hidden`, `hideable: false`, `stateKey`), hidden columns and widths saved in `state-<stateId>` in the GOUI format; neo only gets the visible columns |
+| `src/grid/Grid.mjs`, `HeaderButton.mjs` | `GO.grid.Grid`: column chooser on ⋮ in the last column header, right click on a header: sort asc/desc + columns (GO 6.8) (`hidden`, `hideable: false`, `stateKey`), hidden columns and widths saved in `state-<stateId>` in the GOUI format; neo only gets the visible columns; group headers with `groupBy` / `groupRenderer` (GOUI Table groupBy) |
 | `src/State.mjs` | GOUI-compatible component state in localStorage (`state-<id>`) |
 | `src/Translate.mjs` | `t()`, `translator(pkg, module)`, `fmt()` over GO's language files (see [Translations](#translations)) |
 | `src/form/field/JmapComboBox.mjs`, `PrincipalCombo.mjs`, `GroupCombo.mjs` | remote combo over `Entity/query` (filter as you type, `loadMore` on scroll); value = id, display text fetched for a preset id |

@@ -6,6 +6,7 @@ import {dpSize, getState, setState} from '../State.mjs';
 import {dpPixels, onThemeChange} from '../Preferences.mjs';
 import client        from '../jmap/Client.mjs';
 import {t}           from '../Translate.mjs';
+import {escapeHtml}  from '../Format.mjs';
 import {createColumns as createCustomFieldColumns, loadNames as loadCustomFieldNames} from '../customfields/gridColumns.mjs';
 
 /**
@@ -40,6 +41,18 @@ import {createColumns as createCustomFieldColumns, loadNames as loadCustomFieldN
  *
  * Keyboard (ExtJS GridTrait, GOUI Table "delete"): with selected rows, Delete or ctrl/⌘+Backspace
  * fires `deleteKey` and Enter fires `enterKey`, both {records}; the module decides what they do.
+ *
+ * Group headers (GOUI Table groupBy / groupByRenderer, ExtJS GroupingView):
+ *
+ *     groupBy      : 'tasklistId',
+ *     groupRenderer: ({value, record}) => escapeHtml(listName(value)),   // HTML
+ *     store        : {sorters: [{property: 'tasklistId', direction: 'ASC'}, …]}
+ *
+ * A header shows above the first row of each run of the same value, while the store's first
+ * sorter is the groupBy field. Sorting by a column keeps that sorter first and changes the
+ * second one (GOUI Table.sort edits the last sorter). neo's grid has no group rows: the first
+ * row of a group is one header taller (content-sized rows) and carries the header band.
+ * Not supported: collapsing groups, and columns locked at runtime (their body misses the band).
  */
 class Grid extends GridContainer {
     static config = {
@@ -66,8 +79,31 @@ class Grid extends GridContainer {
          * JMAP entity whose custom fields get columns, e.g. 'Note'
          * @member {String|null} customFieldsEntity=null
          */
-        customFieldsEntity: null
+        customFieldsEntity: null,
+        /**
+         * dataField whose value starts a new group (header above its first row)
+         * @member {String|null} groupBy=null
+         */
+        groupBy: null,
+        /**
+         * HTML of a group header: ({value, record}) => String. Default: the escaped value.
+         * @member {Function|null} groupRenderer=null
+         */
+        groupRenderer: null
     }
+
+    /**
+     * Ids (String) of the records that start a group
+     * @member {Set<String>} groupStarts
+     */
+    groupStarts = new Set()
+
+    /**
+     * Record ids of the rows that got a height of their own (group starts, also former ones):
+     * String(id) → id
+     * @member {Map} sizedRows
+     */
+    sizedRows = new Map()
 
     /**
      * All columns, visible or not: {…column config, hidden, hideable}
@@ -133,6 +169,8 @@ class Grid extends GridContainer {
 
         super.construct({
             rowHeight: Grid.rowHeightFor(config.rowLines || 1, dp),
+            // group headers make the first row of a group taller
+            ...(config.groupBy ? {contentSizedRows: true} : {}),
             ...config,
             ...(config.multiSelect ? {viewConfig: {...config.viewConfig, selectionModel: {module: RowSelectionModel}}} : {}),
             columns      : Grid.visibleColumns(all),
@@ -148,6 +186,7 @@ class Grid extends GridContainer {
 
     destroy(...args) {
         this.removeThemeListener?.();
+        this.groupListeners && this.groupStore?.un(this.groupListeners);
         super.destroy(...args)
     }
 
@@ -196,6 +235,12 @@ class Grid extends GridContainer {
 
         me.rowHeight = height;
 
+        // content-sized rows: neo's afterSetRowHeight() moved the estimate, the group rows follow
+        if (me.view?.rowGeometry) {
+            me.updateGroups(true);
+            return
+        }
+
         // neo's afterSetRowHeight() leaves the scrollbar out: its range would stay at the old height
         me.verticalScrollbar && (me.verticalScrollbar.rowHeight = height);
 
@@ -209,6 +254,221 @@ class Grid extends GridContainer {
                 body.createViewData(false, true)
             }
         })
+    }
+
+    /**
+     * Group headers: store listeners, rows that render the header band
+     * @protected
+     */
+    initGroups() {
+        let me      = this,
+            {store} = me,
+            update  = () => me.updateGroups();
+
+        // removed in destroy(): a store may outlive the grid
+        me.groupListeners = {
+            load        : update,
+            loadMore    : update,
+            filter      : update,
+            recordChange: ({fields}) => fields?.some(field => field.name === me.groupBy) && update()
+        };
+
+        me.groupStore = store;
+        store.on(me.groupListeners);
+
+        me.view.bodies.forEach(body => me.groupBody(body));
+        store.count && update()
+    }
+
+    /**
+     * Lets a body's rows render the group header band and ignore clicks on it
+     * @param {Neo.grid.Body} body
+     * @protected
+     */
+    groupBody(body) {
+        let me = this;
+
+        if (body.goGrouped) {
+            return
+        }
+
+        body.goGrouped = true;
+
+        // a click on a header is not a click on its row. Body binds its click listeners at
+        // construction; isEditorEvent() is looked up per event
+        const isEditorEvent = body.isEditorEvent;
+
+        body.isEditorEvent = function(data) {
+            return isEditorEvent.call(this, data) || data.path.some(node => node.cls?.includes('go-grid-group-header'))
+        };
+
+        // rows are created when the pool grows (a taller grid)
+        const createRowPool = body.createRowPool;
+
+        body.createRowPool = function(...args) {
+            const result = createRowPool.apply(this, args);
+            this.items.forEach(row => me.groupRow(row));
+            return result
+        };
+
+        body.items.forEach(row => me.groupRow(row))
+    }
+
+    /**
+     * @param {Neo.grid.Row} row
+     * @protected
+     */
+    groupRow(row) {
+        let me = this;
+
+        if (row.goGrouped) {
+            return
+        }
+
+        row.goGrouped = true;
+
+        const createVdom = row.createVdom;
+
+        row.createVdom = function(silent = false, recycle = true) {
+            createVdom.call(this, true, recycle);
+            me.decorateGroupRow(this);
+            !silent && this.update()
+        }
+    }
+
+    /**
+     * Adds the header band to the vdom of a row that starts a group. The band is always the
+     * last child (removeDom when not needed): neo keeps the DOM order of a row's cells stable.
+     * @param {Neo.grid.Row} row
+     * @protected
+     */
+    decorateGroupRow(row) {
+        let me       = this,
+            {record} = row,
+            vdom     = row.vdom;
+
+        if (!record || !Array.isArray(vdom.cn)) {
+            return
+        }
+
+        const body    = row.parent,
+              isStart = me.groupStarts.has(String(body.getRecordId(record))),
+              // the text once, in the first region (locked start columns or the center)
+              isLead  = body === (me.bodyStart || me.body);
+
+        vdom.cls = (vdom.cls || []).filter(cls => cls !== 'go-grid-group-start');
+        isStart && vdom.cls.push('go-grid-group-start');
+
+        vdom.cn.push({
+            id       : row.id + '__group',
+            cls      : ['go-grid-group-header'],
+            removeDom: !isStart,
+            html     : isStart && isLead ? me.renderGroup(record) : ''
+        })
+    }
+
+    /**
+     * @param {Object} record
+     * @returns {String} HTML
+     * @protected
+     */
+    renderGroup(record) {
+        const value = record[this.groupBy];
+
+        try {
+            return this.groupRenderer ? (this.groupRenderer({value, record}) ?? '') : escapeHtml(value ?? '')
+        } catch (e) {
+            console.error('Group renderer', e);
+            return ''
+        }
+    }
+
+    /**
+     * Finds the first record of each group and gives its row the height of row + header
+     * @param {Boolean} [all=false] set the height of every group row again (row height changed)
+     */
+    updateGroups(all = false) {
+        let me            = this,
+            {store, view} = me,
+            rowGeometry   = view?.rowGeometry,
+            starts        = new Map(), // String(id) → record id as the rows key it
+            heights       = new Map(),
+            field         = me.groupBy,
+            body          = me.body;
+
+        if (!field || !rowGeometry || !body || me.isDestroyed) {
+            return
+        }
+
+        // groups only make sense while the rows are sorted by the field
+        if (store.sorters?.[0]?.property === field) {
+            let previous;
+
+            (store.items || []).forEach((record, index) => {
+                const value = record?.[field] ?? null;
+
+                if (record && (index === 0 || value !== previous)) {
+                    const id = body.getRecordId(record);
+                    starts.set(String(id), id)
+                }
+
+                previous = value
+            });
+        }
+
+        const groupHeight = me.rowHeight + Grid.rowHeightFor(1, me.dp || Grid.THEME_DP.Paper),
+              changed     = starts.size !== me.groupStarts.size || [...starts.keys()].some(key => !me.groupStarts.has(key));
+
+        starts.forEach((id, key) => (all || !me.groupStarts.has(key)) && heights.set(id, groupHeight));
+
+        // RowGeometry can't forget a height: a former first row gets the row height (again after a
+        // density change)
+        me.sizedRows.forEach((id, key) => !starts.has(key) && (all || me.groupStarts.has(key)) && heights.set(id, me.rowHeight));
+        starts.forEach((id, key) => me.sizedRows.set(key, id));
+
+        me.groupStarts = new Set(starts.keys());
+
+        heights.size && view.setRowHeights(heights);
+
+        // the rows that gained or lost their header render again
+        (changed || all) && view.bodies.forEach(item => item.createViewData(false, true))
+    }
+
+    /**
+     * Grouped: a column sort keeps the group field as the first sorter (GOUI Table.sort)
+     * @param {Object} opts
+     * @protected
+     */
+    onSortColumn(opts) {
+        let me      = this,
+            field   = me.groupBy,
+            {store} = me;
+
+        if (!field || store.sorters?.[0]?.property !== field) {
+            return super.onSortColumn(opts)
+        }
+
+        const group = store.sorters[0];
+
+        // tri-state sorting cleared a column: the groups stay
+        if (!opts.direction) {
+            store.sorters = [group];
+            me.removeSortingCss(opts.property);
+            return
+        }
+
+        store.sorters = opts.property === field
+            ? [{property: field, direction: opts.direction}, ...store.sorters.slice(1)]
+            : [group, {property: opts.property, direction: opts.direction}];
+
+        me.removeSortingCss(opts.property)
+    }
+
+    /**
+     * Renders every row again, e.g. after names in renderers were loaded
+     */
+    refreshRows() {
+        this.view?.bodies.forEach(body => body.createViewData(false, true))
     }
 
     /**
@@ -253,6 +513,8 @@ class Grid extends GridContainer {
         me.addDomListeners({keydown: me.onGridKeyDown, scope: me});
 
         me.decorateHeader();
+
+        me.groupBy && me.initGroups();
 
         me.measureRowHeight();
 
@@ -376,7 +638,10 @@ class Grid extends GridContainer {
         // header.Toolbar#createItems() runs in afterSetColumns()
         await me.timeout(60);
 
-        !me.isDestroyed && me.decorateHeader()
+        !me.isDestroyed && me.decorateHeader();
+
+        // a locked column adds a body
+        !me.isDestroyed && me.groupBy && me.view?.bodies.forEach(body => me.groupBody(body))
     }
 
     /**

@@ -1,0 +1,20 @@
+@use "../../../../go/go";
+
+// group header of GO.list.TextList (groupField), like the ExtJS GroupingView header
+.neo-list .go-list-group-header {
+    align-items  : center;
+    border-bottom: 1px solid var(--fg-line);
+    color        : var(--fg-secondary-text);
+    cursor       : default;
+    display      : flex;
+    font-size    : go.sp(14);
+    font-weight  : 500;
+    height       : go.dp(32);
+    margin-top   : go.dp(8);
+    overflow     : hidden;
+    padding      : 0 go.dp(16);
+    // neo's headers stick to the top of the scrolling parent (a whole west panel here)
+    position     : static;
+    text-overflow: ellipsis;
+    white-space  : nowrap;
+}

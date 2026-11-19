@@ -17,7 +17,10 @@ no checked list = all subscribed lists of the `list` role; categories offered = 
 those of the checked lists. The schedule entry and "show completed" are kept in `state-tasks-main`,
 the checked lists in `tasksSettings.lastTasklistIds` (with "remember last selected").
 
-Still different from GOUI: the grid is not grouped by list (a "List" column instead) and tasks
+The grid has a header per list (GOUI TaskGrid groupBy; a column sort keeps the list as the first
+sort), the west panel a header per TaskListGrouping (ExtJS TasklistsGrid).
+
+Still different from GOUI: the list headers in the grid can't be collapsed; tasks
 can't be dragged onto a list; no import/export, print or project field; the responsible combo
 lists all users (the Principal filter has no ACL condition); the category menu closes after
 each pick.
