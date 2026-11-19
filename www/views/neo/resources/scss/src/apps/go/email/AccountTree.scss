@@ -1,0 +1,45 @@
+// e-mail account tree (ExtJS AccountsTree): unread counts, bold folders with unread mail,
+// the row menu button like GO.addressbook.view.AddressBookTree
+.neo-theme-go .go-email-tree {
+    .go-email-tree-heading {
+        font-weight: 500;
+    }
+
+    .go-email-unseen {
+        font-weight: 600;
+    }
+
+    .go-email-noselect .go-tree-label {
+        color: var(--fg-secondary-text);
+    }
+
+    .go-email-tree-count {
+        color      : var(--c-primary);
+        flex       : none;
+        font-size  : 1.2rem;
+        font-weight: 600;
+        padding    : 0 .4rem;
+    }
+
+    .go-row-menu {
+        border-radius: 50%;
+        color        : var(--fg-text);
+        cursor       : pointer;
+        flex         : none;
+        font-size    : 2rem;
+        height       : 3.2rem;
+        line-height  : 3.2rem;
+        text-align   : center;
+        visibility   : hidden;
+        width        : 3.2rem;
+
+        &:hover {
+            background-color: var(--bg-hover);
+        }
+    }
+
+    .neo-list-item:hover .go-row-menu,
+    .neo-list-item.neo-selected .go-row-menu {
+        visibility: visible;
+    }
+}

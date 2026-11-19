@@ -1,0 +1,74 @@
+// e-mail main view (ExtJS EmailClient): quota below the tree, message grid status icons,
+// unread messages in bold (ExtJS ml-unseen-row)
+.neo-theme-go .go-email {
+    .go-email-usage {
+        border-top: 1px solid var(--fg-line);
+        color     : var(--fg-secondary-text);
+        font-size : 1.2rem;
+        padding   : .8rem 1.6rem;
+    }
+
+    .neo-button.pressed {
+        background-color: var(--bg-selected);
+    }
+}
+
+.neo-theme-go .go-email-grid {
+    .go-email-unseen {
+        font-weight: 600;
+    }
+
+    .neo-grid-cell .go-icon {
+        color         : var(--c-primary);
+        font-size     : 1.6rem;
+        vertical-align: middle;
+
+        &.go-email-flag,
+        &.go-email-priority {
+            color: var(--hue-red);
+        }
+    }
+
+    .go-email-unseen-dot {
+        background-color: var(--c-primary);
+        border-radius   : 50%;
+        display         : inline-block;
+        height          : .8rem;
+        margin-right    : .4rem;
+        vertical-align  : middle;
+        width           : .8rem;
+    }
+
+    .go-email-label {
+        border       : 1px solid var(--fg-line);
+        border-radius: 1rem;
+        font-size    : 1.1rem;
+        margin-right : .2rem;
+        padding      : 0 .6rem;
+    }
+}
+
+.neo-theme-go .go-email-grid {
+    .go-email-row-from,
+    .go-email-row-subject {
+        line-height  : 1.8rem;
+        overflow     : hidden;
+        text-overflow: ellipsis;
+        white-space  : nowrap;
+    }
+
+    .go-email-row-subject {
+        color: var(--fg-secondary-text);
+    }
+
+    .go-email-unseen .go-email-row-subject {
+        color: var(--fg-text);
+    }
+}
+
+.neo-theme-go .go-email-grid .neo-grid-cell.go-email-message-cell {
+    align-items    : stretch;
+    display        : flex;
+    flex-direction : column;
+    justify-content: center;
+}
