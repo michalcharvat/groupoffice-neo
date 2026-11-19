@@ -2247,4 +2247,6 @@ Als u niet om een nieuw wachtwoord heeft gevraagd verwijder dan deze e-mail.',
   'Move up' => 'Omhoog',
   'Move down' => 'Omlaag',
   'Move to the other column' => 'Naar de andere kolom',
+  'Saved' => 'Opgeslagen',
+  'Open in new window' => 'Openen in nieuw venster',
 );

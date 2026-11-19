@@ -2314,4 +2314,7 @@ Pokud jste o nové heslo nežádali, tento e-mail prosím smažte.',
   'Move up' => 'Posunout nahoru',
   'Move down' => 'Posunout dolů',
   'Move to the other column' => 'Přesunout do druhého sloupce',
+  'Saved' => 'Uloženo',
+  'Open in new window' => 'Otevřít v novém okně',
+  'Failed to delete' => 'Smazání se nezdařilo',
 );

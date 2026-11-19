@@ -2,4 +2,5 @@
 return array (
   'E-mail favorite' => 'E-mailfavoriet',
   'Email favorites' => 'E-mailfavorieten',
+  'Remove from favorites' => 'Verwijderen uit favorieten',
 );
