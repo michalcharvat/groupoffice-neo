@@ -1,0 +1,14 @@
+// GO.license.LicenseDialog: explanation, link to the trial page and the license key
+.neo-theme-go .go-license-dialog {
+    .go-license-body {
+        gap       : .8rem;
+        min-height: 0;
+        overflow-y: auto;
+        padding   : .8rem 1.6rem;
+    }
+
+    .go-license-key textarea {
+        font-family: monospace;
+        min-height : 8rem;
+    }
+}
