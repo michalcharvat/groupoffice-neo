@@ -1,9 +1,9 @@
 import ModuleRegistry from '../../../../../../views/neo/src/ModuleRegistry.mjs';
 import {translator}  from '../../../../../../views/neo/src/Translate.mjs';
+import emailAccount  from './emailAccount.mjs';
 
 const t = translator('community', 'oauth2client');
 
-// the e-mail account dialog overrides (EmailOverrides.js) belong to the legacy email module
 ModuleRegistry.register({
     package   : 'community',
     name      : 'oauth2client',
@@ -15,5 +15,7 @@ ModuleRegistry.register({
         iconCls: 'fa fa-arrows-rotate',
         itemId : 'oauth2client',
         panel  : () => import('./view/SystemSettingsPanel.mjs')
-    }
+    },
+    // the e-mail account dialog: OAuth2 connection instead of a password (ExtJS EmailOverrides.js)
+    emailAccountDialogCards: emailAccount
 });
