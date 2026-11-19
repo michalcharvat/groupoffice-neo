@@ -121,4 +121,5 @@ return array (
   'Country code' => 'Código do País',
   'Failed to add contacts to the group' => 'Falha ao adicionar contatos ao grupo',
   'Importing...' => 'Importando...',
+  'Send e-mail' => 'Enviar e-mail',
 );

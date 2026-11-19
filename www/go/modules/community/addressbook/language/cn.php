@@ -97,4 +97,5 @@ return array (
   'Add online url' => '添加在线网址',
   'Not found or no access' => '未找到或无法访问',
   'Contact' => '联系人',
+  'Send e-mail' => '发送电子邮件',
 );

@@ -113,4 +113,5 @@ return array (
   'Add e-mail address' => ' и-мэйл хаяг нэмэх',
   'Add street address' => 'гудамжны хаяг нэмэх',
   'Add group' => 'бүлэг нэмэх',
+  'Send e-mail' => 'Имэйл илгээх',
 );

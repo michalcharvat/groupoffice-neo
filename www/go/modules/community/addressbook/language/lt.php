@@ -122,4 +122,5 @@ return array (
   ),
   'Enable for' => 'Įgalinti',
   'Only show this field set for selected address books' => 'Rodykite šį laukų rinkinį pasirinktoms adresų knygoms',
+  'Send e-mail' => 'Siųsti el. laišką',
 );

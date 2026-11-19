@@ -64,4 +64,5 @@ return array (
   'Date of birth' => 'Születési dátum',
   'Has e-mail addresses' => 'Van e-mail címe',
   'Are you sure that you would like to import this VCard?' => 'Biztos, hogy ezt a VCardot szeretné importálni?',
+  'Send e-mail' => 'E-mail küldése',
 );

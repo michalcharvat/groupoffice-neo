@@ -119,4 +119,5 @@ return array (
   'Latitude' => 'Latitude',
   'Longitude' => 'Longitude',
   'Allow new' => 'Permitir novo',
+  'Send e-mail' => 'Enviar e-mail',
 );

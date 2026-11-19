@@ -14,4 +14,5 @@ return array (
   'Client ID' => 'Kliento ID',
   'Project ID' => 'Projekto ID',
   'OAuth2 Client Settings' => '\'OAuth2\' kliento nustatymai',
+  'Refresh token' => 'Atnaujinti žetoną',
 );

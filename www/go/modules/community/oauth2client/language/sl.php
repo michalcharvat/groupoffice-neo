@@ -13,4 +13,5 @@ return array (
   'Client ID' => 'ID odjemalca',
   'Project ID' => 'ID projekta',
   'OAuth2 client' => 'Odjemalec OAuth2',
+  'Refresh token' => 'Osveži žeton',
 );

@@ -154,4 +154,5 @@ return array (
   'URL\'s' => 'URL',
   'UUID' => 'UUID',
   'vCard importer' => 'Importateur vCard',
+  'Send e-mail' => 'Envoyer un mail',
 );

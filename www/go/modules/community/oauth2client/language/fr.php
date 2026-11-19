@@ -18,4 +18,5 @@ return array (
   'Use this connection for single signon with OpenID Connect' => 'Utiliser cette connexion pour l\'authentification unique avec OpenID Connect',
   'to close this window.' => 'pour fermer cette fenêtre.',
   'OAuth2 Client Settings' => 'Paramètres du client OAuth2',
+  'Refresh token' => 'Actualiser le jeton',
 );

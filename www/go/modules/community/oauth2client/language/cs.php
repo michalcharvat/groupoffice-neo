@@ -20,4 +20,5 @@ return array (
   'to close this window.' => 'pro zavření tohoto okna.',
   'OAuth2 connection' => 'Připojení OAuth2',
   'Request or update a refresh token in a separate window.' => 'Vyžádat nebo aktualizovat obnovovací token v samostatném okně.',
+  'Refresh token' => 'Aktualizovat token',
 );

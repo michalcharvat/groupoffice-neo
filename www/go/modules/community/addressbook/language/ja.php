@@ -132,4 +132,5 @@ return array (
   'No address' => '住所無し',
   'Please add an address with a country' => '国名を含めた住所を追加してください',
   'BIC' => 'BIC',
+  'Send e-mail' => 'メールを送信',
 );

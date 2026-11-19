@@ -153,4 +153,5 @@ return array (
   'vCard importer' => 'Import vCard',
   'Please select at least two items to merge.' => 'Vyberte prosím alespoň dvě položky ke sloučení.',
   'Please select a company' => 'Vyberte prosím společnost',
+  'Send e-mail' => 'Odeslat e-mail',
 );
