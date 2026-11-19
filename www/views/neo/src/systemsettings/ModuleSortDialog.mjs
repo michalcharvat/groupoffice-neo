@@ -1,6 +1,6 @@
 import Toolbar          from '../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import Button           from '../button/Button.mjs';
-import {enableDragDrop} from '../component/dragDrop.mjs';
+import {dropIndex, enableDragDrop} from '../component/dragDrop.mjs';
 import client           from '../jmap/Client.mjs';
 import ActionTable      from '../list/ActionTable.mjs';
 import {notifyError}    from '../Notify.mjs';
@@ -10,7 +10,7 @@ import ModuleTiles      from './ModuleTiles.mjs';
 
 /**
  * Order of the installed modules in the main menu and the module tabs
- * (go.modules.ModuleSortWindow): drag a row onto another row, or move it with the up and
+ * (go.modules.ModuleSortWindow): drag a row before or after another row, or move it with the up and
  * down buttons. Every move saves Module.sort_order right away (1, 2, ...), like ExtJS;
  * fires `change` when a move starts a save (the windows reload to show the new order).
  *
@@ -114,11 +114,16 @@ class ModuleSortDialog extends Dialog {
         let me = this;
 
         enableDragDrop(me.table, {
-            drag  : '.go-actiontable-row',
-            drop  : '.go-actiontable-row',
-            group : 'go-module-sort',
-            onDrop: ({source, targetRecordId}) => source?.recordId != null && targetRecordId != null &&
-                me.move(me.indexOf(me.table.getRecord(source.recordId)), me.indexOf(me.table.getRecord(targetRecordId)))
+            drag    : '.go-actiontable-row',
+            drop    : '.go-actiontable-row',
+            group   : 'go-module-sort',
+            position: 'between',
+            onDrop  : ({source, targetRecordId, position}) => {
+                if (source?.recordId != null && targetRecordId != null) {
+                    const from = me.indexOf(me.table.getRecord(source.recordId));
+                    me.move(from, dropIndex(from, me.indexOf(me.table.getRecord(targetRecordId)), position))
+                }
+            }
         }).catch(e => console.error('Module sort drag and drop', e));
 
         await me.load()
@@ -157,8 +162,7 @@ class ModuleSortDialog extends Dialog {
     }
 
     /**
-     * Moves a module to the place of another one (ExtJS: dropped row takes the row's index)
-     * and saves the new order
+     * Moves a module to another index and saves the new order
      * @param {Number} from
      * @param {Number} to
      * @protected

@@ -13,4 +13,20 @@
         border-radius: .4rem;
         overflow-y   : auto;
     }
+
+    .go-dev-dnd-box:not(.go-tree) .neo-list-item {
+        padding: .4rem .8rem;
+    }
+}
+
+// horizontal sortable list
+.neo-theme-go .go-dev-dnd .go-dev-dnd-chips {
+    display: flex;
+    gap    : .8rem;
+
+    .neo-list-item {
+        border       : 1px solid var(--fg-line);
+        border-radius: 1.6rem;
+        padding      : .4rem 1.2rem;
+    }
 }

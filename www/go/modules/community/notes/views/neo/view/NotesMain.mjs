@@ -12,6 +12,7 @@ import TableTitle    from '../../../../../../../views/neo/src/component/TableTit
 import client        from '../../../../../../../views/neo/src/jmap/Client.mjs';
 import JmapStore     from '../../../../../../../views/neo/src/data/JmapStore.mjs';
 import CheckList     from '../../../../../../../views/neo/src/list/CheckList.mjs';
+import {enableDragDrop} from '../../../../../../../views/neo/src/component/dragDrop.mjs';
 import {escapeHtml, formatUserDateTime, smartDateTime} from '../../../../../../../views/neo/src/Format.mjs';
 import {notifyError}    from '../../../../../../../views/neo/src/Notify.mjs';
 import ConfirmDialog    from '../../../../../../../views/neo/src/view/ConfirmDialog.mjs';
@@ -347,6 +348,7 @@ class NotesMain extends MainThreeColumnPanel {
         bookList.store.on('loadError', ({error}) => me.showError(error));
         noteStore.on('loadError', ({error}) => me.showError(error));
 
+        me.enableNoteDragDrop();
         me.initialLoad = me.loadInitial()
     }
 
@@ -794,6 +796,55 @@ class NotesMain extends MainThreeColumnPanel {
             entity  : 'Note',
             accept  : '.csv,.json,.xlsx'
         })
+    }
+
+    /**
+     * Drag notes onto a note book in the west panel to move them there (like tasks onto a
+     * task list); dragging a selected note moves the whole selection
+     */
+    enableNoteDragDrop() {
+        let me   = this,
+            grid = me.getReference('grid'),
+            list = me.getReference('noteBookList');
+
+        enableDragDrop(grid, {drag: '.neo-grid-row', group: 'notes', onDrop: () => {}})
+            .catch(e => console.error('Notes drag and drop', e));
+
+        enableDragDrop(list, {
+            drop  : '.neo-list-item',
+            group : 'notes',
+            onDrop: event => me.onNoteBookDrop(event)
+        }).catch(e => console.error('Notes drag and drop', e))
+    }
+
+    /**
+     * @param {Object} event goDrop of WS/DragDrop
+     */
+    async onNoteBookDrop(event) {
+        let me       = this,
+            grid     = me.getReference('grid'),
+            list     = me.getReference('noteBookList'),
+            noteBook = list.store.get(list.getItemRecordId(event.targetId)),
+            record   = event.source?.recordId && grid.store.get(event.source.recordId),
+            selected = grid.getSelectedRecords();
+
+        if (!noteBook || !record || noteBook.permissionLevel < LEVEL_CREATE) {
+            return
+        }
+
+        const notes = (selected.includes(record) ? selected : [record])
+            .filter(note => note.permissionLevel >= LEVEL_WRITE && String(note.noteBookId) !== String(noteBook.id));
+
+        if (!notes.length) {
+            return
+        }
+
+        try {
+            await client.set('Note', {update: Object.fromEntries(notes.map(note => [note.id, {noteBookId: noteBook.id}]))})
+            // the grid reloads on the push
+        } catch (e) {
+            me.showError(e)
+        }
     }
 
     showError(error) {
