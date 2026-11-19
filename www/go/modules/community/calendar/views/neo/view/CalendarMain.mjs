@@ -546,6 +546,8 @@ class CalendarMain extends MainThreeColumnPanel {
     }
 
     applyCalendarFilter(ids) {
+        // GOUI: "show event in category color" only with one calendar
+        CalendarItem.visibleCalendarCount = ids.length;
         this.adapter.byType('event').filter.inCalendars = ids
     }
 
@@ -784,6 +786,9 @@ class CalendarMain extends MainThreeColumnPanel {
             path = `community/calendar/printList/${ymd(start)}/${ymd(end)}`
         } else if (['day', 'month', 'list'].includes(type)) {
             path = `community/calendar/print/${type}/${ymd(me.date)}`
+        } else if (['week', 'days'].includes(type) && calendarData.prefs.printWeekInGrid) {
+            // preference "Print week and workweek in a grid with hours"
+            path = `community/calendar/print/${type}/${ymd(weekStart(start))}`
         } else if (type === 'week') {
             path = `community/calendar/printRange/week/7/${ymd(weekStart(start))}`
         } else {

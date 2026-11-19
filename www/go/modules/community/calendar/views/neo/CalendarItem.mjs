@@ -31,7 +31,7 @@ export const statusIcons = () => ({
 export function participantStatusIcon(p) {
     if (p.scheduleStatus) {
         if (p.scheduleStatus === '1.0') {
-            return ['pending', t('Invite not send yet'), 'orange']
+            return ['pending', t('Invite not sent yet'), 'orange']
         }
 
         if (String(p.scheduleStatus)[0] !== '1') {
@@ -80,6 +80,12 @@ let tempId = 0;
 export default class CalendarItem {
     /** @member {CalendarItem|null} clipboard cut/copied item */
     static clipboard = null
+
+    /**
+     * Calendars the view shows (CalendarMain.applyCalendarFilter()), for categoryColor
+     * @member {Number} visibleCalendarCount=0
+     */
+    static visibleCalendarCount = 0
 
     /**
      * Dialogs and messages, set by the calendar main view:
@@ -286,7 +292,22 @@ export default class CalendarItem {
      * @returns {String} hex colour without #
      */
     get color() {
-        return this.cal?.color || this.defaultColor || '356772'
+        return this.categoryColor || this.cal?.color || this.defaultColor || '356772'
+    }
+
+    /**
+     * GOUI: with the preference "showCategoryColor", one visible calendar and exactly one
+     * category, the event takes the category's colour
+     * @returns {String|null}
+     */
+    get categoryColor() {
+        const ids = this.patched?.categoryIds;
+
+        if (!calendarData.prefs.showCategoryColor || CalendarItem.visibleCalendarCount !== 1 || this.provider !== 'event' || ids?.length !== 1) {
+            return null
+        }
+
+        return calendarData.getCategory(ids[0])?.color || null
     }
 
     get participants() {
@@ -941,23 +962,37 @@ export default class CalendarItem {
             return
         }
 
-        if (!me.isOwner && me.mayMove && me.isRecurring) {
+        // GOUI: removing an invite declines it and keeps the event, so opening the invitation
+        // again doesn't add it back (declined events are hidden unless "Show events that you
+        // have declined" is on, where they can be deleted)
+        if (!me.isOwner && me.calendarPrincipal && !me.isDeclined) {
+            if (!me.isRecurring) {
+                await me.updateParticipation('declined');
+                return
+            }
+
             const choice = await ui.choose({
                 title  : t('This event is part of a recurring invite'),
-                text   : t('Do you want to decline this occurrence or remove the entire series from your calendar?'),
+                text   : t('Do you want to decline this occurrence or the entire series?'),
                 buttons: [
-                    {text: t('Decline this instance'), value: 'decline', primary: true},
+                    {text: t('Decline this instance'), value: 'instance', primary: true},
                     '->',
-                    {text: t('Remove entire series'), value: 'series'}
+                    {text: t('Decline entire series'), value: 'series'}
                 ]
             });
 
-            if (choice === 'decline') {
-                me.calendarPrincipal && (me.calendarPrincipal.participationStatus = 'declined');
-                await me.patchOccurrence({participants: me.participants})
-            } else if (choice === 'series') {
-                await me.removeSeries()
+            if (choice) {
+                me.calendarPrincipal.participationStatus = 'declined';
+                choice === 'instance'
+                    ? await me.patchOccurrence({participants: me.participants})
+                    : await me.patchSeries({participants: me.participants})
             }
+            return
+        }
+
+        // an already declined recurring invite
+        if (!me.isOwner && me.isRecurring) {
+            await me.removeSeries();
             return
         }
 
