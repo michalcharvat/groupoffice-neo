@@ -51,6 +51,15 @@ class ModuleTiles extends Component {
     }
 
     /**
+     * Icon of a module (core/moduleIcon blob)
+     * @param {Object} record with package (null for legacy modules) and name
+     * @returns {String}
+     */
+    static iconUrl(record) {
+        return `${client.apiUrl}download.php?blob=${encodeURIComponent(`core/moduleIcon/${record.package || 'legacy'}/${record.name}`)}`
+    }
+
+    /**
      * Rebuilds the tiles (render() is taken by Component)
      * @protected
      */
@@ -85,7 +94,7 @@ class ModuleTiles extends Component {
             key       = ModuleTiles.key(record),
             installed = record.id != null,
             busy      = me.busy.includes(key) || null,
-            icon      = `${client.apiUrl}download.php?blob=${encodeURIComponent(`core/moduleIcon/${record.package || 'legacy'}/${record.name}`)}`,
+            icon      = ModuleTiles.iconUrl(record),
             tooltip   = String(record.description || '') + (record.author ? `\n\n${t('Author')}: ${record.author}` : '');
 
         return {

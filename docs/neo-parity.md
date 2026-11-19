@@ -182,8 +182,8 @@ Groups, Custom fields, Default permissions, Modules, module cards.
 | Tools | System check, database check, rebuild search index, principals, duplicates, file system / search sync, holiday cache | x/systemsettings/Dialog.js:135; x/tools/SystemSettingsTools.js | systemsettings/ToolsPanel.mjs | done (holiday cache not ported: needs the legacy calendar module, which 26.x no longer registers, so 26.x never shows it either) |
 | OAuth | OAuth 2.0 clients | x/oauth/SystemSettingsPanel.js | missing | card "neo-ui: System settings OAuth 2.0 clients and cron tabs" |
 | Cron | Task scheduler (grid, dialog with parameters) | x/cron/SystemSettingsCronGrid.js, CronDialog.js | missing | card "neo-ui: System settings OAuth 2.0 clients and cron tabs" |
-| Modules | Trial license dialog | x/modules/SystemSettingsModuleGrid.js:69, x/license/LicenseDialog.js | missing | card "neo-ui: System settings modules license and sort order" |
-| Modules | Module sort order | x/modules/ModuleSortWindow.js | missing | card "neo-ui: System settings modules license and sort order" |
+| Modules | Trial license dialog | x/modules/SystemSettingsModuleGrid.js:69, x/license/LicenseDialog.js | present | fixed (`src/license/LicenseDialog.mjs`: "Trial license" in Modules while `has_license` is false, "Register" in the user menu for admins) |
+| Modules | Module sort order | x/modules/ModuleSortWindow.js | present | fixed (`src/systemsettings/ModuleSortDialog.mjs`: drag rows or up/down, saves `sort_order` right away) |
 | Authentication | "Force app passwords" | x/systemsettings/AuthenticationPanel.js:49 | missing | open (with the app passwords card) |
 
 ### Users

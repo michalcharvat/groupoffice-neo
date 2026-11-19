@@ -9,6 +9,12 @@
         padding      : .8rem 1.6rem;
     }
 
+    // ExtJS "accent" button: there is no license yet
+    .neo-button.go-modules-trial {
+        background-color: var(--c-accent);
+        color           : white;
+    }
+
     .go-systemsettings-modules-search {
         max-width: 100%;
     }

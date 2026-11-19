@@ -7,6 +7,7 @@ import {notifyError} from '../Notify.mjs';
 import {fmt, t}      from '../Translate.mjs';
 import ConfirmDialog from '../view/ConfirmDialog.mjs';
 import ModuleRightsDialog from './ModuleRightsDialog.mjs';
+import ModuleSortDialog   from './ModuleSortDialog.mjs';
 import ModuleTiles   from './ModuleTiles.mjs';
 
 /** filter buttons: [isInstalled param, label] */
@@ -18,8 +19,9 @@ const CORE_RIGHTS = ['mayChangeUsers', 'mayChangeGroups', 'mayChangeCustomFields
 /**
  * "Modules" card of System settings (go.modules.SystemSettingsModuleGrid): all modules
  * of the installation as tiles, install / enable / disable / uninstall and the
- * permissions per module. Changes apply right away (no Save); the windows reload when
- * the dialog closes, so the header shows the changed modules.
+ * permissions per module, the "Trial license" dialog while there is no license, and the
+ * order of the modules (sort button). Changes apply right away (no Save); the windows
+ * reload when the dialog closes, so the header shows the changed modules.
  */
 class ModulesPanel extends Container {
     static config = {
@@ -65,6 +67,14 @@ class ModulesPanel extends Container {
                 text   : t('System') + ' ' + t('Permissions'),
                 handler: () => me.showCoreRights()
             }, {
+                module   : Button,
+                reference: 'trialButton',
+                icon     : 'star',
+                cls      : ['go-modules-trial'],
+                text     : t('Trial license'),
+                hidden   : true,
+                handler  : () => me.showLicense()
+            }, {
                 ntype : 'container',
                 cls   : ['go-segments'],
                 flex  : 'none',
@@ -85,6 +95,11 @@ class ModulesPanel extends Container {
                 placeholderText: t('Search'),
                 width          : 240,
                 listeners      : {change: () => me.onSearchChange()}
+            }, {
+                module : Button,
+                icon   : 'sort',
+                tooltip: t('Modules sorting'),
+                handler: () => me.showSort()
             }]
         }, {
             module   : ModuleTiles,
@@ -110,11 +125,14 @@ class ModulesPanel extends Container {
         me.isLoading = t('Loading...');
 
         try {
-            const {results = []} = await client.legacy('modules/module/store', params);
+            const {results = [], has_license} = await client.legacy('modules/module/store', params);
 
             if (me.isDestroyed || counter !== me.loadCounter) {
                 return
             }
+
+            // has_license: a license key is saved, or this is a rebranded product
+            me.getReference('trialButton').hidden = !!has_license;
 
             me.getReference('tiles').records = results.sort((a, b) =>
                 String(a.localizedPackage).localeCompare(String(b.localizedPackage)) || String(a.name).localeCompare(String(b.name)))
@@ -250,6 +268,33 @@ class ModulesPanel extends Container {
             dialog = Neo.create(ModuleRightsDialog, {appName: me.appName, windowId: me.windowId, moduleId, rights});
 
         dialog.on('save', () => me.needsReload = true)
+    }
+
+    /**
+     * Order of the modules in the main menu
+     * @protected
+     */
+    showSort() {
+        let me     = this,
+            dialog = Neo.create(ModuleSortDialog, {appName: me.appName, windowId: me.windowId});
+
+        dialog.on('change', () => me.needsReload = true)
+    }
+
+    /**
+     * License key or trial license; saving reloads the windows
+     * @protected
+     */
+    async showLicense() {
+        let me = this;
+
+        try {
+            const {default: LicenseDialog} = await import('../license/LicenseDialog.mjs');
+
+            me.isDestroyed || Neo.create(LicenseDialog, {appName: me.appName, windowId: me.windowId})
+        } catch (e) {
+            notifyError(me, e)
+        }
     }
 
     /**

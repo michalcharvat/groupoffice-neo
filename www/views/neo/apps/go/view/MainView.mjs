@@ -176,6 +176,11 @@ class MainView extends Container {
                 text   : t('System settings'),
                 icon   : 'settings',
                 handler: () => me.openSystemSettings()
+            }] : [], ...client.isAdmin ? [{
+                // go.license.LicenseDialog (MainLayout: admins); a license set in config.php shows read-only
+                text   : t('Register'),
+                icon   : 'app_registration',
+                handler: () => me.openLicense()
             }] : [], {
                 text   : t('Logout'),
                 icon   : 'logout',
@@ -282,6 +287,21 @@ class MainView extends Container {
             const {default: UserSettingsDialog} = await import('../../../src/usersettings/UserSettingsDialog.mjs');
 
             me.isDestroyed || Neo.create(UserSettingsDialog, {appName: me.appName, windowId: me.windowId})
+        } catch (e) {
+            notifyError(me, e)
+        }
+    }
+
+    /**
+     * Header user menu "Register" (administrators): license key or trial license
+     */
+    async openLicense() {
+        let me = this;
+
+        try {
+            const {default: LicenseDialog} = await import('../../../src/license/LicenseDialog.mjs');
+
+            me.isDestroyed || Neo.create(LicenseDialog, {appName: me.appName, windowId: me.windowId})
         } catch (e) {
             notifyError(me, e)
         }
