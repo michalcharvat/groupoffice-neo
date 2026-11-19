@@ -4,8 +4,18 @@ import {translator}  from '../../../../../../views/neo/src/Translate.mjs';
 const t = translator('community', 'emailfavorites');
 
 /**
- * E-mail favorites (ExtJS emailfavorites: EmailClientOverride): the user's favourite folders
- * at the top of the e-mail account tree, through the e-mail client's `emailTreeSections` extension point (docs/neo-email-module.md).
+ * view/favorites.mjs, loaded with the e-mail tree's first section load: folderMenuItems()
+ * is synchronous and is only called after that (a folder menu needs a loaded tree)
+ * @type {Object|null}
+ */
+let favorites = null;
+
+const load = async () => favorites ??= await import('./view/favorites.mjs');
+
+/**
+ * E-mail favorites (ExtJS emailfavorites: EmailClientOverride, MailboxContextMenuOverride,
+ * FavoritefolderDialog): the user's favourite folders at the top of the e-mail account tree,
+ * through the e-mail client's `emailTreeSections` extension point (docs/neo-email-module.md).
  */
 ModuleRegistry.register({
     package   : 'community',
@@ -17,6 +27,8 @@ ModuleRegistry.register({
         // no header: like ExtJS a starred list above the accounts, hidden when empty
         order: 10,
         watch: ['Favoritefolder'],
-        nodes: async tree => (await import('./view/favorites.mjs')).nodes(tree)
+        nodes          : async tree => (await load()).nodes(tree),
+        rowMenu        : (node, emailMain) => favorites?.rowMenu(node, emailMain) || [],
+        folderMenuItems: (folderNode, emailMain) => favorites?.folderMenuItems(folderNode, emailMain) || []
     }
 });
