@@ -51,6 +51,11 @@ class EntityCheckList extends Field {
          */
         readOnly_: false,
         /**
+         * false: a plain list without checks (GO.groups.GroupMemberDialog)
+         * @member {Boolean} checkable=true
+         */
+        checkable: true,
+        /**
          * @member {String[]|null} value=null
          */
         value: null,
@@ -87,6 +92,7 @@ class EntityCheckList extends Field {
         me.searchNode.placeholder = t('Search');
         me.titleNode.text   = me.title || '';
         me.titleNode.removeDom = !me.title;
+        me.checkable || me.addCls('go-entitychecklist-plain');
 
         me.addDomListeners([
             {click : me.onRowClick,    delegate: '.go-entitychecklist-row',    scope: me},
@@ -220,7 +226,10 @@ class EntityCheckList extends Field {
      * @protected
      */
     createRow(record, checked) {
-        const {name, description, avatarId} = this.rowData(record);
+        const {name, description, avatarId} = this.rowData(record),
+              checkable = this.checkable;
+
+        checked = checkable && checked;
 
         return {
             cls        : ['go-entitychecklist-row', ...checked ? ['go-entitychecklist-checked'] : []],
@@ -233,14 +242,14 @@ class EntityCheckList extends Field {
                         {cls: ['go-entitychecklist-name'], text: name},
                         {tag: 'small', text: description || '', removeDom: !description}
                     ]
-                }, {
+                }, checkable ? {
                     tag           : 'span',
                     cls           : ['go-check', ...checked ? ['go-checked'] : []],
                     role          : 'checkbox',
                     'aria-checked': String(checked),
                     'aria-label'  : name
-                }
-            ]
+                } : null
+            ].filter(Boolean)
         }
     }
 
@@ -299,7 +308,7 @@ class EntityCheckList extends Field {
             id = data.path?.find(node => node.data?.id)?.data.id,
             oldValue = me.value;
 
-        if (!id || me.readOnly || me.disabled) {
+        if (!id || me.readOnly || me.disabled || !me.checkable) {
             return
         }
 
