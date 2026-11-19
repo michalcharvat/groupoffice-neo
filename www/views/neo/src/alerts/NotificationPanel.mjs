@@ -249,7 +249,7 @@ class NotificationPanel extends Container {
             me.close();
             message.handler ? message.handler(message, me) : Neo.Main.setRoute({value: message.route, windowId: me.windowId});
             // go.Alerts: opening the item dismisses the alert
-            message.persistent || notificationCenter.dismiss(message.id)
+            message.persistent || message.dismissOnOpen === false || notificationCenter.dismiss(message.id)
         }
     }
 }

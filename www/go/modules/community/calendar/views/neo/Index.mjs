@@ -16,6 +16,8 @@ ModuleRegistry.register({
     // header search results and notifications: entity → route below "#calendar/"
     routes    : {CalendarEvent: id => 'event/' + id},
     mainView  : () => import('./view/CalendarMain.mjs'),
+    // notification area: invitations and reminders (src/alerts/Alerts.mjs)
+    alerts    : args => import('./alerts.mjs').then(m => m.default(args)),
     // card in My account
     userSettings: {
         title  : t('Calendar'),

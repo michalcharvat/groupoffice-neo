@@ -18,6 +18,7 @@ const ADDON = 'WS/Notifications';
  *         time      : date,                     // shown and sorted by (newest first)
  *         route     : 'calendar/event/5',       // a click on the message goes there and dismisses it
  *         handler   : (message, view) => {},    // or a function instead of a route
+ *         dismissOnOpen: true,                  // false: opening it keeps the message
  *         persistent: false,                    // true: no close button, "Dismiss all" keeps it
  *         progress  : null,                     // 0-100: progress bar
  *         buttons   : [{text, icon, handler: (message, view) => {}, menu: [{text, handler}]}],

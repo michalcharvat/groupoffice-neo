@@ -12,6 +12,7 @@ import activityWatcher    from '../../../src/alerts/ActivityWatcher.mjs';
 import alerts             from '../../../src/alerts/Alerts.mjs';
 import notificationCenter from '../../../src/alerts/NotificationCenter.mjs';
 import NotificationPanel  from '../../../src/alerts/NotificationPanel.mjs';
+import reminders          from '../../../src/alerts/Reminders.mjs';
 import {notifyError}           from '../../../src/Notify.mjs';
 import {closePopup, openPopup} from '../../../src/Popup.mjs';
 import {applyTheme}            from '../../../src/Preferences.mjs';
@@ -217,11 +218,12 @@ class MainView extends Container {
             me.getReference('modules').layout.activeIndex = 0
         }
 
-        // notifications: core alerts of the user, desktop notifications through this window
+        // notifications: core alerts and popup reminders of the user, desktop notifications through this window
         notificationCenter.attach(me.windowId);
         me.removeNotificationListener = notificationCenter.onChange(({messages}) => me.updateNotificationButton(messages));
         me.updateNotificationButton(notificationCenter.messages, false);
         alerts.start();
+        reminders.start();
         activityWatcher.register(me.windowId);
 
         // a click outside the notification area closes it (the ExtJS east panel slides in)
