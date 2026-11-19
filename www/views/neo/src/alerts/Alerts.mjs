@@ -127,11 +127,7 @@ class Alerts {
             update.staleAt = isoUtc(new Date(triggerAt.getTime() + keep))
         }
 
-        const {notUpdated} = await client.set('Alert', {update: {[alert.id]: update}});
-
-        if (notUpdated?.[alert.id]) {
-            throw new Error(client.constructor.describeSetError?.(notUpdated[alert.id]) || 'Snooze failed')
-        }
+        await client.set('Alert', {update: {[alert.id]: update}})
     }
 
     /**

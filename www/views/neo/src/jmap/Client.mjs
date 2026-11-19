@@ -342,19 +342,7 @@ class Client {
      * @returns {Promise<Object>} the JSON response; success: false becomes an exception
      */
     async legacy(route, params={}) {
-        const response = await fetch(this.legacyUrl(route), {
-            method     : 'POST',
-            credentials: 'same-origin',
-            // the session needs the CSRF token like JMAP (else Access denied); as an AJAX
-            // request GO answers errors with JSON instead of its HTML exception page
-            headers    : {...this.#headers(), 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest'},
-            body       : new URLSearchParams(params)
-        });
-
-        if (response.status === 401) {
-            this.fire('unauthorized');
-            throw new Error('Not authenticated')
-        }
+        const response = await this.#legacyFetch(route, params);
 
         let data;
 
@@ -369,6 +357,51 @@ class Client {
         }
 
         return data
+    }
+
+    /**
+     * Calls a legacy controller action that answers with something else than JSON,
+     * e.g. the XML of summary/rssFeed/proxy
+     * @param {String} route
+     * @param {Object} params form parameters
+     * @returns {Promise<String>} the response body
+     */
+    async legacyText(route, params={}) {
+        const response = await this.#legacyFetch(route, params),
+              text     = await response.text();
+
+        if (!response.ok) {
+            let message = `${route} failed: ${response.status} ${response.statusText}`;
+
+            try {
+                const data = Client.parseLegacyJson(text);
+                message = data.feedback || data.message || message
+            } catch (e) {
+                // not JSON
+            }
+
+            throw new Error(message)
+        }
+
+        return text
+    }
+
+    async #legacyFetch(route, params) {
+        const response = await fetch(this.legacyUrl(route), {
+            method     : 'POST',
+            credentials: 'same-origin',
+            // the session needs the CSRF token like JMAP (else Access denied); as an AJAX
+            // request GO answers errors with JSON instead of its HTML exception page
+            headers    : {...this.#headers(), 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest'},
+            body       : new URLSearchParams(params)
+        });
+
+        if (response.status === 401) {
+            this.fire('unauthorized');
+            throw new Error('Not authenticated')
+        }
+
+        return response
     }
 
     /**

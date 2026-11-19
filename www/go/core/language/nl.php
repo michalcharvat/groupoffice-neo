@@ -2243,4 +2243,8 @@ Als u niet om een nieuw wachtwoord heeft gevraagd verwijder dan deze e-mail.',
   '{count} items were not saved' => '{count} items zijn niet opgeslagen',
   'Enable desktop notifications' => 'Bureaubladmeldingen inschakelen',
   'No notifications' => 'Geen notificaties',
+  'More options' => 'Meer opties',
+  'Move up' => 'Omhoog',
+  'Move down' => 'Omlaag',
+  'Move to the other column' => 'Naar de andere kolom',
 );

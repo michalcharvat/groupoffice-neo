@@ -2310,4 +2310,8 @@ Pokud jste o nové heslo nežádali, tento e-mail prosím smažte.',
   '{count} items were not saved' => '{count} položek nebylo uloženo',
   'Enable desktop notifications' => 'Povolit oznámení na ploše',
   'No notifications' => 'Žádná oznámení',
+  'More options' => 'Další možnosti',
+  'Move up' => 'Posunout nahoru',
+  'Move down' => 'Posunout dolů',
+  'Move to the other column' => 'Přesunout do druhého sloupce',
 );

@@ -2342,4 +2342,8 @@ Sollten Sie kein neues Kennwort angefordert haben, können Sie diese Nachricht e
   '{count} items were not saved' => '{count} Elemente wurden nicht gespeichert',
   'Enable desktop notifications' => 'Desktop-Benachrichtigungen aktivieren',
   'No notifications' => 'Keine Benachrichtigungen',
+  'More options' => 'Weitere Optionen',
+  'Move up' => 'Nach oben',
+  'Move down' => 'Nach unten',
+  'Move to the other column' => 'In die andere Spalte verschieben',
 );

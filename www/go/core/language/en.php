@@ -464,4 +464,8 @@ If you did not request a new password please delete this mail.',
   '{name} at {date}' => '{name} at {date}',
   'Enable desktop notifications' => 'Enable desktop notifications',
   'No notifications' => 'No notifications',
+  'More options' => 'More options',
+  'Move up' => 'Move up',
+  'Move down' => 'Move down',
+  'Move to the other column' => 'Move to the other column',
 );

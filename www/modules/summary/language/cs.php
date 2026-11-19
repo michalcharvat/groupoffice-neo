@@ -38,4 +38,7 @@ return array (
   'note' => 'poznámka',
   'Confirmed' => 'Potvrzeno',
   'Tentative' => 'Předběžně',
+  'No announcements' => 'Žádná oznámení',
+  'No appointments' => 'Žádné schůzky',
+  'Visible calendars' => 'Zobrazené kalendáře',
 );

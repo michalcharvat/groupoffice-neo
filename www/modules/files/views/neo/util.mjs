@@ -73,37 +73,8 @@ export function isValidName(name) {
     return !!name && !/[&/:*?"<>|\\]/.test(name) && !/[ .]$/.test(name)
 }
 
-/**
- * A date in the user's date format (as the legacy controllers send and expect it) to
- * "Y-m-d"; only the day, month and year letters of PHP date() are read
- * @param {String} value e.g. "19-11-2026"
- * @param {String} format e.g. "d-m-Y"
- * @returns {String|null}
- */
-export function userDateToYmd(value, format) {
-    const parts   = String(value || '').match(/\d+/g) || [],
-          letters = String(format || '').replace(/[^djmnYy]/g, '').split(''),
-          date    = {};
-
-    if (parts.length < 3 || letters.length < 3) {
-        return null
-    }
-
-    letters.forEach((letter, i) => {
-        const n = parseInt(parts[i], 10);
-        if (letter === 'd' || letter === 'j') date.d = n;
-        if (letter === 'm' || letter === 'n') date.m = n;
-        if (letter === 'Y') date.y = n;
-        if (letter === 'y') date.y = 2000 + n;
-    });
-
-    if (!date.d || !date.m || !date.y) {
-        return null
-    }
-
-    const pad = n => String(n).padStart(2, '0');
-    return `${date.y}-${pad(date.m)}-${pad(date.d)}`
-}
+// moved to the core DateUtil: the start page uses it too
+export {userDateToYmd} from '../../../../views/neo/src/DateUtil.mjs';
 
 /**
  * name and extension of a new file name for files/file/submit. The controller appends
