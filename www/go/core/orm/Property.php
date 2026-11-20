@@ -1009,7 +1009,7 @@ abstract class Property extends Model {
 
 			$props = static::getApiProperties();
 
-			$required = array_merge(static::getPrimaryKey(), static::internalRequiredProperties());
+			$required = array_merge(static::getPrimaryKey(), static::aclRequiredProperties(), static::internalRequiredProperties());
 
 			//include these for title() in log entries
 			$titleProps = ['title', 'name', 'subject', 'description', 'displayName'];
@@ -1038,6 +1038,22 @@ abstract class Property extends Model {
 	 * @return string[]
 	 */
 	protected static function internalRequiredProperties(): array
+	{
+		return [];
+	}
+
+	/**
+	 * Properties the permission check needs, like the key of the ACL entity of an AclItemEntity or the ACL id of an
+	 * AclOwnerEntity.
+	 *
+	 * Separate from {@see internalRequiredProperties()} so that they are selected when a subclass overrides that one
+	 * without calling its parent, and a get with limited properties can still check the permission.
+	 *
+	 * This is cached so after changing this run /install/upgrade.php to reset the cache.
+	 *
+	 * @return string[]
+	 */
+	protected static function aclRequiredProperties(): array
 	{
 		return [];
 	}
