@@ -228,7 +228,11 @@ class DevicesMain extends Container {
             const {results = []} = await client.legacy('zpushadmin/device/store', {limit: 0, ...me.query ? {query: me.query} : {}});
 
             if (!me.isDestroyed && counter === me.loadCounter) {
-                me.getReference('grid').store.data = results.map(decodeRecord);
+                const {store} = me.getReference('grid');
+
+                store.data = results.map(decodeRecord);
+                // neo fires no load for empty data (the old rows and the empty text would not follow)
+                results.length || store.fire('load', {items: store.items});
                 me.onSelectionChange()
             }
         } catch (e) {
