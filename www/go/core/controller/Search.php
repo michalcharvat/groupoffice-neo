@@ -148,9 +148,13 @@ class Search extends EntityController {
 	protected function getQueryQuery(ArrayObject $params): Query
 	{
 		$query = parent::getQueryQuery($params)
-				->groupBy([])
 				->select("search.id")
 				->removeJoin('core_entity', 'e');
+
+		// Grouping is slow on the big search table, so it is dropped unless a text filter is combined with an OR or NOT operator
+		if (!model\Search::queryNeedsGroupBy($query, $params['filter'] ?? null)) {
+			$query->groupBy([]);
+		}
 
 		return $query;
 	}

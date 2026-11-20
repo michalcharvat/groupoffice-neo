@@ -95,6 +95,42 @@ class Search extends AclOwnerEntity {
 		$query->groupBy(['id']);
 	}
 
+	/**
+	 * Whether a query must keep the GROUP BY that addCriteria() set
+	 *
+	 * The search word joins return an item once per word row that passes the filter. With only AND conditions
+	 * that is the row of each matching word, which repeats an item only when a phrase starts two of its words.
+	 * Under an OR or NOT operator, rows that fail a text condition still pass through the other branch, so every
+	 * word row of the item comes back. Controllers that drop the GROUP BY for speed must keep it then. To keep this
+	 * cheap, any OR or NOT operator in the filter counts, also one that doesn't contain the text filter.
+	 *
+	 * @param Query $query The query the filter was applied to
+	 * @param array|null $filter The JMAP filter of the query
+	 * @return bool
+	 */
+	public static function queryNeedsGroupBy(Query $query, ?array $filter): bool
+	{
+		return !empty($filter) && $query->isJoined('core_search_word', 'w0') && self::hasOrOrNotOperator($filter);
+	}
+
+	private static function hasOrOrNotOperator(array $filter): bool
+	{
+		if (!isset($filter['conditions'], $filter['operator'])) {
+			return false;
+		}
+
+		if (in_array(strtoupper($filter['operator']), ['OR', 'NOT'])) {
+			return true;
+		}
+
+		foreach ($filter['conditions'] as $condition) {
+			if (is_array($condition) && self::hasOrOrNotOperator($condition)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	protected function createAcl() : void
 	{
 		// don't for search

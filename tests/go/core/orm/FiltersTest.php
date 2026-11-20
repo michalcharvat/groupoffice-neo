@@ -163,6 +163,71 @@ class FiltersTest extends TestCase
 		$this->assertEquals([$both->id], $entityIds);
 	}
 
+	/**
+	 * Search/query and Link/query drop the GROUP BY of the search word joins for speed. A text filter under an OR
+	 * or NOT must still return every id once, and the total must count each item once.
+	 */
+	public function testSearchAndLinkQueryWithTextFiltersInOrReturnUniqueIds(): void
+	{
+		$x = "alpha" . uniqid();
+		$y = "beta" . uniqid();
+		$both = $this->createNote("$x $y");
+		// Two words start with $x, so a NOT without the GROUP BY returns it twice
+		$onlyX = $this->createNote("{$x}one {$x}two");
+		$onlyY = $this->createNote("$y other words");
+		$from = $this->createNote("from");
+		foreach ([$both, $onlyX, $onlyY] as $note) {
+			Link::create($from, $note);
+		}
+
+		$searchIds = fn(Note ...$notes) => array_map(
+			fn(Note $n) => (string) Search::find()->selectSingleValue('search.id')
+				->where(['entityTypeId' => Note::entityType()->getId(), 'entityId' => $n->id])->single(),
+			$notes
+		);
+
+		$cases = [
+			'OR' => [
+				['operator' => 'OR', 'conditions' => [['text' => $x], ['text' => $y]]],
+				[$both, $onlyX, $onlyY]
+			],
+			'text OR other filter' => [
+				['operator' => 'OR', 'conditions' => [['text' => $x], ['entityId' => $onlyY->id]]],
+				[$both, $onlyX, $onlyY]
+			],
+			'NOT' => [
+				['operator' => 'AND', 'conditions' => [['text' => $x], ['operator' => 'NOT', 'conditions' => [['text' => $y]]]]],
+				[$onlyX]
+			],
+			'AND' => [
+				['operator' => 'AND', 'conditions' => [['text' => $x], ['text' => $y]]],
+				[$both]
+			],
+		];
+
+		$searchController = new \go\core\controller\Search();
+		$linkController = new \go\core\controller\Link();
+		foreach ($cases as $name => [$filter, $expectedNotes]) {
+			$filter = ['operator' => 'AND', 'conditions' => [['entities' => ['Note']], $filter]];
+			$response = $searchController->query(['filter' => $filter, 'calculateTotal' => true]);
+			$ids = $response['ids'];
+			$expected = $searchIds(...$expectedNotes);
+			sort($ids);
+			sort($expected);
+			$this->assertSame($expected, $ids, "Search/query $name");
+			$this->assertSame(count($expected), $response['total'], "Search/query $name");
+
+			if ($name === 'text OR other filter') {
+				continue; // entityId means the link source in Link/query
+			}
+			$linkFilter = ['operator' => 'AND', 'conditions' => [['entity' => 'Note', 'entityId' => $from->id], $filter['conditions'][1]]];
+			$response = $linkController->query(['filter' => $linkFilter, 'calculateTotal' => true]);
+			$this->assertCount(count($expectedNotes), array_unique($response['ids']), "Link/query $name");
+			$this->assertSame(count($expectedNotes), count($response['ids']), "Link/query $name");
+			$this->assertSame(count($expectedNotes), $response['total'], "Link/query $name");
+		}
+	}
+
 	public function testLinkFilterWithNot(): void
 	{
 		$a = $this->createNote("a");
