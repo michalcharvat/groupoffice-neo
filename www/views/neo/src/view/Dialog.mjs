@@ -1,4 +1,5 @@
 import BaseDialog              from '../../node_modules/neo.mjs/src/dialog/Base.mjs';
+import DomEventManager         from '../../node_modules/neo.mjs/src/manager/DomEvent.mjs';
 import Button                  from '../button/Button.mjs';
 import DialogResizable         from '../plugin/DialogResizable.mjs';
 import {closePopup, openPopup} from '../Popup.mjs';
@@ -27,6 +28,74 @@ export function headerTools(...names) {
 }
 
 /**
+ * Mounted GO dialogs, oldest first: the last one of a window is its topmost
+ * @type {GO.view.Dialog[]}
+ */
+const openDialogs = [];
+
+/**
+ * @param {GO.view.Dialog} dialog
+ */
+function removeOpenDialog(dialog) {
+    const index = openDialogs.indexOf(dialog);
+
+    index > -1 && openDialogs.splice(index, 1)
+}
+
+/**
+ * Per window: the GO dialog the last mousedown was in (null: outside any GO dialog)
+ * @type {Map<String, GO.view.Dialog|null>}
+ */
+const pointerDialogs = new Map();
+
+/**
+ * Escape with the focus on body closes a dialog.
+ *
+ * neo handles a dialog's keys on keydown inside the dialog. A click on content that
+ * cannot take the focus (text, an image, the dialog body) moves the focus to body;
+ * that keydown has no component on its path, so no dialog would ever see it.
+ *
+ * It closes the topmost GO dialog when that one is modal, otherwise the GO dialog the user
+ * last clicked in: not a non-modal dialog after a click on the page next to it.
+ */
+const fire = DomEventManager.fire;
+
+DomEventManager.fire = function(event) {
+    fire.call(this, event);
+
+    const {data, eventName, windowId} = event;
+
+    if (eventName === 'mousedown') {
+        pointerDialogs.set(windowId, dialogOnPath(data?.path))
+    } else if (eventName === 'keydown' && data?.key === 'Escape' && data.target?.tagName === 'body') {
+        const isOpen  = dialog => dialog && openDialogs.includes(dialog) && dialog.windowId === windowId && !dialog.hidden && !dialog.isClosing,
+              topmost = openDialogs.findLast(isOpen),
+              clicked = pointerDialogs.get(windowId),
+              // a modal dialog blocks the ones below, also the one clicked before it opened
+              dialog  = topmost?.modal ? topmost : (isOpen(clicked) ? clicked : null);
+
+        // Escape while dragging only cancels the drag
+        dialog && !dialog.isDragging && dialog.onKeyDownEscape()
+    }
+};
+
+/**
+ * @param {Object[]} [path] a DOM event's path
+ * @returns {GO.view.Dialog|null} the innermost GO dialog on it
+ */
+function dialogOnPath(path) {
+    for (const {id} of path || []) {
+        const cmp = id && Neo.getComponent(id);
+
+        if (cmp instanceof Dialog) {
+            return cmp
+        }
+    }
+
+    return null
+}
+
+/**
  * Base dialog for GO dialogs: close always destroys the dialog and removes the
  * modal mask.
  *
@@ -34,6 +103,7 @@ export function headerTools(...names) {
  *   which never resolves on a destroyed instance, so the mask stayed.
  * - Escape only hides a neo dialog (hidden = true) and leaves the mask; a hidden
  *   GO dialog is closed instead.
+ * - Escape also works with the focus on body (after a click on non-focusable content).
  *
  * Subclasses position themselves with wrapperStyle (left/top): without an
  * animateTarget, .neo-floating parks a dialog at -10000px.
@@ -106,6 +176,8 @@ class Dialog extends BaseDialog {
 
     destroy(...args) {
         Neo.currentWorker.un('disconnect', this.disconnectListenerId);
+        removeOpenDialog(this);
+        pointerDialogs.forEach((dialog, windowId) => dialog === this && pointerDialogs.delete(windowId));
         super.destroy(...args)
     }
 
@@ -135,6 +207,14 @@ class Dialog extends BaseDialog {
 
     onKeyDownEscape() {
         this.close()
+    }
+
+    afterSetMounted(value, oldValue) {
+        super.afterSetMounted(value, oldValue);
+
+        // mounting again (popout) makes it the topmost dialog
+        removeOpenDialog(this);
+        value && openDialogs.push(this)
     }
 
     afterSetHidden(value, oldValue) {
