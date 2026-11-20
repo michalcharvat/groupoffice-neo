@@ -413,7 +413,9 @@ class Extjs3 {
 				'login_message' => GO::config()->login_message,
 				'hideAbout' => \GO::config()->hideAbout,
 				'email_allow_body_search' => GO::config()->email_allow_body_search,
-				'lostPasswordURL' => go()->getSettings()->lostPasswordURL
+				'lostPasswordURL' => go()->getSettings()->lostPasswordURL,
+				// user menu "Switch to the new UI"
+				'webclientSwitch' => Webclient::switchAllowed()
 			],
 			'state_index' => 'go',
 			'language' => go()->getLanguage()->getIsoCode(),

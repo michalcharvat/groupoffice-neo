@@ -182,6 +182,11 @@ class MainView extends Container {
                 text   : t('Register'),
                 icon   : 'app_registration',
                 handler: () => me.openLicense()
+            }] : [], ...Neo.config.goWebclientSwitch ? [{
+                // docs/neo-switch.md D2: remembered for this browser (cookie GO_WEBCLIENT)
+                text   : t('Switch to the classic UI'),
+                icon   : 'history',
+                handler: () => me.switchToClassic()
             }] : [], {
                 text   : t('Logout'),
                 icon   : 'logout',
@@ -351,6 +356,20 @@ class MainView extends Container {
         notificationCenter.detach(this.windowId);
         activityWatcher.unregister(this.windowId);
         super.destroy(...args)
+    }
+
+    /**
+     * Avatar menu "Switch to the classic UI": remember it for this browser and load every
+     * window in the classic client (the page URL without ?webclient=, which would win)
+     */
+    async switchToClassic() {
+        try {
+            await client.call('core/Webclient/setPreference', {client: 'classic'});
+            const url = client.baseUrl + 'index.php';
+            Object.keys(Neo.apps || {}).forEach(windowId => Neo.Main.redirectTo({url, windowId}))
+        } catch (e) {
+            notifyError(this, e)
+        }
     }
 
     async onHashChange({hashString, windowId}) {

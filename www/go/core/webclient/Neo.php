@@ -7,10 +7,10 @@ use go\core\fs\File;
 use go\core\SingletonTrait;
 
 /**
- * neo.mjs webclient (spike)
+ * neo.mjs webclient
  *
- * Rendered instead of the ExtJS3 Layout.php when config.php sets
- * $config['webclient'] = "neo". The shell lives in views/neo, modules provide
+ * The default webclient, rendered instead of the ExtJS3 Layout.php unless
+ * Webclient::current() picks the classic client. The shell lives in views/neo, modules provide
  * their UI in views/neo/Index.mjs.
  *
  * neo resolves its workers, theme CSS and the app relative to the document base
@@ -21,9 +21,12 @@ class Neo {
 
 	use SingletonTrait;
 
+	/**
+	 * Whether this page renders the neo client (see Webclient::current())
+	 */
 	public static function enabled(): bool
 	{
-		return (go()->getConfig()['webclient'] ?? null) === 'neo';
+		return Webclient::current() === Webclient::NEO;
 	}
 
 	/**
@@ -297,6 +300,8 @@ class Neo {
 			'goLoginButtons' => $this->loginButtons(),
 			// set in a popup window opened by GO.view.Dialog: id of the dialog to adopt
 			'goPopup' => $this->popupId(),
+			// avatar menu "Switch to the classic UI" (docs/neo-switch.md D2)
+			'goWebclientSwitch' => Webclient::switchAllowed(),
 			// shared worker name suffix, passed on to popups (src/Popup.mjs)
 			'goBuild' => $build
 		];
