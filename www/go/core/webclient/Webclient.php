@@ -91,10 +91,11 @@ class Webclient {
 
 		$_COOKIE[self::COOKIE] = $client;
 
-		// host-only (no domain), like a browser preference should be
+		// host-only (no domain) and the installation's path: two installations on one host
+		// each keep their own choice
 		Response::get()->setCookie(self::COOKIE, $client, [
 			'expires' => time() + 10 * 365 * 24 * 60 * 60,
-			'path' => '/',
+			'path' => Extjs3::get()->getRelativeUrl(),
 			'samesite' => 'Lax',
 			'secure' => Request::get()->isHttps(),
 			'httponly' => true

@@ -89,15 +89,16 @@ class Neo {
 	public function classicApps(): array
 	{
 		// scanning the scripts is per installation, the ACL filter per user
-		$routes = $this->cached('neoClassicRoutes', function () {
-			$routes = [];
+		// by module id: modules of different packages may share a name (amd/tasks, community/tasks)
+		$panels = $this->cached('neoClassicPanels', function () {
+			$panels = [];
 			foreach (GO::modules()->getAllModules(true) as $module) {
-				$route = Extjs3::get()->classicMainPanelRoute($module);
-				if ($route !== null) {
-					$routes[$module->name] = $route;
+				$panel = Extjs3::get()->classicMainPanel($module);
+				if ($panel !== null) {
+					$panels[$module->id] = $panel;
 				}
 			}
-			return $routes;
+			return $panels;
 		});
 
 		// entity types per module id: the classic client opens #<entity>/<id> of its modules
@@ -113,18 +114,19 @@ class Neo {
 
 		$apps = [];
 		foreach (GO::modules()->getAllModules(true) as $module) {
-			if (!$module->enabled || !isset($routes[$module->name])) {
+			$panel = $panels[$module->id] ?? null;
+			if (!$module->enabled || !$panel) {
 				continue;
 			}
-			// read permission of this user on the module (its ACL), checked explicitly
-			if (!\go\core\model\Module::isAvailableFor($module->package ?: 'legacy', $module->name, $userId)) {
+			// the user's permission on the module (its ACL), at the level the classic panel requires
+			if (!\go\core\model\Module::isAvailableFor($module->package ?: 'legacy', $module->name, $userId, $panel['level'])) {
 				continue;
 			}
 			$apps[] = [
 				'package' => $module->package ?: null,
 				'name' => $module->name,
 				'title' => $module->moduleManager->getTitle(),
-				'route' => $routes[$module->name],
+				'route' => $panel['route'],
 				'entities' => $entities[$module->id] ?? []
 			];
 		}
@@ -356,7 +358,8 @@ class Neo {
 			// set in a popup window opened by GO.view.Dialog: id of the dialog to adopt
 			'goPopup' => $this->popupId(),
 			// the Dev module (component demos) loads only for developers
-			'goDebug' => go()->getDebugger()->enabled,
+			// the installation's setting, not the debugger (debug_usernames): the Dev module registers in the shared worker
+			'goDebug' => !empty(go()->getConfig()['debug']),
 			// avatar menu "Switch to the classic UI" (docs/neo-switch.md D2)
 			'goWebclientSwitch' => Webclient::switchAllowed(),
 			// shared worker name suffix, passed on to popups (src/Popup.mjs)

@@ -7,6 +7,9 @@ import MainView     from './MainView.mjs';
 import ModuleRegistry from '../../../src/ModuleRegistry.mjs';
 import {t} from '../../../src/Translate.mjs';
 
+/** "#recover/<hash>-<redirect>" of the password recovery mail (User::sendRecoveryMail()) */
+const RECOVER = /^recover\/([a-f0-9]{40})-?(.*)$/;
+
 /**
  * Card 0: loading, card 1: login, card 2: main view (created after login)
  */
@@ -40,7 +43,7 @@ class Viewport extends BaseViewport {
         // the password recovery link (User::sendRecoveryMail()) comes first, also when this
         // browser has a session: like go.Router's "recover" route (docs/neo-switch.md, D5)
         const hash    = (HashHistory.first(me.windowId) || Neo.windowConfigs?.[me.windowId]?.hash)?.hashString || '',
-              recover = hash.match(/^recover\/([a-f0-9]{40})-?(.*)$/);
+              recover = hash.match(RECOVER);
 
         // shown in onConstructed(): the login card does not exist yet
         me.recoverMatch = recover;
@@ -57,15 +60,33 @@ class Viewport extends BaseViewport {
     onConstructed() {
         super.onConstructed();
 
-        const recover = this.recoverMatch;
+        const me = this;
 
-        if (recover) {
-            this.showLogin();
-            this.getReference('login').showRecover(recover[1], recover[2])
+        me.recoverMatch && me.startRecover(me.recoverMatch);
+
+        // a recovery link opened in a tab that already runs GO (only the hash changes)
+        me.hashListenerId = HashHistory.on('change', ({hashString, windowId}) => {
+            const match = windowId === me.windowId && (hashString || '').match(RECOVER);
+            match && me.startRecover(match)
+        })
+    }
+
+    /**
+     * @param {String[]} match RECOVER match: [, hash, redirect]
+     */
+    startRecover(match) {
+        // the first hash event of a window repeats the hash it was opened with
+        if (this.recovering && this.getReference('login').recoverHash === match[1]) {
+            return
         }
+
+        this.recovering = true;
+        this.showLogin();
+        this.getReference('login').showRecover(match[1], match[2])
     }
 
     destroy(...args) {
+        HashHistory.un('change', this.hashListenerId);
         this.removeClientListeners.forEach(fn => fn());
         super.destroy(...args)
     }

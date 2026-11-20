@@ -76,12 +76,12 @@ class NeoTest extends TestCase
 		$bookmarks = self::legacyModule('bookmarks');
 		$this->assertNotNull($bookmarks, 'bookmarks module is installed');
 		// go.Modules.register(…, {mainPanel: …}) in views/extjs3/Module.js
-		$this->assertSame('bookmarks', Extjs3::get()->classicMainPanelRoute($bookmarks));
+		$this->assertSame(['route' => 'bookmarks', 'level' => 10], Extjs3::get()->classicMainPanel($bookmarks));
 
 		// a module whose only mainPanel line is commented out
 		$wopi = self::legacyModule('wopi');
 		if ($wopi) {
-			$this->assertNull(Extjs3::get()->classicMainPanelRoute($wopi));
+			$this->assertNull(Extjs3::get()->classicMainPanel($wopi));
 		}
 	}
 

@@ -16,7 +16,8 @@ import alerts             from '../../../src/alerts/Alerts.mjs';
 import notificationCenter from '../../../src/alerts/NotificationCenter.mjs';
 import NotificationPanel  from '../../../src/alerts/NotificationPanel.mjs';
 import reminders          from '../../../src/alerts/Reminders.mjs';
-import {notifyError}           from '../../../src/Notify.mjs';
+import {notify, notifyError}   from '../../../src/Notify.mjs';
+import {openTab, replaceRoute}  from '../../../src/history.mjs';
 import {closePopup, openPopup, popupsSupported} from '../../../src/Popup.mjs';
 import {applyTheme}            from '../../../src/Preferences.mjs';
 import {t} from '../../../src/Translate.mjs';
@@ -393,7 +394,7 @@ class MainView extends Container {
      * @param {String} hash without "#"
      */
     openClassic(hash) {
-        Neo.Main.windowOpen({url: classicUrl(hash), windowName: '_blank', windowId: this.windowId})
+        openTab(this.windowId, classicUrl(hash)).catch(e => notifyError(this, e))
     }
 
     /**
@@ -410,9 +411,10 @@ class MainView extends Container {
     routeUnknownHash(name, rest) {
         const me = this;
 
+        // rewritten hashes replace their history entry, so Back doesn't run them again
         if (name === 'classic') {
             rest.length && me.openClassic(rest.join('/'));
-            Neo.Main.setRoute({value: me.activeHash || '', windowId: me.windowId});
+            replaceRoute(me.windowId, me.activeHash || '');
             return true
         }
 
@@ -425,13 +427,25 @@ class MainView extends Container {
             }
 
             if (route) {
-                Neo.Main.setRoute({value: route, windowId: me.windowId});
+                replaceRoute(me.windowId, route);
                 return true
             }
         }
 
         if (classicAppByRoute(name)) {
             Neo.Main.redirectTo({url: classicUrl([name, ...rest].join('/')), windowId: me.windowId});
+            return true
+        }
+
+        // handled by the Viewport (password recovery card)
+        if (name === 'recover') {
+            return true
+        }
+
+        // a link to something neither client shows (deleted entity type, module without access)
+        if (name) {
+            notify(me, t('Not found'));
+            replaceRoute(me.windowId, me.activeHash || '');
             return true
         }
 

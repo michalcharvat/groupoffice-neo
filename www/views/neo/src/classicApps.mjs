@@ -11,24 +11,46 @@ import ModuleRegistry from './ModuleRegistry.mjs';
  * a new browser tab, so links, search results and alerts need nothing of their own.
  */
 
-/** @type {Object[]} [{package, name, title, route, entities}] */
+/** @type {Object[]} all of the user's classic apps [{package, name, title, route, entities}] */
+let all = [];
+
+/** @type {Object[]} the ones without a neo main view: apps menu, module hashes */
 let apps = [];
+
+/** load generation: an older answer (other user, earlier login) must not win */
+let generation = 0;
+
+// the list belongs to the user: one App worker serves every window
+client.on('logout', () => {
+    generation++;
+    all = apps = []
+});
 
 /**
  * Load the list for the logged-in user (after login, again after "login as")
  * @returns {Promise<Object[]>}
  */
 export async function loadClassicApps() {
-    try {
-        const {list = []} = await client.call('core/Webclient/classicApps'),
-              neo         = ModuleRegistry.getAvailable();
+    const current = ++generation,
+          userId  = client.user?.id;
 
-        apps = list.filter(app => !neo.some(m => m.name === app.name && (m.package || 'legacy') === (app.package || 'legacy')))
+    let list = [];
+
+    try {
+        ({list = []} = await client.call('core/Webclient/classicApps'))
     } catch (e) {
         // the classic launchers are optional: neo works without them
-        console.error('classicApps', e);
-        apps = []
+        console.error('classicApps', e)
     }
+
+    if (current !== generation || client.user?.id !== userId) {
+        return apps
+    }
+
+    const neo = ModuleRegistry.getAvailable();
+
+    all  = list;
+    apps = list.filter(app => !neo.some(m => m.name === app.name && (m.package || 'legacy') === (app.package || 'legacy')));
 
     return apps
 }
@@ -63,7 +85,9 @@ export function classicEntityRoute(entity, id) {
         return null
     }
 
-    return apps.some(app => app.entities?.some(e => e.toLowerCase() === lower))
+    // all apps: a partly ported module may show some of its entities only in the classic client
+    // (resolveRoute() asks neo's routes first)
+    return all.some(app => app.entities?.some(e => e.toLowerCase() === lower))
         ? lower + '/' + encodeURIComponent(String(id))
         : null
 }
