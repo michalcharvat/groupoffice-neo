@@ -41,8 +41,12 @@ class Link extends EntityController {
 	protected function getQueryQuery(ArrayObject $params): Query
 	{
 		$q = parent::getQueryQuery($params)
-			->groupBy([])
 			->distinct();
+
+		// DISTINCT makes the ids unique. The GROUP BY stays when the total must count items, not word rows.
+		if (!model\Search::queryNeedsGroupBy($q, $params['filter'] ?? null)) {
+			$q->groupBy([]);
+		}
 
 		$order = $q->getOrderBy();
 		if(empty($order['eTo.name'])) {
