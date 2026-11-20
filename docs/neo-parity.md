@@ -291,13 +291,13 @@ Closed on branch `task/20261120-054922-neo-ui-small-gaps-from-the-regression-wa`
 | Gap | Fix |
 |---|---|
 | Files: no Delete key and no row context menu in the trash; the file grid had no Delete key either | trash: Delete = delete permanently, right click = Restore / Delete permanently; file grid: Delete = trash, ctrl+Delete = delete permanently (26.x `FilesGrid`); `Grid` `deleteKey` carries `ctrlKey` |
+| PasswordPrompt showed "Required" before the user typed (opened from My account) | neo's `focusOnMount` gave the focus to the close tool after the field's 100 ms focus, and neo validates on focus leave: the field is focused in `afterSetMounted()`, and the empty check ("Required field", translated) runs only on OK |
 
 Remaining gaps (open, no card):
 
 | Area | Gap | Notes |
 |---|---|---|
 | Translations (cs) | Untranslated: "All notes", "{n} notes", "{n} tasks", "0 items", "Nothing selected", "Add a comment...", "Are you sure you want to permanently delete the selected items?", PasswordPrompt "Required" | dev module export `--missingOnly=1` |
-| PasswordPrompt | Shows "Required" before the user typed anything | neo PasswordField validates on mount |
 | Task dialog | The colour palette is two field rows high and leaves a gap below the subject | layout, not a regression |
 | E-mail | The message list shows the arrival time, the reading pane the Date header (both in the user's zone) | same as 26.x `sort by arrival` |
 | E-mail | Folders created outside GroupOffice appear only after a reload of the account tree | |
