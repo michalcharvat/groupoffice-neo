@@ -10,7 +10,7 @@ return array (
   'OAuth2 authentication was successful.' => 'L\'authentification OAuth2 a réussi.',
   'OAuth2 client' => 'Client OAuth2',
   'OAuth2 connection' => 'Connexion OAuth2',
-  'Please press the button "Refresh token" to finish the OAuth2 connection' => 'Veuillez appuyer sur le bouton « Refresh token » pour finaliser la connexion OAuth2',
+  'Please press the button "Refresh token" to finish the OAuth2 connection' => 'Veuillez appuyer sur le bouton « Actualiser le jeton » pour finaliser la connexion OAuth2',
   'Project ID' => 'ID du projet',
   'Project Id' => 'ID du projet',
   'Provider' => 'Fournisseur',
