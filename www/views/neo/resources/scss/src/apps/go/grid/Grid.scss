@@ -69,3 +69,38 @@
         top   : go.dp(40);
     }
 }
+
+// empty state (emptyText, GOUI .goui-empty-state): icon and text below the 30px header
+// (Grid.CHROME_HEIGHT), drawn from the root's data attributes; clicks go to the grid
+.go-grid.go-grid-empty {
+    &::before,
+    &::after {
+        color         : var(--fg-secondary-text);
+        left          : 0;
+        overflow      : hidden;
+        padding       : 0 go.dp(16);
+        pointer-events: none;
+        position      : absolute;
+        right         : 0;
+        text-align    : center;
+    }
+
+    &[data-empty-icon]::before {
+        content    : attr(data-empty-icon);
+        font-family: 'Material Symbols Rounded';
+        font-size  : go.dp(48);
+        line-height: go.dp(48);
+        top        : calc(30px + #{go.dp(20)});
+    }
+
+    &::after {
+        content    : attr(data-empty-text);
+        font-size  : go.sp(14);
+        line-height: go.dp(24);
+        top        : calc(30px + #{go.dp(20)});
+    }
+
+    &[data-empty-icon]::after {
+        top: calc(30px + #{go.dp(84)});
+    }
+}

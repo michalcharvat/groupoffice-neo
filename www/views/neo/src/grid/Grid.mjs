@@ -53,6 +53,15 @@ import {createColumns as createCustomFieldColumns, loadNames as loadCustomFieldN
  * second one (GOUI Table.sort edits the last sorter). neo's grid has no group rows: the first
  * row of a group is one header taller (content-sized rows) and carries the header band.
  * Not supported: collapsing groups, and columns locked at runtime (their body misses the band).
+ *
+ * Empty state (GOUI List/Table emptyStateHtml, ExtJS GridPanel emptyText): once the store has
+ * loaded and holds no records, the grid shows `emptyIcon` and `emptyText` below its header
+ * (default: "article", "No items found" like GOUI). Not before the first load, not after a failed
+ * one (until the next load); adding a record hides it again. `emptyText: null` turns it off. A
+ * grid sized by fitToRows() (a detail card) has no room for it: its owner shows its own text.
+ * A plain Store whose `data` is replaced by [] fires no load: fire it (see JmapStore.load()).
+ *
+ *     {module: Grid, emptyText: t('No items to display'), emptyIcon: 'description'}
  */
 class Grid extends GridContainer {
     static config = {
@@ -89,7 +98,17 @@ class Grid extends GridContainer {
          * HTML of a group header: ({value, record}) => String. Default: the escaped value.
          * @member {Function|null} groupRenderer=null
          */
-        groupRenderer: null
+        groupRenderer: null,
+        /**
+         * Text shown when the loaded store has no records, null for none
+         * @member {String|null} emptyText_=t('No items found')
+         */
+        emptyText_: t('No items found'),
+        /**
+         * Material symbol above the emptyText, null for none
+         * @member {String|null} emptyIcon_='article'
+         */
+        emptyIcon_: 'article'
     }
 
     /**
@@ -161,6 +180,12 @@ class Grid extends GridContainer {
     fittedRows = null
 
     /**
+     * The last load of the store failed: no empty state until the next load
+     * @member {Boolean} emptyLoadFailed=false
+     */
+    emptyLoadFailed = false
+
+    /**
      * Height of a grid that shows `count` rows without scrolling. neo's body shows
      * ceil(bodyHeight / rowHeight) - 1 rows and nothing below one row, so the body gets 1px
      * more than the rows. 0 rows: just the header.
@@ -178,7 +203,103 @@ class Grid extends GridContainer {
      */
     fitToRows(count) {
         this.fittedRows = count;
-        this.height     = this.heightForRows(count)
+        this.height     = this.heightForRows(count);
+        this.updateEmptyState()
+    }
+
+    /**
+     * Triggered after the emptyText config got changed
+     * @param {String|null} value
+     * @param {String|null} oldValue
+     * @protected
+     */
+    afterSetEmptyText(value, oldValue) {
+        oldValue !== undefined && this.updateEmptyState()
+    }
+
+    /**
+     * Triggered after the emptyIcon config got changed
+     * @param {String|null} value
+     * @param {String|null} oldValue
+     * @protected
+     */
+    afterSetEmptyIcon(value, oldValue) {
+        oldValue !== undefined && this.updateEmptyState()
+    }
+
+    /**
+     * Shows or hides the empty state: CSS pseudo elements of the root (go-grid-empty) render the
+     * data-empty-icon and data-empty-text attributes, so the text is never HTML and neo's
+     * container keeps its own children
+     * @protected
+     */
+    updateEmptyState() {
+        let me      = this,
+            {store} = me,
+            vdom    = me.vdom,
+            // a fitted grid (detail card) is too low for it, its owner shows its own text
+            show    = !!me.emptyText && !!store?.isLoaded && store.count === 0 && me.fittedRows === null && !me.emptyLoadFailed;
+
+        if (!vdom || me.isDestroyed) {
+            return
+        }
+
+        const text = show ? String(me.emptyText) : null,
+              icon = show && me.emptyIcon ? String(me.emptyIcon) : null;
+
+        if ((vdom['data-empty-text'] ?? null) === text && (vdom['data-empty-icon'] ?? null) === icon) {
+            return
+        }
+
+        vdom['data-empty-text'] = text;
+        vdom['data-empty-icon'] = icon;
+
+        // a class change updates the vdom with the attributes
+        me.cls.includes('go-grid-empty') !== show ? me.toggleCls('go-grid-empty', show) : me.update()
+    }
+
+    /**
+     * @param {Neo.data.Store|null} value
+     * @param {Neo.data.Store|null} oldValue
+     * @protected
+     */
+    afterSetStore(value, oldValue) {
+        let me = this;
+
+        super.afterSetStore(value, oldValue);
+
+        // a failed load leaves the records of the previous one: their empty state is no answer
+        oldValue?.un('loadError', me.onEmptyLoadError, me);
+        value?.on('loadError', me.onEmptyLoadError, me);
+
+        me.emptyLoadFailed = false;
+        me.updateEmptyState()
+    }
+
+    /**
+     * @protected
+     */
+    onEmptyLoadError() {
+        this.emptyLoadFailed = true;
+        this.updateEmptyState()
+    }
+
+    /**
+     * @protected
+     */
+    onStoreFilter() {
+        super.onStoreFilter();
+        this.updateEmptyState()
+    }
+
+    /**
+     * @param {Object} data
+     * @protected
+     */
+    onStoreLoad(data) {
+        super.onStoreLoad(data);
+        this.emptyLoadFailed = false;
+        this.updateEmptyState()
     }
 
     /**
