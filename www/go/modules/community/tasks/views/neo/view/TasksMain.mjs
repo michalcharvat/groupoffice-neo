@@ -160,6 +160,8 @@ class TasksMain extends MainThreeColumnPanel {
                 flex        : 'none',
                 displayField: 'name',
                 rowMenu     : record => this.getTaskListMenu(record),
+                // tasks can't be moved into it (onTaskListDrop())
+                noDrop      : record => record.permissionLevel < LEVEL_WRITE,
                 store       : {
                     module    : JmapStore,
                     entity    : 'TaskList',

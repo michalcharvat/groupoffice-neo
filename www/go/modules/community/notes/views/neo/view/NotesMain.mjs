@@ -124,6 +124,8 @@ class NotesMain extends MainThreeColumnPanel {
                 flex        : 'none',
                 displayField: 'name',
                 rowMenu     : record => this.getNoteBookMenu(record),
+                // notes can't be moved into it (onNoteBookDrop())
+                noDrop      : record => record.permissionLevel < LEVEL_WRITE,
                 store       : {
                     module    : JmapStore,
                     entity    : 'NoteBook',

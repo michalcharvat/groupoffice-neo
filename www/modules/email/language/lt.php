@@ -151,9 +151,9 @@ return array (
   'Show flagged' => 'Parodyti pažymėtą',
   'Move all' => 'Perkelti viską',
   'Confirm move' => 'Patvirtinkite perkėlimą',
-  'Are you sure you want to move all the emails from the search result? (" + GO.email.messagesGrid.store.reader.jsonData.allUids.length + " emails)' => 'Ar tikrai norite perkelti visus laiškus iš paieškos rezultato? (" + Go.email.messageGrid.store.reader.jsondata.alluids.length +" laiškai)',
-  'Delete all' => 'Ištrinkite visu
-legacy;email;Are you sure you want to delete all the emails from the search result? ("" + GO.email.messagesGrid.store.reader.jsonData.allUids.length + "" emails)"',
+  'Are you sure you want to move all the emails from the search result? ({count} emails)' => 'Ar tikrai norite perkelti visus laiškus iš paieškos rezultato? ({count} laiškai)',
+  'Delete all' => 'Ištrinti viską',
+  'Are you sure you want to delete all the emails from the search result? ({count} emails)' => 'Ar tikrai norite ištrinti visus laiškus iš paieškos rezultato? ({count} laiškai)',
   'folder' => 'aplankas',
   'Root mailbox' => 'Pagrindinė pašto dėžutė',
   'Sieve filter port number' => 'Sieve filtro portas',

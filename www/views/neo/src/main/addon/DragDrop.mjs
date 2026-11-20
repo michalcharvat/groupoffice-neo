@@ -3,6 +3,8 @@ import DomEvents from '../../../node_modules/neo.mjs/src/main/DomEvents.mjs';
 
 /** classes of the drop target under the pointer, by drop position */
 const POSITION_CLS = {on: 'go-drop-over', before: 'go-drop-before', after: 'go-drop-after'};
+/** class of a drop target that refuses drops (e.g. a note book the user can't write to) */
+const NO_DROP_CLS = 'go-no-drop';
 /** class of the dragged element (GOUI .drag-src) */
 const DRAG_SRC_CLS = 'go-drag-src';
 /** ms the pointer rests on a target before "goDragHover" (a tree expands the node) */
@@ -25,6 +27,8 @@ const HOVER_DELAY = 1000;
  * - data-go-drop-horizontal="true": targets are side by side, before / after go by x
  * - data-go-drop-hover="true": resting on a target for a second sends "goDragHover"
  *   {targetId, targetRecordId} (a tree expands the node, GOUI Tree.setupExpandOnDragOver())
+ * - class "go-no-drop" on a target (or the root): it refuses drops (not highlighted, no drop
+ *   on the root instead), e.g. a note book the user can't write to
  *
  * A drop sends the custom DOM event "goDrop" to the drop root's component:
  * {targetId, targetRecordId, position, files, source: {rootId, itemId, recordId}|null, copy}.
@@ -151,6 +155,10 @@ class DragDrop extends Base {
             target   = selector && e.target.closest(selector);
 
         target = target && root.contains(target) ? target : root;
+
+        if (target.classList.contains(NO_DROP_CLS)) {
+            return null
+        }
 
         return {root, target, position: target === root ? 'on' : me.dropPosition(e, root, target)}
     }

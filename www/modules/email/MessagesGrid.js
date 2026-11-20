@@ -343,7 +343,7 @@ GO.email.MessagesGrid = function(config){
 						disabled: true,
 						handler: function (b) {
 
-							Ext.MessageBox.confirm(t("Confirm move"), t("Are you sure you want to move all the emails from the search result? (" + GO.email.messagesGrid.store.reader.jsonData.allUids.length + " emails)"), function (btn) {
+							Ext.MessageBox.confirm(t("Confirm move"), t("Are you sure you want to move all the emails from the search result? ({count} emails)", "email").replace("{count}", GO.email.messagesGrid.store.reader.jsonData.allUids.length), function (btn) {
 								if (btn !== "yes") {
 									return;
 								}
@@ -359,7 +359,7 @@ GO.email.MessagesGrid = function(config){
 						disabled: true,
 						handler: function (b) {
 
-							Ext.MessageBox.confirm(t("Confirm delete"), t("Are you sure you want to delete all the emails from the search result? (" + GO.email.messagesGrid.store.reader.jsonData.allUids.length + " emails)"), function (btn) {
+							Ext.MessageBox.confirm(t("Confirm delete"), t("Are you sure you want to delete all the emails from the search result? ({count} emails)", "email").replace("{count}", GO.email.messagesGrid.store.reader.jsonData.allUids.length), function (btn) {
 								if (btn !== "yes") {
 									return;
 								}
