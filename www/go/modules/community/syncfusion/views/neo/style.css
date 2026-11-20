@@ -1,0 +1,31 @@
+/* Syncfusion editor window: the editor fills the window body */
+.go-syncfusion-window .go-syncfusion-host {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+}
+
+.go-syncfusion-window .go-syncfusion-host:focus {
+    outline: none;
+}
+
+.go-syncfusion-window .go-syncfusion-frame {
+    border: none;
+    display: block;
+    height: 100%;
+    width: 100%;
+}
+
+.go-syncfusion-window .go-syncfusion-sheet {
+    height: 100%;
+}
+
+.go-syncfusion-setup {
+    padding: 1.6rem;
+}
+
+.go-syncfusion-setup code {
+    font-size: 1.2rem;
+}

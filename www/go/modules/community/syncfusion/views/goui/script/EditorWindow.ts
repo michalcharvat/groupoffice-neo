@@ -347,7 +347,8 @@ export class EditorWindow extends Window<EditorWindowEventMap> {
 				// The built-in items post directly from the browser to the Docker service (openUrl/saveUrl),
 				// which is unreachable and unauthenticated from the client. 'New' would let a blank workbook
 				// overwrite the file via our own Save.
-				this.sfEditor.hideFileMenuItems(["New", "Open", "Save As"], true);
+				// By id: the texts are translated
+				this.sfEditor.hideFileMenuItems(["_New", "_Open", "_Save_As"].map(suffix => container.id + suffix), true, true);
 			},
 			fileMenuItemSelect: (args: any) => {
 				if (args.item.properties && args.item.properties.id === "go_save") {
