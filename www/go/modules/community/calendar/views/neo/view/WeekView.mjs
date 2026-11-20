@@ -266,6 +266,11 @@ class WeekView extends CalendarView {
             return
         }
 
+        // one new event at a time: its dialog is opening (the second click of a double click)
+        if (me.currentCreation) {
+            return
+        }
+
         // a new event from here, resized by dragging
         const start = new Date(day);
         start.setHours(0, minute, 0, 0);

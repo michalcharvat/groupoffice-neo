@@ -1426,23 +1426,28 @@ class CalendarMain extends MainThreeColumnPanel {
 
         dialog.on('cancel', () => {
             opts.onCancel?.();
-            me.clearCreation()
+            me.clearCreation(item)
         });
-        dialog.on('saved', () => me.clearCreation());
+        dialog.on('saved', () => me.clearCreation(item));
 
         return dialog
     }
 
     /**
-     * The item drawn with the mouse goes away with its dialog
+     * The item drawn with the mouse goes away with its dialog, also when the user switched
+     * to another view meanwhile (a popped out editor): a view with a pending new event
+     * starts no other
+     * @param {CalendarItem} item
      */
-    clearCreation() {
-        const view = this.view;
+    clearCreation(item) {
+        ['weekView', 'monthView', 'yearView', 'splitView', 'listView'].forEach(ref => {
+            const view = this.getReference(ref);
 
-        if (view?.currentCreation) {
-            view.currentCreation = null;
-            view.refresh()
-        }
+            if (view && view.currentCreation === item) {
+                view.currentCreation = null;
+                view.refresh()
+            }
+        })
     }
 
     openDetail(item) {

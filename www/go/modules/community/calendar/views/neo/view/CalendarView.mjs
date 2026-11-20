@@ -415,7 +415,8 @@ class CalendarView extends Component {
             return
         }
 
-        if (dayNode) {
+        // one new event at a time: its dialog is opening (the second click of a double click)
+        if (dayNode && !me.currentCreation) {
             const date   = parseDate(dayNode.data.date),
                   dd     = calendarData.prefs.defaultDuration,
                   allDay = withoutTime || !dd,
