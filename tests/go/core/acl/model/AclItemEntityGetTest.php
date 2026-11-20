@@ -125,6 +125,8 @@ class AclItemEntityGetTest extends TestCase
 		return [
 			'contact without addressBookId' => ['contact', ContactController::class, ['id', 'name']],
 			'contact with only the id' => ['contact', ContactController::class, ['id']],
+			'task without tasklistId' => ['task', TaskController::class, ['id', 'title']],
+			'note without noteBookId' => ['note', NoteController::class, ['id', 'name']],
 		];
 	}
 
