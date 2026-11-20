@@ -593,15 +593,17 @@ abstract class Entity  extends OrmEntity {
 	
 	/**
 	 * The opposite of parseState()
-	 * 
+	 *
+	 * Prefixed with the cache cleared time like getState(), because parseState() requires it.
+	 *
 	 * @param array $stateArray
 	 * @return string
 	 */
 	protected static function intermediateState(array $stateArray): string
 	{
-		return implode(":", array_map(function($s) {	
-			return $s['modSeq'] . '|' . $s['offset'];			
-		},$stateArray));
+		return self::appendCacheCleared(implode(":", array_map(function($s) {
+			return $s['modSeq'] . '|' . $s['offset'];
+		},$stateArray)));
 	}
 
 
