@@ -1,7 +1,7 @@
 import Tree     from '../../../../../../../views/neo/src/tree/Tree.mjs';
 import MenuList from '../../../../../../../views/neo/src/menu/List.mjs';
 import client   from '../../../../../../../views/neo/src/jmap/Client.mjs';
-import {LEVEL_READ} from '../../../../../../../views/neo/src/Acl.mjs';
+import {LEVEL_READ, LEVEL_WRITE} from '../../../../../../../views/neo/src/Acl.mjs';
 import {t}      from '../util.mjs';
 
 /**
@@ -73,6 +73,8 @@ class AddressBookTree extends Tree {
                 entity  : 'AddressBook',
                 data    : ab,
                 check   : me.checkedIds?.has(String(ab.id)) || false,
+                // contacts can't be moved into it (AddressBookMain onTreeDrop())
+                cls     : ab.permissionLevel < LEVEL_WRITE ? ['go-no-drop'] : undefined,
                 // without groups a leaf
                 children: ab.groups?.length ? undefined : []
             }))
@@ -93,6 +95,7 @@ class AddressBookTree extends Tree {
             icon    : 'group',
             entity  : 'AddressBookGroup',
             data    : {...group, permissionLevel: node.data.permissionLevel},
+            cls     : node.data.permissionLevel < LEVEL_WRITE ? ['go-no-drop'] : undefined,
             children: []
         }))
     }

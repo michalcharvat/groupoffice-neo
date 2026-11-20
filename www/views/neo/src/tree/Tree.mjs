@@ -466,6 +466,22 @@ class Tree extends List {
         ].join('|')
     }
 
+    /**
+     * neo's createItem() plus the node's cls on the item
+     * @param {Object} record
+     * @param {Number} index
+     * @param {Number} [poolIndex=index]
+     * @returns {Object|null}
+     */
+    createItem(record, index, poolIndex=index) {
+        const item = super.createItem(record, index, poolIndex),
+              cls  = this.getNode(record.id)?.cls;
+
+        item && cls?.forEach(c => !item.cls.includes(c) && item.cls.push(c));
+
+        return item
+    }
+
     createItemContent(record) {
         let me       = this,
             node     = me.getNode(record.id) || {},

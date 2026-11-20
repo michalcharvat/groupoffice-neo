@@ -418,13 +418,12 @@ class AccountTree extends Tree {
     }
 
     /**
-     * neo lists get the item classes from the record: add the node's cls and the drag and
-     * drop classes (EmailMain.enableMessageDragDrop())
+     * Tree's item (with the node's cls) plus the drag and drop classes
+     * (EmailMain.enableMessageDragDrop())
      */
     createItem(record, ...args) {
         const item = super.createItem(record, ...args),
-              node = this.getNode(record.id),
-              cls  = [...(node?.cls || []), ...this.dragDropCls(node)];
+              cls  = this.dragDropCls(this.getNode(record.id));
 
         cls.length && (item.cls = [...(item.cls || []), ...cls]);
         return item

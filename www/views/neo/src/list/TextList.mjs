@@ -25,7 +25,21 @@ class TextList extends List {
          * HTML of a group header: ({value, record}) => String|null
          * @member {Function|null} groupRenderer=null
          */
-        groupRenderer: null
+        groupRenderer: null,
+        /**
+         * Drop targets of enableDragDrop() (drop: '.neo-list-item'): record => true when the
+         * item refuses drops (class go-no-drop: not highlighted while dragging), null for none
+         * @member {Function|null} noDrop=null
+         */
+        noDrop: null
+    }
+
+    createItem(record, index, poolIndex=index) {
+        const item = super.createItem(record, index, poolIndex);
+
+        item && this.noDrop?.(record) && item.cls.push('go-no-drop');
+
+        return item
     }
 
     createItemContent(record) {
