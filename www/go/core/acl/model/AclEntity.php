@@ -81,6 +81,18 @@ abstract class AclEntity extends Entity {
 			return $result;
 		}
 
+		// All entity changes are in this result, so a next page continues from the current entity state and only
+		// pages through the ACL changes. Otherwise it returns the same entity changes again.
+		$nextStates = static::parseState($result['newState']);
+		$nextStates[2] = $states[2];
+
+		if($maxChanges < 1) {
+			// the entity changes filled the page
+			$result['hasMoreChanges'] = true;
+			$result['newState'] = static::intermediateState($nextStates);
+			return $result;
+		}
+
 		$changedAcls = array_keys($changes);
 
 		$isAclItem = is_a(static::class, AclItemEntity::class, true);			
@@ -106,7 +118,10 @@ abstract class AclEntity extends Entity {
 
 		//we don't need entities here. Just a list of id's.
 		$i = 0;
+		// rows read, including the ones skipped because they're already in the result. The next page starts after them.
+		$read = 0;
 		foreach($stmt as $entity) {
+			$read++;
 			$aclId = $entity['aclId'];
 			unset($entity['aclId']);
 			$id = count($entity) > 1 ? implode("-", $entity) : array_shift($entity);
@@ -131,9 +146,9 @@ abstract class AclEntity extends Entity {
 		}
 		
 		if($stmt->rowCount() > $maxChanges) {
-			$states[2]['offset'] += $maxChanges;
+			$nextStates[2]['offset'] += $read;
 			$result['hasMoreChanges'] = true;
-			$result['newState'] = static::intermediateState($states);
+			$result['newState'] = static::intermediateState($nextStates);
 		}
 		
 		return $result;

@@ -3,6 +3,7 @@ namespace go\core\jmap;
 
 use Exception;
 use go\core\auth\TemporaryState;
+use go\core\model\Acl;
 use go\core\model\User;
 use go\core\orm\EntityType;
 use go\modules\community\notes\model\Note;
@@ -18,7 +19,8 @@ class EntityChangesTest extends TestCase
 {
 	private static $authState;
 	private static User $user;
-	private static NoteBook $noteBook;
+	/** @var NoteBook[] 'visible' is shared with the user from the start, 'shared' is shared by the tests */
+	private static array $noteBooks = [];
 
 	public static function setUpBeforeClass(): void
 	{
@@ -38,10 +40,16 @@ class EntityChangesTest extends TestCase
 				throw new Exception(self::$user->getValidationErrorsAsString());
 			}
 
-			self::$noteBook = new NoteBook();
-			self::$noteBook->name = $prefix;
-			if (!self::$noteBook->save()) {
-				throw new Exception(self::$noteBook->getValidationErrorsAsString());
+			foreach (['visible', 'shared'] as $name) {
+				$noteBook = new NoteBook();
+				$noteBook->name = $prefix . $name;
+				if ($name == 'visible') {
+					$noteBook->setAcl([self::$user->getPersonalGroup()->id => Acl::LEVEL_READ]);
+				}
+				if (!$noteBook->save()) {
+					throw new Exception($noteBook->getValidationErrorsAsString());
+				}
+				self::$noteBooks[$name] = $noteBook;
 			}
 		} catch (Exception $e) {
 			self::tearDownAfterClass();
@@ -52,8 +60,8 @@ class EntityChangesTest extends TestCase
 	public static function tearDownAfterClass(): void
 	{
 		go()->setAuthState(new TemporaryState(User::ID_SUPER_ADMIN));
-		if (isset(self::$noteBook->id)) {
-			NoteBook::delete(['id' => self::$noteBook->id]);
+		if (self::$noteBooks) {
+			NoteBook::delete(['id' => array_map(fn($nb) => $nb->id, self::$noteBooks)]);
 		}
 		if (isset(self::$user->id)) {
 			User::delete(['id' => self::$user->id]);
@@ -65,22 +73,22 @@ class EntityChangesTest extends TestCase
 	protected function tearDown(): void
 	{
 		go()->setAuthState(new TemporaryState(User::ID_SUPER_ADMIN));
-		Note::delete(['noteBookId' => self::$noteBook->id]);
-		self::$noteBook->setAcl([self::$user->getPersonalGroup()->id => null]);
-		self::$noteBook->save();
+		Note::delete(['noteBookId' => array_map(fn($nb) => $nb->id, self::$noteBooks)]);
+		self::$noteBooks['shared']->setAcl([self::$user->getPersonalGroup()->id => null]);
+		self::$noteBooks['shared']->save();
 		EntityType::push();
 	}
 
 	/**
 	 * @return int[] ids of the new notes
 	 */
-	private function createNotes(int $count): array
+	private function createNotes(int $count, string $noteBook = 'shared'): array
 	{
 		go()->setAuthState(new TemporaryState(User::ID_SUPER_ADMIN));
 		$ids = [];
 		for ($i = 0; $i < $count; $i++) {
 			$note = new Note();
-			$note->noteBookId = self::$noteBook->id;
+			$note->noteBookId = self::$noteBooks[$noteBook]->id;
 			$note->name = 'Changes ' . $i;
 			$note->content = 'Changes';
 			$this->assertTrue($note->save(), $note->getValidationErrorsAsString());
@@ -103,6 +111,7 @@ class EntityChangesTest extends TestCase
 		do {
 			$result = Note::getChanges($sinceState, $maxChanges);
 			$this->assertLessThanOrEqual($maxChanges, count($result['changed']) + count($result['removed']));
+			$this->assertEquals([], $result['removed']);
 			$changed = array_merge($changed, array_map('intval', $result['changed']));
 			$sinceState = $result['newState'];
 			$pages++;
@@ -137,14 +146,73 @@ class EntityChangesTest extends TestCase
 
 		// sharing the note book shows its notes to the user through the ACL change log
 		go()->setAuthState(new TemporaryState(User::ID_SUPER_ADMIN));
-		self::$noteBook->setAcl([self::$user->getPersonalGroup()->id => \go\core\model\Acl::LEVEL_READ]);
-		$this->assertTrue(self::$noteBook->save(), self::$noteBook->getValidationErrorsAsString());
-		EntityType::push();
+		$this->share();
 
 		go()->setAuthState(new TemporaryState(self::$user->id));
 		$changed = $this->changesInPages($since, 2);
 
 		sort($changed);
-		$this->assertEquals($ids, array_values(array_unique($changed)));
+		$this->assertEquals($ids, $changed);
+	}
+
+	/**
+	 * Entity changes that fill the whole page leave no room for the ACL changes. The next page must still go on
+	 * instead of returning the same page again.
+	 */
+	public function testEntityChangesFillThePageBeforeAclChanges(): void
+	{
+		$visible = $this->createNotes(2, 'visible');
+		$shared = $this->createNotes(2);
+
+		go()->setAuthState(new TemporaryState(self::$user->id));
+		$since = Note::getState();
+
+		go()->setAuthState(new TemporaryState(User::ID_SUPER_ADMIN));
+		foreach (Note::find()->where('id', 'in', $visible) as $note) {
+			$note->name = 'Changed';
+			$this->assertTrue($note->save(), $note->getValidationErrorsAsString());
+		}
+		EntityType::push();
+		$this->share();
+
+		go()->setAuthState(new TemporaryState(self::$user->id));
+		$changed = $this->changesInPages($since, 2);
+
+		sort($changed);
+		$ids = array_merge($visible, $shared);
+		sort($ids);
+		$this->assertEquals($ids, $changed);
+	}
+
+	/**
+	 * A note that is both changed and in a newly shared note book is sent once.
+	 */
+	public function testChangedNoteInSharedNoteBookIsSentOnce(): void
+	{
+		$ids = $this->createNotes(3);
+
+		go()->setAuthState(new TemporaryState(self::$user->id));
+		$since = Note::getState();
+
+		go()->setAuthState(new TemporaryState(User::ID_SUPER_ADMIN));
+		$note = Note::findById($ids[0]);
+		$note->name = 'Changed';
+		$this->assertTrue($note->save(), $note->getValidationErrorsAsString());
+		EntityType::push();
+		$this->share();
+
+		go()->setAuthState(new TemporaryState(self::$user->id));
+		$changed = $this->changesInPages($since, 2);
+
+		sort($changed);
+		$this->assertEquals($ids, $changed);
+	}
+
+	private function share(): void
+	{
+		go()->setAuthState(new TemporaryState(User::ID_SUPER_ADMIN));
+		self::$noteBooks['shared']->setAcl([self::$user->getPersonalGroup()->id => Acl::LEVEL_READ]);
+		$this->assertTrue(self::$noteBooks['shared']->save(), self::$noteBooks['shared']->getValidationErrorsAsString());
+		EntityType::push();
 	}
 }
