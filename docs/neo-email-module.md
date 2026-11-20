@@ -35,7 +35,7 @@ Styles: `www/views/neo/resources/scss/src/apps/go/email/<path of the className>.
 | `api.mjs` | the legacy routes as functions (tree, checkUnseen, saveTreeState, saveSort, messageStore, setFlag, moveToAccount, moveToSpam, moveToInbox, labels, folder create/rename/delete/truncate/markAsRead/move), `serverNodeId()`, `nodeUnseen()` | 1, others add routes |
 | `data/MessageStore.mjs` | `GO.email.data.MessageStore`: neo Store over `email/message/store`, infinite scroll (`loadMore()`), `setParams()`, `load({keepCount, extra})`, `response` | 1 |
 | `view/EmailMain.mjs` | `GO.email.EmailMain` (MainThreeColumnPanel): tree / grid / message view, actions, search, routes, folder counts from `checker.onStatus()` | 1 |
-| `view/AccountTree.mjs` | `GO.email.AccountTree` (GO.tree.Tree): accounts, folders, counts, row menu, `emailTreeSections` | 1 |
+| `view/AccountTree.mjs` | `GO.email.AccountTree` (GO.tree.Tree): accounts, folders, counts, row menu, `emailTreeSections`; opening an account again loads its folders again (`Tree.reloadNode()`), so folders created elsewhere show (only subscribed ones: `ImapMailbox::isVisible()`); the mail check doesn't reload the tree (an IMAP LIST per account each time; 26.x neither), Refresh does | 1 |
 | `view/FolderPickerDialog.mjs` | `FolderPickerDialog.ask({accountId, allowRoot, exclude})` → `{accountId, mailbox}` | 1 (card 2 may reuse for "Move/Copy email to…") |
 | `view/PromptDialog.mjs` | `PromptDialog.ask({title, labelText, value})` → text or null | 1 |
 | `view/SearchDialog.mjs` | `SearchDialog.ask({labels, values})` → `{query, searchIn, values}` | 1 |

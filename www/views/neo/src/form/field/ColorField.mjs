@@ -1,4 +1,5 @@
 import Field from './Field.mjs';
+import ColorMenu from '../../menu/ColorMenu.mjs';
 import {t}   from '../../Translate.mjs';
 
 const HEX = /^[0-9A-F]{6}$/;
@@ -13,10 +14,12 @@ const PALETTE = ['C62828', 'AD1457', '6A1B9A', '4527A0', '283593', '1565C0', '02
  * without "#" ("1652A1"), null for none. A swatch shows the colour, or the placeholder's
  * (the default) while empty; clicking it opens the browser's colour picker. Without a hex
  * box or a palette the whole box opens the picker. A clear button empties a field that is
- * not required.
+ * not required. With `paletteMenu` (GOUI colorfield) the swatch and an arrow open the GOUI
+ * colour palette (ColorMenu) as a menu instead: one field row high.
  *
  *     {module: ColorField, name: 'color', labelText: t('Color')}
  *     {module: ColorField, name: 'color', labelText: t('Color'), palette: true}
+ *     {module: ColorField, name: 'color', labelText: t('Color'), paletteMenu: true}
  *     {module: ColorField, name: 'settings.primaryColor', labelText: t('Primary color'), showHexValue: true, placeholderText: '1652A1'}
  */
 class ColorField extends Field {
@@ -29,6 +32,11 @@ class ColorField extends Field {
          * @member {Boolean} palette_=false
          */
         palette_: false,
+        /**
+         * GOUI colorfield: the swatch and an arrow open the palette as a menu (ColorMenu)
+         * @member {Boolean} paletteMenu_=false
+         */
+        paletteMenu_: false,
         /**
          * Hex of the default colour, shown while empty
          * @member {String} placeholderText_=''
@@ -56,7 +64,8 @@ class ColorField extends Field {
             // input, not change: the value (and a preview) follows typing and dragging in the picker
             {input : me.onInputChange,  delegate: '.go-field-input',        scope: me},
             {click : me.onSwatchClick,  delegate: '.go-colorfield-palette', scope: me},
-            {click : me.onClearClick,   delegate: '.go-colorfield-clear',   scope: me}
+            {click : me.onClearClick,   delegate: '.go-colorfield-clear',   scope: me},
+            {click : me.onBoxClick,     delegate: '.go-field-box',          scope: me}
         ])
     }
 
@@ -82,13 +91,18 @@ class ColorField extends Field {
         this.afterSetShowHexValue(this.showHexValue, oldValue)
     }
 
+    afterSetPaletteMenu(value, oldValue) {
+        this.toggleCls('go-colorfield-menu', value);
+        this.afterSetShowHexValue(this.showHexValue, oldValue)
+    }
+
     afterSetPlaceholderText(value, oldValue) {
         oldValue !== undefined && this.renderControl()
     }
 
     afterSetShowHexValue(value, oldValue) {
         // only the swatch: the whole box opens the picker
-        this.toggleCls('go-colorfield-plain', !this.showHexValue && !this.palette);
+        this.toggleCls('go-colorfield-plain', !this.showHexValue && !this.palette && !this.paletteMenu);
         oldValue !== undefined && this.renderControl()
     }
 
@@ -113,7 +127,18 @@ class ColorField extends Field {
         let me     = this,
             color  = me.color,
             locked = me.readOnly || me.disabled,
-            items  = [{
+            items  = me.paletteMenu ? [{
+                cls  : ['go-colorfield-swatch', color ? null : 'go-colorfield-empty'].filter(Boolean),
+                style: {backgroundColor: color}
+            }, {
+                tag          : 'button',
+                type         : 'button',
+                cls          : ['go-field-tool', 'go-colorfield-open'],
+                'aria-label' : me.labelText || t('Color'),
+                'aria-haspopup': 'true',
+                disabled     : locked || null,
+                cn           : [{tag: 'i', cls: ['go-icon'], 'aria-hidden': 'true', text: 'expand_more'}]
+            }] : [{
                 tag: 'label',
                 cls: ['go-colorfield-swatch', color ? null : 'go-colorfield-empty'].filter(Boolean),
                 style: {backgroundColor: color},
@@ -194,6 +219,31 @@ class ColorField extends Field {
 
     onClearClick() {
         this.userChange(null)
+    }
+
+    /**
+     * paletteMenu: a click in the box (not on the clear button) opens the palette
+     * @param {Object} data neo DOM event
+     */
+    onBoxClick({path}) {
+        let me = this;
+
+        if (!me.paletteMenu || me.readOnly || me.disabled || path.some(n => n.cls?.includes('go-colorfield-clear'))) {
+            return
+        }
+
+        const menu = ColorMenu.showAt({
+            appName     : me.appName,
+            windowId    : me.windowId,
+            target      : me.id,
+            value       : me.value ? '#' + me.value : '',
+            updateButton: false,
+            listeners   : {colorSelect: ({color}) => {
+                // "Auto" ('') is no colour
+                me.userChange(ColorField.normalize(color));
+                menu.hidden = true
+            }}
+        })
     }
 }
 

@@ -1060,7 +1060,8 @@ class TasksMain extends MainThreeColumnPanel {
 
     updateTaskCount() {
         const total = this.getReference('grid').store.totalCount || 0;
-        this.getReference('tableTitle').subtitle = `${total} ${total === 1 ? t('task') : t('tasks')}`
+        // a key per form: languages like Czech need another word order than "<count> tasks"
+        this.getReference('tableTitle').subtitle = total === 1 ? t('1 task') : fmt(t('{count} tasks'), {count: total})
     }
 
     /**

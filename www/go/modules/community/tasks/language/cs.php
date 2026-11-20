@@ -79,4 +79,6 @@ return array (
   'Tasks in this list will be shown in the calendar' => 'Úkoly z tohoto seznamu se zobrazí v kalendáři',
   'Tasklists' => 'Seznamy úkolů',
   'This task already has booked hours or progress' => 'Na tomto úkolu již jsou vykázané hodiny nebo postup',
+  '1 task' => '1 úloha',
+  '{count} tasks' => 'Úloh: {count}',
 );

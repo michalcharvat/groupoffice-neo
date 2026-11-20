@@ -286,15 +286,22 @@ Fixed on branch `task/20261120-044313-neo-ui-regression-walkthrough-after-the`, 
 | Typing in chips and autocomplete fields (e-mail recipients, user/contact pickers) lost characters and moved the caret, even at 200 ms per key ("neotest@neo.test" → "noetno.tst"): every keystroke ran `update()` and the late answer wrote older text back. Older than tonight's merges | `Field.syncInputValue()` syncs vdom and vnode like neo's Text field, no DOM write; ChipsField, AutocompleteField |
 | PasswordPrompt, TextPrompt, SecretDialog, e-mail CloseDialog and files OverwriteDialog had no message padding unless a ConfirmDialog had been opened before (neo loads `ConfirmDialog.scss` only with that class) | `.go-confirm-message` padding moved to `Dialog.scss` |
 
+Closed on branch `task/20261120-054922-neo-ui-small-gaps-from-the-regression-wa`:
+
+| Gap | Fix |
+|---|---|
+| Files: no Delete key and no row context menu in the trash; the file grid had no Delete key either | trash: Delete = delete permanently, right click = Restore / Delete permanently; file grid: Delete = trash, ctrl+Delete = delete permanently (26.x `FilesGrid`); `Grid` `deleteKey` carries `ctrlKey` |
+| PasswordPrompt showed "Required" before the user typed (opened from My account) | neo's `focusOnMount` gave the focus to the close tool after the field's 100 ms focus, and neo validates on focus leave: the field is focused in `afterSetMounted()`, and the empty check ("Required field", translated) runs only on OK |
+| Task dialog: the colour palette was two field rows high, a gap below the subject | `ColorField` `paletteMenu`: swatch + arrow that open `ColorMenu`, like GOUI colorfield; used by the task dialog |
+| E-mail: folders created outside GroupOffice appeared only after Refresh | opening an account again loads its folders again (`Tree.reloadNode()`, keeps expanded folders); only subscribed folders show, as in 26.x; no tree reload on the mail check (an IMAP LIST per account every check; 26.x neither) |
+| cs: "All notes", "{n} notes", "{n} tasks", "0 items", "Nothing selected", "Add a comment...", "Are you sure you want to permanently delete the selected items?" untranslated | the counts were English plurals (notes hardcoded): now `'1 note'` / `'{count} notes'` keys (cs "Poznámek: 4"), same for tasks and files items; cs entries imported with the dev module (its export does not scan neo `.mjs`, so the CSV was written by hand); "Required" see PasswordPrompt |
+
 Remaining gaps (open, no card):
 
 | Area | Gap | Notes |
 |---|---|---|
-| Files | No Delete key and no row context menu in the trash (only the toolbar buttons) | 26.x: Delete key on the grid |
-| Translations (cs) | Untranslated: "All notes", "{n} notes", "{n} tasks", "0 items", "Nothing selected", "Add a comment...", "Are you sure you want to permanently delete the selected items?", PasswordPrompt "Required" | dev module export `--missingOnly=1` |
-| PasswordPrompt | Shows "Required" before the user typed anything | neo PasswordField validates on mount |
-| Task dialog | The colour palette is two field rows high and leaves a gap below the subject | layout, not a regression |
 | E-mail | The message list shows the arrival time, the reading pane the Date header (both in the user's zone) | same as 26.x `sort by arrival` |
-| E-mail | Folders created outside GroupOffice appear only after a reload of the account tree | |
 | Core (not neo) | `Contact/get` with `properties` that leave out `addressBookId` fails: "Typed property Contact::$addressBookId must not be accessed before initialization" (`AclItemEntity::getAclEntity()`) | other `AclItemEntity` types likely too |
+| Core (not neo) | `tasks/controller/Task::authenticate()` throws `new Exception(401, "Unauthorized")` with the arguments swapped: a JMAP call without a session answers a TypeError instead of 401 | `www/go/modules/community/tasks/controller/Task.php:140` |
+| Test setup | A folder made over IMAP shows only once subscribed (`ImapMailbox::isVisible()`); after editing `language/*.php` restart the container (APCu language cache, the CLI can't clear it) and delete `cache/clientscripts/neo_lang_<iso>.json` in the data folder | environment only |
 | Test setup | A worktree needs `views/Extjs3/themes/Paper/htmleditor.css` (built, not committed) or saving a draft fails; greenmail starts empty after a restart (no Drafts/Sent) | environment only |

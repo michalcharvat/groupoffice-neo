@@ -9,6 +9,7 @@ return array (
 	'Locked' => 'Locked',
 	'Nothing selected' => 'Nothing selected',
 	'{count} items' => '{count} items',
+	'1 item' => '1 item',
 	'Search results in {folder}' => 'Search results in {folder}',
 	'{usage} of {quota} used' => '{usage} of {quota} used',
 	'Are you sure you want to move {count} items?' => 'Are you sure you want to move {count} items?',

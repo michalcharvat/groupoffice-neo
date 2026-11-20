@@ -5,4 +5,6 @@ return [
 
 	'mayChangeTasklists'=> 'Change lists',
 	'mayChangeCategories' => 'Change categories',
+	'1 task' => '1 task',
+	'{count} tasks' => '{count} tasks',
 ];

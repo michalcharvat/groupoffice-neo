@@ -85,6 +85,23 @@
         }
     }
 
+    // paletteMenu: a click anywhere in the box opens the palette; the arrow sits at the end
+    &.go-colorfield-menu {
+        .go-field-box {
+            cursor: pointer;
+        }
+
+        // after the clear button (its auto margin pushes both to the end)
+        .go-colorfield-open {
+            order: 1;
+
+            // no clear button
+            &:last-child {
+                margin-left: auto;
+            }
+        }
+    }
+
     .go-colorfield-clear {
         margin-left: auto;
         // above the picker of a plain field

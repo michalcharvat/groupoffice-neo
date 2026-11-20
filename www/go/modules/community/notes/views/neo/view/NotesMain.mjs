@@ -668,7 +668,8 @@ class NotesMain extends MainThreeColumnPanel {
 
     updateNoteCount() {
         const total = this.getReference('grid').store.totalCount || 0;
-        this.getReference('tableTitle').subtitle = `${total} ${total === 1 ? 'note' : 'notes'}`
+        // a key per form: languages like Czech need another word order than "<count> notes"
+        this.getReference('tableTitle').subtitle = total === 1 ? t('1 note') : fmt(t('{count} notes'), {count: total})
     }
 
     async onNew() {

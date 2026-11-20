@@ -80,6 +80,22 @@ class AccountTree extends Tree {
     }
 
     /**
+     * Opening an account again loads its folders again: folders created or deleted outside
+     * GroupOffice show without a refresh of the whole tree
+     * @param {String|Number} id
+     * @returns {Promise<void>}
+     */
+    async expand(id) {
+        let me     = this,
+            node   = me.getNode(id),
+            reopen = node?.entity === 'account' && Array.isArray(node.children) && !me.expandedIds.has(node.id);
+
+        await super.expand(id);
+
+        reopen && !me.isDestroyed && await me.reloadNode(node.id)
+    }
+
+    /**
      * @param {Object|null} node
      * @returns {Promise<Object[]>}
      */

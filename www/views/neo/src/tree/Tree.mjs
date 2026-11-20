@@ -14,7 +14,8 @@ import {t}       from '../Translate.mjs';
  * - check: true/false shows a checkbox (GOUI TreeRecord.check)
  * - expanded: load and show the children at once
  *
- * Expanded nodes are remembered across reload() (GOUI TreeStore.expandedRecordCache).
+ * Expanded nodes are remembered across reload() (GOUI TreeStore.expandedRecordCache);
+ * reloadNode(id) loads one node's children again the same way.
  *
  *     {module: Tree, defaultIcon: 'folder', nodeProvider: async node => {
  *         const {list} = await client.queryGet('Folder', {filter: {parentId: node?.id ?? null}});
@@ -276,6 +277,66 @@ class Tree extends List {
     }
 
     /**
+     * Loads the children of one node again, and of its expanded descendants (e.g. folders
+     * created elsewhere). Descendants that are still there stay expanded.
+     * @param {String|Number} id
+     * @returns {Promise<void>}
+     */
+    async reloadNode(id) {
+        let me         = this,
+            node       = me.getNode(id),
+            generation = me.generation,
+            children;
+
+        if (!node || me.loadingIds.has(node.id)) {
+            return
+        }
+
+        me.loadingIds.add(node.id);
+        me.updateItem(node.id);
+
+        try {
+            children = await me.provide(node)
+        } finally {
+            me.loadingIds.delete(node.id);
+            me.isDestroyed || me.updateItem(node.id)
+        }
+
+        // a reload() in between replaced the node
+        if (me.isDestroyed || generation !== me.generation || me.getNode(node.id) !== node) {
+            return
+        }
+
+        // forget the old subtree, but not which of its nodes were expanded (like reload())
+        const expanded = new Set(me.expandedIds),
+              known    = new Set();
+
+        (function collect(list) {
+            Array.isArray(list) && list.forEach(child => {
+                known.add(child.id);
+                collect(child.children)
+            })
+        })(node.children);
+
+        Array.isArray(node.children) && node.children.forEach(child => me.unregister(child));
+        expanded.forEach(childId => me.expandedIds.add(childId));
+
+        // nodes shown before keep their state here: a provider's `expanded` may be older (saved later)
+        (function local(list) {
+            list.forEach(child => {
+                known.has(child.id) && (child.expanded = expanded.has(child.id));
+                Array.isArray(child.children) && local(child.children)
+            })
+        })(children);
+
+        node.children = children;
+        me.register(children, node);
+        await me.populate(children, generation);
+
+        !me.isDestroyed && generation === me.generation && me.refresh()
+    }
+
+    /**
      * @param {Object|null} node
      * @returns {Promise<Object[]>} the provider's nodes (copies)
      * @protected
@@ -315,11 +376,14 @@ class Tree extends List {
                 me.expandedIds.add(child.id);
 
                 if (child.children === undefined) {
-                    child.children = await me.provide(child);
+                    const loaded = await me.provide(child);
 
-                    if (me.isDestroyed || generation !== me.generation) {
+                    // a reloadNode() of an ancestor replaced the child meanwhile
+                    if (me.isDestroyed || generation !== me.generation || me.getNode(child.id) !== child) {
                         return
                     }
+
+                    child.children = loaded;
 
                     me.register(child.children, child)
                 }
@@ -376,7 +440,8 @@ class Tree extends List {
         let me   = this,
             node = me.getNode(id);
 
-        if (!node || me.expandedIds.has(node.id) || me.loadingIds.has(node.id)) {
+        // a node with known children expands while reloadNode() loads them again
+        if (!node || me.expandedIds.has(node.id) || (me.loadingIds.has(node.id) && node.children === undefined)) {
             return
         }
 
@@ -396,7 +461,8 @@ class Tree extends List {
                 me.updateItem(node.id)
             }
 
-            if (me.isDestroyed || generation !== me.generation) {
+            // or a reloadNode() of an ancestor replaced the node meanwhile
+            if (me.isDestroyed || generation !== me.generation || me.getNode(node.id) !== node) {
                 return
             }
 

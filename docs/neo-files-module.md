@@ -91,9 +91,9 @@ no JMAP backend for files yet.
 | File grid: sort, paging on scroll, multi select, search below the folder, quota | done (`FolderStore`) |
 | Detail (east): preview head, properties list, open / download / properties / more | done (`FileDetail`) |
 | Upload (button, desktop drop on grid / tree / detail FilesPanel), overwrite question with yes / no / to all | done (one blob per `processUploadQueue` request: `overwrite=yes` overwrites all conflicts) |
-| New folder, rename, cut / copy / paste (overwrite queue), move to trash, delete permanently | done |
+| New folder, rename, cut / copy / paste (overwrite queue), move to trash, delete permanently | done; Delete key = trash, ctrl+Delete = delete permanently (Grid `deleteKey` with `ctrlKey`) |
 | Drag and drop of rows onto folder rows and tree nodes (move, Ctrl copy) | done (`enableDragDrop()`) |
-| Trash: list, restore, delete permanently | done |
+| Trash: list, restore, delete permanently | done; Delete key and a row context menu (Restore / Delete permanently) too |
 | Folder properties: name, comment, activate sharing, notify (with subfolders question), apply display settings, permissions (SharePanel on the folder's ACL, `core/aclGroup` routes) | done (`FolderPropertiesDialog`, `acl.mjs`) |
 | File properties: name, comment, content expiry, default "Open with", older versions (download on double click) | done (`FilePropertiesDialog`) |
 | Lock / unlock, favorites (bookmarks) below the tree | done |
@@ -101,7 +101,7 @@ no JMAP backend for files yet.
 | Files in detail panels: open with the user's handler, "Browse files", drop upload | done (core `FilesPanel`, ModuleRegistry hook `openFile`) |
 | Email files (a folder: pick its files in `SelectFilesDialog`, ExtJS `openFolderTree`), Email download link (`DownloadLinkDialog`, `files/file/emailDownloadLink`) in the item menu when the user has the e-mail composer | done (`FilesMain.emailItems()`) |
 | Folder picker for other modules (ExtJS SelectFolderDialog / SaveAsDialog, asks before overwriting): `ModuleRegistry.getConfigs('selectFolder')[0]({appName, windowId, title?, fileName?})` → `{id, path, fileName?}` or null | done (`SelectFolderDialog`; used by e-mail "Save to personal folder") |
-| Thumbnails view, folder upload (subfolders), keyboard shortcuts (Ctrl+C/X/V, Delete), create download link / copy direct link (Share menu without e-mail), compress / decompress, templates, batch edit, column state per folder | not ported |
+| Thumbnails view, folder upload (subfolders), keyboard shortcuts Ctrl+C/X/V, create download link / copy direct link (Share menu without e-mail), compress / decompress, templates, batch edit, column state per folder | not ported |
 
 ### neo gotchas
 

@@ -33,6 +33,14 @@ import SelectFilesDialog  from './SelectFilesDialog.mjs';
 const t = translator('legacy', 'files');
 
 /** ExtJS GO.permissionLevels */
+/**
+ * "<count> items" of the table title; a key per form, languages like Czech need another word
+ * order
+ * @param {Number} count
+ * @returns {String}
+ */
+const itemCount = count => count === 1 ? t('1 item') : fmt(t('{count} items'), {count});
+
 export const LEVEL_READ = 10, LEVEL_CREATE = 20, LEVEL_WRITE = 30, LEVEL_DELETE = 40, LEVEL_MANAGE = 50;
 
 /** files/folder/paste calls one after the other (pasteInto()) */
@@ -353,6 +361,8 @@ class FilesMain extends MainThreeColumnPanel {
 
         grid.view.selectionModel.on('selectionChange', me.onSelectionChange, me);
         grid.on('rowDoubleClick', ({record}) => record && me.onOpenRecord(record));
+        // ExtJS FilesGrid: Delete moves the selection to the trash, ctrl + Delete deletes it
+        grid.on('deleteKey', ({records, ctrlKey}) => me.mayDelete(records) && (ctrlKey ? me.deleteRecords(records) : me.moveToTrash(records)));
         // a click on the selected row shows it again (phone, after "close")
         grid.on('rowClick', ({record}) => {
             const sm = grid.view.selectionModel;
@@ -372,6 +382,8 @@ class FilesMain extends MainThreeColumnPanel {
         trashGrid.store.on('loadError', ({error}) => me.showError(error));
         trashGrid.body.on('scrollEdge', () => trashGrid.store.loadMore().catch(() => {}));
         trashGrid.view.selectionModel.on('selectionChange', () => me.updateButtons());
+        // ExtJS TrashGrid (GO.grid.GridPanel): Delete deletes the selection permanently
+        trashGrid.on('deleteKey', ({records}) => me.deleteFromTrash(records));
 
         me.initContextMenus();
         me.initDragDrop();
@@ -518,7 +530,7 @@ class FilesMain extends MainThreeColumnPanel {
         }
 
         const total = store.totalCount || 0;
-        me.getReference('tableTitle').subtitle = (store.query ? '' : decodeEntities(store.meta.path || '') + ' · ') + fmt(t('{count} items'), {count: total});
+        me.getReference('tableTitle').subtitle = (store.query ? '' : decodeEntities(store.meta.path || '') + ' · ') + itemCount(total);
 
         me.pendingTypeId = null;
 
@@ -771,7 +783,7 @@ class FilesMain extends MainThreeColumnPanel {
 
         me.getReference('tableTitle').set({
             title   : t('Trash'),
-            subtitle: fmt(t('{count} items'), {count: store.totalCount || 0})
+            subtitle: itemCount(store.totalCount || 0)
         });
         me.getReference('upButton').disabled = true;
         me.updateButtons()
@@ -796,7 +808,44 @@ class FilesMain extends MainThreeColumnPanel {
         Neo.main.DomEvents.registerPreventDefaultTargets({name: 'contextmenu', cls: ['go-files-tree'], windowId: me.windowId});
 
         grid.addDomListeners({contextmenu: data => me.onGridContextMenu(data), scope: me});
-        tree.addDomListeners({contextmenu: data => me.onTreeContextMenu(data), scope: me})
+        tree.addDomListeners({contextmenu: data => me.onTreeContextMenu(data), scope: me});
+        // the trash grid has the class go-files-grid too
+        me.getReference('trashGrid').addDomListeners({contextmenu: data => me.onTrashContextMenu(data), scope: me})
+    }
+
+    /**
+     * Right click on a trash row: Restore / Delete permanently of the selection or that row
+     * @param {Object} data neo DOM event
+     */
+    onTrashContextMenu(data) {
+        let me     = this,
+            grid   = me.getReference('trashGrid'),
+            row    = data.path.find(node => node.cls?.includes('neo-grid-row') && node.data?.recordId),
+            record = row && grid.store.get(row.data.recordId);
+
+        if (!record) {
+            return
+        }
+
+        const selected = grid.getSelectedRecords(),
+              records  = selected.includes(record) ? selected : [record];
+
+        selected.includes(record) || selectRow(grid, record.id);
+
+        MenuList.showAt({
+            appName : me.appName,
+            windowId: me.windowId,
+            target  : data.path[0]?.id || row.id,
+            items   : [{
+                text   : t('Restore'),
+                icon   : 'restore_from_trash',
+                handler: () => me.restoreRecords(records)
+            }, {
+                text   : t('Delete permanently'),
+                icon   : 'delete_forever',
+                handler: () => me.deleteFromTrash(records)
+            }]
+        })
     }
 
     onGridContextMenu(data) {
@@ -859,6 +908,24 @@ class FilesMain extends MainThreeColumnPanel {
     }
 
     /**
+     * The level on the rows of the grid: the shown folder's (ExtJS setWritePermission()); a
+     * search result: unknown, the server checks
+     * @returns {Number}
+     */
+    rowLevel() {
+        return this.getReference('grid').store.query ? LEVEL_MANAGE : this.folderLevel()
+    }
+
+    /**
+     * May the rows be trashed or deleted (the menu's "Move to Trash" / "Delete permanently")
+     * @param {Object[]} records rows of the grid
+     * @returns {Boolean}
+     */
+    mayDelete(records) {
+        return records.length > 0 && this.rowLevel() >= LEVEL_DELETE && !records.some(r => isFolder(r) && +r.readonly)
+    }
+
+    /**
      * Rename, cut, copy, trash, delete of items
      * @param {Object[]} records
      * @param {Object} [opts]
@@ -871,7 +938,7 @@ class FilesMain extends MainThreeColumnPanel {
             system = records.some(r => isFolder(r) && +r.readonly),
             // rows of the shown folder: its level (ExtJS setWritePermission()); a tree node or a
             // search result: unknown, the server checks
-            level  = tree || me.getReference('grid').store.query ? LEVEL_MANAGE : me.folderLevel(),
+            level  = tree ? LEVEL_MANAGE : me.rowLevel(),
             write  = level >= LEVEL_WRITE,
             del    = level >= LEVEL_DELETE;
 
@@ -1548,10 +1615,21 @@ class FilesMain extends MainThreeColumnPanel {
         }
     }
 
-    async onRestore() {
-        let me      = this,
-            grid    = me.getReference('trashGrid'),
-            records = grid.getSelectedRecords();
+    onRestore() {
+        return this.restoreRecords(this.getReference('trashGrid').getSelectedRecords())
+    }
+
+    onDeleteFromTrash() {
+        return this.deleteFromTrash(this.getReference('trashGrid').getSelectedRecords())
+    }
+
+    /**
+     * Puts trash items back in their folders
+     * @param {Object[]} records rows of the trash grid
+     */
+    async restoreRecords(records) {
+        let me   = this,
+            grid = me.getReference('trashGrid');
 
         if (!records.length) {
             return
@@ -1566,10 +1644,13 @@ class FilesMain extends MainThreeColumnPanel {
         }
     }
 
-    async onDeleteFromTrash() {
-        let me      = this,
-            grid    = me.getReference('trashGrid'),
-            records = grid.getSelectedRecords();
+    /**
+     * Deletes trash items permanently, after a confirmation
+     * @param {Object[]} records rows of the trash grid
+     */
+    async deleteFromTrash(records) {
+        let me   = this,
+            grid = me.getReference('trashGrid');
 
         if (!records.length) {
             return

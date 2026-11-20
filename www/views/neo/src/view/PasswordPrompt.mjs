@@ -54,8 +54,9 @@ class PasswordPrompt extends Dialog {
                 reference   : 'password',
                 labelText   : t('Password'),
                 labelPosition: 'inline',
-                autoComplete: 'current-password',
-                required    : true
+                autoComplete: 'current-password'
+                // no `required`: neo validates on focus leave and showed "Required" before the
+                // user typed anything; onOk() shows it
             }]
         }, {
             module: Toolbar,
@@ -73,22 +74,25 @@ class PasswordPrompt extends Dialog {
         }]
     }
 
-    onConstructed() {
-        super.onConstructed();
+    /**
+     * Focuses the field once mounted: neo's focusOnMount gives the focus to the first focusable
+     * item (the header's close tool) on mount, which can come after a timer
+     */
+    afterSetMounted(value, oldValue) {
+        super.afterSetMounted(value, oldValue);
 
-        let me = this;
-
-        me.timeout(100).then(() => {
-            const field = !me.isDestroyed && me.getReference('password');
-            field && field.focus(field.getInputElId())
-        })
+        const field = value && this.getReference('password');
+        field && field.focus(field.getInputElId())
     }
 
     async onOk() {
         let me    = this,
-            value = me.getReference('password').value;
+            field = me.getReference('password'),
+            value = field.value;
 
         if (!value) {
+            // typing clears it (neo resets an external error on a value change)
+            field.error = t('Required field');
             return
         }
 
