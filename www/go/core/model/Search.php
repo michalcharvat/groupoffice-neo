@@ -63,9 +63,10 @@ class Search extends AclOwnerEntity {
 		$words = StringUtil::splitTextKeywords($searchPhrase, false);
 		$words = array_unique($words);
 
-		if ($query->isJoined('core_search_word', 'w0')) {
-			// An earlier text filter of this query owns the joins: its condition may sit in an OR or NOT branch, so
-			// the words of this filter can't share or add joins. Each word checks its own word rows instead.
+		if ($query->isFilteringInOrOrNot() || $query->isJoined('core_search_word', 'w0')) {
+			// Under an OR or NOT, a join of the word rows would drop the items that another branch matches and
+			// would let the other word rows of an item pass the NOT. And an earlier text filter of this query may
+			// own the joins already. Each word checks its own word rows then.
 			foreach ($words as $word) {
 				$criteria->whereExists(
 					(new DbQuery())
@@ -74,6 +75,10 @@ class Search extends AclOwnerEntity {
 						->where('ws.searchId = search.id')
 						->andWhere('ws.word', 'LIKE', $word . '%')
 				);
+			}
+			if ($query->isFilteringInOrOrNot()) {
+				// Other joins, like the one of the "link" filter, return an item once per row in another branch
+				$query->groupBy(['id']);
 			}
 			return;
 		}
@@ -98,11 +103,13 @@ class Search extends AclOwnerEntity {
 	/**
 	 * Whether a query must keep the GROUP BY that addCriteria() set
 	 *
-	 * The search word joins return an item once per word row that passes the filter. With only AND conditions
-	 * that is the row of each matching word, which repeats an item only when a phrase starts two of its words.
-	 * Under an OR or NOT operator, rows that fail a text condition still pass through the other branch, so every
-	 * word row of the item comes back. Controllers that drop the GROUP BY for speed must keep it then. To keep this
-	 * cheap, any OR or NOT operator in the filter counts, also one that doesn't contain the text filter.
+	 * Under an OR or NOT operator, the rows of other joins pass through the branch of a text filter, like the
+	 * one row per link of the "link" filter. The text filter used to keep the GROUP BY through its word joins
+	 * there; under OR or NOT it checks its words with EXISTS now, so this keeps the GROUP BY when the filter uses
+	 * the text filter with an OR or NOT operator. To keep this cheap, any OR or NOT operator in the filter counts.
+	 *
+	 * Without OR or NOT, the word joins still repeat an item when a word starts two of its words. The plain global
+	 * search accepts that rare repeat for speed.
 	 *
 	 * @param Query $query The query the filter was applied to
 	 * @param array|null $filter The JMAP filter of the query
@@ -110,7 +117,7 @@ class Search extends AclOwnerEntity {
 	 */
 	public static function queryNeedsGroupBy(Query $query, ?array $filter): bool
 	{
-		return !empty($filter) && $query->isJoined('core_search_word', 'w0') && self::hasOrOrNotOperator($filter);
+		return !empty($filter) && $query->isFilterUsed('text') && self::hasOrOrNotOperator($filter);
 	}
 
 	private static function hasOrOrNotOperator(array $filter): bool

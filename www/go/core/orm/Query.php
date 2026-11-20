@@ -102,6 +102,27 @@ class Query extends DbQuery {
 
 	public $usedFilters = [];
 
+	/**
+	 * The number of OR and NOT operators around the filter condition that {@see Filters::apply()} applies now
+	 *
+	 * @var int
+	 */
+	public int $orOrNotFilterDepth = 0;
+
+	/**
+	 * Whether the filter condition that is applied now is inside an OR or NOT operator
+	 *
+	 * A filter that joins a table can check this. With only AND, an INNER JOIN restricts the rows like a condition
+	 * would. Under OR or NOT it also drops the rows that another branch matches, and the rows that the NOT should
+	 * keep pass anyway. Such a filter must check its table with EXISTS then.
+	 *
+	 * @return bool
+	 */
+	public function isFilteringInOrOrNot(): bool
+	{
+		return $this->orOrNotFilterDepth > 0;
+	}
+
   /**
    * Select models linked to the given entity
    *
