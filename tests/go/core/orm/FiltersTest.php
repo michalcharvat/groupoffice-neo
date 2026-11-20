@@ -228,6 +228,58 @@ class FiltersTest extends TestCase
 		}
 	}
 
+	/**
+	 * @return string[] The ids of the links from $from to the notes
+	 */
+	private function linkIds(Note $from, Note ...$notes): array
+	{
+		if (empty($notes)) {
+			return [];
+		}
+		$ids = array_map('strval', Link::find()->selectSingleValue('l.id')->where([
+			'fromEntityTypeId' => Note::entityType()->getId(),
+			'fromId' => $from->id,
+			'toEntityTypeId' => Note::entityType()->getId(),
+			'toId' => array_map(fn(Note $n) => $n->id, $notes)
+		])->all());
+		sort($ids);
+		return $ids;
+	}
+
+	/**
+	 * One text filter whose word is the start of two words of an item must return that item once
+	 *
+	 * Known limitation: Search/query drops the GROUP BY of the search word joins for speed, so its plain text
+	 * filter (as the global search sends it) still returns such an item twice and counts it twice in the total.
+	 * Its SQL stays as it is on purpose; the case is rare and dedupe would slow every global search.
+	 */
+	public function testTextFilterMatchingTwoWordsOfOneItemReturnsItOnce(): void
+	{
+		$x = "alpha" . uniqid();
+		$twoWords = $this->createNote("{$x}one {$x}two");
+		$other = $this->createNote("$x other");
+		$from = $this->createNote("from");
+		Link::create($from, $twoWords);
+		Link::create($from, $other);
+
+		$this->assertEquals([$twoWords->id, $other->id], $this->findNoteIds(['text' => $x]));
+		$this->assertEquals([$twoWords->id], $this->findNoteIds(['text' => "$x {$x}one"]));
+
+		$entityIds = array_map('intval', Search::find()->selectSingleValue('search.entityId')
+			->filter(['text' => $x])->orderBy(['search.entityId' => 'ASC'])->all());
+		$this->assertEquals([$twoWords->id, $other->id], $entityIds);
+
+		// Link/query is DISTINCT, so the total must count each link once too
+		$response = (new \go\core\controller\Link())->query([
+			'filter' => ['entity' => 'Note', 'entityId' => $from->id, 'text' => $x],
+			'calculateTotal' => true
+		]);
+		$ids = $response['ids'];
+		sort($ids);
+		$this->assertSame($this->linkIds($from, $twoWords, $other), $ids);
+		$this->assertSame(2, $response['total']);
+	}
+
 	public function testLinkFilterWithNot(): void
 	{
 		$a = $this->createNote("a");
