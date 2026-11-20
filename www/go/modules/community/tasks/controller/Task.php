@@ -6,7 +6,7 @@
  */
 namespace go\modules\community\tasks\controller;
 
-use Exception;
+use go\core\http\Exception;
 use go\core\jmap\Entity;
 use go\core\jmap\EntityController;
 use go\core\jmap\exception\InvalidArguments;
@@ -35,7 +35,7 @@ class Task extends EntityController {
 	}
 
 	/**
-	 * @throws Exception
+	 * @throws \Exception
 	 */
 	public function get(array $params): ArrayObject
 	{
@@ -131,7 +131,6 @@ class Task extends EntityController {
 	/**
 	 * In case that time registration is available to the end user, but the tasks module is not...
 	 *
-	 * @throws \go\core\http\Exception
 	 * @throws Exception
 	 */
 	protected function authenticate()
