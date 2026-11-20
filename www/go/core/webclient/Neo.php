@@ -80,9 +80,9 @@ class Neo {
 	 * Modules of the logged-in user that have a main panel in the classic client
 	 *
 	 * The neo shell offers those without a neo main view in its apps menu; they open in the
-	 * classic client (docs/neo-switch.md, D3). Lists only enabled modules the user may read
-	 * (GO::modules()->getAllModules() applies the module ACL); the classic client checks
-	 * permissions again when the module opens.
+	 * classic client (docs/neo-switch.md, D3). Lists only enabled modules the logged-in user
+	 * may read (module ACL, Module::isAvailableFor()); the classic client checks permissions
+	 * again when the module opens.
 	 *
 	 * @return array[] [['package' => string|null, 'name' => string, 'title' => string, 'route' => string, 'entities' => string[]], ...]
 	 */
@@ -106,9 +106,18 @@ class Neo {
 			$entities[$type->getModuleId()][] = $type->getName();
 		}
 
+		$userId = go()->getAuthState() ? go()->getAuthState()->getUserId() : null;
+		if (!$userId) {
+			return [];
+		}
+
 		$apps = [];
-		foreach (GO::modules()->getAllModules() as $module) {
+		foreach (GO::modules()->getAllModules(true) as $module) {
 			if (!$module->enabled || !isset($routes[$module->name])) {
+				continue;
+			}
+			// read permission of this user on the module (its ACL), checked explicitly
+			if (!\go\core\model\Module::isAvailableFor($module->package ?: 'legacy', $module->name, $userId)) {
 				continue;
 			}
 			$apps[] = [
