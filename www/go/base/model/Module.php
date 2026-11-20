@@ -24,7 +24,9 @@ use go\modules\business\license\exception\LicenseException;
  * @author Merijn Schering <mschering@intermesh.nl>
  * @package GO.base.model 
  * 
- * @property StringHelper $id The id of the module which is identical to the folder name inside the "modules" folder.
+ * @property int $id
+ * @property string $name The module's folder name
+ * @property string|null $package null for a legacy module
  * @property String $path The absolute filesystem path to module.
  * @property \GO\Base\Module $moduleManager The module class to install, initialize etc the module.
  * @property int $aclId

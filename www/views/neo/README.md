@@ -1,14 +1,20 @@
-# neo.mjs webclient (spike)
+# neo.mjs webclient
 
-Alternative Group Office webclient built with [neo.mjs](https://github.com/neomjs/neo)
+The default GroupOffice webclient built with [neo.mjs](https://github.com/neomjs/neo)
 13.x. Core components GO vs neo: `docs/neo-core-components.md`.
 Small modules, 2FA login, module hooks: `docs/neo-small-modules.md`.
 
 ## Run
 
-- `config.php`: `$config['webclient'] = "neo";` → `AuthController::actionInit()`
-  renders `go\core\webclient\Neo` instead of the ExtJS `Layout.php`.
-- `npm install && npm run build-themes` in this folder: generates the `theme-go` neo theme
+- neo is the default: `AuthController::actionInit()` renders `go\core\webclient\Neo` unless
+  `go\core\webclient\Webclient::current()` picks the classic ExtJS `Layout.php`:
+  `?webclient=classic|neo` (this page), the browser's `GO_WEBCLIENT` cookie (user menu "Switch
+  to the classic UI" / "Switch to the new UI", JMAP `core/Webclient/setPreference`), then
+  `$config['webclient']` (`'classic'` opts an installation out). `$config['webclientSwitch'] =
+  false` hides the switch. OAuth `?oauthAuthorize` / `?oauthConsent` and `?r=&f=` external URLs
+  always get classic. Plan and decisions: `docs/neo-switch.md`.
+- Built by `scripts/install-npm.sh` (and so the release, `build/build.sh` prunes the dev
+  dependencies afterwards); by hand: `npm install && npm run build` (= `build-themes`) in this folder: generates the `theme-go` neo theme
   and builds it with neo's workspace theme build into `dist/development` +
   `resources/theme-map.json` (see [GO look](#go-look-theme-go)). Needs the GOUI submodules
   (`views/goui/goui`, `views/goui/groupoffice-core`): the theme uses GO's SCSS tokens.
@@ -25,6 +31,7 @@ Small modules, 2FA login, module hooks: `docs/neo-small-modules.md`.
 | `src/data/JmapStore.mjs` | `Neo.data.Store` over `Entity/query`+`get`; reloads the page on push |
 | `src/data/backgroundJob.mjs` | `Entity/export`/`import` run in the background and end in a core Alert: `lastAlertId()`, `waitForFinishedAlert()`, `alertBlobId()` (address book export/import) |
 | `src/alerts/` | Notification area (bell in the header): `NotificationCenter` (messages from every source, desktop notification + sound once per message via addon `WS/Notifications`), `NotificationPanel`, `Alerts` (core `Alert` entities over SSE; modules render their own with the registry key `alerts: ({alert, entity, message}) => message\|false`), `Reminders` (legacy go_reminders, polled), `ActivityWatcher` (logout after `logoutWhenInactive`). Modules add start page portlets with the registry key `portlets: [{id, title, icon, view, available}]` (legacy summary module). `src/Badges.mjs`: counts on the module tabs and main menu items, registry key `badge: {entities, count}` or `badges.set(name, count)` |
+| `src/classicApps.mjs` | modules only the classic client has (`core/Webclient/classicApps`: the user's modules with a classic main panel, minus neo main views): apps menu entries with `open_in_new` that open `index.php?webclient=classic#<route>` in a new tab; `resolveRoute()` (`src/link/linkTypes.mjs`) answers `classic/<entity>/<id>` for their entities, which `MainView` opens there. `MainView.routeUnknownHash()` also maps `#<entity>/<id>` (`Entity::url()`) to the neo route, case-insensitively |
 | `src/ModuleRegistry.mjs` | modules register `{name, title, iconCls, capability, mainView}`, optional `userSettings` / `systemSettings: {title, iconCls, panel}` (cards in My account / System settings, one or an array; `loadSettingsPanels(key)`) and `onLogin()` (awaited after login before the main view is built, may register more modules); a registration without `mainView` only adds settings cards |
 | `src/systemsettings/` | System settings (admins; user menu or `#systemsettings/<card>`): `SystemSettingsDialog` (cards on the left; card interface `load`, `isModified`, `validate`, `save`, `needsReload` → all windows reload on close), `SettingsPanel` (card over `Module.settings`, fields `settings.<key>`, config.php keys disabled; `fields.mjs` helpers), General, Appearance (logo, colours previewed; `Neo.php` renders the saved ones), Notifications (SMTP + test message), Authentication (+ `AuthAllowGroupGrid`), Modules (`ModuleTiles`, install / enable / uninstall, `ModuleRightsDialog`) |
 | `src/smtp/` | `SmtpAccountGrid` (a module's SMTP accounts: `{smtpModule: {package, name}}`, call `load()`), `SmtpAccountDialog` (test message, permissions), `SmtpAccountCombo` |
@@ -59,7 +66,7 @@ Small modules, 2FA login, module hooks: `docs/neo-small-modules.md`.
 | `resources/scss/go/` | GO values and GOUI look of neo classes in the `theme-go` neo theme, per neo class (e.g. `form/field/trigger/Base.scss`: round Material triggers, `Picker.scss`: picker like `menu.goui-dropdown`, `dialog/Base.scss`: GOUI window chrome); `shared/` partials (in `Global.scss`): classes several GO components render (`go-avatar`, `go-check`, `go-empty`, links) |
 | `resources/scss/src/apps/go/` | styles of the `GO.*` components and the shell (`Viewport`, `LoginView`, `MainView` topbar, `GlobalSearch`, …) |
 | `src/form/field/AutocompleteChips.mjs` | chips of entity ids with a ▾ menu of the entity (`entity`, `setJmapFilter()`) |
-| `go/modules/<pkg>/<name>/views/neo/Index.mjs` | module entry, found by `Neo::moduleFiles()`; optional `style.css` |
+| `go/modules/<pkg>/<name>/views/neo/Index.mjs` | module entry, found by `Neo::moduleFiles()`; optional `style.css`. **Module contract**: a module shows in neo only through its `views/neo` (`Index.mjs`, `style.css`, `login.php`); neo never reads `scripts.txt`, `Module.js`, `views/extjs3` or `views/goui` |
 | `modules/<name>/views/neo/Index.mjs` | entry of a legacy module (package `legacy`), e.g. the files module (`modules/files/views/neo`, see `docs/neo-files-module.md`) |
 | `modules/email/views/neo`, `modules/sieve/views/neo`, `modules/smime/views/neo`, `go/modules/community/emailfavorites/views/neo` | the e-mail client (legacy controllers via `client.legacy()`) and the modules that plug into it through the `email*` registry keys; see `docs/neo-email-module.md` |
 | `src/Mail.mjs` | `showComposer(cfg)` for any module (ExtJS `go.showComposer`): the e-mail module's composer, or a `mailto:` link when the module is missing or the user chose the desktop composer |

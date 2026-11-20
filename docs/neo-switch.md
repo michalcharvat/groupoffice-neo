@@ -209,6 +209,21 @@ module of the supported editions (business and pro included, checked in the asse
 package) has a neo main view or settings card for each classic panel, every classic route
 in D5 has a neo equivalent, and the classic-apps method returns nothing for an admin.
 
+## Implementation (2026-11-20, branch `task/20261119-011401-neo-ui-switch-the-webclient-to-neo`)
+
+| Section | Where | Notes |
+|---|---|---|
+| 2 Build and release | `scripts/install-npm.sh` ("Building neo webclient"), `build/build.sh` `build_package()`, Debian `groupoffice.conf` (`.mjs` type, `Cache-Control: no-cache` under `/views/neo/`), `views/neo/package.json` (Font Awesome a dependency, `build` script), `Neo::cached()` for `buildId()` / `moduleFiles()` / the classic routes | `install-npm.sh nodev` checked end to end; `npm prune --omit=dev` keeps neo.mjs, marked, Font Awesome. Tarball / Debian smoke test not run here (needs a release build) |
+| 3 Choosing the client | `go\core\webclient\Webclient`, `go\core\controller\Webclient::setPreference()` (JMAP `core/Webclient/setPreference`, CSRF via JMAP), `Neo::enabled()`; menu items in neo (`MainView.switchToClassic()`) and classic (`MainLayout.js`); `GO.settings.config.webclientSwitch`, `Neo.config.goWebclientSwitch` | cookie host-only, `HttpOnly`, `SameSite=Lax`, `Secure` on HTTPS |
+| 4 Classic-only apps | `Extjs3::classicMainPanelRoute()` (ExtJS scripts + GOUI bundle, comments stripped), `Neo::classicApps()` (permission per user with `Module::isAvailableFor()`, entity names per module), JMAP `core/Webclient/classicApps` (`@apiReadOnly`), `src/classicApps.mjs`, `MainView.classicMenuItems()` / `routeUnknownHash()`, `linkTypes.resolveRoute()` | opens with `Neo.Main.windowOpen(…, '_blank')` like the files module: the classic page is same-origin, so `noopener` would protect nothing, and the classic client renames its window, so tabs are not reused |
+| 5 Deep links | `LoginView` recovery card (`showRecover()`, `onSaveRecover()`, `safeRedirect()`), `Viewport` (before session restore), classic `go.Router.safeRedirect()`; aliases: `TasksMain.route()` (`#tasks/<id>`), e-mail `parseRoutePath()` (raw mailbox), `SystemSettingsDialog.showCard()` (`history` → `community-history`) | |
+| 6 Popouts, Dev | `Popup.popupsSupported()`, `webclient=neo` on popup URLs, pop-out tool and tab menu item hidden without SharedWorker; Dev module only with `Neo.config.goDebug` | |
+| 7 Tests | `tests/go/core/webclient/WebclientTest.php` (resolution order, invalid values, switch off, endpoint guards), `NeoTest.php` (main panel detection, per-user permission guard proven to fail without the check) | browser walkthrough on a worktree container as neotest: default neo, `?webclient=classic` once, switch both ways, apps menu launchers, `#contact/1`, `#tasks/1`, `#note/1`, a classic entity, `#vessels`, `#email/1/INBOX`, recovery (signed in and out, mismatch, invalid hash, external redirect dropped) |
+
+Later cards: the neo ports of the OAuth continuation / consent dialog and of `?r=&f=` external
+URLs (mailto composer first), neo's production build, the release smoke test of section 2, and
+section 8's removal of classic and GOUI once the classic-apps list is empty for an admin.
+
 ## Owner's answers (2026-11-20)
 
 1. D1: neo is the default for upgraded installations too; the launchers (D3) cover modules

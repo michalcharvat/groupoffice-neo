@@ -168,3 +168,11 @@ Bookmarks has no grid and no `Bookmark/export`, so neither applies there.
   (`AutocompleteField.onFocusLeave()`).
 - neo's `getItemRecordId()` takes the part after the first `__` of a row id: ids that contain
   `__` resolve wrongly. Strip the exact `<list id>__` prefix (`GO.tree.Tree.nodeIdOf()`).
+
+## Default webclient (2026-11-20)
+
+neo is the default webclient; the classic client stays reachable (`?webclient=classic`, the
+user menu switch, `$config['webclient'] = 'classic'`) and modules only it has open there from
+neo's apps menu, links, search, alerts and `#<entity>/<id>` hashes. Plan, decisions and what was
+built: `docs/neo-switch.md`; neo side in `www/views/neo/README.md` (Run, `src/classicApps.mjs`,
+module contract).
