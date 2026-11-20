@@ -15,3 +15,12 @@
         max-width : none !important;
     }
 }
+
+// message of ConfirmDialog and of the other dialogs that reuse its class (PasswordPrompt,
+// TextPrompt, SecretDialog, e-mail CloseDialog, files OverwriteDialog): here, because neo
+// loads ConfirmDialog.scss only with that class
+.neo-theme-go {
+    .go-confirm-message {
+        padding: 2rem 1.6rem;
+    }
+}
