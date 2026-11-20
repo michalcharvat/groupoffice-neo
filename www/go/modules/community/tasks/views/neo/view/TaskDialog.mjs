@@ -85,9 +85,11 @@ class TaskDialog extends FormWindow {
                 required     : true,
                 flex         : 4
             }, {
-                module   : ColorField,
-                palette  : true,
-                name     : 'color',
+                // GOUI TaskDialog colorfield: the palette as a menu; inline it was two field
+                // rows high and left a gap below the subject
+                module     : ColorField,
+                paletteMenu: true,
+                name       : 'color',
                 labelText: t('Color'),
                 flex     : 1
             }), row({
