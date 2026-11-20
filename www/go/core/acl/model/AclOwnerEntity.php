@@ -54,9 +54,9 @@ abstract class AclOwnerEntity extends AclEntity {
 		return true;
 	}
 
-	protected static function internalRequiredProperties(): array
+	protected static function aclRequiredProperties(): array
 	{
-		$arr =  parent::internalRequiredProperties();
+		$arr =  parent::aclRequiredProperties();
 		$arr[] = static::$aclColumnName;
 		return $arr;
 	}
