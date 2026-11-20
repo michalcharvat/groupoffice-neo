@@ -176,3 +176,14 @@ user menu switch, `$config['webclient'] = 'classic'`) and modules only it has op
 neo's apps menu, links, search, alerts and `#<entity>/<id>` hashes. Plan, decisions and what was
 built: `docs/neo-switch.md`; neo side in `www/views/neo/README.md` (Run, `src/classicApps.mjs`,
 module contract).
+
+## Third-party DOM libraries in a module (Syncfusion, 2026-11-20)
+
+A library that needs the real DOM (Syncfusion ej2) runs in a main-thread addon of the module,
+next to its views: `go/modules/community/syncfusion/views/neo/addon/Syncfusion.mjs`. neo resolves
+`WS/<name>` addons in `views/neo/src/main/addon/`, so a module addon is imported with a relative
+name: `Neo.Main.importAddon({name: 'WS/../../../../../go/modules/<pkg>/<module>/views/neo/addon/<Name>', windowId})`
+(development build only, like all of neo here). The worker component gives the addon a DOM id,
+listens for custom DOM events the addon sends (`DomEvents.sendMessageToApp`, e.g. `syncfusionSave`
+on the dialog) and does the JMAP calls itself; Blobs and Files come back from addon remotes by
+structured clone. Details and gotchas: `go/modules/community/syncfusion/views/neo/README.md`.

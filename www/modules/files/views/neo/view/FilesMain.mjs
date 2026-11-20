@@ -996,6 +996,14 @@ class FilesMain extends MainThreeColumnPanel {
             clipboard.typeIds.length && items.push({text: t('Paste'), icon: 'content_paste', handler: () => me.paste(single.id)})
         }
 
+        // items of other modules for one file (ModuleRegistry fileMenuItems, e.g. "Edit with Syncfusion")
+        if (single && !folder && me.folderId !== 'trash') {
+            const file   = {id: single.id, name: decodeEntities(single.name)},
+                  extra  = ModuleRegistry.getConfigs('fileMenuItems').flatMap(fn => fn({file, component: me}) || []);
+
+            extra.length && items.push({separator: true}, ...extra)
+        }
+
         single && items.push({text: t('Properties'), icon: 'info', handler: () => me.openProperties(single)});
 
         const email = me.emailItems(records);
