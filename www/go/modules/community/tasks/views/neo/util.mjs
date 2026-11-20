@@ -1,5 +1,5 @@
 import client   from '../../../../../../views/neo/src/jmap/Client.mjs';
-import {parseYmd} from '../../../../../../views/neo/src/DateUtil.mjs';
+import {parseYmd, userNow} from '../../../../../../views/neo/src/DateUtil.mjs';
 import {avatarHtml, escapeHtml, formatDate, userFormat} from '../../../../../../views/neo/src/Format.mjs';
 import {translator} from '../../../../../../views/neo/src/Translate.mjs';
 
@@ -79,7 +79,7 @@ export const formatDuration = seconds => {
  * @returns {String|null} cell class
  */
 export function dateState(task) {
-    const today = new Date(),
+    const today = userNow(),
           start = toDate(task.start),
           due   = toDate(task.due);
 

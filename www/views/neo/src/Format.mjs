@@ -3,8 +3,7 @@
  * (User.dateFormat / timeFormat, PHP date() letters) like GOUI's Format.
  */
 import {lookup, t} from './Translate.mjs';
-
-const dateTime = new Intl.DateTimeFormat(undefined, {dateStyle: 'medium', timeStyle: 'short'});
+import {parseYmd, toUserTime, userNow} from './DateUtil.mjs';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
       DAYS   = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -62,18 +61,41 @@ export function formatDate(date, format) {
     return out
 }
 
+/**
+ * A value to format → the user's wall time (see DateUtil.mjs)
+ * @param {String|Number|Date|null} value a Date is a wall time already; a number (ms) or a
+ *     string with an offset or Z is an instant, shown in the user's time zone; "Y-m-d" and
+ *     "Y-m-d H:i:s" without an offset are shown as they are
+ * @returns {Date|null}
+ */
 function toDate(value) {
     if (!value) {
         return null
     }
 
-    const date = value instanceof Date ? value : new Date(value);
-    return isNaN(date) ? null : date
+    if (value instanceof Date) {
+        return isNaN(value) ? null : value
+    }
+
+    if (typeof value === 'string' && !/(Z|[+-]\d{2}:?\d{2})$/i.test(value.trim())) {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+            return parseYmd(value)
+        }
+
+        // no offset: a floating time
+        const date = new Date(value);
+        return isNaN(date) ? null : date
+    }
+
+    return toUserTime(value)
 }
+
+// formats the wall time from toDate() as UTC: shows its fields as they are
+const dateTime = new Intl.DateTimeFormat(undefined, {dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC'});
 
 export function formatDateTime(value) {
     const date = toDate(value);
-    return date ? dateTime.format(date) : ''
+    return date ? dateTime.format(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), date.getMinutes())) : ''
 }
 
 /**
@@ -99,7 +121,7 @@ export function smartDateTime(value, showTime=true) {
     }
 
     const {dateFormat, timeFormat} = userFormat,
-          now      = new Date(),
+          now      = userNow(),
           day      = d => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000,
           diffDays = day(date) - day(now),
           time     = formatDate(date, timeFormat);

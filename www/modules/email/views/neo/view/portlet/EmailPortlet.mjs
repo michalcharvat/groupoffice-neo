@@ -184,7 +184,7 @@ class EmailPortlet extends Container {
         }
 
         me.getReference('list').html = me.messages.map((m, i) => {
-            const date   = new Date((m.internal_udate || m.udate) * 1000),
+            const date   = (m.internal_udate || m.udate) * 1000,
                   seen   = !!Number(m.seen ?? 0) || m.seen === true,
                   from   = escapeHtml(unescapeHtml(m.from) || unescapeHtml(m.sender)),
                   // email/message/store escapes subject and from (htmlspecialchars)

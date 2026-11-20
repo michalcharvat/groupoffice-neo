@@ -11,7 +11,7 @@ import FormDemo       from './FormDemo.mjs';
 class DateTimeDemo extends FormDemo {
     static config = {
         className: 'GO.dev.demo.DateTime',
-        intro    : '<p>Date values are "Y-m-d"; DateTimeField with time zone gives ISO 8601 with the local offset, ' +
+        intro    : '<p>Date values are "Y-m-d"; DateTimeField with time zone gives ISO 8601 with the offset of the user\'s time zone, ' +
                    'without it local "Y-m-dTH:i:s". DateRangeField gives GO date filters ("a..b", ">=a", "&lt;b").</p>',
         fields   : [{
             module       : DateField,

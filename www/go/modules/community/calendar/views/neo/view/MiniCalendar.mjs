@@ -1,6 +1,7 @@
 import Component    from '../../../../../../../views/neo/node_modules/neo.mjs/src/component/Base.mjs';
 import {t}          from '../../../../../../../views/neo/src/Translate.mjs';
 import {addDays, addMonths, dayNames, dayNumber, monthName, parseDate, startOfDay, weekOfYear, weekStart, ymd} from '../util/date.mjs';
+import {userNow} from '../../../../../../../views/neo/src/DateUtil.mjs';
 
 /**
  * Month picker of the sidebar (GOUI datepicker with enableRangeSelect): a click picks a
@@ -16,7 +17,7 @@ class MiniCalendar extends Component {
     }
 
     /** @member {Date} month first day of the shown month */
-    month = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+    month = new Date(userNow().getFullYear(), userNow().getMonth(), 1)
     /** @member {Date|null} start */
     start = null
     /** @member {Date|null} end */
@@ -63,7 +64,7 @@ class MiniCalendar extends Component {
             this.render()
         } else {
             // the title: today
-            this.fire('select', {date: startOfDay(new Date())})
+            this.fire('select', {date: startOfDay(userNow())})
         }
     }
 
@@ -120,7 +121,7 @@ class MiniCalendar extends Component {
 
     render() {
         let me    = this,
-            today = dayNumber(new Date()),
+            today = dayNumber(userNow()),
             month = me.month.getMonth(),
             [from, to] = me.anchor
                 ? (me.anchor <= me.hover ? [me.anchor, me.hover] : [me.hover, me.anchor])

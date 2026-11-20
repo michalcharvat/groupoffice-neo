@@ -6,7 +6,7 @@ import MenuList from '../../menu/List.mjs';
 import Toolbar  from '../../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import {smartDateTime} from '../../Format.mjs';
 import {lookup, t} from '../../Translate.mjs';
-import {addDays, addMonths, parseYmd, toYmd, weekStart} from '../../DateUtil.mjs';
+import {addDays, addMonths, parseYmd, toYmd, weekStart, userNow} from '../../DateUtil.mjs';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -77,8 +77,8 @@ class DateRangeField extends Field {
 
         if ((m = /^>=(.+)$/.exec(value))) {return '>= ' + show(m[1])}
         if ((m = /^<=(.+)$/.exec(value))) {return '<= ' + show(m[1])}
-        if ((m = /^<(.+)$/.exec(value)))  {return '<= ' + show(toYmd(addDays(parseYmd(m[1]) || new Date(), -1)))}
-        if ((m = /^>(.+)$/.exec(value)))  {return '>= ' + show(toYmd(addDays(parseYmd(m[1]) || new Date(), 1)))}
+        if ((m = /^<(.+)$/.exec(value)))  {return '<= ' + show(toYmd(addDays(parseYmd(m[1]) || userNow(), -1)))}
+        if ((m = /^>(.+)$/.exec(value)))  {return '>= ' + show(toYmd(addDays(parseYmd(m[1]) || userNow(), 1)))}
 
         return value
     }
@@ -170,7 +170,7 @@ class DateRangeField extends Field {
      */
     menuItems() {
         let me    = this,
-            today = parseYmd(new Date()),
+            today = parseYmd(userNow()),
             year  = today.getFullYear(),
             // a parent with a submenu: neo keeps the menu open after its handler
             pick  = (from, until) => () => {
@@ -252,8 +252,8 @@ class DateRangeField extends Field {
             appName : me.appName,
             windowId: me.windowId,
             mode,
-            from    : range.from ? toYmd(range.from) : toYmd(new Date()),
-            until   : range.until ? toYmd(range.until) : toYmd(new Date())
+            from    : range.from ? toYmd(range.from) : toYmd(userNow()),
+            until   : range.until ? toYmd(range.until) : toYmd(userNow())
         });
 
         dialog.on('select', ({from, until}) => me.setRange(from, until))

@@ -6,6 +6,7 @@ import {translator} from '../../../../../../../views/neo/src/Translate.mjs';
 import CalendarItem from '../CalendarItem.mjs';
 import calendarData from '../data.mjs';
 import {addDays, addDuration, diffDays, diffDuration, formatTime, parseDate, sameDay, startOfDay, ymd, ymdhis} from '../util/date.mjs';
+import {userNow} from '../../../../../../../views/neo/src/DateUtil.mjs';
 
 const t = translator('community', 'calendar');
 
@@ -40,7 +41,7 @@ class CalendarView extends Component {
     /** @member {String|null} selectedUid */
     selectedUid = null
     /** @member {Date} day first shown day */
-    day = startOfDay(new Date())
+    day = startOfDay(userNow())
     /** @member {Number} days */
     days = 1
     /** @member {CalendarItem|null} currentCreation item being drawn with the mouse */
@@ -417,7 +418,7 @@ class CalendarView extends Component {
                   allDay = withoutTime || !dd,
                   start  = new Date(date);
 
-            allDay ? start.setHours(0, 0, 0, 0) : start.setHours(new Date().getHours(), 0, 0, 0);
+            allDay ? start.setHours(0, 0, 0, 0) : start.setHours(userNow().getHours(), 0, 0, 0);
 
             const item = CalendarView.newItem(start, {showWithoutTime: allDay});
 
@@ -648,7 +649,7 @@ class CalendarView extends Component {
         if (date.length > 10) {
             start = parseDate(date)
         } else {
-            start = new Date();
+            start = userNow();
             const day = parseDate(date);
             start.setFullYear(day.getFullYear(), day.getMonth(), day.getDate());
             start.setMinutes(0, 0, 0)

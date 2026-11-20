@@ -213,7 +213,7 @@ class NotificationPanel extends Container {
                 html : `<div class="go-notification-head" data-id="${id}">
                     <i class="go-icon go-notification-icon">${escapeHtml(message.icon || 'notifications')}</i>
                     <span class="go-notification-title">${escapeHtml(message.title || '')}</span>
-                    <span class="go-notification-time">${escapeHtml(smartDateTime(message.time))}</span>
+                    <span class="go-notification-time">${escapeHtml(smartDateTime(+message.time))}</span>
                     ${message.persistent ? '' : `<i class="go-icon go-notification-close" data-id="${id}" title="${escapeHtml(t('Close'))}">close</i>`}
                 </div>
                 <div class="go-notification-body" data-id="${id}">${message.html || ''}</div>${progress}`

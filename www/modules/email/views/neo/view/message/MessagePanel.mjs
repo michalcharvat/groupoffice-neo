@@ -1009,7 +1009,7 @@ class MessagePanel extends Container {
         const row = (label, value) => value ? `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>` : '',
               list = recipients => (recipients || []).map(r => r.personal ? `${unescapeHtml(r.personal)} <${r.email}>` : r.email).filter(Boolean).join(', '),
               subject = unescapeHtml(data.subject),
-              date    = data.udate ? formatUserDateTime(new Date(data.udate * 1000)) : '',
+              date    = data.udate ? formatUserDateTime(data.udate * 1000) : '',
               body    = data.htmlbody !== undefined && data.htmlbody !== null ? sanitizeHtml(data.htmlbody) : `<pre>${escapeHtml(data.plainbody || '')}</pre>`,
               html    = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml([date, data.sender, subject].filter(Boolean).join(' - '))}</title>
 <style>body{font:14px/1.4 sans-serif;margin:24px}table{border-collapse:collapse;margin-bottom:16px}th{text-align:left;padding:2px 12px 2px 0;vertical-align:top}

@@ -12,6 +12,7 @@ import {translator}   from '../../../../../../views/neo/src/Translate.mjs';
 import CalendarItem   from './CalendarItem.mjs';
 import calendarData   from './data.mjs';
 import {addDays, parseDate, ymd} from './util/date.mjs';
+import {userNow} from '../../../../../../views/neo/src/DateUtil.mjs';
 
 const t = translator('community', 'calendar');
 
@@ -251,7 +252,7 @@ export default class CalendarAdapter {
                     return list
                 },
                 *items(from, until) {
-                    const today = ymd(new Date());
+                    const today = ymd(userNow());
 
                     for (const task of this.list) {
                         const date  = task.progress === 'completed' ? (task.progressUpdated || today) : (task.due || task.start || today),

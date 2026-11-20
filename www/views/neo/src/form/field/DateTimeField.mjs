@@ -1,7 +1,7 @@
 import Field from './Field.mjs';
 import {formatDate, userFormat} from '../../Format.mjs';
 import {fmt, t} from '../../Translate.mjs';
-import {parseYmd, toHi, toIsoLocal, toYmd} from '../../DateUtil.mjs';
+import {parseYmd, toHi, toIsoLocal, toUserTime, toYmd, userNow} from '../../DateUtil.mjs';
 
 const LOCAL = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2})(?::\d{2})?)?$/;
 
@@ -9,11 +9,11 @@ const LOCAL = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2})(?::\d{2})?)?$/;
  * GOUI DateTimeField: a date and a time input in one field.
  *
  * Value (GOUI outputFormat()):
- * - withTime, withTimeZone (default): ISO 8601 with the local offset, "2026-10-16T10:30:00+02:00"
+ * - withTime, withTimeZone (default): ISO 8601 with the user's offset, "2026-10-16T10:30:00+02:00"
  * - withTime, no time zone: "2026-10-16T10:30:00" (local, e.g. a calendar event in its own zone)
  * - without time: "2026-10-16"
  *
- * A value with another offset ("…Z") is shown in the browser's time zone. Switching
+ * A value with another offset ("…Z") is shown in the user's GO time zone. Switching
  * withTime on adds defaultTime (or the current time).
  *
  *     {module: DateTimeField, name: 'start', labelText: t('Start'), withTime: true, minValue: '2026-01-01'}
@@ -87,7 +87,7 @@ class DateTimeField extends Field {
         let me = this;
 
         if (oldValue !== undefined) {
-            !me.timeText && (me.timeText = me.defaultTime || toHi(new Date()));
+            !me.timeText && (me.timeText = me.defaultTime || toHi(userNow()));
             me.value = me.compose()
         }
     }
@@ -122,13 +122,12 @@ class DateTimeField extends Field {
                 date = parseYmd(local[1]);
 
                 if (date && me.withTime) {
-                    const [h, i] = (local[2] || me.timeText || me.defaultTime || toHi(new Date())).split(':');
+                    const [h, i] = (local[2] || me.timeText || me.defaultTime || toHi(userNow())).split(':');
                     date.setHours(Number(h), Number(i))
                 }
             } else {
-                // an offset or Z: the browser's time zone
-                date = new Date(value);
-                isNaN(date) && (date = null)
+                // an offset or Z: the user's time zone
+                date = toUserTime(String(value))
             }
         }
 
@@ -162,9 +161,9 @@ class DateTimeField extends Field {
             return parseYmd(value)
         }
 
-        const date = LOCAL.exec(value) ? null : new Date(value);
+        const date = LOCAL.exec(value) ? null : toUserTime(value);
 
-        if (date && !isNaN(date)) {
+        if (date) {
             return date
         }
 
@@ -188,7 +187,7 @@ class DateTimeField extends Field {
             return null
         }
 
-        return me.normalize(me.withTime ? `${me.dateText}T${me.timeText || me.defaultTime || toHi(new Date())}` : me.dateText)
+        return me.normalize(me.withTime ? `${me.dateText}T${me.timeText || me.defaultTime || toHi(userNow())}` : me.dateText)
     }
 
     createControl() {

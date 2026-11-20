@@ -1,7 +1,7 @@
 import FormContainer from '../../../../../views/neo/node_modules/neo.mjs/src/form/Container.mjs';
 import Toolbar       from '../../../../../views/neo/node_modules/neo.mjs/src/toolbar/Base.mjs';
 import Button        from '../../../../../views/neo/src/button/Button.mjs';
-import {addDays, parseYmd, toYmd} from '../../../../../views/neo/src/DateUtil.mjs';
+import {addDays, parseYmd, toYmd, userNow, fromUserTime} from '../../../../../views/neo/src/DateUtil.mjs';
 import BoolCheckBox  from '../../../../../views/neo/src/form/field/BoolCheckBox.mjs';
 import DateField     from '../../../../../views/neo/src/form/field/DateField.mjs';
 import client        from '../../../../../views/neo/src/jmap/Client.mjs';
@@ -57,9 +57,9 @@ class DownloadLinkDialog extends Dialog {
                 labelText    : coreT('Date'),
                 labelPosition: 'inline',
                 required     : true,
-                minValue     : toYmd(new Date()),
+                minValue     : toYmd(userNow()),
                 // ExtJS showed this month's calendar without a choice; a week is a common term
-                value        : toYmd(addDays(new Date(), 7))
+                value        : toYmd(addDays(userNow(), 7))
             }, {
                 module    : BoolCheckBox,
                 reference : 'deleteWhenExpired',
@@ -106,7 +106,8 @@ class DownloadLinkDialog extends Dialog {
         }
 
         me.answer = {
-            expire_time        : Math.floor(date.getTime() / 1000),
+            // midnight in the user's time zone
+            expire_time        : Math.floor(fromUserTime(date).getTime() / 1000),
             delete_when_expired: !box.hidden && box.checked ? 1 : 0
         };
 

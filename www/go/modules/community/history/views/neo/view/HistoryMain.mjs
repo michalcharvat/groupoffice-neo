@@ -12,7 +12,7 @@ import client         from '../../../../../../../views/neo/src/jmap/Client.mjs';
 import CheckList      from '../../../../../../../views/neo/src/list/CheckList.mjs';
 import {notifyError}  from '../../../../../../../views/neo/src/Notify.mjs';
 import MainThreeColumnPanel from '../../../../../../../views/neo/src/view/MainThreeColumnPanel.mjs';
-import {addDays, toYmd, weekStart} from '../../../../../../../views/neo/src/DateUtil.mjs';
+import {addDays, toYmd, weekStart, userNow} from '../../../../../../../views/neo/src/DateUtil.mjs';
 import {avatarHtml, escapeHtml, formatUserDateTime, smartDateTime} from '../../../../../../../views/neo/src/Format.mjs';
 import {t as coreT, translator} from '../../../../../../../views/neo/src/Translate.mjs';
 
@@ -55,7 +55,7 @@ class HistoryMain extends MainThreeColumnPanel {
 
     createWest() {
         let me    = this,
-            today = new Date();
+            today = userNow();
 
         return {
             ntype : 'container',

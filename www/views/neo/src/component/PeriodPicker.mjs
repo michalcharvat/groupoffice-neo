@@ -1,5 +1,5 @@
 import Component from '../../node_modules/neo.mjs/src/component/Base.mjs';
-import {parseYmd} from '../DateUtil.mjs';
+import {parseYmd, userNow} from '../DateUtil.mjs';
 import {t}       from '../Translate.mjs';
 
 /**
@@ -36,7 +36,7 @@ class PeriodPicker extends Component {
         let me = this;
 
         me.addDomListeners([{click: me.onPickerClick, scope: me}]);
-        me.year ??= me.periodYear(me.value || me.periodStart(new Date()));
+        me.year ??= me.periodYear(me.value || me.periodStart(userNow()));
         me.renderPicker()
     }
 
@@ -45,7 +45,7 @@ class PeriodPicker extends Component {
             return null
         }
 
-        // "Y-m-d" is a local day (new Date() would read it as UTC midnight)
+        // "Y-m-d" is a local day (userNow() would read it as UTC midnight)
         const date = value instanceof Date ? value : (parseYmd(value) || new Date(value));
 
         return isNaN(date) ? null : this.periodStart(date)
@@ -96,7 +96,7 @@ class PeriodPicker extends Component {
         let me       = this,
             [head, grid] = me.vdom.cn,
             selected = me.value?.getTime(),
-            current  = me.periodStart(new Date()).getTime();
+            current  = me.periodStart(userNow()).getTime();
 
         head.cn = [
             {tag: 'button', type: 'button', cls: ['go-periodpicker-nav'], data: {step: '-1'}, title: t('Previous'), cn: [{tag: 'i', cls: ['go-icon'], text: 'chevron_left'}]},

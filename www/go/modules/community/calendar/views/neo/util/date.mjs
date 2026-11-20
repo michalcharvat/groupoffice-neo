@@ -7,6 +7,7 @@
  */
 import {formatDate} from '../../../../../../../views/neo/src/Format.mjs';
 import {lookup, t}  from '../../../../../../../views/neo/src/Translate.mjs';
+import {tzOffset}   from '../../../../../../../views/neo/src/DateUtil.mjs';
 
 const pad = n => String(n).padStart(2, '0');
 
@@ -313,23 +314,6 @@ export function durationText(iso) {
     parts.push(t(d.invert ? 'before' : 'after'));
 
     return parts.join(' ')
-}
-
-/**
- * Offset of a time zone at an instant, in ms (local = utc + offset)
- * @param {Number} utcMs
- * @param {String} timeZone
- * @returns {Number}
- */
-function tzOffset(utcMs, timeZone) {
-    const parts = {};
-
-    new Intl.DateTimeFormat('en-US', {
-        timeZone, hourCycle: 'h23',
-        year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'
-    }).formatToParts(new Date(utcMs)).forEach(p => parts[p.type] = p.value);
-
-    return Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour % 24, +parts.minute, +parts.second) - Math.floor(utcMs / 1000) * 1000
 }
 
 /**

@@ -1,6 +1,7 @@
 import {translator} from '../../../../../../../views/neo/src/Translate.mjs';
 import {addDays, dayNumber, format, formatTime, startOfDay} from '../util/date.mjs';
 import CalendarView from './CalendarView.mjs';
+import {userNow} from '../../../../../../../views/neo/src/DateUtil.mjs';
 
 const t = translator('community', 'calendar');
 
@@ -28,7 +29,7 @@ class ListView extends CalendarView {
 
     render() {
         let me    = this,
-            today = dayNumber(new Date()),
+            today = dayNumber(userNow()),
             month = me.day.getMonth(),
             items = [...me.viewModel].sort((a, b) => a.start - b.start),
             rows  = [];

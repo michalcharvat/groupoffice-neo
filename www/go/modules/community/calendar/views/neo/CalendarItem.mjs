@@ -13,6 +13,7 @@ import {translator} from '../../../../../../views/neo/src/Translate.mjs';
 import calendarData from './data.mjs';
 import Recurrence   from './util/Recurrence.mjs';
 import {addDays, addDuration, diffDays, diffDuration, format, formatTime, fromUserTime, parseDate, sameDay, toUserTime, ymd, ymdhis} from './util/date.mjs';
+import {userNow} from '../../../../../../views/neo/src/DateUtil.mjs';
 
 const t = translator('community', 'calendar');
 
@@ -143,7 +144,7 @@ export default class CalendarItem {
         const allDay = !!me.data.showWithoutTime;
 
         if (!config.start) {
-            me.start = parseDate(me.patched.start) || new Date();
+            me.start = parseDate(me.patched.start) || userNow();
             allDay && me.start.setHours(0, 0, 0, 0);
 
             // the stored zone is the event's, show the user's wall time
@@ -494,17 +495,19 @@ export default class CalendarItem {
                     lastDate = date
                 }
 
-                lastDate && (last = addDuration(lastDate, e.duration))
+                lastDate && (last = addDuration(lastDate, e.duration));
+                e.showWithoutTime || (last = toUserTime(last, e.timeZone))
             } else if (e.recurrenceRule.until) {
                 last = parseDate(e.recurrenceRule.until);
                 String(e.recurrenceRule.until).length === 10 && (last = addDays(last, 1));
-                last = addDuration(last, e.duration)
+                last = addDuration(last, e.duration);
+                e.showWithoutTime || (last = toUserTime(last, e.timeZone))
             } else {
                 return false
             }
         }
 
-        return last < new Date()
+        return last < userNow()
     }
 
     /**

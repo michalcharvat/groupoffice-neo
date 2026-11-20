@@ -10,7 +10,7 @@ import TextList     from '../../list/TextList.mjs';
 import Toolbar      from '../../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import {formatDate, userFormat} from '../../Format.mjs';
 import {lookup, t}  from '../../Translate.mjs';
-import {addDays, DAY_KEYS, parseYmd, toYmd} from '../../DateUtil.mjs';
+import {addDays, DAY_KEYS, parseYmd, toYmd, userNow} from '../../DateUtil.mjs';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -67,7 +67,7 @@ class RecurrenceField extends Field {
     }
 
     beforeSetStartDate(value) {
-        return parseYmd(value || new Date()) || parseYmd(new Date())
+        return parseYmd(value || userNow()) || parseYmd(userNow())
     }
 
     afterSetStartDate(value, oldValue) {

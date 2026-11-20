@@ -14,13 +14,14 @@ import {translator}  from '../../../../../../../views/neo/src/Translate.mjs';
 import FormWindow    from '../../../../../../../views/neo/src/view/FormWindow.mjs';
 import CalendarItem  from '../CalendarItem.mjs';
 import calendarData  from '../data.mjs';
-import {addDays, addDuration, diffDuration, fromUserTime, parseDate, startOfDay, ymd, ymdhis} from '../util/date.mjs';
+import {addDays, addDuration, diffDuration, fromUserTime, parseDate, startOfDay, toUserTime, ymd, ymdhis} from '../util/date.mjs';
 import AlertField    from './field/AlertField.mjs';
 import AttachmentsField from './field/AttachmentsField.mjs';
 import CategoryField from './field/CategoryField.mjs';
 import LocationField from './field/LocationField.mjs';
 import ParticipantField from './field/ParticipantField.mjs';
 import SelectField   from '../../../../../../../views/neo/src/form/field/SelectField.mjs';
+import {userNow} from '../../../../../../../views/neo/src/DateUtil.mjs';
 
 const t = translator('community', 'calendar');
 
@@ -75,7 +76,7 @@ class EventDialog extends FormWindow {
      * @returns {Object}
      */
     static withEnd(data) {
-        const start  = parseDate(data.start) || new Date(),
+        const start  = parseDate(data.start) || userNow(),
               allDay = !!data.showWithoutTime;
 
         let end = addDuration(start, data.duration || (allDay ? 'P1D' : 'PT1H'));
@@ -88,7 +89,7 @@ class EventDialog extends FormWindow {
         let me      = this,
             item    = me.item,
             allDay  = !!item.data.showWithoutTime,
-            hour    = new Date().getHours(),
+            hour    = userNow().getHours(),
             services = ModuleRegistry.getAvailable().filter(m => m.onlineMeeting).map(m => m.onlineMeeting);
 
         return [row([{
@@ -325,7 +326,7 @@ class EventDialog extends FormWindow {
 
         Object.keys(pasted).length && await form.setValues(pasted);
 
-        me.getReference('recurrenceField').setStartDate(ymd(parseDate(pasted.start || values.start || data.start) || new Date()));
+        me.getReference('recurrenceField').setStartDate(ymd(parseDate(pasted.start || values.start || data.start) || userNow()));
         me.updateDefaultAlertLabel();
         me.onParticipantsChange();
 
@@ -447,7 +448,8 @@ class EventDialog extends FormWindow {
             end   = me.getReference('endField').getValueAsDate();
 
         me.getReference('freeBusyButton').hidden = !count;
-        me.getReference('saveButton').text = t(count && end && end > new Date() ? 'Send' : 'Save');
+        // the fields show the event's zone (a new event: the user's)
+        me.getReference('saveButton').text = t(count && end && toUserTime(end, me.item?.data?.timeZone) > userNow() ? 'Send' : 'Save');
         me.checkAvailability()
     }
 
