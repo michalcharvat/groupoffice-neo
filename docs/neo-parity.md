@@ -6,11 +6,13 @@ features that are present and complete are counted per module.
 
 Status: **fixed** = fixed in this audit (branch
 `task/20261119-011401-neo-ui-parity-audit-of-converted-modules`); **card** = larger
-gap with a board card (title in the last section); **open** = not fixed, no card of
-its own (covered by a shared core card or not worth one).
+gap with a board card (title in the last section); **done** = fixed by its card;
+**open** = not fixed, no card of its own (covered by a shared core card or not worth one).
 
 Paths: module paths are relative to the module's `views/` folder
-(`www/go/modules/community/<module>/views/`), core paths start with `www/`.
+(`www/go/modules/community/<module>/views/`), core paths start with `www/`. In the
+"neo" and "Status" columns `src/` is `www/views/neo/src/` and `view/` is the module's
+`views/neo/view/`.
 
 ## Shared core gaps
 
@@ -92,7 +94,7 @@ continue task, comments, files, links, history; settings, portlet, quick add).
 
 | Area | 26.x feature | 26.x ref | neo | Status |
 |---|---|---|---|---|
-| More menu | Import (choose a list or list id from CSV) | goui/script/Main.ts:387, ImportTaskDialog.ts | only Export | card "neo-ui: tasks import" |
+| More menu | Import (choose a list or list id from CSV) | goui/script/Main.ts:387, ImportTaskDialog.ts | `view/ImportTaskDialog.mjs` in the more menu (iCalendar or CSV) | done (card "neo-ui: tasks import") |
 | Grid | Priority and Location columns (hidden by default) | extjs3/TaskGrid.js:206-220, 322 | missing | fixed |
 | Drag and drop | Drag tasks onto a list to move them | goui/script/Main.ts:169, 319-336 | missing | fixed |
 | List dialog | "Sync to device", "Show in calendar", owner (admin) | extjs3/TasklistDialog.js:43-49 | missing | fixed |
@@ -164,13 +166,13 @@ sounds, "Visible to", groups, custom field tabs, module cards, current-password 
 
 | Area | 26.x feature | 26.x ref | neo | Status |
 |---|---|---|---|---|
-| Account | Avatar upload (`avatarId`) | x/usersettings/AccountSettingsPanel.js:35 | missing | card "neo-ui: My account avatar, space used, password generator, local user, mail notification" |
-| Account | "Space used" (`disk_usage`) | x/usersettings/AccountSettingsPanel.js:112 | missing | card "neo-ui: My account avatar, space used, password generator, local user, mail notification" |
-| Password | Password generator, `passwordMinLength` | x/usersettings/AccountSettingsPanel.js:133-150 | two plain fields | card "neo-ui: My account avatar, space used, password generator, local user, mail notification" |
-| Password | "Convert to local user" for external users | x/usersettings/AccountSettingsPanel.js:158-190 | text only | card "neo-ui: My account avatar, space used, password generator, local user, mail notification" |
+| Account | Avatar upload (`avatarId`) | x/usersettings/AccountSettingsPanel.js:35 | `src/usersettings/AccountPanel.mjs` | done (card "neo-ui: My account avatar, space used, password generator, local user, mail notification") |
+| Account | "Space used" (`disk_usage`) | x/usersettings/AccountSettingsPanel.js:112 | `src/usersettings/AccountPanel.mjs` (MB) | done (card "neo-ui: My account avatar, space used, password generator, local user, mail notification") |
+| Password | Password generator, `passwordMinLength` | x/usersettings/AccountSettingsPanel.js:133-150 | `src/usersettings/AccountPanel.mjs` | done (card "neo-ui: My account avatar, space used, password generator, local user, mail notification") |
+| Password | "Convert to local user" for external users | x/usersettings/AccountSettingsPanel.js:158-190 | `src/usersettings/AccountPanel.mjs` (user managers) | done (card "neo-ui: My account avatar, space used, password generator, local user, mail notification") |
 | Security | Authorized clients, "Logout all" | x/usersettings/AccountSettingsPanel.js:197-275 | present | fixed (`src/usersettings/AuthorizedClientsField.mjs` in the Account card: status per client, "Logout all" empties `clients` on save; on the own account that ends the session too, so the windows reload to the login) |
 | Security | App passwords | x/usersettings/AppPasswordsFieldset.js, AppPasswordDialog.js | present | fixed (`src/usersettings/AppPasswordsPanel.mjs`, `AppPasswordDialog.mjs`; the secret is shown once in `src/view/SecretDialog.mjs`, which the API key token uses as well; only the own user creates one, admins see and delete others') |
-| Notifications | "Create desktop notification for new e-mails" | x/usersettings/NotificationPanel.js:23 | missing | card "neo-ui: My account avatar, space used, password generator, local user, mail notification" |
+| Notifications | "Create desktop notification for new e-mails" | x/usersettings/NotificationPanel.js:23 | `src/usersettings/NotificationPanel.mjs` (with the e-mail module) | done (card "neo-ui: My account avatar, space used, password generator, local user, mail notification") |
 
 ### System settings
 
@@ -201,7 +203,7 @@ hook), user defaults, import, export, edit, login as, archive, delete.
 | Area | 26.x feature | 26.x ref | neo | Status |
 |---|---|---|---|---|
 | Grid | Delete several groups | x/grid/GridTrait.js | one row only | fixed |
-| Members | Full member list window from a SharePanel group | x/permissions/SharePanel.js:192; x/groups/GroupMemberWindow.js | first 3 names + "and N more" | card "neo-ui: group member list window" |
+| Members | Full member list window from a SharePanel group | x/permissions/SharePanel.js:192; x/groups/GroupMemberWindow.js | `src/groups/GroupMemberDialog.mjs` from the SharePanel row | done (card "neo-ui: group member list window") |
 
 ### Custom fields
 
@@ -210,7 +212,7 @@ All 18 field types and their admin options are present, plus JSON export/import.
 
 | Area | 26.x feature | 26.x ref | neo | Status |
 |---|---|---|---|---|
-| Conditions | `relatedFieldCondition`, conditionally required/hidden evaluated on the form | x/customfields/type/Text.js:78-103,218-250 | editable in admin only | card "neo-ui: custom field conditions on forms" |
+| Conditions | `relatedFieldCondition`, conditionally required/hidden evaluated on the form | x/customfields/type/Text.js:78-103,218-250 | `src/customfields/conditions.mjs`, evaluated by `FormFieldset.mjs` | done (card "neo-ui: custom field conditions on forms") |
 | Field sets | Field set nested in a tab (`parentFieldSetId`) | x/customfields/FormFieldSet.js:27 | below the tab's fields, own filter and conditions | done |
 | Attachments | Form editor, download links, `allowDescription` | x/customfields/type/Attachments.js | `AttachmentsField` with description, single/multiple, accept; links or thumbnails | done |
 | Data / Template | Readable JSON lines / textarea | x/customfields/type/Data.js:28, TemplateField.js | JSON as lines and lists; template text read-only | done |
