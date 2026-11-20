@@ -2,7 +2,7 @@ import BaseDialog              from '../../node_modules/neo.mjs/src/dialog/Base.
 import DomEventManager         from '../../node_modules/neo.mjs/src/manager/DomEvent.mjs';
 import Button                  from '../button/Button.mjs';
 import DialogResizable         from '../plugin/DialogResizable.mjs';
-import {closePopup, openPopup} from '../Popup.mjs';
+import {closePopup, openPopup, popupsSupported} from '../Popup.mjs';
 import {t}                     from '../Translate.mjs';
 
 const TOOLS = {
@@ -20,7 +20,7 @@ const TOOLS = {
 export function headerTools(...names) {
     return {
         actionDefaults: {module: Button},
-        actions       : names.map(action => {
+        actions       : names.filter(action => action !== 'popout' || popupsSupported()).map(action => {
             const label = t(TOOLS[action].text);
             return {action, icon: TOOLS[action].icon, tooltip: label, vdom: {'aria-label': label}}
         })

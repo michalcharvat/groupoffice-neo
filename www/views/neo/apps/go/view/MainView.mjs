@@ -17,7 +17,7 @@ import notificationCenter from '../../../src/alerts/NotificationCenter.mjs';
 import NotificationPanel  from '../../../src/alerts/NotificationPanel.mjs';
 import reminders          from '../../../src/alerts/Reminders.mjs';
 import {notifyError}           from '../../../src/Notify.mjs';
-import {closePopup, openPopup} from '../../../src/Popup.mjs';
+import {closePopup, openPopup, popupsSupported} from '../../../src/Popup.mjs';
 import {applyTheme}            from '../../../src/Preferences.mjs';
 import {t} from '../../../src/Translate.mjs';
 
@@ -712,13 +712,13 @@ class MainView extends Container {
             appName : me.appName,
             target  : button.id,
             windowId: me.windowId,
-            items   : [{
+            items   : [...popupsSupported() ? [{
                 text    : t('Open in new window'),
                 icon    : 'open_in_new',
                 // already in its own window
                 disabled: !!me.openModules[name]?.popup,
                 handler : () => me.popOutModule(name)
-            }, {
+            }] : [], {
                 text   : t('Close'),
                 icon   : 'close',
                 handler: () => me.closeModule(name)

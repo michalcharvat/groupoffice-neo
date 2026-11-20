@@ -346,6 +346,8 @@ class Neo {
 			'goLoginButtons' => $this->loginButtons(),
 			// set in a popup window opened by GO.view.Dialog: id of the dialog to adopt
 			'goPopup' => $this->popupId(),
+			// the Dev module (component demos) loads only for developers
+			'goDebug' => go()->getDebugger()->enabled,
 			// avatar menu "Switch to the classic UI" (docs/neo-switch.md D2)
 			'goWebclientSwitch' => Webclient::switchAllowed(),
 			// shared worker name suffix, passed on to popups (src/Popup.mjs)
