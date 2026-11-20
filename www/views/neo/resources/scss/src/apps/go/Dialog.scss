@@ -6,3 +6,12 @@
         box-shadow   : none;
     }
 }
+
+// Maximized (tool or header double-click): neo sizes it 98% with !important, but a dialog's
+// own max size (FormWindow maxHeight: 90vh, inline) still capped it and left a strip empty
+.neo-theme-go {
+    .neo-dialog.neo-maximized {
+        max-height: none !important;
+        max-width : none !important;
+    }
+}
