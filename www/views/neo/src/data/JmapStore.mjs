@@ -286,6 +286,10 @@ class JmapStore extends Store {
             me.isLoading  = false;
             me.isLoaded   = true;
             me.data       = list; // fires the load event
+
+            // ...except for an empty list: neo's beforeSetData() marks the store loading, so the
+            // clear() of the old records is no load, and add([]) is no change at all
+            list.length || me.fire('load', {items: me.items});
             return me.items
         } catch (e) {
             if (generation === me.loadGeneration && !me.isDestroyed) {
