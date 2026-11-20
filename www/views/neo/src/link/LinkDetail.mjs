@@ -64,6 +64,15 @@ class LinkDetail extends Card {
         }]
     }
 
+    setEntity(entity, entityId, record=null) {
+        // the rows of another item must not stay clickable (unlink) while the new ones load
+        if (this.current?.entity !== entity || this.current?.entityId !== entityId) {
+            this.clearData()
+        }
+
+        super.setEntity(entity, entityId, record)
+    }
+
     async loadData(entity, entityId) {
         const links = await loadLinks(entity, entityId);
 

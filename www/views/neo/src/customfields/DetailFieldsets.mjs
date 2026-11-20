@@ -80,7 +80,10 @@ const DetailFieldsetClass = Neo.setupClass(DetailFieldset);
  *     {module: DetailFieldsets, reference: 'customFields'}
  *     detailFieldsets.setEntity('Note', 5);
  *
- * Reloads when the server reports a change of the entity type.
+ * Reloads when the server reports a change of the entity type. An entity without a
+ * JMAP get (a legacy ActiveRecord such as files `File`) passes its values, e.g. from a
+ * legacy display response: `setEntity('File', 5, {customFields: {…}})`; its caller
+ * passes them again after a change.
  */
 class DetailFieldsets extends Container {
     static config = {
@@ -90,7 +93,7 @@ class DetailFieldsets extends Container {
         items    : []
     }
 
-    /** {entity, entityId} */
+    /** {entity, entityId, values} */
     current = null
     /** entity type the cards were built for */
     builtFor = null
@@ -102,7 +105,7 @@ class DetailFieldsets extends Container {
         let me = this;
 
         me.removeStateListener = client.on('stateChange', ({changed}) => {
-            me.current && changed?.includes(me.current.entity) && me.reload()
+            me.current && !me.current.values && changed?.includes(me.current.entity) && me.reload()
         })
     }
 
@@ -114,9 +117,11 @@ class DetailFieldsets extends Container {
     /**
      * @param {String|null} entity e.g. 'Note'
      * @param {String|null} entityId
+     * @param {Object|null} values=null the entity's properties with customFields, instead of
+     *     a JMAP get
      */
-    setEntity(entity, entityId) {
-        this.current = entity && entityId ? {entity, entityId} : null;
+    setEntity(entity, entityId, values=null) {
+        this.current = entity && entityId ? {entity, entityId, values} : null;
         this.reload()
     }
 
@@ -149,7 +154,7 @@ class DetailFieldsets extends Container {
                 return
             }
 
-            const [entity] = await client.get(current.entity, [current.entityId],
+            const [entity] = current.values ? [current.values] : await client.get(current.entity, [current.entityId],
                 ['id', 'customFields', ...customFields.getFilterProperties(current.entity)]);
 
             if (me.isDestroyed || generation !== me.generation) {

@@ -114,8 +114,8 @@ class CommentsPanel extends Card {
     }
 
     setEntity(entity, entityId, record) {
-        // a draft belongs to the note it was typed for
-        if (this.current?.entityId !== entityId) {
+        // a draft belongs to the item it was typed for (File 5 and Folder 5 differ)
+        if (this.current?.entity !== entity || this.current?.entityId !== entityId) {
             this.getReference('input').value = '';
             this.getReference('error').text  = '';
             this.setPickedLabels([])

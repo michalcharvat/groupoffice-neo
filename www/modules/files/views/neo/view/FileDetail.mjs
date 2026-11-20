@@ -2,6 +2,12 @@ import Container from '../../../../../views/neo/node_modules/neo.mjs/src/contain
 import Toolbar   from '../../../../../views/neo/node_modules/neo.mjs/src/toolbar/Base.mjs';
 import Button    from '../../../../../views/neo/src/button/Button.mjs';
 import DescriptionList from '../../../../../views/neo/src/component/DescriptionList.mjs';
+import CommentsPanel   from '../../../../../views/neo/src/detail/CommentsPanel.mjs';
+import HistoryPanel    from '../../../../../views/neo/src/detail/HistoryPanel.mjs';
+import DetailFieldsets from '../../../../../views/neo/src/customfields/DetailFieldsets.mjs';
+import AddLinkButton    from '../../../../../views/neo/src/link/AddLinkButton.mjs';
+import LinkBrowseButton from '../../../../../views/neo/src/link/LinkBrowseButton.mjs';
+import LinkCards        from '../../../../../views/neo/src/link/LinkCards.mjs';
 import client    from '../../../../../views/neo/src/jmap/Client.mjs';
 import {escapeHtml, fileSize} from '../../../../../views/neo/src/Format.mjs';
 import {translator} from '../../../../../views/neo/src/Translate.mjs';
@@ -12,6 +18,11 @@ const t = translator('legacy', 'files');
 /**
  * East panel of the file browser: the selected file (ExtJS GO.files.FilePanel,
  * `files/file/display`) or folder (GO.files.FolderPanel, `files/folder/display`).
+ *
+ * Below the properties the detail cards of GO.DisplayPanel, for the legacy entities
+ * `File` and `Folder`: custom fields (values from the display response, the entities
+ * have no JMAP get), comments, links and history. Virtual folders of the tree (shared,
+ * address book roots: no numeric id) get none of them.
  *
  * Events: action {action, record} for the toolbar buttons (download, open, properties, more).
  */
@@ -47,6 +58,12 @@ class FileDetail extends Container {
                 disabled : true,
                 handler  : 'up.onProperties'
             }, {
+                module   : AddLinkButton,
+                reference: 'addLinkButton'
+            }, {
+                module   : LinkBrowseButton,
+                reference: 'linkBrowseButton'
+            }, {
                 module   : Button,
                 icon     : 'more_vert',
                 reference: 'moreButton',
@@ -70,6 +87,26 @@ class FileDetail extends Container {
                 reference: 'list',
                 cls      : ['go-files-detail-list'],
                 flex     : 'none'
+            }, {
+                // a card per custom field set with values
+                module   : DetailFieldsets,
+                reference: 'customFields',
+                flex     : 'none'
+            }, {
+                module   : CommentsPanel,
+                reference: 'comments',
+                flex     : 'none',
+                hidden   : true
+            }, {
+                // shows itself when the item has links
+                module   : LinkCards,
+                reference: 'links',
+                flex     : 'none'
+            }, {
+                module   : HistoryPanel,
+                reference: 'history',
+                flex     : 'none',
+                hidden   : true
             }]
         }]
     }
@@ -96,24 +133,66 @@ class FileDetail extends Container {
         me.fileRecord = record;
         me.fileData   = null;
 
+        // a grid record keeps its fields in getters, which a spread does not copy
+        const plain = record?.isRecord ? record.toJSON() : record;
+
+        me.setCards(plain);
+
         if (!record) {
             me.render(null);
             return
         }
 
         // what the list knows, until the server answers
-        me.render({...record, size: isFolder(record) ? null : record.size});
+        me.render({...plain, size: isFolder(plain) ? null : plain.size});
 
         try {
             const {data} = await client.legacy(isFolder(record) ? 'files/folder/display' : 'files/file/display', {id: record.id});
 
             if (!me.isDestroyed && generation === me.generation) {
                 me.fileData = data;
-                me.render({...record, ...data})
+                me.render({...plain, ...data});
+                me.getReference('customFields').setEntity(...me.entityOf(plain), data)
             }
         } catch (e) {
-            !me.isDestroyed && generation === me.generation && me.render({...record, error: e.message})
+            !me.isDestroyed && generation === me.generation && me.render({...plain, error: e.message})
         }
+    }
+
+    /**
+     * @param {Object|null} record plain list record
+     * @returns {Array} [entity, entityId] of the legacy entity, [null, null] for nothing
+     *     or a virtual folder
+     */
+    entityOf(record) {
+        return record && /^\d+$/.test(String(record.id)) ? [isFolder(record) ? 'Folder' : 'File', String(record.id)] : [null, null]
+    }
+
+    /**
+     * Points the toolbar link buttons and the cards to the record. Cards of the same
+     * item keep their content while it reloads.
+     * @param {Object|null} record plain list record
+     * @protected
+     */
+    setCards(record) {
+        let me                 = this,
+            [entity, entityId] = me.entityOf(record),
+            same               = card => card.current?.entity === entity && card.current?.entityId === entityId;
+
+        me.getReference('addLinkButton').setEntity(entity, entityId, record);
+
+        same({current: me.getReference('linkBrowseButton').target}) || me.getReference('linkBrowseButton').setEntity(entity, entityId);
+        same(me.getReference('links')) || me.getReference('links').setEntity(entity, entityId, record);
+
+        // the custom field values come with the display response
+        same(me.getReference('customFields')) || me.getReference('customFields').setEntity(null, null);
+
+        ['comments', 'history'].forEach(ref => {
+            const card = me.getReference(ref);
+
+            card.hidden = !entity;
+            same(card) || card.setEntity(entity, entityId, record)
+        })
     }
 
     /**
@@ -155,15 +234,20 @@ class FileDetail extends Container {
             [t('Location'), decode(data.path)],
             [t('URL'), data.url ? {html: `<a href="${escapeHtml(data.url)}" target="_blank" rel="noopener">${escapeHtml(data.url)}</a>`} : ''],
             [t('Type'), data.type],
-            [t('Comment'), data.comment]
+            [t('Comment'), data.comment],
+            // ExtJS FolderPanel's CreateModifyPanel
+            [t('Created at'), data.ctime],
+            [t('Created by'), decode(data.username)],
+            [t('Modified at'), data.mtime],
+            [t('Modified by'), decode(data.musername)]
         ] : [
             [t('Location'), decode(data.path)],
             [t('Type'), data.type],
             [t('Size'), typeof data.size === 'number' || /^\d+$/.test(String(data.size ?? '')) ? fileSize(+data.size) : data.size],
             [t('Created at'), data.ctime],
-            [t('Created by'), data.username],
+            [t('Created by'), decode(data.username)],
             [t('Modified at'), data.mtime],
-            [t('Modified by'), data.musername],
+            [t('Modified by'), decode(data.musername)],
             [t('Locked by'), locked],
             [t('Content expires at'), data.content_expire_date],
             [t('Download link'), data.download_link ? {html: `<a href="${escapeHtml(data.download_link)}" target="_blank" rel="noopener">${escapeHtml(data.download_link)}</a>`} : '']
