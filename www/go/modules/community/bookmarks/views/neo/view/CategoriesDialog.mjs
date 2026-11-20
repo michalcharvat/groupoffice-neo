@@ -75,6 +75,8 @@ class CategoriesDialog extends Dialog {
             module   : Grid,
             reference: 'grid',
             flex     : 1,
+            emptyText: t('No items to display'), // ExtJS ManageCategoriesGrid
+            emptyIcon: null,
             store    : {
                 module    : JmapStore,
                 entity    : 'BookmarksCategory',

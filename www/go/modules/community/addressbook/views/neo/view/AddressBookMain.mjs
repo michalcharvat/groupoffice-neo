@@ -283,6 +283,8 @@ class AddressBookMain extends MainThreeColumnPanel {
                 reference  : 'grid',
                 cls        : ['go-addressbook-grid'],
                 rowLines   : 2, // avatar column
+                emptyText  : t('No items to display'), // ExtJS ContactGrid
+                emptyIcon  : 'description',
                 flex       : 1,
                 multiSelect: true,
                 store      : {

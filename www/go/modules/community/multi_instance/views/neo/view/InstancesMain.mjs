@@ -158,6 +158,8 @@ class InstancesMain extends Container {
             flex       : 1,
             multiSelect: true,
             stateId    : 'multi_instance-grid',
+            emptyText  : coreT('No items to display'), // ExtJS MainPanel
+            emptyIcon  : 'description',
             store      : {
                 module    : JmapStore,
                 entity    : 'Instance',
