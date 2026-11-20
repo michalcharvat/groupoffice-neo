@@ -2320,4 +2320,5 @@ Pokud jste o nové heslo nežádali, tento e-mail prosím smažte.',
   'Choose a file to import' => 'Vyberte soubor k importu',
   'Show options' => 'Zobrazit možnosti',
   'Every key may only be used once' => 'Každý klíč lze použít jen jednou',
+  'Add a comment...' => 'Přidat komentář...',
 );

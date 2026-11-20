@@ -166,4 +166,8 @@ Byly provedeny následující změny %s:
   'The archive contains links or other special files and can\'t be decompressed' => 'Archiv obsahuje odkazy nebo jiné speciální soubory a nelze jej rozbalit',
   'Invalid file or folder name' => 'Neplatný název souboru nebo složky',
   'Could not restore the item' => 'Položku se nepodařilo obnovit',
+  '1 item' => '1 položka',
+  '{count} items' => 'Položek: {count}',
+  'Nothing selected' => 'Nic není vybráno',
+  'Are you sure you want to permanently delete the selected items?' => 'Opravdu chcete vybrané položky trvale smazat?',
 );

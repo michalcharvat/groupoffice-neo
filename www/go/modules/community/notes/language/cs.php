@@ -33,4 +33,7 @@ return array (
   'Switch between HTML and Markdown editor' => 'Přepnout mezi editorem HTML a Markdown',
   'Switching the editor will clear the content. Are you sure?' => 'Přepnutím editoru se obsah vymaže. Jste si jisti?',
   'Default editor for new notes' => 'Výchozí editor pro nové poznámky',
+  'All notes' => 'Všechny poznámky',
+  '1 note' => '1 poznámka',
+  '{count} notes' => 'Poznámek: {count}',
 );

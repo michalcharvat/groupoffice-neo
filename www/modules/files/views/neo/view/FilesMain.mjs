@@ -33,6 +33,14 @@ import SelectFilesDialog  from './SelectFilesDialog.mjs';
 const t = translator('legacy', 'files');
 
 /** ExtJS GO.permissionLevels */
+/**
+ * "<count> items" of the table title; a key per form, languages like Czech need another word
+ * order
+ * @param {Number} count
+ * @returns {String}
+ */
+const itemCount = count => count === 1 ? t('1 item') : fmt(t('{count} items'), {count});
+
 export const LEVEL_READ = 10, LEVEL_CREATE = 20, LEVEL_WRITE = 30, LEVEL_DELETE = 40, LEVEL_MANAGE = 50;
 
 /** files/folder/paste calls one after the other (pasteInto()) */
@@ -522,7 +530,7 @@ class FilesMain extends MainThreeColumnPanel {
         }
 
         const total = store.totalCount || 0;
-        me.getReference('tableTitle').subtitle = (store.query ? '' : decodeEntities(store.meta.path || '') + ' · ') + fmt(t('{count} items'), {count: total});
+        me.getReference('tableTitle').subtitle = (store.query ? '' : decodeEntities(store.meta.path || '') + ' · ') + itemCount(total);
 
         me.pendingTypeId = null;
 
@@ -775,7 +783,7 @@ class FilesMain extends MainThreeColumnPanel {
 
         me.getReference('tableTitle').set({
             title   : t('Trash'),
-            subtitle: fmt(t('{count} items'), {count: store.totalCount || 0})
+            subtitle: itemCount(store.totalCount || 0)
         });
         me.getReference('upButton').disabled = true;
         me.updateButtons()
