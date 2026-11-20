@@ -582,7 +582,8 @@ class Grid extends GridContainer {
     }
 
     /**
-     * Delete / ctrl+Backspace → `deleteKey`, Enter → `enterKey` (not while typing in a field)
+     * Delete / ctrl+Backspace → `deleteKey`, Enter → `enterKey` (not while typing in a field).
+     * `deleteKey` also gets `ctrlKey`: ctrl (or cmd) + Delete, e.g. delete instead of trash
      * @param {Object} data neo DOM event
      * @protected
      */
@@ -599,7 +600,9 @@ class Grid extends GridContainer {
               name     = isDelete ? 'deleteKey' : (data.key === 'Enter' ? 'enterKey' : null),
               records  = name ? this.getSelectedRecords() : [];
 
-        records.length && this.fire(name, {records})
+        records.length && this.fire(name, isDelete
+            ? {records, ctrlKey: data.key === 'Delete' && !!(data.ctrlKey || data.metaKey)}
+            : {records})
     }
 
     /**

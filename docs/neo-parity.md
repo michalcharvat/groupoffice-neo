@@ -286,11 +286,16 @@ Fixed on branch `task/20261120-044313-neo-ui-regression-walkthrough-after-the`, 
 | Typing in chips and autocomplete fields (e-mail recipients, user/contact pickers) lost characters and moved the caret, even at 200 ms per key ("neotest@neo.test" → "noetno.tst"): every keystroke ran `update()` and the late answer wrote older text back. Older than tonight's merges | `Field.syncInputValue()` syncs vdom and vnode like neo's Text field, no DOM write; ChipsField, AutocompleteField |
 | PasswordPrompt, TextPrompt, SecretDialog, e-mail CloseDialog and files OverwriteDialog had no message padding unless a ConfirmDialog had been opened before (neo loads `ConfirmDialog.scss` only with that class) | `.go-confirm-message` padding moved to `Dialog.scss` |
 
+Closed on branch `task/20261120-054922-neo-ui-small-gaps-from-the-regression-wa`:
+
+| Gap | Fix |
+|---|---|
+| Files: no Delete key and no row context menu in the trash; the file grid had no Delete key either | trash: Delete = delete permanently, right click = Restore / Delete permanently; file grid: Delete = trash, ctrl+Delete = delete permanently (26.x `FilesGrid`); `Grid` `deleteKey` carries `ctrlKey` |
+
 Remaining gaps (open, no card):
 
 | Area | Gap | Notes |
 |---|---|---|
-| Files | No Delete key and no row context menu in the trash (only the toolbar buttons) | 26.x: Delete key on the grid |
 | Translations (cs) | Untranslated: "All notes", "{n} notes", "{n} tasks", "0 items", "Nothing selected", "Add a comment...", "Are you sure you want to permanently delete the selected items?", PasswordPrompt "Required" | dev module export `--missingOnly=1` |
 | PasswordPrompt | Shows "Required" before the user typed anything | neo PasswordField validates on mount |
 | Task dialog | The colour palette is two field rows high and leaves a gap below the subject | layout, not a regression |
