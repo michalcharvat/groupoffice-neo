@@ -163,6 +163,9 @@ class Dialog extends BaseDialog {
 
         const me = this;
 
+        // double-click on the header toggles maximize, like ExtJS and GOUI windows
+        me.addDomListeners({dblclick: me.onHeaderDblClick, delegate: '.neo-header-toolbar', scope: me});
+
         // a dialog is not an item of its window's view: close it with its window.
         // Removed by event id: neo's un() with a function also matches by fn.name, and an
         // anonymous handler would remove app.mjs's (no popup window would get cleaned up).
@@ -236,6 +239,36 @@ class Dialog extends BaseDialog {
             icon   : me.maximized ? 'fullscreen_exit' : 'fullscreen',
             tooltip: me.maximized ? t('Restore') : t('Maximize')
         })
+    }
+
+    /**
+     * A double-click on the header (not on one of its tools) maximizes or restores a dialog
+     * with a visible maximize tool, through that tool so its icon follows. A double-click
+     * cannot start a drag: the drag sensor waits for 5px of movement.
+     * @param {Object} data
+     */
+    onHeaderDblClick(data) {
+        const me     = this,
+              header = me.headerToolbar,
+              tool   = header?.items.find(item => item.action === 'maximize' && !item.hidden);
+
+        // a nested header toolbar (e.g. a date selector's) matches the delegate too
+        if (!tool || me.isDragging || me.isClosing || data.currentTarget !== header.id) {
+            return
+        }
+
+        // the path runs from the target up: everything before the header toolbar is inside it
+        for (const node of data.path || []) {
+            if (node.id === header.id) {
+                break
+            }
+
+            if (node.cls?.includes('neo-button') || ['button', 'input', 'textarea'].includes(node.tagName)) {
+                return
+            }
+        }
+
+        me.maximize({component: tool})
     }
 
     executeHeaderAction(data) {
