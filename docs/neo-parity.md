@@ -216,7 +216,7 @@ All 18 field types and their admin options are present, plus JSON export/import.
 | Field sets | Field set nested in a tab (`parentFieldSetId`) | x/customfields/FormFieldSet.js:27 | below the tab's fields, own filter and conditions | done |
 | Attachments | Form editor, download links, `allowDescription` | x/customfields/type/Attachments.js | `AttachmentsField` with description, single/multiple, accept; links or thumbnails | done |
 | Data / Template | Readable JSON lines / textarea | x/customfields/type/Data.js:28, TemplateField.js | JSON as lines and lists; template text read-only | done |
-| Ordering | Drag and drop of field sets and fields | x/customfields/EntityPanel.js:300 | up/down buttons | open (works; needs sortable lists in core) |
+| Ordering | Drag and drop of field sets and fields | x/customfields/EntityPanel.js:300 | up/down buttons | fixed (`customfields/admin/EntityFieldsDialog.mjs`: drag field sets between field sets, fields between fields or below a field set row (moves the field into that field set, like 26.x); up/down buttons kept for the keyboard; saves `sortOrder` / `fieldSetId` right away) |
 
 ## Board cards
 

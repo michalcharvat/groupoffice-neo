@@ -1,6 +1,7 @@
 import Toolbar       from '../../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import {LEVEL_DELETE, LEVEL_WRITE} from '../../Acl.mjs';
 import Button        from '../../button/Button.mjs';
+import {dropIndex, dropInGroups, enableDragDrop} from '../../component/dragDrop.mjs';
 import UploadButton  from '../../component/UploadButton.mjs';
 import client        from '../../jmap/Client.mjs';
 import uploader      from '../../jmap/Uploader.mjs';
@@ -17,8 +18,9 @@ const order = (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || Number(a.id) 
 /**
  * The custom fields of one entity (go.customfields.EntityDialog + EntityPanel): its field
  * sets, each followed by its fields. A field set row adds fields (menu of the types);
- * rows move up and down (a field moves on into the neighbouring field set), are edited
- * and deleted. The toolbar imports and exports field sets as JSON and adds a field set.
+ * rows are dragged before or after other rows (field sets between field sets, fields
+ * between fields or below a field set row, into that field set) or move up and down with
+ * the buttons (a field moves on into the neighbouring field set), are edited and deleted. The toolbar imports and exports field sets as JSON and adds a field set.
  * Changes are saved right away; pushes of FieldSet / Field reload the list.
  */
 class EntityFieldsDialog extends Dialog {
@@ -90,7 +92,12 @@ class EntityFieldsDialog extends Dialog {
                 reference: 'table',
                 flex     : 'none',
                 keyProperty: 'key',
-                rowCls   : record => record.isFieldSet ? ['go-cf-fieldset-row'] : ['go-cf-field-row'],
+                rowCls   : record => [
+                    record.isFieldSet ? 'go-cf-fieldset-row' : 'go-cf-field-row',
+                    ...record.draggable ? ['go-cf-drag'] : [],
+                    // no field can be dropped into a field set the user can't write to
+                    ...record.permissionLevel < LEVEL_WRITE ? ['go-no-drop'] : []
+                ],
                 columns  : [
                     {text: t('Name'), field: 'name', flex: true},
                     {text: t('Database name'), field: 'databaseName'},
@@ -124,6 +131,16 @@ class EntityFieldsDialog extends Dialog {
         super.onConstructed();
 
         let me = this;
+
+        enableDragDrop(me.table, {
+            drag    : '.go-cf-drag',
+            group   : 'go-cf-entity',
+            position: 'between',
+            accept  : {'.go-cf-fieldset-row': '.go-cf-fieldset-row', '.go-cf-field-row': '.go-actiontable-row'},
+            onDrop  : ({source, targetRecordId, position}) => {
+                source?.recordId != null && targetRecordId != null && me.drop(source.recordId, targetRecordId, position)
+            }
+        }).catch(e => console.error('Custom fields drag and drop', e));
 
         client.watch(['FieldSet', 'Field']);
         me.removeStateListener = client.on('stateChange', ({changed}) => {
@@ -189,6 +206,7 @@ class EntityFieldsDialog extends Dialog {
                 databaseName: '',
                 typeLabel  : fs.isTab ? t('Tab') : '',
                 permissionLevel: level,
+                draggable  : client.isAdmin && me.fieldSets.length > 1,
                 canMoveUp  : index > 0 && client.isAdmin,
                 canMoveDown: index < me.fieldSets.length - 1 && client.isAdmin
             });
@@ -206,13 +224,22 @@ class EntityFieldsDialog extends Dialog {
                     databaseName: f.databaseName,
                     typeLabel  : type ? type.label : `${f.type} (${t('Unknown')})`,
                     permissionLevel: level,
-                    canMoveUp  : level >= LEVEL_WRITE && (fieldIndex > 0 || index > 0),
-                    canMoveDown: level >= LEVEL_WRITE && (fieldIndex < fields.length - 1 || index < me.fieldSets.length - 1)
+                    draggable  : level >= LEVEL_WRITE,
+                    canMoveUp  : level >= LEVEL_WRITE && (fieldIndex > 0 || me.canWrite(me.fieldSets[index - 1])),
+                    canMoveDown: level >= LEVEL_WRITE && (fieldIndex < fields.length - 1 || me.canWrite(me.fieldSets[index + 1]))
                 })
             })
         });
 
         me.table.records = rows
+    }
+
+    /**
+     * @param {Object} [fieldSet]
+     * @returns {Boolean} the user may add fields to it
+     */
+    canWrite(fieldSet) {
+        return !!fieldSet && (fieldSet.permissionLevel ?? 0) >= LEVEL_WRITE
     }
 
     /**
@@ -298,63 +325,147 @@ class EntityFieldsDialog extends Dialog {
      * @param {Object} record
      * @param {Number} step -1 up, 1 down
      */
-    async move(record, step) {
+    move(record, step) {
         let me = this;
 
-        try {
-            me.saving = true;
-
-            if (record.isFieldSet) {
-                const list  = [...me.fieldSets],
-                      index = list.findIndex(fs => String(fs.id) === String(record.id)),
-                      to    = index + step;
-
-                if (index < 0 || to < 0 || to >= list.length) {
-                    return
-                }
-
-                list.splice(to, 0, ...list.splice(index, 1));
-                await client.set('FieldSet', {update: Object.fromEntries(list.map((fs, i) => [fs.id, {sortOrder: i}]))});
-            } else {
-                const setIndex = me.fieldSets.findIndex(fs => String(fs.id) === String(record.fieldSetId)),
-                      fields   = [...me.fieldsBySet[record.fieldSetId] || []],
-                      index    = fields.findIndex(f => String(f.id) === String(record.id)),
-                      to       = index + step,
-                      update   = {};
-
-                if (index < 0) {
-                    return
-                }
-
-                if (to >= 0 && to < fields.length) {
-                    fields.splice(to, 0, ...fields.splice(index, 1));
-                    fields.forEach((f, i) => update[f.id] = {sortOrder: i})
-                } else {
-                    // over the edge: last of the previous / first of the next field set
-                    const target = me.fieldSets[setIndex + step];
-
-                    if (!target) {
-                        return
-                    }
-
-                    const [moved]      = fields.splice(index, 1),
-                          targetFields = [...me.fieldsBySet[target.id] || []];
-
-                    step < 0 ? targetFields.push(moved) : targetFields.unshift(moved);
-                    fields.forEach((f, i) => update[f.id] = {sortOrder: i});
-                    targetFields.forEach((f, i) => update[f.id] = {sortOrder: i});
-                    update[moved.id].fieldSetId = target.id
-                }
-
-                await client.set('Field', {update})
-            }
-        } catch (e) {
-            notifyError(me, e)
-        } finally {
-            me.saving = false
+        // the rows are stale until the save and its reload finish
+        if (me.saving) {
+            return
         }
 
-        me.isDestroyed || me.load()
+        if (record.isFieldSet) {
+            const index = me.fieldSets.findIndex(fs => String(fs.id) === String(record.id));
+
+            return me.moveFieldSet(index, index + step)
+        }
+
+        const setIndex = me.fieldSets.findIndex(fs => String(fs.id) === String(record.fieldSetId)),
+              fields   = [...me.fieldsBySet[record.fieldSetId] || []],
+              index    = fields.findIndex(f => String(f.id) === String(record.id)),
+              to       = index + step;
+
+        if (index < 0) {
+            return
+        }
+
+        if (to >= 0 && to < fields.length) {
+            fields.splice(to, 0, ...fields.splice(index, 1));
+            return me.saveFields(fields)
+        }
+
+        // over the edge: last of the previous / first of the next field set
+        const target = me.fieldSets[setIndex + step];
+
+        if (!me.canWrite(target)) {
+            return
+        }
+
+        const targetFields = [...me.fieldsBySet[target.id] || []];
+
+        step < 0 ? targetFields.push(fields[index]) : targetFields.unshift(fields[index]);
+        return me.saveFields(targetFields, target.id, fields[index].id)
+    }
+
+    /**
+     * A row dropped before or after another row (EntityPanel.onSort()): a field set between
+     * field sets, a field into the field set above the drop
+     * @param {String} sourceKey row key of the dragged row
+     * @param {String} targetKey row key of the row it was dropped on
+     * @param {String} position before or after
+     */
+    drop(sourceKey, targetKey, position) {
+        let me     = this,
+            rows   = me.table.records,
+            from   = rows.findIndex(row => row.key === sourceKey),
+            target = rows.findIndex(row => row.key === targetKey),
+            source = rows[from];
+
+        if (!source || target < 0 || me.saving) {
+            return
+        }
+
+        if (source.isFieldSet) {
+            if (!rows[target].isFieldSet) {
+                return
+            }
+
+            const sets  = rows.filter(row => row.isFieldSet),
+                  index = sets.indexOf(source);
+
+            return me.moveFieldSet(index, dropIndex(index, sets.indexOf(rows[target]), position))
+        }
+
+        const isGroup = row => row.isFieldSet,
+              // before the first field set row: into that field set
+              drop    = dropInGroups(rows, isGroup, from, target, position)
+                  || (target === 0 && position === 'before' && dropInGroups(rows, isGroup, from, target, 'after'));
+
+        if (!drop || drop.group.permissionLevel < LEVEL_WRITE) {
+            return
+        }
+
+        const byId = Object.fromEntries(Object.values(me.fieldsBySet).flat().map(f => [String(f.id), f]));
+
+        me.saveFields(drop.items.map(row => byId[String(row.id)]), drop.group.id, source.id)
+    }
+
+    /**
+     * Moves a field set to another index and saves the sortOrder of all field sets
+     * @param {Number} from
+     * @param {Number} to
+     */
+    async moveFieldSet(from, to) {
+        let me   = this,
+            list = [...me.fieldSets];
+
+        if (from < 0 || to < 0 || from >= list.length || to >= list.length || from === to) {
+            return
+        }
+
+        list.splice(to, 0, ...list.splice(from, 1));
+
+        await me.save('FieldSet', Object.fromEntries(list.map((fs, i) => [fs.id, {sortOrder: i}])))
+    }
+
+    /**
+     * Saves the order of the fields of a field set, after a field moved into it or within it
+     * @param {Object[]} fields the field set's fields in their new order
+     * @param {String} [fieldSetId] the field set a field moved into
+     * @param {String} [movedId] the field that moved into it
+     */
+    async saveFields(fields, fieldSetId, movedId) {
+        let me     = this,
+            update = {},
+            moved  = movedId != null && fields.find(f => String(f.id) === String(movedId)),
+            from   = moved && String(moved.fieldSetId) !== String(fieldSetId) ? moved.fieldSetId : null;
+
+        // the field set it left closes its gap
+        from != null && (me.fieldsBySet[from] || []).filter(f => f !== moved).forEach((f, i) => update[f.id] = {sortOrder: i});
+        fields.forEach((f, i) => update[f.id] = {sortOrder: i});
+        from != null && (update[moved.id].fieldSetId = fieldSetId);
+
+        await me.save('Field', update)
+    }
+
+    /**
+     * @param {String} entity FieldSet or Field
+     * @param {Object} update JMAP set update
+     * @protected
+     */
+    async save(entity, update) {
+        let me = this;
+
+        me.saving = true;
+
+        try {
+            await client.set(entity, {update})
+        } catch (e) {
+            notifyError(me, e)
+        }
+
+        // moves wait for the reload: they work on the rows shown (load() reports its errors)
+        me.isDestroyed || await me.load();
+        me.saving = false
     }
 
     /**

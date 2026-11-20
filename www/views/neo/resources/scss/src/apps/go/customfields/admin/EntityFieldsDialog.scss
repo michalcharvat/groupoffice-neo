@@ -1,4 +1,5 @@
-// GO.customfields.admin.EntityFieldsDialog: field sets as header rows, their fields indented
+// GO.customfields.admin.EntityFieldsDialog: field sets as header rows, their fields indented;
+// rows the user may move can be dragged
 .neo-theme-go .go-cf-entity-dialog {
     .go-cf-entity-tbar {
         gap    : .8rem;
@@ -17,6 +18,10 @@
         td:first-child {
             font-weight: 600;
         }
+    }
+
+    .go-cf-drag {
+        cursor: grab;
     }
 
     .go-cf-field-row td:first-child {
