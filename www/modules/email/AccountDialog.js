@@ -80,7 +80,7 @@ GO.email.AccountDialog = function(config) {
 		});
 		this.btnGetRefreshToken = new Ext.Button({
 			iconCls: 'ic-refresh',
-			text: 'Refresh token',
+			text: t('Refresh token', 'oauth2client', 'community'),
 			hidden: go.util.empty(this.oauth2ClientCombo.getValue()),
 			anchor: '20%',
 			tooltip: t('Request or update a refresh token in a separate window.','oauth2client','community'),
