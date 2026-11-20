@@ -127,7 +127,7 @@ Present and complete: 14.
 
 | Area | 26.x feature | 26.x ref | neo | Status |
 |---|---|---|---|---|
-| Behave as module | Menu icon is the bookmark's logo | extjs3/Module.js:24-30 | Material icon `bookmark` | open |
+| Behave as module | Menu icon is the bookmark's logo | extjs3/Module.js:24-30 | Material icon `bookmark` | fixed (`iconUrl` in the registry, main menu item `image`) |
 
 ## Small modules
 

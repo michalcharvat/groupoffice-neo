@@ -5,7 +5,7 @@ Shell, components and gotchas: `views/neo/README.md`.
 
 | File | What |
 |---|---|
-| `Index.mjs` | registers the module; `onLogin` registers every bookmark with `behaveAsModule` as its own module `bookmarks-<id>` (ExtJS `Module.js` `initModule()`), so it needs a reload like in ExtJS |
+| `Index.mjs` | registers the module; `onLogin` registers every bookmark with `behaveAsModule` as its own module `bookmarks-<id>` with its logo as main menu icon (`iconUrl`; ExtJS `Module.js` `initModule()`), so it needs a reload like in ExtJS |
 | `view/BookmarksMain.mjs` | toolbar (add, toggle view, administrate categories, category filter, search) and a card layout: the bookmarks, or one bookmark's page (`BookmarkFrame`) |
 | `view/BookmarksView.mjs` | bookmarks per category as links; "grid" (tiles) or "columns" (GOUI column view), remembered in `state-bookmarks-main` |
 | `view/BookmarkFrame.mjs` | a page in an iframe with "open in new tab"; main view of the `bookmarks-<id>` modules |

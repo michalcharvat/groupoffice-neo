@@ -6,6 +6,7 @@ import MenuList from '../../node_modules/neo.mjs/src/menu/List.mjs';
  *     items: [{text: 'Edit', icon: 'edit', handler}, {separator: true}, {text: 'Delete', icon: 'delete', disabled: true}]
  *
  * An item's `badge` shows a count at its end (header main menu, see src/Badges.mjs).
+ * An item's `image` (URL) shows a picture instead of the icon, e.g. a bookmark's logo.
  *
  * GO.button.Button uses it for its `menu`.
  */
@@ -28,18 +29,28 @@ class List extends MenuList {
      */
     itemBadges = []
 
+    /**
+     * Image URL per item index, like itemIcons
+     * @member {String[]} itemImages=[]
+     */
+    itemImages = []
+
     construct(config) {
         this.itemIcons  = (config.items || []).map(item => item?.icon || null);
         this.itemBadges = (config.items || []).map(item => item?.badge || null);
+        this.itemImages = (config.items || []).map(item => item?.image || null);
         super.construct(config)
     }
 
     createItemContent(record, index) {
         const content = super.createItemContent(record, index),
               icon    = this.itemIcons[index],
-              badge   = this.itemBadges[index];
+              badge   = this.itemBadges[index],
+              image   = this.itemImages[index];
 
-        if (icon && Array.isArray(content) && !record.iconCls) {
+        if (image && Array.isArray(content) && !record.iconCls) {
+            content.unshift({tag: 'img', cls: ['neo-menu-icon', 'go-menu-image'], src: image, alt: ''})
+        } else if (icon && Array.isArray(content) && !record.iconCls) {
             content.unshift({tag: 'i', cls: ['neo-menu-icon', 'go-icon'], text: icon})
         }
 

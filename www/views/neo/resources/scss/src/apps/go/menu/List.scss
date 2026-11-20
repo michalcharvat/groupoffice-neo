@@ -33,6 +33,17 @@
         margin: 0;
     }
 
+    // an item's picture instead of the icon (bookmark logo as module)
+    // as wide as a Material icon glyph (1.2em), so the texts line up
+    .neo-menu-icon.go-menu-image {
+        box-sizing: content-box;
+        height    : go.dp(24);
+        margin    : 0;
+        object-fit: contain;
+        padding   : 0 go.dp(2.4);
+        width     : go.dp(24);
+    }
+
     // count of a module in the header main menu (src/Badges.mjs)
     .go-menu-badge {
         background-color: var(--c-danger, #c62828);

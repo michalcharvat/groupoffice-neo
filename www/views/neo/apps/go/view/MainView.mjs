@@ -155,6 +155,7 @@ class MainView extends Container {
             menu     : {align: RIGHT, items: available.map(m => ({
                 text   : m.title,
                 icon   : m.icon || 'apps',
+                image  : m.iconUrl || null,
                 badge  : badges.text(m.name) || null,
                 handler: () => Neo.Main.setRoute({value: m.name, windowId: me.windowId})
             }))}
