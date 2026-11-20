@@ -4,7 +4,9 @@ import HashHistory    from '../../../node_modules/neo.mjs/src/util/HashHistory.m
 import Toolbar        from '../../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import GoButton       from '../../../src/button/Button.mjs';
 import MenuList       from '../../../src/menu/List.mjs';
-import {avatarColor, initials} from '../../../src/Format.mjs';
+import {avatarColor, escapeHtml, initials} from '../../../src/Format.mjs';
+import {classicAppByRoute, classicUrl, getClassicApps} from '../../../src/classicApps.mjs';
+import {resolveRoute} from '../../../src/link/linkTypes.mjs';
 import client         from '../../../src/jmap/Client.mjs';
 import GlobalSearch   from '../../../src/view/GlobalSearch.mjs';
 import ModuleRegistry from '../../../src/ModuleRegistry.mjs';
@@ -152,13 +154,13 @@ class MainView extends Container {
             cls      : ['go-header-button', 'go-main-menu-button'],
             reference: 'mainMenuButton',
             tooltip  : t('Main menu'),
-            menu     : {align: RIGHT, items: available.map(m => ({
+            menu     : {align: RIGHT, items: [...available.map(m => ({
                 text   : m.title,
                 icon   : m.icon || 'apps',
                 image  : m.iconUrl || null,
                 badge  : badges.text(m.name) || null,
                 handler: () => Neo.Main.setRoute({value: m.name, windowId: me.windowId})
-            }))}
+            })), ...me.classicMenuItems()]}
         }, {
             // go.util.avatar(): initials on a colour from the name
             module : GoButton,
@@ -203,10 +205,8 @@ class MainView extends Container {
 
         me.getReference('topbar').addDomListeners({contextmenu: me.onTabContextMenu, scope: me});
 
-        me.getReference('search').resolveRoute = (entity, id) => {
-            const module = available.find(m => m.routes?.[entity]);
-            return module ? `${module.name}/${module.routes[entity](id)}` : null
-        };
+        // one resolver for search, links, alerts and reminders: a neo route or "classic/<hash>"
+        me.getReference('search').resolveRoute = resolveRoute;
 
         // load the module code now: a popout click must reach window.open() while the
         // browser still counts it as user activation
@@ -372,6 +372,72 @@ class MainView extends Container {
         }
     }
 
+    /**
+     * Apps menu items of the modules only the classic client has (docs/neo-switch.md, D3):
+     * below the neo modules, each opens the classic client in a new browser tab
+     * @returns {Object[]}
+     */
+    classicMenuItems() {
+        const apps = getClassicApps();
+
+        return apps.length ? [{separator: true}, ...apps.map(app => ({
+            // server data: the menu renders text as HTML
+            text   : escapeHtml(app.title),
+            icon   : 'open_in_new',
+            handler: () => this.openClassic(app.route)
+        }))] : []
+    }
+
+    /**
+     * Open the classic client at a hash in a new browser tab, for that tab only
+     * @param {String} hash without "#"
+     */
+    openClassic(hash) {
+        Neo.Main.windowOpen({url: classicUrl(hash), windowName: '_blank', windowId: this.windowId})
+    }
+
+    /**
+     * Hashes neo has no module for (docs/neo-switch.md, D5):
+     * - "classic/<hash>": a link, search result or alert of a classic-only module, opened in a
+     *   new tab while this window goes back to where it was
+     * - "<entity>/<id>" (Entity::url(), e.g. "contact/5"): the neo route of the entity, else the
+     *   classic client in this window when one of its modules has the entity
+     * - "<module>" of a classic-only module: the classic client in this window
+     * @param {String} name first part of the hash
+     * @param {String[]} rest
+     * @returns {Boolean} handled
+     */
+    routeUnknownHash(name, rest) {
+        const me = this;
+
+        if (name === 'classic') {
+            rest.length && me.openClassic(rest.join('/'));
+            Neo.Main.setRoute({value: me.activeHash || '', windowId: me.windowId});
+            return true
+        }
+
+        if (rest.length === 1 && rest[0] !== '') {
+            const route = resolveRoute(name, rest[0]);
+
+            if (route?.startsWith('classic/')) {
+                Neo.Main.redirectTo({url: classicUrl(route.slice(8)), windowId: me.windowId});
+                return true
+            }
+
+            if (route) {
+                Neo.Main.setRoute({value: route, windowId: me.windowId});
+                return true
+            }
+        }
+
+        if (classicAppByRoute(name)) {
+            Neo.Main.redirectTo({url: classicUrl([name, ...rest].join('/')), windowId: me.windowId});
+            return true
+        }
+
+        return false
+    }
+
     async onHashChange({hashString, windowId}) {
         // HashHistory is shared by all windows of the App worker
         if (windowId && windowId !== this.windowId) {
@@ -387,7 +453,12 @@ class MainView extends Container {
             return
         }
 
+        if (!module && me.routeUnknownHash(name, rest)) {
+            return
+        }
+
         me.routeModule = module?.name || null;
+        me.activeHash  = hashString || null;
 
         if (!module) {
             return

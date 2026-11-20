@@ -1,3 +1,4 @@
+import {classicEntityRoute} from '../classicApps.mjs';
 import client from '../jmap/Client.mjs';
 import ModuleRegistry from '../ModuleRegistry.mjs';
 import {t} from '../Translate.mjs';
@@ -51,16 +52,26 @@ export function linkGroup(entity, filter=null) {
 }
 
 /**
- * Hash of an entity in a neo module (ModuleRegistry `routes`), like the header
- * search's resolveRoute in MainView
+ * Hash of an entity: the neo module that shows it (ModuleRegistry `routes`, entity name
+ * matched case-insensitively, so Entity::url()'s "contact/5" finds `Contact`), else
+ * "classic/<hash>" when only the classic client has its module (src/classicApps.mjs;
+ * MainView opens it there). Used by the header search, links, alerts, reminders and hashes.
  * @param {String} entity
  * @param {String|Number} entityId
- * @returns {String|null} e.g. "notes/note/5", null when no neo module shows it
+ * @returns {String|null} e.g. "notes/note/5", "classic/sftourstour/5", null when no client shows it
  */
 export function resolveRoute(entity, entityId) {
-    const module = ModuleRegistry.getAvailable().find(m => m.routes?.[entity]);
+    const lower = String(entity || '').toLowerCase();
+    let key;
+    const module = lower && ModuleRegistry.getAvailable().find(m =>
+        (key = Object.keys(m.routes || {}).find(k => k.toLowerCase() === lower)));
 
-    return module ? `${module.name}/${module.routes[entity](entityId)}` : null
+    if (module) {
+        return `${module.name}/${module.routes[key](entityId)}`
+    }
+
+    const classic = classicEntityRoute(entity, entityId);
+    return classic ? 'classic/' + classic : null
 }
 
 /**

@@ -5,6 +5,7 @@ namespace go\core\controller;
 use go\core\Controller;
 use go\core\exception\Forbidden;
 use go\core\jmap\exception\InvalidArguments;
+use go\core\webclient\Neo;
 use go\core\webclient\Webclient as WebclientChooser;
 
 /**
@@ -37,5 +38,18 @@ class Webclient extends Controller {
 		WebclientChooser::setPreference($client);
 
 		return ['client' => $client];
+	}
+
+	/**
+	 * Modules of the logged-in user with a main panel in the classic client, which the neo
+	 * apps menu opens there (docs/neo-switch.md, D3)
+	 *
+	 * @apiPermission Module access: lists only enabled modules the user may read (module ACL), with their title and classic route; the classic client checks permissions again when one opens.
+	 * @apiReadOnly
+	 * @return array ['list' => [['package' => ?string, 'name' => string, 'title' => string, 'route' => string], ...]]
+	 */
+	public function classicApps(): array
+	{
+		return ['list' => Neo::get()->classicApps()];
 	}
 }

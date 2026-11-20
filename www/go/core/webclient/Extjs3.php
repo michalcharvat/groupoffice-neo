@@ -473,30 +473,71 @@ class Extjs3 {
 					"go.package = '" . $pkg . "'; ".
 					"go.Translate.setModule('" . $pkg . "', '" .$module->name . "'); ";
 
-				$prefix = "";
-				if ($module->moduleManager instanceof \go\core\Module) {
-					$prefix = dirname(str_replace("\\", "/", get_class($module->moduleManager))) . "/views/extjs3/";
-					$scriptsFile = $module->moduleManager->path() . 'views/extjs3/scripts.txt';
-
-					//fallback to old dir
-					$modulePath = GO::config()->root_path . 'modules/' . $module->moduleManager->getName() . '/';
-				} else {
-					$scriptsFile = false;
-					$modulePath = $module->moduleManager->path();
-				}
-
-				if (!$scriptsFile || !file_exists($scriptsFile)) {
-					$scriptsFile = $modulePath . 'scripts.txt';
-					if (!file_exists($scriptsFile))
-						$scriptsFile = $modulePath . 'views/Extjs3/scripts.txt';
-
-				}
-
-				foreach($this->readScriptsTxt($scriptsFile, $prefix) as $s) {
+				foreach($this->extjsScriptFiles($module) as $s) {
 					$scripts[] = $s;
 				}
 			}
 		return $scripts;
+	}
+
+	/**
+	 * The ExtJS script files of a module, from its scripts.txt
+	 *
+	 * @param \GO\Base\Model\Module $module
+	 * @return \Generator<File>
+	 */
+	private function extjsScriptFiles($module): \Generator {
+		$prefix = "";
+		if ($module->moduleManager instanceof \go\core\Module) {
+			$prefix = dirname(str_replace("\\", "/", get_class($module->moduleManager))) . "/views/extjs3/";
+			$scriptsFile = $module->moduleManager->path() . 'views/extjs3/scripts.txt';
+
+			//fallback to old dir
+			$modulePath = GO::config()->root_path . 'modules/' . $module->moduleManager->getName() . '/';
+		} else {
+			$scriptsFile = false;
+			$modulePath = $module->moduleManager->path();
+		}
+
+		if (!$scriptsFile || !file_exists($scriptsFile)) {
+			$scriptsFile = $modulePath . 'scripts.txt';
+			if (!file_exists($scriptsFile))
+				$scriptsFile = $modulePath . 'views/Extjs3/scripts.txt';
+
+		}
+
+		yield from $this->readScriptsTxt($scriptsFile, $prefix);
+	}
+
+	/**
+	 * The classic route of a module's main panel, or null when its classic UI has no main panel
+	 * (only settings, hooks or no UI at all)
+	 *
+	 * Looks in the module's ExtJS scripts and GOUI bundle for the three ways a classic main panel
+	 * is registered: go.Modules.register(…, {mainPanel: …}), GOUI modules.addMainPanel() and the
+	 * legacy GO.moduleManager.addModule('<route>', <panel class>, …). Used by the neo webclient to
+	 * offer the module in the classic client (docs/neo-switch.md, D3).
+	 *
+	 * @param \GO\Base\Model\Module $module
+	 * @return string|null the hash route without '#'
+	 */
+	public function classicMainPanelRoute($module): ?string {
+		$files = iterator_to_array($this->extjsScriptFiles($module), false);
+		$bundle = new File($module->moduleManager->path() . 'views/goui/dist/Index.js');
+		if ($bundle->exists()) {
+			$files[] = $bundle;
+		}
+
+		foreach ($files as $file) {
+			$js = $file->getContents();
+			if (preg_match('/moduleManager\.addModule\(\s*[\'"]([a-z0-9_]+)[\'"]\s*,\s*[A-Za-z_$][\w.$]*/i', $js, $m)) {
+				return $m[1];
+			}
+			if (preg_match('/\bmainPanel\s*:\s*(?!null\b|false\b|undefined\b)[^\s,}]/', $js) || str_contains($js, 'addMainPanel(')) {
+				return $module->name;
+			}
+		}
+		return null;
 	}
 
 }

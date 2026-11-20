@@ -77,6 +77,52 @@ class Neo {
 	}
 
 	/**
+	 * Modules of the logged-in user that have a main panel in the classic client
+	 *
+	 * The neo shell offers those without a neo main view in its apps menu; they open in the
+	 * classic client (docs/neo-switch.md, D3). Lists only enabled modules the user may read
+	 * (GO::modules()->getAllModules() applies the module ACL); the classic client checks
+	 * permissions again when the module opens.
+	 *
+	 * @return array[] [['package' => string|null, 'name' => string, 'title' => string, 'route' => string, 'entities' => string[]], ...]
+	 */
+	public function classicApps(): array
+	{
+		// scanning the scripts is per installation, the ACL filter per user
+		$routes = $this->cached('neoClassicRoutes', function () {
+			$routes = [];
+			foreach (GO::modules()->getAllModules(true) as $module) {
+				$route = Extjs3::get()->classicMainPanelRoute($module);
+				if ($route !== null) {
+					$routes[$module->name] = $route;
+				}
+			}
+			return $routes;
+		});
+
+		// entity types per module id: the classic client opens #<entity>/<id> of its modules
+		$entities = [];
+		foreach (\go\core\orm\EntityType::findAll() as $type) {
+			$entities[$type->getModuleId()][] = $type->getName();
+		}
+
+		$apps = [];
+		foreach (GO::modules()->getAllModules() as $module) {
+			if (!$module->enabled || !isset($routes[$module->name])) {
+				continue;
+			}
+			$apps[] = [
+				'package' => $module->package ?: null,
+				'name' => $module->name,
+				'title' => $module->moduleManager->getTitle(),
+				'route' => $routes[$module->name],
+				'entities' => $entities[$module->id] ?? []
+			];
+		}
+		return $apps;
+	}
+
+	/**
 	 * Extra buttons of the login screen (ExtJS: go.login.LoginDialog.addSignInButton()
 	 * in a module's App::EVENT_HEAD script). A module's views/neo/login.php returns
 	 * [['text' => 'Sign in with X', 'url' => 'api/page.php/...'], ...], url relative to GO.

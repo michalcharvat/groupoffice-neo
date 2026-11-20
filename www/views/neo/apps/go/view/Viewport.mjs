@@ -1,3 +1,4 @@
+import {loadClassicApps} from '../../../src/classicApps.mjs';
 import BaseViewport from '../../../node_modules/neo.mjs/src/container/Viewport.mjs';
 import client       from '../../../src/jmap/Client.mjs';
 import LoginView    from './LoginView.mjs';
@@ -69,6 +70,8 @@ class Viewport extends BaseViewport {
         if (!me.mainView) {
             // modules may add modules for this user (ModuleRegistry onLogin)
             await ModuleRegistry.init();
+            // modules only the classic client has: apps menu launchers, classic deep links
+            await loadClassicApps();
 
             // logged out or shown again meanwhile
             if (me.isDestroyed || me.showToken !== token) {
