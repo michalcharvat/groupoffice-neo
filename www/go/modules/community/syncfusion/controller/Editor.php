@@ -43,6 +43,8 @@ class Editor extends Controller
 	 *
 	 * @param array $params {fileId?: int, blobId?: string}
 	 * @return array The SFDT data from the Docker service
+	 * @apiPermission Checked in Editor::getFileContentFromFileId(): read permission on the file. A blob is read by its id like download.php (the id is the content hash).
+	 * @apiReadOnly
 	 */
 	public function openDocument(array $params): array
 	{
@@ -68,6 +70,7 @@ class Editor extends Controller
 			'sfdt' => $result,
 			'fileName' => $fileContent['name'],
 			'canEdit' => $fileContent['canEdit'],
+			'client' => $this->clientSettings($settings),
 		];
 	}
 
@@ -76,6 +79,8 @@ class Editor extends Controller
 	 *
 	 * @param array $params {fileId?: int, blobId?: string}
 	 * @return array The spreadsheet JSON data
+	 * @apiPermission Checked in Editor::getFileContentFromFileId(): read permission on the file. A blob is read by its id like download.php (the id is the content hash).
+	 * @apiReadOnly
 	 */
 	public function openSpreadsheet(array $params): array
 	{
@@ -101,6 +106,7 @@ class Editor extends Controller
 			'data' => $result,
 			'fileName' => $fileContent['name'],
 			'canEdit' => $fileContent['canEdit'],
+			'client' => $this->clientSettings($settings),
 		];
 	}
 
@@ -112,6 +118,7 @@ class Editor extends Controller
 	 *
 	 * @param array $params {blobId: string, fileId?: int}
 	 * @return array
+	 * @apiPermission Checked in Editor::saveToFile(): write permission on the file and not locked; for doc, dotx and rtf read permission on the file and write permission on its folder. Without a fileId nothing is changed.
 	 */
 	public function save(array $params): array
 	{
@@ -136,6 +143,7 @@ class Editor extends Controller
 	 *
 	 * @param array $params {jsonData: string, fileName: string, saveType?: string}
 	 * @return array {success: bool, blobId?: string, error?: string}
+	 * @apiPermission Module access: converts the client's own spreadsheet data into a new blob; no GroupOffice data is read or changed.
 	 */
 	public function exportSpreadsheet(array $params): array
 	{
@@ -222,6 +230,24 @@ class Editor extends Controller
 		return [
 			'success' => true,
 			'blobId' => $blob->id,
+		];
+	}
+
+	/**
+	 * Settings the editor needs in the browser. The license key is among them: the Syncfusion client library
+	 * validates its license in the browser (ej.base.registerLicense()), there is no server-side registration.
+	 * The service secret never leaves the server.
+	 *
+	 * @param Settings $settings
+	 * @return array{librarySource: string, cdnUrl: string, licenseKey: string, spreadsheetServiceUrl: string}
+	 */
+	private function clientSettings(Settings $settings): array
+	{
+		return [
+			'librarySource' => $settings->librarySource,
+			'cdnUrl' => $settings->cdnUrl,
+			'licenseKey' => $settings->licenseKey,
+			'spreadsheetServiceUrl' => $settings->spreadsheetServiceUrl,
 		];
 	}
 
@@ -419,6 +445,16 @@ class Editor extends Controller
 	 */
 	private function saveAsNewDocx($fileRecord, Blob $blob): array
 	{
+		// The new file is made from the original, so the user must be allowed to read it
+		if ($fileRecord->getPermissionLevel() < \GO\Base\Model\Acl::READ_PERMISSION) {
+			return ['success' => false, 'error' => 'Access denied.'];
+		}
+
+		// Like a replace: a locked document is opened read-only and is not saved, not even as a copy
+		if ($fileRecord->isLocked()) {
+			return ['success' => false, 'error' => 'File is locked.'];
+		}
+
 		$folder = $fileRecord->folder;
 		if (!$folder || $folder->getPermissionLevel() < \GO\Base\Model\Acl::WRITE_PERMISSION) {
 			return ['success' => false, 'error' => 'Access denied.'];

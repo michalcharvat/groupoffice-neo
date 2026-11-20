@@ -46,7 +46,8 @@ class Settings extends core\Settings
 	/**
 	 * The settings model is serialized to every user via the Module entity
 	 * (the client needs licenseKey, cdnUrl etc.). The JWT secret is only used
-	 * server-side and in the admin settings form, so hide it from non-admins.
+	 * server-side: it is write-only, admins too can set it but never read it back.
+	 * Settings forms send changed values only, so an untouched empty field keeps it.
 	 *
 	 * @param array|null $properties
 	 * @return array
@@ -55,10 +56,7 @@ class Settings extends core\Settings
 	{
 		$arr = parent::toArray($properties);
 
-		$authState = \go\core\App::get()->getAuthState();
-		if (!$authState || !$authState->isAdmin()) {
-			unset($arr['serviceSecret']);
-		}
+		unset($arr['serviceSecret']);
 
 		return $arr;
 	}
