@@ -3,6 +3,7 @@ namespace go\modules\community\emailfavorites\controller;
 
 use go\core\auth\TemporaryState;
 use go\core\model\Module as ModuleModel;
+use go\core\orm\EntityType;
 use go\core\model\Permission;
 use go\core\model\User;
 use go\modules\community\emailfavorites\Module;
@@ -191,5 +192,68 @@ class FavoritefolderTest extends TestCase
 
 		$this->assertArrayHasKey('new', $result['created'] ?? [], var_export($result, true));
 		// tearDownAfterClass() deletes the favorites of the test users
+	}
+
+	public function testChangesDoNotReturnFavoritesOfOthers(): void
+	{
+		EntityType::push();
+		$since = FavoritefolderModel::getState();
+
+		// the owner changes one favorite and creates and destroys another
+		$this->favorite->name = 'Changed';
+		$this->assertTrue($this->favorite->save(), $this->favorite->getValidationErrorsAsString());
+		$destroyed = new FavoritefolderModel();
+		$destroyed->userId = self::$owner->id;
+		$destroyed->account_id = 1;
+		$destroyed->mailbox = 'Trash';
+		$destroyed->name = 'Trash';
+		$this->assertTrue($destroyed->save(), $destroyed->getValidationErrorsAsString());
+		EntityType::push();
+		$this->assertTrue(FavoritefolderModel::delete(['id' => $destroyed->id]));
+		EntityType::push();
+
+		self::actAs(self::$other->id);
+		$result = (new Favoritefolder())->changes(['sinceState' => $since])->getArray();
+		$ids = array_map('intval', array_merge($result['changed'], $result['removed']));
+		$this->assertNotContains((int) $this->favorite->id, $ids, var_export($result, true));
+		$this->assertNotContains((int) $destroyed->id, $ids, var_export($result, true));
+		// the client still gets the new state, so it doesn't ask again
+		$this->assertEquals(FavoritefolderModel::getState(), $result['newState']);
+		$this->assertFalse($result['hasMoreChanges']);
+
+		self::actAs(self::$owner->id);
+		$result = (new Favoritefolder())->changes(['sinceState' => $since])->getArray();
+		$this->assertContains((int) $this->favorite->id, array_map('intval', $result['changed']), var_export($result, true));
+		$this->assertContains((int) $destroyed->id, array_map('intval', $result['removed']), var_export($result, true));
+		$this->assertNotContains((int) $destroyed->id, array_map('intval', $result['changed']), var_export($result, true));
+	}
+
+	public function testDeleteKeepsOwnersOfDeletionsStillInTheChangeLog(): void
+	{
+		$db = go()->getDbConnection();
+		$destroyed = new FavoritefolderModel();
+		$destroyed->userId = self::$owner->id;
+		$destroyed->account_id = 1;
+		$destroyed->mailbox = 'Trash';
+		$destroyed->name = 'Trash';
+		$this->assertTrue($destroyed->save(), $destroyed->getValidationErrorsAsString());
+		EntityType::push();
+		$this->assertTrue(FavoritefolderModel::delete(['id' => $destroyed->id]));
+		EntityType::push();
+
+		// both owners are older than the change log retention, but only the first one still has its changes in the log
+		$old = (new \DateTime())->modify('-' . (go()->getSettings()->syncChangesMaxAge + 1) . ' days');
+		$db->update('em_folders_favorites_destroyed', ['destroyedAt' => $old], ['id' => $destroyed->id])->execute();
+		$orphanId = 4000000000;
+		$db->insert('em_folders_favorites_destroyed', ['id' => $orphanId, 'userId' => self::$owner->id, 'destroyedAt' => $old])->execute();
+
+		// deleting another favorite prunes the owners
+		$this->assertTrue(FavoritefolderModel::delete(['id' => $this->favorite->id]));
+		EntityType::push();
+
+		$ids = array_map('intval', array_column((new \go\core\db\Query())->select('id')->from('em_folders_favorites_destroyed')
+			->where('id', 'IN', [$destroyed->id, $orphanId])->all(), 'id'));
+		$this->assertContains((int) $destroyed->id, $ids);
+		$this->assertNotContains($orphanId, $ids);
 	}
 }
