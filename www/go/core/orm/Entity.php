@@ -1183,10 +1183,13 @@ abstract class Entity extends Property {
 			return false;
 		}
 		if(!$query->isJoined('core_search', 'search')) {
+			// Under an OR or NOT, an INNER join would drop the items without a search cache row that another branch
+			// or the NOT matches. Search::addCriteria() checks the words with EXISTS there, which fails for those.
 			$query->join(
 				'core_search',
 				'search',
-				'search.entityId = ' . $query->getTableAlias() . '.id and search.entityTypeId = ' . static::entityType()->getId()
+				'search.entityId = ' . $query->getTableAlias() . '.id and search.entityTypeId = ' . static::entityType()->getId(),
+				$query->isFilteringInOrOrNot() ? 'LEFT' : 'INNER'
 			);
 		}
 

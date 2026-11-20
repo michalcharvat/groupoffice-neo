@@ -63,6 +63,13 @@ class Search extends AclOwnerEntity {
 		$words = StringUtil::splitTextKeywords($searchPhrase, false);
 		$words = array_unique($words);
 
+		if (empty($words)) {
+			// Without words, the text filter only requires a search row, as the INNER join of core_search does.
+			// Under an OR or NOT, Entity::useSearchableTraitForSearch() joins it with LEFT, and a later filter of
+			// the query may reuse that join.
+			$criteria->where('search.id IS NOT NULL');
+		}
+
 		if ($query->isFilteringInOrOrNot() || $query->isJoined('core_search_word', 'w0')) {
 			// Under an OR or NOT, a join of the word rows would drop the items that another branch matches and
 			// would let the other word rows of an item pass the NOT. And an earlier text filter of this query may
@@ -245,13 +252,29 @@ class Search extends AclOwnerEntity {
 	{
 		return parent::defineFilters()
 						->add("link", function(Criteria $criteria, $value, Query $query) {
-							
+							$fromEntityTypeId = EntityType::findByName($value['entity'])->getId();
+
+							if ($query->isFilteringInOrOrNot() || $query->isJoined('core_link', 'link')) {
+								// Under an OR or NOT, the join would drop the items that another branch matches and
+								// would let the other links of an item pass the NOT. And an earlier link filter of
+								// this query may own the join already. Check the link with EXISTS then.
+								$criteria->whereExists(
+									(new DbQuery())
+										->select('linkFilter.toId')
+										->from('core_link', 'linkFilter')
+										->where('linkFilter.toId = search.entityId AND linkFilter.toEntityTypeId = search.entityTypeId')
+										->andWhere('linkFilter.fromId', '=', $value['id'])
+										->andWhere('linkFilter.fromEntityTypeId', '=', $fromEntityTypeId)
+								);
+								return;
+							}
+
 							$on = 'search.entityId = link.toId AND search.entityTypeId = link . toEntityTypeId';
-								
-							$query->join('core_link', 'link', $on); 
+
+							$query->join('core_link', 'link', $on);
 
 							$criteria->where('fromId', '=', $value['id'])
-											->andWhere('fromEntityTypeId', '=', EntityType::findByName($value['entity'])->getId());							
+											->andWhere('fromEntityTypeId', '=', $fromEntityTypeId);
 						})
 						->add('entityId', function (Criteria $criteria, $value){
 							$criteria->where(['entityId' => $value]);		
