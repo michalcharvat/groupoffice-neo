@@ -27,7 +27,7 @@ Status: **neo** = neo.mjs 13.4 ships it, usable as is (maybe GO styling);
 | DescriptionList | – | GO.neo (`GO.component.DescriptionList`) |
 | Avatar | – | partial (`Format.avatarHtml`, HTML only) |
 | ToolTip | tooltip/Base | neo |
-| Sortable, DraggableComponent | draggable/DragZone, DropZone | GO.neo (`enableDragDrop()` with `position: 'between'` (or `'both'`), `horizontal`, `dropIndex()`; module sorting, notes onto note books, Dev demo DragAndDrop) |
+| Sortable, DraggableComponent | draggable/DragZone, DropZone | GO.neo (`enableDragDrop()` with `position: 'between'` (or `'both'`), `horizontal`, `dropIndex()`; `accept: {dragSelector: dropSelector}` for rows of different kinds and `dropInGroups()` for grouped lists (custom field sets and their fields); module sorting, custom fields admin, notes onto note books, Dev demo DragAndDrop. neo's `draggable/*/SortZone` (list, tree, container) is pointer based and sorts one component's own items, so it doesn't fit tables with kinds of rows) |
 | MaterialIcon | – | GO.neo (`go-icon` CSS) |
 | CollapseButton | – | GO.neo (`GO.detail.Card`) |
 | Notifier | component/Toast | GO.neo (`Notify.mjs`: toasts; `alerts/NotificationCenter.mjs` + `NotificationPanel.mjs`: the bell's notification area with core alerts over SSE, legacy reminders, snooze/dismiss, desktop notifications and sound via addon `WS/Notifications`; `alerts/ActivityWatcher.mjs`: logout on inactivity) |
