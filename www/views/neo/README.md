@@ -179,6 +179,9 @@ text (no rich text editor, labels, attachments), no import/export menu. Dark mod
   header drag stores left/top/width/height in `style`, neo's Resizable writes only
   `wrapperStyle`, and a moved dialog no longer resized. `GO.view.Dialog` uses
   `src/plugin/DialogResizable.mjs`, which writes the new geometry into both.
+  neo has no header double-click; `GO.view.Dialog` toggles maximize on it (only with a
+  visible `maximize` tool, not on the tools themselves). It needs no drag guard: neo's
+  pointer sensor starts a drag only after 5px of movement.
 - **HTML rendering**: grid renderer strings and List `displayField` go to innerHTML.
   Escape text (`Format.escapeHtml`, `src/list/TextList.mjs` for lists and ComboBox
   `listConfig`).
