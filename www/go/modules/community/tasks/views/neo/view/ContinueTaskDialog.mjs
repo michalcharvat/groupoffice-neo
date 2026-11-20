@@ -1,7 +1,7 @@
 import RangeField   from '../../../../../../../views/neo/node_modules/neo.mjs/src/form/field/Range.mjs';
 import TextArea     from '../../../../../../../views/neo/node_modules/neo.mjs/src/form/field/TextArea.mjs';
 import {LEVEL_CREATE} from '../../../../../../../views/neo/src/Acl.mjs';
-import {addDays, toYmd} from '../../../../../../../views/neo/src/DateUtil.mjs';
+import {addDays, toYmd, userNow} from '../../../../../../../views/neo/src/DateUtil.mjs';
 import client       from '../../../../../../../views/neo/src/jmap/Client.mjs';
 import {escapeHtml}   from '../../../../../../../views/neo/src/Format.mjs';
 import DateTimeField from '../../../../../../../views/neo/src/form/field/DateTimeField.mjs';
@@ -90,7 +90,7 @@ class ContinueTaskDialog extends FormWindow {
 
         // GOUI: tomorrow at 08:00. After the load: loading resets every field of the form (an unnamed one is not sent or compared)
         me.on('formReady', () => {
-            me.getReference('continueAt').value = toYmd(addDays(new Date(), 1)) + 'T08:00:00'
+            me.getReference('continueAt').value = toYmd(addDays(userNow(), 1)) + 'T08:00:00'
         });
 
         me.form.on('beforesave', ({data}) => {

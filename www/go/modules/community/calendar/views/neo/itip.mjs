@@ -5,6 +5,7 @@ import calendarData from './data.mjs';
 import {windowUi} from './ui.mjs';
 import {ymdhis} from './util/date.mjs';
 import ItipPanel from './view/ItipPanel.mjs';
+import {userNow} from '../../../../../../views/neo/src/DateUtil.mjs';
 
 /**
  * The calendar in the e-mail client (GOUI views/goui/script/Index.ts addEmailAction()):
@@ -40,7 +41,7 @@ export async function openIcs({accountId, mailbox, uid, partId, encoding, fileId
         const data  = response.data || {},
               prefs = calendarData.user?.calendarPreferences || {};
 
-        const hour = new Date();
+        const hour = userNow();
         hour.setMinutes(0, 0, 0);
 
         data.start           ??= ymdhis(hour);

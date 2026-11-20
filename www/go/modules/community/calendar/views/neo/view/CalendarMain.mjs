@@ -40,6 +40,7 @@ import MonthView     from './MonthView.mjs';
 import SplitView     from './SplitView.mjs';
 import WeekView      from './WeekView.mjs';
 import YearView      from './YearView.mjs';
+import {userNow} from '../../../../../../../views/neo/src/DateUtil.mjs';
 
 const t = translator('community', 'calendar');
 
@@ -92,7 +93,7 @@ class CalendarMain extends MainThreeColumnPanel {
     static instances = new Set()
 
     /** @member {Date} date the shown date */
-    date = startOfDay(new Date())
+    date = startOfDay(userNow())
     /** @member {String} timeSpan */
     timeSpan = 'month'
     /** @member {Number|undefined} spanAmount */
@@ -324,7 +325,7 @@ class CalendarMain extends MainThreeColumnPanel {
                     module : Button,
                     icon   : 'today',
                     tooltip: t('Today'),
-                    handler: () => me.routeTo(me.currentRouteSpan(), new Date())
+                    handler: () => me.routeTo(me.currentRouteSpan(), userNow())
                 }, {
                     module : Button,
                     icon   : 'keyboard_arrow_right',
@@ -1060,7 +1061,7 @@ class CalendarMain extends MainThreeColumnPanel {
     }
 
     onNew() {
-        const start = new Date();
+        const start = userNow();
         start.setMinutes(0, 0, 0);
         CalendarView.newItem(start).save()
     }

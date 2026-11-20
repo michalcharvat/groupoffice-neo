@@ -1,5 +1,5 @@
 import Component     from '../../../../../../../views/neo/node_modules/neo.mjs/src/component/Base.mjs';
-import {toYmd}       from '../../../../../../../views/neo/src/DateUtil.mjs';
+import {toYmd, userNow} from '../../../../../../../views/neo/src/DateUtil.mjs';
 import {escapeHtml, smartDateTime} from '../../../../../../../views/neo/src/Format.mjs';
 import client        from '../../../../../../../views/neo/src/jmap/Client.mjs';
 import {notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
@@ -58,7 +58,7 @@ class TasksPortlet extends Component {
             const lists = await me.taskLists();
 
             const {list} = lists.length ? await client.queryGet('Task', {
-                filter    : {tasklistId: lists, complete: false, start: '<=' + toYmd(new Date())},
+                filter    : {tasklistId: lists, complete: false, start: '<=' + toYmd(userNow())},
                 sort      : [{property: 'start', isAscending: true}],
                 limit     : 50,
                 properties: ['id', 'title', 'start', 'due', 'percentComplete', 'priority']
@@ -71,7 +71,7 @@ class TasksPortlet extends Component {
             me.records = list;
 
             me.html = list.length ? list.map((task, i) => {
-                const overdue = task.due && task.due < toYmd(new Date());
+                const overdue = task.due && task.due < toYmd(userNow());
 
                 return `<div class="go-portlet-row" data-index="${i}">
                     <i class="go-icon go-portlet-icon">check_circle</i>

@@ -1,5 +1,5 @@
 import Component     from '../../../../../../../views/neo/node_modules/neo.mjs/src/component/Base.mjs';
-import {parseYmd}    from '../../../../../../../views/neo/src/DateUtil.mjs';
+import {parseYmd, userNow} from '../../../../../../../views/neo/src/DateUtil.mjs';
 import {avatarHtml, escapeHtml, formatDate, userFormat} from '../../../../../../../views/neo/src/Format.mjs';
 import client        from '../../../../../../../views/neo/src/jmap/Client.mjs';
 import {notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
@@ -56,7 +56,7 @@ class BirthdaysPortlet extends Component {
                 return
             }
 
-            const today = new Date();
+            const today = userNow();
             today.setHours(0, 0, 0, 0);
 
             me.records = list.map(contact => {

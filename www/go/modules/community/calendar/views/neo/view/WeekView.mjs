@@ -2,6 +2,7 @@ import {translator} from '../../../../../../../views/neo/src/Translate.mjs';
 import calendarData from '../data.mjs';
 import {addDays, addMinutes, dayNumber, diffDays, format, formatTime, minuteOfDay, parseDate, sameDay, startOfDay, weekOfYear, ymd, ymdhis} from '../util/date.mjs';
 import CalendarView from './CalendarView.mjs';
+import {userNow} from '../../../../../../../views/neo/src/DateUtil.mjs';
 
 const t = translator('community', 'calendar');
 
@@ -35,7 +36,7 @@ class WeekView extends CalendarView {
     }
 
     isToday() {
-        const now = new Date();
+        const now = userNow();
         return this.day <= now && now < addDays(this.day, this.days)
     }
 
@@ -100,7 +101,7 @@ class WeekView extends CalendarView {
 
     render() {
         let me       = this,
-            now      = new Date(),
+            now      = userNow(),
             today    = dayNumber(now),
             gridSize = calendarData.prefs.weekViewGridSize ?? 8,
             heads    = [],

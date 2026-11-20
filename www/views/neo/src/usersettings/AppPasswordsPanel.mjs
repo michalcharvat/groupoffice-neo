@@ -1,5 +1,6 @@
 import client          from '../jmap/Client.mjs';
 import {formatUserDateTime, formatDate, userFormat} from '../Format.mjs';
+import {toUserTime}    from '../DateUtil.mjs';
 import EntityListPanel from '../systemsettings/EntityListPanel.mjs';
 import {t}             from '../Translate.mjs';
 import ConfirmDialog   from '../view/ConfirmDialog.mjs';
@@ -31,7 +32,7 @@ class AppPasswordsPanel extends EntityListPanel {
             {text: t('Label'),        field: 'label', flex: true},
             {text: t('Protocols'),    render: record => (record.scopes || []).map(s => s.protocol).join(', ')},
             {text: t('Created'),      render: record => formatUserDateTime(record.createdAt)},
-            {text: t('Last used'),    render: record => record.lastUsedAt ? formatDate(new Date(record.lastUsedAt), userFormat.dateFormat) : ''},
+            {text: t('Last used'),    render: record => record.lastUsedAt ? formatDate(toUserTime(record.lastUsedAt), userFormat.dateFormat) : ''},
             {text: t('Last used IP'), field: 'lastUsedIp'}
         ],
         // hidden until it's known whose settings these are

@@ -1,6 +1,6 @@
 import {LEVEL_CREATE} from '../../../../../../views/neo/src/Acl.mjs';
 import client         from '../../../../../../views/neo/src/jmap/Client.mjs';
-import {toYmd}        from '../../../../../../views/neo/src/DateUtil.mjs';
+import {toYmd, userNow} from '../../../../../../views/neo/src/DateUtil.mjs';
 
 /**
  * "Add link" → "Task" in another item's detail (ExtJS Module.js linkWindow and
@@ -32,7 +32,7 @@ export default async function openLinkedTask({appName, windowId, entity, entityI
 
     // "Set today for start and due date when creating new tasks"
     if (settings.defaultDate) {
-        values.start = values.due = toYmd(new Date())
+        values.start = values.due = toYmd(userNow())
     }
 
     const title = ['Contact', 'Project', 'Project3'].includes(entity) ? record?.name : entity === 'Order' ? record?.order_id : null;

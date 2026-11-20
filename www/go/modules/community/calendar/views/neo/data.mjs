@@ -112,6 +112,8 @@ class CalendarData {
 
         dateSettings.firstWeekday = Number(this.user.firstWeekday ?? 1);
         dateSettings.timezone     = this.user.timezone || null;
+        // core dates (userNow(), Format) follow a time zone changed elsewhere too
+        client.user && client.setUser({id: client.user.id, timezone: this.user.timezone || null});
         dateSettings.timeFormat   = this.user.timeFormat || client.user.timeFormat || 'G:i';
 
         this.fire('change', {type: 'user'})

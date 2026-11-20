@@ -5,6 +5,7 @@ import client       from '../../../../../../../views/neo/src/jmap/Client.mjs';
 import {translator} from '../../../../../../../views/neo/src/Translate.mjs';
 import Dialog, {headerTools} from '../../../../../../../views/neo/src/view/Dialog.mjs';
 import {addDays, format, minuteOfDay, parseDate, startOfDay, ymd} from '../util/date.mjs';
+import {userNow} from '../../../../../../../views/neo/src/DateUtil.mjs';
 
 const t = translator('community', 'calendar');
 
@@ -39,7 +40,7 @@ class AvailabilityDialog extends Dialog {
     }
 
     /** @member {Date} day */
-    day = startOfDay(new Date())
+    day = startOfDay(userNow())
     /** @member {Object[]} principals */
     principals = []
     /** @member {Object} busy principal id → [{start, end}] minutes */
@@ -52,7 +53,7 @@ class AvailabilityDialog extends Dialog {
 
         let me = this;
 
-        me.day = startOfDay(me.start || new Date());
+        me.day = startOfDay(me.start || userNow());
 
         me.items = [{
             module: Toolbar,

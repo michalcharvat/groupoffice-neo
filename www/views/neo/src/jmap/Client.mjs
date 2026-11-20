@@ -9,12 +9,13 @@
  * Method calls made in the same tick are batched into one api/jmap.php request.
  */
 import {userFormat} from '../Format.mjs';
+import {setUserTimeZone} from '../DateUtil.mjs';
 import {t}          from '../Translate.mjs';
 
 /** User properties the shell keeps in client.user */
 export const USER_PROPERTIES = ['id', 'username', 'displayName', 'avatarId', 'dateFormat', 'timeFormat', 'language',
     'start_module', 'theme', 'themeColorScheme', 'isAdmin', 'mute_sound', 'mute_reminder_sound',
-    'mute_new_mail_sound', 'confirmOnMove'];
+    'mute_new_mail_sound', 'confirmOnMove', 'timezone'];
 
 class Client {
     /** Web root of Group Office, e.g. "/" */
@@ -156,14 +157,16 @@ class Client {
     }
 
     /**
-     * Takes the logged-in user's (changed) properties: date and time formats follow
+     * Takes the logged-in user's (changed) properties: date and time formats and the
+     * time zone follow
      * @param {Object|null} user User with USER_PROPERTIES
      */
     setUser(user) {
         this.user = user && this.user?.id === user.id ? {...this.user, ...user} : user || null;
 
         user?.dateFormat && (userFormat.dateFormat = user.dateFormat);
-        user?.timeFormat && (userFormat.timeFormat = user.timeFormat)
+        user?.timeFormat && (userFormat.timeFormat = user.timeFormat);
+        user && 'timezone' in user && setUserTimeZone(user.timezone)
     }
 
     /**

@@ -2,6 +2,7 @@ import {escapeHtml} from '../../../../../../../views/neo/src/Format.mjs';
 import calendarData from '../data.mjs';
 import {addDays, dayNames, dayNumber, formatTime, monthName, weekOfYear, weekStart, ymd} from '../util/date.mjs';
 import CalendarView from './CalendarView.mjs';
+import {userNow} from '../../../../../../../views/neo/src/DateUtil.mjs';
 
 /**
  * Twelve small months with a dot per item (GOUI YearView). Clicking a month, week or day
@@ -39,7 +40,7 @@ class YearView extends CalendarView {
 
     renderMonth(first) {
         let me       = this,
-            now      = new Date(),
+            now      = userNow(),
             today    = dayNumber(now),
             weekNbs  = calendarData.prefs.showWeekNumbers !== false,
             month    = first.getMonth(),

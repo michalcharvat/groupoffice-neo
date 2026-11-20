@@ -2,6 +2,7 @@ import {translator} from '../../../../../../../views/neo/src/Translate.mjs';
 import calendarData from '../data.mjs';
 import {addDays, dayNames, dayNumber, diffDays, format, startOfDay, weekDay, weekOfYear, weekStart, ymd} from '../util/date.mjs';
 import CalendarView from './CalendarView.mjs';
+import {userNow} from '../../../../../../../views/neo/src/DateUtil.mjs';
 
 const t = translator('community', 'calendar');
 
@@ -88,7 +89,7 @@ class MonthView extends CalendarView {
 
     render() {
         let me    = this,
-            today = dayNumber(new Date()),
+            today = dayNumber(userNow()),
             cn    = [me.renderHead()];
 
         me.viewModel.sort((a, b) => a.start - b.start);
@@ -104,7 +105,7 @@ class MonthView extends CalendarView {
     }
 
     renderHead() {
-        const now     = new Date(),
+        const now     = userNow(),
               current = this.month !== null && this.month === now.getMonth() && this.day <= now && now < addDays(this.day, this.days);
 
         return {

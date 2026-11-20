@@ -34,6 +34,7 @@ import TaskDetail    from './TaskDetail.mjs';
 import TaskDialog    from './TaskDialog.mjs';
 import TaskListDialog from './TaskListDialog.mjs';
 import TaskListList  from './TaskListList.mjs';
+import {userNow} from '../../../../../../../views/neo/src/DateUtil.mjs';
 
 const t = translator('community', 'tasks');
 
@@ -1109,7 +1110,7 @@ class TasksMain extends MainThreeColumnPanel {
 
         // "Set today for start and due date when creating new tasks"
         if (settings.defaultDate) {
-            const today = new Date(),
+            const today = userNow(),
                   ymd   = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
             values.start = values.due = ymd

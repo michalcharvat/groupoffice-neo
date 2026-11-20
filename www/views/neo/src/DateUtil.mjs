@@ -1,9 +1,110 @@
 /**
  * Local date helpers for GO's "Y-m-d" date values. new Date('2026-10-16') is UTC
  * midnight (the day before west of UTC): parse the parts instead.
+ *
+ * Time zone: neo shows dates in the user's GO time zone (User.timezone), not the
+ * browser's, like GOUI (Format.timezone / DateTime.defaultTimezone). A date the UI works
+ * with is a "wall time" Date: its local fields (getHours() …) are the time the user sees
+ * in their zone. toUserTime() turns an instant from the server into one,
+ * fromUserTime() a wall time back into the instant, userNow() is the current wall time.
+ * Like GOUI's DateTime this is a JS Date in the browser's zone: a wall time inside the
+ * browser's own DST gap moves an hour, and the user's repeated DST hour maps to its
+ * first occurrence.
  */
 
 const pad = n => String(n).padStart(2, '0');
+
+/** The user's IANA time zone; null: the browser's (the wall time is the local time) */
+let userTimeZone = null;
+
+/**
+ * Sets the user's time zone (the JMAP client after login)
+ * @param {String|null} timeZone e.g. "Europe/Amsterdam"; null, empty or unknown: the browser's
+ */
+export function setUserTimeZone(timeZone) {
+    userTimeZone = null;
+
+    if (!timeZone) {
+        return
+    }
+
+    try {
+        const resolved = new Intl.DateTimeFormat('en-US', {timeZone}).resolvedOptions().timeZone;
+
+        // the browser's own zone needs no conversion
+        resolved !== Intl.DateTimeFormat().resolvedOptions().timeZone && (userTimeZone = resolved)
+    } catch (e) {
+        console.warn('Unknown time zone ' + timeZone)
+    }
+}
+
+const offsetFormats = {};
+
+/**
+ * Offset of a time zone at an instant, in ms (wall time = utc + offset)
+ * @param {Number} utcMs
+ * @param {String} timeZone IANA name
+ * @returns {Number}
+ */
+export function tzOffset(utcMs, timeZone) {
+    const parts = {};
+
+    offsetFormats[timeZone] ??= new Intl.DateTimeFormat('en-US', {
+        timeZone, hourCycle: 'h23',
+        year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+
+    offsetFormats[timeZone].formatToParts(new Date(utcMs)).forEach(p => parts[p.type] = p.value);
+
+    return Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour % 24, +parts.minute, +parts.second) - Math.floor(utcMs / 1000) * 1000
+}
+
+/**
+ * An instant → the user's wall time
+ * @param {Date|Number|String} instant a Date, ms since the epoch or a string with an offset or Z
+ * @returns {Date|null} a new Date
+ */
+export function toUserTime(instant) {
+    const ms = instant instanceof Date ? instant.getTime() : (typeof instant === 'number' ? instant : Date.parse(instant));
+
+    if (instant === null || instant === undefined || instant === '' || isNaN(ms)) {
+        return null
+    }
+
+    if (!userTimeZone) {
+        return new Date(ms)
+    }
+
+    const wall = new Date(ms + tzOffset(ms, userTimeZone));
+
+    return new Date(wall.getUTCFullYear(), wall.getUTCMonth(), wall.getUTCDate(), wall.getUTCHours(), wall.getUTCMinutes(), wall.getUTCSeconds(), wall.getUTCMilliseconds())
+}
+
+/**
+ * The user's wall time → the instant (inverse of toUserTime())
+ * @param {Date} date wall time
+ * @returns {Date} a new Date
+ */
+export function fromUserTime(date) {
+    if (!userTimeZone) {
+        return new Date(date)
+    }
+
+    const wall    = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds(), date.getMilliseconds());
+    let   instant = wall - tzOffset(wall, userTimeZone);
+
+    // across a DST change the first guess is an hour off
+    instant = wall - tzOffset(instant, userTimeZone);
+
+    return new Date(instant)
+}
+
+/**
+ * @returns {Date} the current wall time of the user (for "today" and "now")
+ */
+export function userNow() {
+    return toUserTime(Date.now())
+}
 
 /**
  * @param {String|Date|null} value "Y-m-d" (a time part is ignored) or a Date
@@ -65,12 +166,14 @@ export function addMonths(date, months) {
 }
 
 /**
- * ISO 8601 with the local offset, PHP's "c" ("2026-10-16T10:30:00+02:00")
- * @param {Date} date
+ * ISO 8601 with the user's offset, PHP's "c" ("2026-10-16T10:30:00+02:00")
+ * @param {Date} date wall time
  * @returns {String}
  */
 export function toIsoLocal(date) {
-    const offset = -date.getTimezoneOffset(),
+    const offset = userTimeZone
+              ? Math.round((Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds()) - Math.floor(fromUserTime(date).getTime() / 1000) * 1000) / 60000)
+              : -date.getTimezoneOffset(),
           sign   = offset >= 0 ? '+' : '-',
           abs    = Math.abs(offset);
 

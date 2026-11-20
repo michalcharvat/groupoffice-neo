@@ -41,7 +41,7 @@ const SEARCH_TYPES = [
     ['body',    () => t('Body')]
 ];
 
-const dateRenderer = ({value}) => value ? `<span title="${escapeHtml(formatUserDateTime(new Date(value * 1000)))}">${escapeHtml(smartDateTime(new Date(value * 1000)))}</span>` : '';
+const dateRenderer = ({value}) => value ? `<span title="${escapeHtml(formatUserDateTime(value * 1000))}">${escapeHtml(smartDateTime(value * 1000))}</span>` : '';
 
 const unseenCls = ({record}) => record?.seen ? null : 'go-email-unseen';
 

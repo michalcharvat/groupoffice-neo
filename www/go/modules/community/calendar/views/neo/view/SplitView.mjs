@@ -4,6 +4,7 @@ import calendarData from '../data.mjs';
 import {addDays, dayNumber, format, startOfDay, weekOfYear, weekStart, ymd} from '../util/date.mjs';
 import CalendarView from './CalendarView.mjs';
 import MonthView    from './MonthView.mjs';
+import {userNow} from '../../../../../../../views/neo/src/DateUtil.mjs';
 
 const t = translator('community', 'calendar');
 
@@ -80,7 +81,7 @@ class SplitView extends MonthView {
 
     render() {
         let me    = this,
-            today = dayNumber(new Date()),
+            today = dayNumber(userNow()),
             heads = [{tag: 'li', cls: ['weeknb'], text: t('Wk') + ' ' + weekOfYear(me.day)}],
             cn;
 

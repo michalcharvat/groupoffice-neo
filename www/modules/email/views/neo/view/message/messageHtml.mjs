@@ -28,7 +28,7 @@ import {unescapeHtml, t} from '../../util.mjs';
  */
 export function headerHtml(data, addresses, {actions=true, prefix='go-email'}={}) {
     const subject = unescapeHtml(data.subject) || t('No subject'),
-          date    = data.udate ? new Date(data.udate * 1000) : null;
+          date    = data.udate ? data.udate * 1000 : null;
 
     return `<div class="go-email-message-header">
         <div class="go-email-message-sender">

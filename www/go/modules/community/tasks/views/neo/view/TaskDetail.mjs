@@ -16,6 +16,7 @@ import DetailFieldsets  from '../../../../../../../views/neo/src/customfields/De
 import RecurrenceField  from '../../../../../../../views/neo/src/form/field/RecurrenceField.mjs';
 import {translator} from '../../../../../../../views/neo/src/Translate.mjs';
 import {categories, formatDuration, formatTaskDate, PROGRESS, toDate, principalHtml, principals, progressBarHtml, taskLists} from '../util.mjs';
+import {userNow} from '../../../../../../../views/neo/src/DateUtil.mjs';
 
 const t = translator('community', 'tasks');
 
@@ -236,7 +237,7 @@ class TaskDetail extends Container {
                 ${field(t('List'), escapeHtml(taskLists.get(task.tasklistId)?.name || ''))}
                 ${field(t('Responsible'), principalHtml(principals.get(task.responsibleUserId)))}
                 ${field(t('Estimated duration'), escapeHtml(formatDuration(task.estimatedDuration)))}
-                ${field(t('Recurrence'), task.recurrenceRule ? escapeHtml(RecurrenceField.toText(task.recurrenceRule, toDate(task.start) || new Date())) : '')}
+                ${field(t('Recurrence'), task.recurrenceRule ? escapeHtml(RecurrenceField.toText(task.recurrenceRule, toDate(task.start) || userNow())) : '')}
             </div>
             ${field(t('Percent complete'), progressBarHtml(task.percentComplete) + `<span>${task.percentComplete || 0}%</span>`)}
             ${field(t('Description'), text(task.description))}

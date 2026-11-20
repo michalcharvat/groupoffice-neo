@@ -4,6 +4,7 @@ import CalendarItem from './CalendarItem.mjs';
 import calendarData from './data.mjs';
 import {windowUi}   from './ui.mjs';
 import {addDays, startOfDay, ymd, ymdhis} from './util/date.mjs';
+import {userNow} from '../../../../../../views/neo/src/DateUtil.mjs';
 
 const t = translator('community', 'calendar');
 
@@ -27,7 +28,7 @@ export default async function openLinkedEvent({appName, windowId, entity, entity
 
     const prefs      = calendarData.prefs,
           allDay     = prefs.defaultDuration == null,
-          start      = addDays(new Date(), 1),
+          start      = addDays(userNow(), 1),
           calendarId = writable.find(c => String(c.id) === String(prefs.defaultCalendarId))?.id || writable[0].id;
 
     start.setMinutes(0, 0, 0);

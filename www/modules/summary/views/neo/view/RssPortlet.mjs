@@ -118,7 +118,7 @@ class RssPortlet extends Container {
                 return `<div class="go-rss-item">
                     <div class="go-rss-item-head">
                         ${link ? `<a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${title}</a>` : `<b>${title}</b>`}
-                        <span class="go-portlet-meta">${escapeHtml(item.date ? smartDateTime(item.date) : '')}</span>
+                        <span class="go-portlet-meta">${escapeHtml(item.date ? smartDateTime(+item.date) : '')}</span>
                     </div>
                     ${feed.summary && item.description ? `<div class="go-rss-item-text go-html">${sanitizeHtml(item.description)}</div>` : ''}
                 </div>`
