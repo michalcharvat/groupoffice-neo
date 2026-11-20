@@ -34,6 +34,34 @@ class Neo {
 	 */
 	private function moduleFiles(string $name): array
 	{
+		return $this->cached('neoModuleFiles-' . $name, fn() => $this->findModuleFiles($name));
+	}
+
+	/**
+	 * Value from the cache unless the debugger is on (dev checkouts see every change at once)
+	 *
+	 * The key carries the GO version and the theme map's mtime, so an upgrade or a theme build
+	 * gives new values; module install, enable and upgrade flush the cache like the ExtJS scripts.
+	 */
+	private function cached(string $key, callable $fn)
+	{
+		if (go()->getDebugger()->enabled) {
+			return $fn();
+		}
+
+		$themeMap = GO::config()->root_path . 'views/neo/resources/theme-map.json';
+		$key .= '-' . go()->getVersion() . '-' . (is_file($themeMap) ? filemtime($themeMap) : 0);
+
+		$value = go()->getCache()->get($key);
+		if ($value === null) {
+			$value = $fn();
+			go()->getCache()->set($key, $value);
+		}
+		return $value;
+	}
+
+	private function findModuleFiles(string $name): array
+	{
 		$files = [];
 		$rootPath = GO::config()->root_path;
 		foreach (GO::modules()->getAllModules(true) as $module) {
@@ -100,6 +128,11 @@ class Neo {
 	 * sources and theme map, so a changed UI gets a new worker instead of the old code.
 	 */
 	private function buildId(): string
+	{
+		return $this->cached('neoBuildId', fn() => $this->findBuildId());
+	}
+
+	private function findBuildId(): string
 	{
 		$dirs = [GO::config()->root_path . 'views/neo/apps', GO::config()->root_path . 'views/neo/src'];
 		foreach (GO::modules()->getAllModules(true) as $module) {
