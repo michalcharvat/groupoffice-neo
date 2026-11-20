@@ -9,6 +9,7 @@ use go\core\jmap\Entity;
 use go\core\model\Acl;
 use go\core\acl\model\AclOwnerEntity;
 use go\core\db\Criteria;
+use go\core\db\Query as DbQuery;
 use go\core\orm\EntityType;
 use go\core\orm\Filters;
 use go\core\orm\Mapping;
@@ -59,18 +60,31 @@ class Search extends AclOwnerEntity {
 
 		go()->setOptimizerSearchDepth();
 
-		$i = 0;
 		$words = StringUtil::splitTextKeywords($searchPhrase, false);
 		$words = array_unique($words);
 
-		foreach ($words as $word) {
-			if (!$query->isJoined('core_search_word', 'w' . $i)) {
-				$query->join(
-					"core_search_word",
-					'w' . $i, 'w' . $i . '.searchId = search.id',
-					'INNER'
+		if ($query->isJoined('core_search_word', 'w0')) {
+			// An earlier text filter of this query owns the joins: its condition may sit in an OR or NOT branch, so
+			// the words of this filter can't share or add joins. Each word checks its own word rows instead.
+			foreach ($words as $word) {
+				$criteria->whereExists(
+					(new DbQuery())
+						->select('ws.searchId')
+						->from('core_search_word', 'ws')
+						->where('ws.searchId = search.id')
+						->andWhere('ws.word', 'LIKE', $word . '%')
 				);
 			}
+			return;
+		}
+
+		$i = 0;
+		foreach ($words as $word) {
+			$query->join(
+				"core_search_word",
+				'w' . $i, 'w' . $i . '.searchId = search.id',
+				'INNER'
+			);
 
 			$criteria->where('w' . $i . '.word', 'LIKE', $word . '%');
 
