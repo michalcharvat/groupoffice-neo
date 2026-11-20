@@ -111,6 +111,13 @@ class Field extends BaseField {
     }
 
     /**
+     * The input value the user typed last ({id, value}), until a render writes that input
+     * @member {Object|null} reportedInput=null
+     * @protected
+     */
+    reportedInput = null
+
+    /**
      * @returns {Object[]} vdom of the box content
      * @protected
      */
@@ -138,10 +145,46 @@ class Field extends BaseField {
      * @protected
      */
     syncInputValue(node, value) {
-        node.value = value;
+        if (!node) {
+            return
+        }
 
-        const {vnode} = VNodeUtil.find(this.vnode, node.id) || {};
+        node.value = value;
+        // a render already on its way returns an older vnode: afterVnodeSync() restores this
+        this.reportedInput = {id: node.id, value};
+        this.setVnodeInputValue(node.id, value)
+    }
+
+    /**
+     * @param {String} id
+     * @param {String} value
+     * @protected
+     */
+    setVnodeInputValue(id, value) {
+        const {vnode} = VNodeUtil.find(this.vnode, id) || {};
         vnode?.attributes && (vnode.attributes.value = value)
+    }
+
+    /**
+     * neo's Text field afterVnodeSync(): a render that was collected before the user typed lands
+     * with a vnode holding the older input value. Unless that render wrote the input's value
+     * itself, the DOM still shows what was typed, so the vnode gets it back.
+     * @param {Object[]|null} deltas
+     * @protected
+     */
+    afterVnodeSync(deltas) {
+        let me       = this,
+            reported = me.reportedInput;
+
+        if (reported) {
+            if (!deltas || deltas.some(delta => delta.id === reported.id && (delta.action === 'removeNode' || Object.hasOwn(delta.attributes || {}, 'value')))) {
+                me.reportedInput = null
+            } else {
+                me.setVnodeInputValue(reported.id, reported.value)
+            }
+        }
+
+        super.afterVnodeSync(deltas)
     }
 
     /**

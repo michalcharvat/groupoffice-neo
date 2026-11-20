@@ -47,7 +47,8 @@ class ChipsField extends Field {
     chipTexts = new Map()
 
     get inputNode() {
-        return this.boxNode.cn[this.boxNode.cn.length - 1]
+        // by id: subclasses add buttons after the input (AutocompleteChips, CreateLinkField)
+        return this.boxNode.cn.find(node => node.id === this.id + '__input')
     }
 
     construct(config) {
@@ -168,17 +169,17 @@ class ChipsField extends Field {
 
         me.inputText = value ?? '';
 
+        // keep the vdom and vnode in sync with the DOM, or a later render (clearing the input
+        // after a separator or a pick) is no change
+        me.syncInputValue(me.inputNode, me.inputText);
+
         // "," and ";" separate values (also when pasted)
         if (/[,;]/.test(me.inputText)) {
             const parts = me.inputText.split(/[,;]/);
 
             me.inputText = parts.pop();
-            me.addTexts(parts);
-            return
+            me.addTexts(parts)
         }
-
-        // keep the vdom and vnode in sync, or clearing the input later is no change
-        me.syncInputValue(me.inputNode, me.inputText)
     }
 
     onKeyDown({key}) {
