@@ -1,7 +1,7 @@
 import client         from '../../../../../../views/neo/src/jmap/Client.mjs';
 import {escapeHtml}   from '../../../../../../views/neo/src/Format.mjs';
 import ModuleRegistry from '../../../../../../views/neo/src/ModuleRegistry.mjs';
-import {t}            from './util.mjs';
+import {logoUrl, t}   from './util.mjs';
 
 const CAPABILITY = 'go:community:bookmarks';
 
@@ -47,7 +47,7 @@ async function registerBookmarkModules() {
     const {list} = await client.queryGet('Bookmark', {
         filter    : {behaveAsModule: true},
         sort      : [{property: 'name', isAscending: true}],
-        properties: ['id', 'name']
+        properties: ['id', 'name', 'logo']
     });
 
     // a newer login (maybe of another user) started meanwhile
@@ -68,6 +68,8 @@ async function registerBookmarkModules() {
             iconCls   : 'fa fa-bookmark',
             capability: CAPABILITY,
             icon      : 'bookmark',
+            // ExtJS .go-menu-icon-bookmarks-<id>: the logo in the main menu
+            iconUrl   : logoUrl(bookmark.logo),
             // loads the bookmark of its moduleName
             mainView  : () => import('./view/BookmarkFrame.mjs')
         })

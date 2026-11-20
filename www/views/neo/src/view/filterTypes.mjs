@@ -1,8 +1,11 @@
 import TextField      from '../../node_modules/neo.mjs/src/form/field/Text.mjs';
 import customFields   from '../customfields/customFields.mjs';
 import {flattenOptions} from '../customfields/types.mjs';
+import AutocompleteChips from '../form/field/AutocompleteChips.mjs';
+import ChipsField     from '../form/field/ChipsField.mjs';
 import GroupCombo     from '../form/field/GroupCombo.mjs';
 import JmapComboBox   from '../form/field/JmapComboBox.mjs';
+import OptionsChips   from '../form/field/OptionsChips.mjs';
 import PrincipalCombo from '../form/field/PrincipalCombo.mjs';
 import SelectField    from '../form/field/SelectField.mjs';
 import {linkFilterEntities} from '../link/linkTypes.mjs';
@@ -187,6 +190,70 @@ export function filterType(def) {
 }
 
 /**
+ * Editor of an "Input field" (EntityFilter type "variable", go.filter.VariableFilterPanel):
+ * the values to search for as chips. Typed text for string, number and date filters,
+ * the options of a select or link filter, the entities of a user, group or entity filter.
+ * @param {Object} def filter definition
+ * @returns {Object} field config, its value an array
+ */
+export function variableField(def) {
+    switch (def?.type) {
+        case 'select':
+            return {module: OptionsChips, options: (def.options || []).map(o => ({value: o.value ?? null, text: o.title}))};
+        case 'link':
+            return {module: OptionsChips, options: linkFilterEntities().map(e => ({value: e.entity, text: e.title}))};
+        case 'user':
+            return {module: AutocompleteChips, entity: 'Principal', jmapFilter: {entity: 'User'}, displayField: 'name', jmapSort: [{property: 'name', isAscending: true}]};
+        case 'group':
+            return {module: AutocompleteChips, entity: 'Group', displayField: 'name', jmapSort: [{property: 'name', isAscending: true}]};
+        case 'entity':
+            return {
+                module      : AutocompleteChips,
+                entity      : def.entity,
+                jmapFilter  : def.jmapFilter || {},
+                displayField: def.displayField || 'name',
+                // a Contact's permissions come from its address book
+                properties  : def.properties || null,
+                jmapSort    : [{property: def.displayField || 'name', isAscending: true}]
+            };
+        default:
+            return {module: ChipsField}
+    }
+}
+
+/**
+ * JMAP filter of the values of an "Input field": any of them matches, like
+ * go.filter.VariableFilterPanel.load(). A `multiple` filter gets them as one array (GO
+ * matches any; some server filters can't be repeated in an OR, e.g. Contact userGroupId),
+ * one value is the condition itself, more are an OR. Typed text of a wildcard filter means "contains".
+ * @param {Object} def filter definition
+ * @param {Array} values the field's value
+ * @returns {Object|undefined} undefined without values
+ */
+export function variableCondition(def, values) {
+    if (!values?.length) {
+        return undefined
+    }
+
+    const wildcards = usesWildcards(def),
+          converted = values.map(v => {
+              if (def.type === 'link') {
+                  return {entity: v}
+              }
+
+              return wildcards && typeof v === 'string' && !v.includes('%') ? `%${v}%` : v
+          });
+
+    if (def.multiple && def.type !== 'link') {
+        return {[def.name]: converted}
+    }
+
+    return converted.length === 1
+        ? {[def.name]: converted[0]}
+        : {operator: 'OR', conditions: converted.map(v => ({[def.name]: v}))}
+}
+
+/**
  * Filter definition of a custom field (ExtJS go.customfields.type.*.getFilter()), null
  * for types that can't be filtered on
  * @param {Object} field GO Field entity
@@ -226,7 +293,7 @@ export function customFieldFilter(field) {
             field.options?.isOrganization !== undefined && (jmapFilter.isOrganization = !!field.options.isOrganization);
             field.options?.addressBookId?.length && (jmapFilter.addressBookId = field.options.addressBookId);
 
-            return {...byName, type: 'entity', entity: 'Contact', jmapFilter}
+            return {...byName, type: 'entity', entity: 'Contact', jmapFilter, properties: ['id', 'name', 'addressBookId']}
         }
         default:
             return null

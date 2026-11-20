@@ -1,3 +1,5 @@
+@use "../../../go/go";
+
 // GO.view.FilterPanel: ExtJS menu button, an arrow after the icon (e.g. "Filters" +▾)
 .neo-theme-go {
     .neo-button.go-menu-button::after {
@@ -6,5 +8,17 @@
         font-feature-settings  : 'liga';
         font-size              : 2rem;
         -webkit-font-smoothing : antialiased;
+    }
+}
+
+// GO.view.FilterPanel input fields (go.filter.VariableFilterPanel)
+.go-variable-filters {
+    gap    : go.dp(16);
+    padding: go.dp(12) go.dp(8) go.dp(8) go.dp(16);
+
+    // the field's label sits on its top border, above the row
+    .go-variable-filter {
+        gap     : go.dp(4);
+        overflow: visible;
     }
 }

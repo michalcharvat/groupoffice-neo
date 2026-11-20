@@ -10,6 +10,7 @@ import client from './jmap/Client.mjs';
  *     iconCls   : 'fa fa-sticky-note',
  *     capability: 'go:community:notes',
  *     icon      : 'sticky_note_2',                        // Material icon, header main menu
+ *     iconUrl   : null,                                   // optional picture instead of icon in the main menu
  *     quickAdd  : {text: 'Note', icon: 'sticky_note_2'},  // header "+" menu → mainView.onQuickAdd()
  *     routes    : {Note: id => 'note/' + id},             // header search result → "#notes/note/5"
  *     mainView  : () => import('./view/NotesMain.mjs'),  // lazy, default export = neo class

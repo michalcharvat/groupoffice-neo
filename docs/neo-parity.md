@@ -6,11 +6,13 @@ features that are present and complete are counted per module.
 
 Status: **fixed** = fixed in this audit (branch
 `task/20261119-011401-neo-ui-parity-audit-of-converted-modules`); **card** = larger
-gap with a board card (title in the last section); **open** = not fixed, no card of
-its own (covered by a shared core card or not worth one).
+gap with a board card (title in the last section); **done** = fixed by its card;
+**open** = not fixed, no card of its own (covered by a shared core card or not worth one).
 
 Paths: module paths are relative to the module's `views/` folder
-(`www/go/modules/community/<module>/views/`), core paths start with `www/`.
+(`www/go/modules/community/<module>/views/`), core paths start with `www/`. In the
+"neo" and "Status" columns `src/` is `www/views/neo/src/` and `view/` is the module's
+`views/neo/view/`.
 
 ## Shared core gaps
 
@@ -20,7 +22,7 @@ These show up in several modules; each has one board card.
 |---|---|---|---|
 | Print of the detail panel (no print helper in `www/views/neo/src`) | notes, tasks, contacts (detail more menu / context menu) | goui/script/NoteDetail.ts:69, TaskDetail.ts:213; addressbook extjs3/ContactContextMenu.js:66 | fixed (`src/print.mjs`) |
 | "New linked item" from another entity's detail (`linkWindow` registry) | notes, tasks, contacts, all detail panels | notes goui/script/Index.ts:96-108; tasks extjs3/Module.js:16; addressbook extjs3/ContactDetail.js:344 | fixed (ModuleRegistry `linkWindows`, `AddLinkButton` menu) |
-| Saved filter types other than string/date/number (select, principal, combo, link entity, custom fields, input variables) | contacts (type, gender, address book, groups, has e-mail…), tasks (responsible, list, progress), notes (has links to) | addressbook extjs3/Module.js:98-320; tasks extjs3/Module.js:90-140; notes goui/script/Index.ts:63 | fixed: `view/filterTypes.mjs` (select, user, group, entity, link editors; custom field filters added per entity). Input variables ("Input field") still open |
+| Saved filter types other than string/date/number (select, principal, combo, link entity, custom fields, input variables) | contacts (type, gender, address book, groups, has e-mail…), tasks (responsible, list, progress), notes (has links to) | addressbook extjs3/Module.js:98-320; tasks extjs3/Module.js:90-140; notes goui/script/Index.ts:63 | fixed: `view/filterTypes.mjs` (select, user, group, entity, link editors; custom field filters added per entity); input variables ("Input field"): `VariableFilterDialog` and a chips field per variable filter in `FilterPanel` |
 | Grid group headers (`groupBy`) | tasks grid per list, task lists by grouping | tasks goui/script/TaskGrid.ts:289; extjs3/TasklistsGrid.js:15 | fixed: `GO.grid.Grid` `groupBy`, `GO.list.TextList` `groupField` (no collapsing) |
 | Custom field columns in grids | contacts, tasks, notes | www/go/core/views/extjs3/grid/GridPanel.js:31, data/StoreTrait.js:98 | done: `GO.grid.Grid` `customFieldsEntity` |
 | `name:value` search syntax in the toolbar search | multi_instance (adminEmail, isTrial…), any ExtJS tbsearch with `filters` | multi_instance extjs3/Module.js:8-58 | fixed: `parseQuery()` / `searchFilter()` in `view/filterTypes.mjs` (incl. custom fields, `-name:` NOT); contacts, tasks, notes, multi_instance. No name suggestions list in the search field yet |
@@ -92,7 +94,7 @@ continue task, comments, files, links, history; settings, portlet, quick add).
 
 | Area | 26.x feature | 26.x ref | neo | Status |
 |---|---|---|---|---|
-| More menu | Import (choose a list or list id from CSV) | goui/script/Main.ts:387, ImportTaskDialog.ts | only Export | card "neo-ui: tasks import" |
+| More menu | Import (choose a list or list id from CSV) | goui/script/Main.ts:387, ImportTaskDialog.ts | `view/ImportTaskDialog.mjs` in the more menu (iCalendar or CSV) | done (card "neo-ui: tasks import") |
 | Grid | Priority and Location columns (hidden by default) | extjs3/TaskGrid.js:206-220, 322 | missing | fixed |
 | Drag and drop | Drag tasks onto a list to move them | goui/script/Main.ts:169, 319-336 | missing | fixed |
 | List dialog | "Sync to device", "Show in calendar", owner (admin) | extjs3/TasklistDialog.js:43-49 | missing | fixed |
@@ -127,7 +129,7 @@ Present and complete: 14.
 
 | Area | 26.x feature | 26.x ref | neo | Status |
 |---|---|---|---|---|
-| Behave as module | Menu icon is the bookmark's logo | extjs3/Module.js:24-30 | Material icon `bookmark` | open |
+| Behave as module | Menu icon is the bookmark's logo | extjs3/Module.js:24-30 | Material icon `bookmark` | fixed (`iconUrl` in the registry, main menu item `image`) |
 
 ## Small modules
 
@@ -164,13 +166,13 @@ sounds, "Visible to", groups, custom field tabs, module cards, current-password 
 
 | Area | 26.x feature | 26.x ref | neo | Status |
 |---|---|---|---|---|
-| Account | Avatar upload (`avatarId`) | x/usersettings/AccountSettingsPanel.js:35 | missing | card "neo-ui: My account avatar, space used, password generator, local user, mail notification" |
-| Account | "Space used" (`disk_usage`) | x/usersettings/AccountSettingsPanel.js:112 | missing | card "neo-ui: My account avatar, space used, password generator, local user, mail notification" |
-| Password | Password generator, `passwordMinLength` | x/usersettings/AccountSettingsPanel.js:133-150 | two plain fields | card "neo-ui: My account avatar, space used, password generator, local user, mail notification" |
-| Password | "Convert to local user" for external users | x/usersettings/AccountSettingsPanel.js:158-190 | text only | card "neo-ui: My account avatar, space used, password generator, local user, mail notification" |
+| Account | Avatar upload (`avatarId`) | x/usersettings/AccountSettingsPanel.js:35 | `src/usersettings/AccountPanel.mjs` | done (card "neo-ui: My account avatar, space used, password generator, local user, mail notification") |
+| Account | "Space used" (`disk_usage`) | x/usersettings/AccountSettingsPanel.js:112 | `src/usersettings/AccountPanel.mjs` (MB) | done (card "neo-ui: My account avatar, space used, password generator, local user, mail notification") |
+| Password | Password generator, `passwordMinLength` | x/usersettings/AccountSettingsPanel.js:133-150 | `src/usersettings/AccountPanel.mjs` | done (card "neo-ui: My account avatar, space used, password generator, local user, mail notification") |
+| Password | "Convert to local user" for external users | x/usersettings/AccountSettingsPanel.js:158-190 | `src/usersettings/AccountPanel.mjs` (user managers) | done (card "neo-ui: My account avatar, space used, password generator, local user, mail notification") |
 | Security | Authorized clients, "Logout all" | x/usersettings/AccountSettingsPanel.js:197-275 | present | fixed (`src/usersettings/AuthorizedClientsField.mjs` in the Account card: status per client, "Logout all" empties `clients` on save; on the own account that ends the session too, so the windows reload to the login) |
 | Security | App passwords | x/usersettings/AppPasswordsFieldset.js, AppPasswordDialog.js | present | fixed (`src/usersettings/AppPasswordsPanel.mjs`, `AppPasswordDialog.mjs`; the secret is shown once in `src/view/SecretDialog.mjs`, which the API key token uses as well; only the own user creates one, admins see and delete others') |
-| Notifications | "Create desktop notification for new e-mails" | x/usersettings/NotificationPanel.js:23 | missing | card "neo-ui: My account avatar, space used, password generator, local user, mail notification" |
+| Notifications | "Create desktop notification for new e-mails" | x/usersettings/NotificationPanel.js:23 | `src/usersettings/NotificationPanel.mjs` (with the e-mail module) | done (card "neo-ui: My account avatar, space used, password generator, local user, mail notification") |
 
 ### System settings
 
@@ -201,7 +203,7 @@ hook), user defaults, import, export, edit, login as, archive, delete.
 | Area | 26.x feature | 26.x ref | neo | Status |
 |---|---|---|---|---|
 | Grid | Delete several groups | x/grid/GridTrait.js | one row only | fixed |
-| Members | Full member list window from a SharePanel group | x/permissions/SharePanel.js:192; x/groups/GroupMemberWindow.js | first 3 names + "and N more" | card "neo-ui: group member list window" |
+| Members | Full member list window from a SharePanel group | x/permissions/SharePanel.js:192; x/groups/GroupMemberWindow.js | `src/groups/GroupMemberDialog.mjs` from the SharePanel row | done (card "neo-ui: group member list window") |
 
 ### Custom fields
 
@@ -210,7 +212,7 @@ All 18 field types and their admin options are present, plus JSON export/import.
 
 | Area | 26.x feature | 26.x ref | neo | Status |
 |---|---|---|---|---|
-| Conditions | `relatedFieldCondition`, conditionally required/hidden evaluated on the form | x/customfields/type/Text.js:78-103,218-250 | editable in admin only | card "neo-ui: custom field conditions on forms" |
+| Conditions | `relatedFieldCondition`, conditionally required/hidden evaluated on the form | x/customfields/type/Text.js:78-103,218-250 | `src/customfields/conditions.mjs`, evaluated by `FormFieldset.mjs` | done (card "neo-ui: custom field conditions on forms") |
 | Field sets | Field set nested in a tab (`parentFieldSetId`) | x/customfields/FormFieldSet.js:27 | below the tab's fields, own filter and conditions | done |
 | Attachments | Form editor, download links, `allowDescription` | x/customfields/type/Attachments.js | `AttachmentsField` with description, single/multiple, accept; links or thumbnails | done |
 | Data / Template | Readable JSON lines / textarea | x/customfields/type/Data.js:28, TemplateField.js | JSON as lines and lists; template text read-only | done |
