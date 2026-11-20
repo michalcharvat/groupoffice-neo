@@ -6,6 +6,7 @@ use go\core\db\Criteria;
 use go\core\db\Query as DbQuery;
 use go\core\jmap\exception\InvalidArguments;
 use go\core\model\Link;
+use go\core\model\Search;
 use go\core\model\User;
 use go\core\orm\exception\SaveException;
 use go\core\util\DateTime;
@@ -122,6 +123,44 @@ class FiltersTest extends TestCase
 				['link' => ['entity' => 'Note', 'id' => $c->id]]
 			]
 		]));
+	}
+
+	public function testTwoTextFiltersMustAllMatch(): void
+	{
+		$x = "alpha" . uniqid();
+		$y = "beta" . uniqid();
+		$both = $this->createNote("$x $y");
+		$onlyX = $this->createNote($x);
+		$onlyY = $this->createNote($y);
+
+		// One phrase with two words
+		$this->assertEquals([$both->id], $this->findNoteIds(['text' => "$x $y"]));
+
+		// Two text filters must each use their own search word join
+		$this->assertEquals([$both->id], $this->findNoteIds([
+			'operator' => 'AND',
+			'conditions' => [['text' => $x], ['text' => $y]]
+		]));
+
+		// An array of search terms must all match
+		$this->assertEquals([$both->id], $this->findNoteIds(['text' => [$x, $y]]));
+
+		$this->assertEquals([$both->id, $onlyX->id, $onlyY->id], $this->findNoteIds([
+			'operator' => 'OR',
+			'conditions' => [['text' => $x], ['text' => $y]]
+		]));
+
+		$this->assertEquals([$onlyX->id], $this->findNoteIds([
+			'operator' => 'AND',
+			'conditions' => [['text' => $x], ['operator' => 'NOT', 'conditions' => [['text' => $y]]]]
+		]));
+
+		// The search cache entity has its own text filter
+		$entityIds = array_map('intval', Search::find()->selectSingleValue('search.entityId')->filter([
+			'operator' => 'AND',
+			'conditions' => [['text' => $x], ['text' => $y]]
+		])->all());
+		$this->assertEquals([$both->id], $entityIds);
 	}
 
 	public function testLinkFilterWithNot(): void
