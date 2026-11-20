@@ -28,6 +28,16 @@
  *         }
  *     })
  *
+ * Rows of different kinds (field sets and their fields): `accept` maps a drag selector to the
+ * drop targets of what it matches; dropInGroups() places a dragged row of a grouped list.
+ *
+ *     enableDragDrop(table, {
+ *         drag    : '.go-cf-drag',
+ *         position: 'between',
+ *         accept  : {'.go-cf-fieldset-row': '.go-cf-fieldset-row', '.go-cf-field-row': '.go-actiontable-row'},
+ *         onDrop  : ...
+ *     })
+ *
  * @param {Neo.component.Base} component
  * @param {Object} options
  * @param {String} [options.drag]
@@ -36,12 +46,15 @@
  * @param {Boolean} [options.files=false]
  * @param {String} [options.position='on'] on, between (sorting) or both
  * @param {Boolean} [options.horizontal=false] targets side by side: before / after by x
+ * @param {Object} [options.accept] {dragSelector: dropSelector}: the drop targets depend on
+ *        the dragged element (first matching key); a drag matching none can't be dropped, and
+ *        the component itself is no drop target
  * @param {Function} [options.onHover] ({targetId, targetRecordId}) when the pointer rests on
  *        a target for a second during a drag (a tree expands the node)
  * @param {Function} options.onDrop
  * @returns {Promise<void>}
  */
-export async function enableDragDrop(component, {drag, drop, group, files=false, position, horizontal=false, onHover, onDrop}) {
+export async function enableDragDrop(component, {drag, drop, group, files=false, position, horizontal=false, accept, onHover, onDrop}) {
     const data = {};
 
     drag  && (data.goDrag = drag);
@@ -52,6 +65,12 @@ export async function enableDragDrop(component, {drag, drop, group, files=false,
     position && position !== 'on' && (data.goDropPos = position);
     horizontal && (data.goDropHorizontal = 'true');
     onHover && (data.goDropHover = 'true');
+
+    if (accept) {
+        data.goDropAccept = JSON.stringify(Object.entries(accept));
+        // the targets come from the rules; the attribute still makes the component a drop root
+        data.goDrop ??= ''
+    }
 
     component.vdom.data = {...component.vdom.data, ...data};
     component.update();
@@ -81,4 +100,54 @@ export function dropIndex(fromIndex, targetIndex, position) {
     position !== 'on' && fromIndex < to && to--;
 
     return to === fromIndex ? -1 : to
+}
+
+/**
+ * Where a dragged row of a grouped list lands (field sets, each followed by its fields): the
+ * list without the dragged row, cut at the drop, belongs to the nearest group row above the
+ * cut. Dropping before the first group row has no group.
+ *
+ * @param {Object[]} rows the flat list: group rows, each followed by its items
+ * @param {Function} isGroup (row) => true for a group row
+ * @param {Number} fromIndex index of the dragged item row
+ * @param {Number} targetIndex index of the row it was dropped before or after
+ * @param {String} position before or after
+ * @returns {{group: Object, items: Object[], index: Number}|null} the group, its items in their
+ *          new order (with the dragged row) and the dragged row's index in them; null when the
+ *          drop has no group or doesn't move the row
+ */
+export function dropInGroups(rows, isGroup, fromIndex, targetIndex, position) {
+    if (fromIndex < 0 || targetIndex < 0 || fromIndex === targetIndex) {
+        return null
+    }
+
+    const list  = [...rows],
+          [row] = list.splice(fromIndex, 1),
+          to    = (targetIndex > fromIndex ? targetIndex - 1 : targetIndex) + (position === 'after' ? 1 : 0);
+
+    if (to === fromIndex) {
+        return null
+    }
+
+    list.splice(to, 0, row);
+
+    let start = to - 1;
+
+    while (start >= 0 && !isGroup(list[start])) {
+        start--
+    }
+
+    if (start < 0) {
+        return null
+    }
+
+    let end = start + 1;
+
+    while (end < list.length && !isGroup(list[end])) {
+        end++
+    }
+
+    const items = list.slice(start + 1, end);
+
+    return {group: list[start], items, index: items.indexOf(row)}
 }

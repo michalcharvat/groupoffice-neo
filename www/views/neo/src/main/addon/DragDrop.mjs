@@ -29,6 +29,10 @@ const HOVER_DELAY = 1000;
  *   {targetId, targetRecordId} (a tree expands the node, GOUI Tree.setupExpandOnDragOver())
  * - class "go-no-drop" on a target (or the root): it refuses drops (not highlighted, no drop
  *   on the root instead), e.g. a note book the user can't write to
+ * - data-go-drop-accept='[["<drag selector>", "<drop selector>"], ...]': the drop targets
+ *   depend on what is dragged (a sortable list with kinds of rows): the first rule whose drag
+ *   selector matches the dragged element gives the drop selector instead of data-go-drop;
+ *   no matching rule, no drop. The root itself is no drop target then.
  *
  * A drop sends the custom DOM event "goDrop" to the drop root's component:
  * {targetId, targetRecordId, position, files, source: {rootId, itemId, recordId}|null, copy}.
@@ -152,15 +156,50 @@ class DragDrop extends Base {
         }
 
         let selector = root.dataset.goDrop,
-            target   = selector && e.target.closest(selector);
+            accept   = !files && me.acceptRules(root),
+            target;
 
-        target = target && root.contains(target) ? target : root;
+        if (accept) {
+            const rule = accept.find(([drag]) => me.dragging.item.matches(drag));
+
+            if (!rule) {
+                return null
+            }
+
+            selector = rule[1]
+        }
+
+        target = selector && e.target.closest(selector);
+        target = target && root.contains(target) ? target : (accept ? null : root);
+
+        if (!target) {
+            return null
+        }
 
         if (target.classList.contains(NO_DROP_CLS)) {
             return null
         }
 
         return {root, target, position: target === root ? 'on' : me.dropPosition(e, root, target)}
+    }
+
+    /**
+     * @param {HTMLElement} root
+     * @returns {Array[]|null} [[dragSelector, dropSelector], ...] of data-go-drop-accept
+     */
+    acceptRules(root) {
+        const json = root.dataset.goDropAccept;
+
+        if (!json) {
+            return null
+        }
+
+        try {
+            return JSON.parse(json)
+        } catch (e) {
+            console.error('data-go-drop-accept', e);
+            return []
+        }
     }
 
     /**
