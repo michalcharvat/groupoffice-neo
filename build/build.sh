@@ -331,6 +331,10 @@ build_package() {
 	# Builds SASS and the GOUI modules, without type definitions
 	"$REPO_DIR/scripts/install-npm.sh" nodev "$PACKAGE_DIR"
 	(cd "$PACKAGE_DIR" && npm prune --omit=dev --ignore-scripts --audit=false --fund=false)
+
+	# neo webclient: own node_modules (see install-npm.sh); the generated theme sources are build input only
+	(cd "$PACKAGE_DIR/views/neo" && npm prune --omit=dev --ignore-scripts --audit=false --fund=false)
+	rm -rf "$PACKAGE_DIR/views/neo/resources/scss/theme-go"
 }
 
 build_tar() {

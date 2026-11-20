@@ -7,6 +7,7 @@ use go\core\App;
 use go\core\Environment;
 use go\core\fs\File;
 use go\core\jmap\Request;
+use go\core\model\Acl;
 use go\core\model\Module;
 use go\core\SingletonTrait;
 use http\Exception\InvalidArgumentException;
@@ -413,7 +414,9 @@ class Extjs3 {
 				'login_message' => GO::config()->login_message,
 				'hideAbout' => \GO::config()->hideAbout,
 				'email_allow_body_search' => GO::config()->email_allow_body_search,
-				'lostPasswordURL' => go()->getSettings()->lostPasswordURL
+				'lostPasswordURL' => go()->getSettings()->lostPasswordURL,
+				// user menu "Switch to the new UI"
+				'webclientSwitch' => Webclient::switchAllowed()
 			],
 			'state_index' => 'go',
 			'language' => go()->getLanguage()->getIsoCode(),
@@ -471,30 +474,118 @@ class Extjs3 {
 					"go.package = '" . $pkg . "'; ".
 					"go.Translate.setModule('" . $pkg . "', '" .$module->name . "'); ";
 
-				$prefix = "";
-				if ($module->moduleManager instanceof \go\core\Module) {
-					$prefix = dirname(str_replace("\\", "/", get_class($module->moduleManager))) . "/views/extjs3/";
-					$scriptsFile = $module->moduleManager->path() . 'views/extjs3/scripts.txt';
-
-					//fallback to old dir
-					$modulePath = GO::config()->root_path . 'modules/' . $module->moduleManager->getName() . '/';
-				} else {
-					$scriptsFile = false;
-					$modulePath = $module->moduleManager->path();
-				}
-
-				if (!$scriptsFile || !file_exists($scriptsFile)) {
-					$scriptsFile = $modulePath . 'scripts.txt';
-					if (!file_exists($scriptsFile))
-						$scriptsFile = $modulePath . 'views/Extjs3/scripts.txt';
-
-				}
-
-				foreach($this->readScriptsTxt($scriptsFile, $prefix) as $s) {
+				foreach($this->extjsScriptFiles($module) as $s) {
 					$scripts[] = $s;
 				}
 			}
 		return $scripts;
+	}
+
+	/**
+	 * The ExtJS script files of a module, from its scripts.txt
+	 *
+	 * @param \GO\Base\Model\Module $module
+	 * @return \Generator<File>
+	 */
+	private function extjsScriptFiles($module): \Generator {
+		$prefix = "";
+		if ($module->moduleManager instanceof \go\core\Module) {
+			$prefix = dirname(str_replace("\\", "/", get_class($module->moduleManager))) . "/views/extjs3/";
+			$scriptsFile = $module->moduleManager->path() . 'views/extjs3/scripts.txt';
+
+			//fallback to old dir
+			$modulePath = GO::config()->root_path . 'modules/' . $module->moduleManager->getName() . '/';
+		} else {
+			$scriptsFile = false;
+			$modulePath = $module->moduleManager->path();
+		}
+
+		if (!$scriptsFile || !file_exists($scriptsFile)) {
+			$scriptsFile = $modulePath . 'scripts.txt';
+			if (!file_exists($scriptsFile))
+				$scriptsFile = $modulePath . 'views/Extjs3/scripts.txt';
+
+		}
+
+		yield from $this->readScriptsTxt($scriptsFile, $prefix);
+	}
+
+	/**
+	 * The main panel of a module in the classic client, or null when its classic UI has none
+	 * (only settings, hooks or no UI at all)
+	 *
+	 * Looks in the module's ExtJS scripts and GOUI bundle for the three ways a classic main panel
+	 * is registered: go.Modules.register(…, {mainPanel: …, requiredPermissionLevel: …}), GOUI
+	 * modules.addMainPanel(package, module, id, …) and the legacy
+	 * GO.moduleManager.addModule('<route>', <panel class>, …). Used by the neo webclient to
+	 * offer the module in the classic client (docs/neo-switch.md, D3).
+	 *
+	 * @param \GO\Base\Model\Module $module
+	 * @return array{route: string, level: int}|null route = the hash without '#', level = the
+	 *   module permission level the classic client requires to show the panel
+	 */
+	public function classicMainPanel($module): ?array {
+		// core's scripts add settings panels, not an app
+		if ($module->package === 'core') {
+			return null;
+		}
+
+		$files = iterator_to_array($this->extjsScriptFiles($module), false);
+		$bundle = new File($module->moduleManager->path() . 'views/goui/dist/Index.js');
+		if ($bundle->exists()) {
+			$files[] = $bundle;
+		}
+
+		$levels = ['read' => Acl::LEVEL_READ, 'create' => Acl::LEVEL_CREATE, 'write' => Acl::LEVEL_WRITE, 'delete' => Acl::LEVEL_DELETE, 'manage' => Acl::LEVEL_MANAGE];
+
+		// without comments: a commented-out registration doesn't count (whole-line // only, URLs stay)
+		$sources = array_map(fn(File $file) => preg_replace(['~/\*.*?\*/~s', '~^\s*//.*$~m'], '', $file->getContents()), $files);
+
+		foreach ($sources as $js) {
+
+			$level = Acl::LEVEL_READ;
+			if (preg_match('/requiredPermissionLevel\s*:\s*go\.permissionLevels\.([a-z]+)/i', $js, $m) && isset($levels[strtolower($m[1])])) {
+				$level = $levels[strtolower($m[1])];
+			}
+
+			if (preg_match('/moduleManager\.addModule\(\s*[\'"]([a-z0-9_]+)[\'"]\s*,\s*(?!null\b|false\b|undefined\b)[A-Za-z_$][\w.$]*/i', $js, $m)) {
+				return ['route' => $m[1], 'level' => $level];
+			}
+			if (preg_match('/addMainPanel\(\s*[\'"][\w-]*[\'"]\s*,\s*[\'"][\w-]*[\'"]\s*,\s*[\'"]([\w-]+)[\'"]/', $js, $m)) {
+				return ['route' => $m[1], 'level' => $level];
+			}
+			// a class name or a string, not "this" or an empty value
+			if (preg_match('/go\.Modules\.register\([^{]*\{[^{}]*?\bmainPanel\s*:\s*(?!null\b|false\b|undefined\b|this\b)["\'A-Za-z_$]/', $js)) {
+				return ['route' => $module->name, 'level' => $level];
+			}
+			// go.Modules addPanel(<class>) in initModule(): the route is the panel class's id
+			// (a dialog's addPanel(new …) or addPanel(this.x) doesn't define a panel class with an id)
+			if (preg_match_all('/\.addPanel\(\s*\[?\s*(?!new\b|this\b)([A-Za-z_$][\w.$]*)/', $js, $all)) {
+				foreach ($all[1] as $class) {
+					$id = $this->panelId($sources, $class);
+					if ($id !== null) {
+						return ['route' => $id, 'level' => $level];
+					}
+				}
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * The `id` of an ExtJS panel class defined with `<class> = Ext.extend(<parent>, {id: '…'`
+	 *
+	 * @param string[] $sources script sources of the module
+	 * @param string $class e.g. go.modules.sf.invoices.MainPanel
+	 */
+	private function panelId(array $sources, string $class): ?string {
+		$pattern = '/' . preg_quote($class, '/') . '\s*=\s*Ext\.extend\([^,]+,\s*\{.*?\bid\s*:\s*[\'"]([\w-]+)[\'"]/s';
+		foreach ($sources as $js) {
+			if (preg_match($pattern, $js, $m)) {
+				return $m[1];
+			}
+		}
+		return null;
 	}
 
 }

@@ -5,11 +5,11 @@
   "description": "neo.mjs webclient for Group Office (spike)",
   "type": "module",
   "dependencies": {
+    "@fortawesome/fontawesome-free": "^7.3.1",
     "marked": "^18.2.1",
     "neo.mjs": "13.4.0"
   },
   "devDependencies": {
-    "@fortawesome/fontawesome-free": "^7.3.1",
     "autoprefixer": "^10.6.1",
     "chalk": "^6.0.1",
     "commander": "^15.0.0",
@@ -21,6 +21,7 @@
     "sass": "^1.105.1"
   },
   "scripts": {
+    "build": "npm run build-themes",
     "build-themes": "node buildScripts/generateGoTheme.mjs && node node_modules/neo.mjs/buildScripts/build/themes.mjs -n -e dev -t all"
   }
 }

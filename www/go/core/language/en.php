@@ -476,4 +476,6 @@ If you did not request a new password please delete this mail.',
   '2000-row limit reached: use the filters to show the names' => '2000-row limit reached: use the filters to show the names',
   'Show options' => 'Show options',
   'Every key may only be used once' => 'Every key may only be used once',
+  'Switch to the classic UI' => 'Switch to the classic UI',
+  'Switch to the new UI' => 'Switch to the new UI',
 );

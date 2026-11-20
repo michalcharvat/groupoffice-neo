@@ -177,11 +177,35 @@ go.Router = (function () {
 //// configuration
 go.Router.config({ mode: 'hash' });
 
+/**
+ * The redirect of a password recovery link (already decoded by the router), only when it stays
+ * inside this GroupOffice: same origin, below the installation path, http(s). The neo client
+ * checks the same (views/neo/apps/go/view/LoginView.mjs safeRedirect()).
+ *
+ * @param {string} value
+ * @return {string|null}
+ */
+go.Router.safeRedirect = function (value) {
+	if (!value) {
+		return null;
+	}
+	try {
+		var base = new URL(BaseHref, document.location.href),
+			url = new URL(String(value), base);
+
+		return /^https?:$/.test(url.protocol) && url.origin === base.origin && url.pathname.indexOf(base.pathname) === 0
+			? url.href
+			: null;
+	} catch (e) {
+		return null;
+	}
+};
+
 GO.mainLayout.on("boot", function () {
 
 	go.Router.add(/^recover\/([a-f0-9]{40})-?(.*)/, function (hash, redirectUrl) {
 		var recoveryPanel = new go.login.RecoveryDialog();
-		recoveryPanel.show(hash, redirectUrl);
+		recoveryPanel.show(hash, go.Router.safeRedirect(redirectUrl));
 	}, false);
 
 	// default route

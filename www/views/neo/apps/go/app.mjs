@@ -80,8 +80,8 @@ const [{default: PopupView}, {default: Viewport}] = await Promise.all([
 // synchronous, neo sets the booting window id only around that call.
 const results = await Promise.allSettled((Neo.config.goModules || []).map(url => import(url)));
 
-// prototype: component demos (src/dev)
-await import('../../src/dev/Index.mjs');
+// component demos (src/dev): developers only ($config['debug'], docs/neo-switch.md D4)
+Neo.config.goDebug && await import('../../src/dev/Index.mjs');
 
 results.forEach((result, i) => {
     if (result.status === 'rejected') {

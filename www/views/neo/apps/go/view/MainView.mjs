@@ -4,7 +4,9 @@ import HashHistory    from '../../../node_modules/neo.mjs/src/util/HashHistory.m
 import Toolbar        from '../../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import GoButton       from '../../../src/button/Button.mjs';
 import MenuList       from '../../../src/menu/List.mjs';
-import {avatarColor, initials} from '../../../src/Format.mjs';
+import {avatarColor, escapeHtml, initials} from '../../../src/Format.mjs';
+import {classicAppByRoute, classicUrl, getClassicApps} from '../../../src/classicApps.mjs';
+import {resolveRoute} from '../../../src/link/linkTypes.mjs';
 import client         from '../../../src/jmap/Client.mjs';
 import GlobalSearch   from '../../../src/view/GlobalSearch.mjs';
 import ModuleRegistry from '../../../src/ModuleRegistry.mjs';
@@ -14,8 +16,9 @@ import alerts             from '../../../src/alerts/Alerts.mjs';
 import notificationCenter from '../../../src/alerts/NotificationCenter.mjs';
 import NotificationPanel  from '../../../src/alerts/NotificationPanel.mjs';
 import reminders          from '../../../src/alerts/Reminders.mjs';
-import {notifyError}           from '../../../src/Notify.mjs';
-import {closePopup, openPopup} from '../../../src/Popup.mjs';
+import {notify, notifyError}   from '../../../src/Notify.mjs';
+import {openTab, replaceRoute}  from '../../../src/history.mjs';
+import {closePopup, openPopup, popupsSupported} from '../../../src/Popup.mjs';
 import {applyTheme}            from '../../../src/Preferences.mjs';
 import {t} from '../../../src/Translate.mjs';
 
@@ -152,13 +155,13 @@ class MainView extends Container {
             cls      : ['go-header-button', 'go-main-menu-button'],
             reference: 'mainMenuButton',
             tooltip  : t('Main menu'),
-            menu     : {align: RIGHT, items: available.map(m => ({
+            menu     : {align: RIGHT, items: [...available.map(m => ({
                 text   : m.title,
                 icon   : m.icon || 'apps',
                 image  : m.iconUrl || null,
                 badge  : badges.text(m.name) || null,
                 handler: () => Neo.Main.setRoute({value: m.name, windowId: me.windowId})
-            }))}
+            })), ...me.classicMenuItems()]}
         }, {
             // go.util.avatar(): initials on a colour from the name
             module : GoButton,
@@ -182,6 +185,11 @@ class MainView extends Container {
                 text   : t('Register'),
                 icon   : 'app_registration',
                 handler: () => me.openLicense()
+            }] : [], ...Neo.config.goWebclientSwitch ? [{
+                // docs/neo-switch.md D2: remembered for this browser (cookie GO_WEBCLIENT)
+                text   : t('Switch to the classic UI'),
+                icon   : 'history',
+                handler: () => me.switchToClassic()
             }] : [], {
                 text   : t('Logout'),
                 icon   : 'logout',
@@ -198,10 +206,8 @@ class MainView extends Container {
 
         me.getReference('topbar').addDomListeners({contextmenu: me.onTabContextMenu, scope: me});
 
-        me.getReference('search').resolveRoute = (entity, id) => {
-            const module = available.find(m => m.routes?.[entity]);
-            return module ? `${module.name}/${module.routes[entity](id)}` : null
-        };
+        // one resolver for search, links, alerts and reminders: a neo route or "classic/<hash>"
+        me.getReference('search').resolveRoute = resolveRoute;
 
         // load the module code now: a popout click must reach window.open() while the
         // browser still counts it as user activation
@@ -353,6 +359,99 @@ class MainView extends Container {
         super.destroy(...args)
     }
 
+    /**
+     * Avatar menu "Switch to the classic UI": remember it for this browser and load every
+     * window in the classic client (the page URL without ?webclient=, which would win)
+     */
+    async switchToClassic() {
+        try {
+            await client.call('core/Webclient/setPreference', {client: 'classic'});
+            const url = client.baseUrl + 'index.php';
+            Object.keys(Neo.apps || {}).forEach(windowId => Neo.Main.redirectTo({url, windowId}))
+        } catch (e) {
+            notifyError(this, e)
+        }
+    }
+
+    /**
+     * Apps menu items of the modules only the classic client has (docs/neo-switch.md, D3):
+     * below the neo modules, each opens the classic client in a new browser tab
+     * @returns {Object[]}
+     */
+    classicMenuItems() {
+        const apps = getClassicApps();
+
+        return apps.length ? [{separator: true}, ...apps.map(app => ({
+            // server data: the menu renders text as HTML
+            text   : escapeHtml(app.title),
+            icon   : 'open_in_new',
+            handler: () => this.openClassic(app.route)
+        }))] : []
+    }
+
+    /**
+     * Open the classic client at a hash in a new browser tab, for that tab only
+     * @param {String} hash without "#"
+     */
+    openClassic(hash) {
+        openTab(this.windowId, classicUrl(hash)).catch(e => notifyError(this, e))
+    }
+
+    /**
+     * Hashes neo has no module for (docs/neo-switch.md, D5):
+     * - "classic/<hash>": a link, search result or alert of a classic-only module, opened in a
+     *   new tab while this window goes back to where it was
+     * - "<entity>/<id>" (Entity::url(), e.g. "contact/5"): the neo route of the entity, else the
+     *   classic client in this window when one of its modules has the entity
+     * - "<module>" of a classic-only module: the classic client in this window
+     * @param {String} name first part of the hash
+     * @param {String[]} rest
+     * @returns {Boolean} handled
+     */
+    routeUnknownHash(name, rest) {
+        const me = this;
+
+        // rewritten hashes replace their history entry, so Back doesn't run them again
+        if (name === 'classic') {
+            rest.length && me.openClassic(rest.join('/'));
+            replaceRoute(me.windowId, me.activeHash || '');
+            return true
+        }
+
+        if (rest.length === 1 && rest[0] !== '') {
+            const route = resolveRoute(name, rest[0]);
+
+            if (route?.startsWith('classic/')) {
+                Neo.Main.redirectTo({url: classicUrl(route.slice(8)), windowId: me.windowId});
+                return true
+            }
+
+            if (route) {
+                replaceRoute(me.windowId, route);
+                return true
+            }
+        }
+
+        if (classicAppByRoute(name)) {
+            Neo.Main.redirectTo({url: classicUrl([name, ...rest].join('/')), windowId: me.windowId});
+            return true
+        }
+
+        // handled by the Viewport (password recovery card)
+        if (name === 'recover') {
+            return true
+        }
+
+        // a link to something neither client shows (deleted entity type, module without access)
+        if (name) {
+            notify(me, t('Not found'));
+            replaceRoute(me.windowId, me.activeHash || '');
+            return true
+        }
+
+        return false
+    }
+
     async onHashChange({hashString, windowId}) {
         // HashHistory is shared by all windows of the App worker
         if (windowId && windowId !== this.windowId) {
@@ -368,7 +467,12 @@ class MainView extends Container {
             return
         }
 
+        if (!module && me.routeUnknownHash(name, rest)) {
+            return
+        }
+
         me.routeModule = module?.name || null;
+        me.activeHash  = hashString || null;
 
         if (!module) {
             return
@@ -622,13 +726,13 @@ class MainView extends Container {
             appName : me.appName,
             target  : button.id,
             windowId: me.windowId,
-            items   : [{
+            items   : [...popupsSupported() ? [{
                 text    : t('Open in new window'),
                 icon    : 'open_in_new',
                 // already in its own window
                 disabled: !!me.openModules[name]?.popup,
                 handler : () => me.popOutModule(name)
-            }, {
+            }] : [], {
                 text   : t('Close'),
                 icon   : 'close',
                 handler: () => me.closeModule(name)

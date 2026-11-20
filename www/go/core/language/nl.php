@@ -2252,4 +2252,6 @@ Als u niet om een nieuw wachtwoord heeft gevraagd verwijder dan deze e-mail.',
   'Choose a file to import' => 'Kies een bestand om te importeren',
   'Show options' => 'Opties tonen',
   'Every key may only be used once' => 'Elke sleutel mag maar één keer worden gebruikt',
+  'Switch to the classic UI' => 'Overschakelen naar de klassieke interface',
+  'Switch to the new UI' => 'Overschakelen naar de nieuwe interface',
 );

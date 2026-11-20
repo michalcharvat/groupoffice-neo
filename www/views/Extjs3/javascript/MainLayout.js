@@ -866,6 +866,24 @@ Ext.extend(GO.MainLayout, Ext.util.Observable, {
 				},
 				'-',
 				{
+					// docs/neo-switch.md D2: remembered for this browser (cookie GO_WEBCLIENT)
+					iconCls: 'ic-new-releases',
+					text: t("Switch to the new UI"),
+					hidden: !GO.settings.config.webclientSwitch,
+					handler: function () {
+						go.Jmap.request({
+							method: "core/Webclient/setPreference",
+							params: {client: "neo"}
+						}).then(function () {
+							// without ?webclient=, which would win over the cookie
+							document.location.href = BaseHref + "index.php";
+						}).catch(function (e) {
+							GO.errorDialog.show(e.message || e.description || t("Error"));
+						});
+					},
+					scope: this
+				},
+				{
 						text: t("Logout"),
 						iconCls: 'ic-exit-to-app',
 						handler: function() {

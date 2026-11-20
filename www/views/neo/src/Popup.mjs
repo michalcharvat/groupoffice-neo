@@ -7,6 +7,16 @@
  * ?neoPopup=<id>; that window starts GO.view.PopupView, which calls adopt(id).
  */
 
+/**
+ * Whether a component can move to a popup window: only with one shared App worker for all
+ * windows. Browsers without SharedWorker get a dedicated worker per window (neo falls back),
+ * so a popup could never adopt the component; the pop-out tools are hidden there.
+ * @returns {Boolean}
+ */
+export function popupsSupported() {
+    return typeof globalThis.SharedWorkerGlobalScope !== 'undefined' && globalThis instanceof globalThis.SharedWorkerGlobalScope
+}
+
 /** popup id → {onAdopt, onClose, timer} */
 const pending = new Map();
 
@@ -32,6 +42,8 @@ export async function openPopup({id, windowId, rect, onAdopt, onClose, onFailed}
           name      = 'go-popup-' + id;
 
     url.searchParams.set('neoPopup', id);
+    // a browser whose choice is the classic client still opens the popup in neo (Webclient.php)
+    url.searchParams.set('webclient', 'neo');
     // join this worker even if the UI sources changed since it started (Neo.php)
     Neo.config.goBuild && url.searchParams.set('neoBuild', Neo.config.goBuild);
 

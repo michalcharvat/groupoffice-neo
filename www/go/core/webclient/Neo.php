@@ -7,10 +7,10 @@ use go\core\fs\File;
 use go\core\SingletonTrait;
 
 /**
- * neo.mjs webclient (spike)
+ * neo.mjs webclient
  *
- * Rendered instead of the ExtJS3 Layout.php when config.php sets
- * $config['webclient'] = "neo". The shell lives in views/neo, modules provide
+ * The default webclient, rendered instead of the ExtJS3 Layout.php unless
+ * Webclient::current() picks the classic client. The shell lives in views/neo, modules provide
  * their UI in views/neo/Index.mjs.
  *
  * neo resolves its workers, theme CSS and the app relative to the document base
@@ -21,9 +21,12 @@ class Neo {
 
 	use SingletonTrait;
 
+	/**
+	 * Whether this page renders the neo client (see Webclient::current())
+	 */
 	public static function enabled(): bool
 	{
-		return (go()->getConfig()['webclient'] ?? null) === 'neo';
+		return Webclient::current() === Webclient::NEO;
 	}
 
 	/**
@@ -34,6 +37,34 @@ class Neo {
 	 */
 	private function moduleFiles(string $name): array
 	{
+		return $this->cached('neoModuleFiles-' . $name, fn() => $this->findModuleFiles($name));
+	}
+
+	/**
+	 * Value from the cache unless the debugger is on (dev checkouts see every change at once)
+	 *
+	 * The key carries the GO version and the theme map's mtime, so an upgrade or a theme build
+	 * gives new values; module install, enable and upgrade flush the cache like the ExtJS scripts.
+	 */
+	private function cached(string $key, callable $fn)
+	{
+		if (go()->getDebugger()->enabled) {
+			return $fn();
+		}
+
+		$themeMap = GO::config()->root_path . 'views/neo/resources/theme-map.json';
+		$key .= '-' . go()->getVersion() . '-' . (is_file($themeMap) ? filemtime($themeMap) : 0);
+
+		$value = go()->getCache()->get($key);
+		if ($value === null) {
+			$value = $fn();
+			go()->getCache()->set($key, $value);
+		}
+		return $value;
+	}
+
+	private function findModuleFiles(string $name): array
+	{
 		$files = [];
 		$rootPath = GO::config()->root_path;
 		foreach (GO::modules()->getAllModules(true) as $module) {
@@ -43,6 +74,63 @@ class Neo {
 			}
 		}
 		return $files;
+	}
+
+	/**
+	 * Modules of the logged-in user that have a main panel in the classic client
+	 *
+	 * The neo shell offers those without a neo main view in its apps menu; they open in the
+	 * classic client (docs/neo-switch.md, D3). Lists only enabled modules the logged-in user
+	 * may read (module ACL, Module::isAvailableFor()); the classic client checks permissions
+	 * again when the module opens.
+	 *
+	 * @return array[] [['package' => string|null, 'name' => string, 'title' => string, 'route' => string, 'entities' => string[]], ...]
+	 */
+	public function classicApps(): array
+	{
+		// scanning the scripts is per installation, the ACL filter per user
+		// by module id: modules of different packages may share a name (amd/tasks, community/tasks)
+		$panels = $this->cached('neoClassicPanels', function () {
+			$panels = [];
+			foreach (GO::modules()->getAllModules(true) as $module) {
+				$panel = Extjs3::get()->classicMainPanel($module);
+				if ($panel !== null) {
+					$panels[$module->id] = $panel;
+				}
+			}
+			return $panels;
+		});
+
+		// entity types per module id: the classic client opens #<entity>/<id> of its modules
+		$entities = [];
+		foreach (\go\core\orm\EntityType::findAll() as $type) {
+			$entities[$type->getModuleId()][] = $type->getName();
+		}
+
+		$userId = go()->getAuthState() ? go()->getAuthState()->getUserId() : null;
+		if (!$userId) {
+			return [];
+		}
+
+		$apps = [];
+		foreach (GO::modules()->getAllModules(true) as $module) {
+			$panel = $panels[$module->id] ?? null;
+			if (!$module->enabled || !$panel) {
+				continue;
+			}
+			// the user's permission on the module (its ACL), at the level the classic panel requires
+			if (!\go\core\model\Module::isAvailableFor($module->package ?: 'legacy', $module->name, $userId, $panel['level'])) {
+				continue;
+			}
+			$apps[] = [
+				'package' => $module->package ?: null,
+				'name' => $module->name,
+				'title' => $module->moduleManager->getTitle(),
+				'route' => $panel['route'],
+				'entities' => $entities[$module->id] ?? []
+			];
+		}
+		return $apps;
 	}
 
 	/**
@@ -100,6 +188,11 @@ class Neo {
 	 * sources and theme map, so a changed UI gets a new worker instead of the old code.
 	 */
 	private function buildId(): string
+	{
+		return $this->cached('neoBuildId', fn() => $this->findBuildId());
+	}
+
+	private function findBuildId(): string
 	{
 		$dirs = [GO::config()->root_path . 'views/neo/apps', GO::config()->root_path . 'views/neo/src'];
 		foreach (GO::modules()->getAllModules(true) as $module) {
@@ -264,6 +357,11 @@ class Neo {
 			'goLoginButtons' => $this->loginButtons(),
 			// set in a popup window opened by GO.view.Dialog: id of the dialog to adopt
 			'goPopup' => $this->popupId(),
+			// the Dev module (component demos) loads only for developers
+			// the installation's setting, not the debugger (debug_usernames): the Dev module registers in the shared worker
+			'goDebug' => !empty(go()->getConfig()['debug']),
+			// avatar menu "Switch to the classic UI" (docs/neo-switch.md D2)
+			'goWebclientSwitch' => Webclient::switchAllowed(),
 			// shared worker name suffix, passed on to popups (src/Popup.mjs)
 			'goBuild' => $build
 		];
