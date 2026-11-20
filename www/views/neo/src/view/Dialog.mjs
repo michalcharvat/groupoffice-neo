@@ -1,5 +1,6 @@
 import BaseDialog              from '../../node_modules/neo.mjs/src/dialog/Base.mjs';
 import Button                  from '../button/Button.mjs';
+import DialogResizable         from '../plugin/DialogResizable.mjs';
 import {closePopup, openPopup} from '../Popup.mjs';
 import {t}                     from '../Translate.mjs';
 
@@ -44,7 +45,9 @@ class Dialog extends BaseDialog {
     static config = {
         className   : 'GO.view.Dialog',
         // GOUI window tools: flat buttons with Material icons
-        headerConfig: headerTools('popout', 'maximize', 'close')
+        headerConfig: headerTools('popout', 'maximize', 'close'),
+        // resizing keeps working after the dialog was moved by its header
+        resizablePluginConfig: {module: DialogResizable}
     }
 
     isClosing = false

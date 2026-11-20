@@ -103,10 +103,14 @@ class JmapComboBox extends ComboBox {
             jmapFilter: {...me.jmapFilter},
             jmapSort  : me.jmapSort,
             keyProperty: me.valueField,
+            // records keep model fields only: the list renders the other properties too (avatars)
             model     : {
                 fields: [
                     {name: me.valueField},
-                    {name: me.displayField, type: 'String'}
+                    {name: me.displayField, type: 'String'},
+                    ...(me.properties || [])
+                        .filter(name => name !== me.valueField && name !== me.displayField)
+                        .map(name => ({name}))
                 ]
             },
             pageSize  : me.pageSize,

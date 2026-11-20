@@ -175,6 +175,10 @@ text (no rich text editor, labels, attachments), no import/export menu. Dark mod
   -10000px; set `left`/`top` in `wrapperStyle`. neo's `closeOrHide()` destroys the
   dialog and then awaits `this.timeout()`, which never resolves on a destroyed
   instance → modal mask stays. Escape only hides. `GO.view.Dialog` fixes both.
+  A dialog has no wrapper node, so its element gets `{...wrapperStyle, ...style}`: a
+  header drag stores left/top/width/height in `style`, neo's Resizable writes only
+  `wrapperStyle`, and a moved dialog no longer resized. `GO.view.Dialog` uses
+  `src/plugin/DialogResizable.mjs`, which writes the new geometry into both.
 - **HTML rendering**: grid renderer strings and List `displayField` go to innerHTML.
   Escape text (`Format.escapeHtml`, `src/list/TextList.mjs` for lists and ComboBox
   `listConfig`).
