@@ -42,11 +42,9 @@ class Viewport extends BaseViewport {
         const hash    = (HashHistory.first(me.windowId) || Neo.windowConfigs?.[me.windowId]?.hash)?.hashString || '',
               recover = hash.match(/^recover\/([a-f0-9]{40})-?(.*)$/);
 
-        if (recover) {
-            me.recovering = true;
-            me.showLogin();
-            me.getReference('login').showRecover(recover[1], recover[2])
-        }
+        // shown in onConstructed(): the login card does not exist yet
+        me.recoverMatch = recover;
+        me.recovering   = !!recover;
 
         client.restoreSession().then(session => {
             !session && !me.recovering && me.showLogin()
@@ -54,6 +52,17 @@ class Viewport extends BaseViewport {
             console.error(e);
             me.showLogin(e.message)
         })
+    }
+
+    onConstructed() {
+        super.onConstructed();
+
+        const recover = this.recoverMatch;
+
+        if (recover) {
+            this.showLogin();
+            this.getReference('login').showRecover(recover[1], recover[2])
+        }
     }
 
     destroy(...args) {
