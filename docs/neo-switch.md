@@ -1,7 +1,6 @@
 # Switching the webclient to neo (plan)
 
-Status: **draft, waiting for the owner's approval** (2026-11-20). Nothing in this plan
-changes the entry point until it is approved. Sections 2–8 are implemented in order, one
+Status: **approved by the owner** (2026-11-20). Sections 2–8 are implemented in order, one
 commit per section, on the task branch. Reviewed read-only by Codex (gpt-6.2-astra); its
 findings are worked in.
 
@@ -210,15 +209,14 @@ module of the supported editions (business and pro included, checked in the asse
 package) has a neo main view or settings card for each classic panel, every classic route
 in D5 has a neo equivalent, and the classic-apps method returns nothing for an admin.
 
-## Open questions for the owner
+## Owner's answers (2026-11-20)
 
-1. D1: should upgraded installations also switch to neo, or keep classic until an admin
-   sets `webclient` (neo only for new installs)? Recommendation: neo for all, the launchers
-   (D3) cover modules without a neo UI.
-2. D2: is a per-browser cookie enough, or should the choice be a user setting (new
-   `core_user` column, follows the user to every browser)? And is it fine that
-   `?webclient=classic` works even when `webclientSwitch` is false?
-3. D5: OAuth consent and `?r=` external URLs go to classic first (neo ports later), or must
-   neo handle them before the switch?
-4. D7: is the development (unbundled) neo runtime acceptable for the first release, with
-   the production build as a separate card?
+1. D1: neo is the default for upgraded installations too; the launchers (D3) cover modules
+   without a neo UI.
+2. D2: a per-browser cookie `GO_WEBCLIENT`, no `core_user` column. `?webclient=classic`
+   keeps working when `webclientSwitch` is false; the switch only hides the menu items,
+   makes the endpoint refuse and ignores the cookie.
+3. D5: OAuth authorize / consent and `?r=&f=` external URLs render the classic client for
+   now; neo ports are later cards.
+4. D7: the first release uses the development (unbundled) neo runtime; the production
+   build is a separate card.
