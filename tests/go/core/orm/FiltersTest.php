@@ -228,6 +228,167 @@ class FiltersTest extends TestCase
 		}
 	}
 
+	/**
+	 * @return string[] The core_search ids of the notes
+	 */
+	private function searchIds(Note ...$notes): array
+	{
+		$ids = array_map(
+			fn(Note $n) => (string) Search::find()->selectSingleValue('search.id')
+				->where(['entityTypeId' => Note::entityType()->getId(), 'entityId' => $n->id])->single(),
+			$notes
+		);
+		sort($ids);
+		return $ids;
+	}
+
+	/**
+	 * @return string[] The ids of the links from $from to the notes
+	 */
+	private function linkIds(Note $from, Note ...$notes): array
+	{
+		if (empty($notes)) {
+			return [];
+		}
+		$ids = array_map('strval', Link::find()->selectSingleValue('l.id')->where([
+			'fromEntityTypeId' => Note::entityType()->getId(),
+			'fromId' => $from->id,
+			'toEntityTypeId' => Note::entityType()->getId(),
+			'toId' => array_map(fn(Note $n) => $n->id, $notes)
+		])->all());
+		sort($ids);
+		return $ids;
+	}
+
+	/**
+	 * Asserts the ids and the total of Search/query and Link/query for a filter on notes
+	 *
+	 * @param array $filter The filter without the restriction to notes or links
+	 * @param Note $from The note that links to every note of the test
+	 * @param Note[] $expectedNotes
+	 * @param bool $link False when the filter means something else in Link/query (entityId is the link source there)
+	 */
+	private function assertSearchAndLinkQuery(array $filter, Note $from, array $expectedNotes, string $message, bool $link = true): void
+	{
+		$searchFilter = ['operator' => 'AND', 'conditions' => [['entities' => ['Note']], $filter]];
+		$response = (new \go\core\controller\Search())->query(['filter' => $searchFilter, 'calculateTotal' => true]);
+		$ids = $response['ids'];
+		sort($ids);
+		$expected = $this->searchIds(...$expectedNotes);
+		$this->assertSame($expected, $ids, "Search/query $message");
+		$this->assertSame(count($expected), $response['total'], "Search/query $message");
+
+		if (!$link) {
+			return;
+		}
+		$linkFilter = ['operator' => 'AND', 'conditions' => [['entity' => 'Note', 'entityId' => $from->id], $filter]];
+		$response = (new \go\core\controller\Link())->query(['filter' => $linkFilter, 'calculateTotal' => true]);
+		$ids = $response['ids'];
+		sort($ids);
+		$this->assertSame($this->linkIds($from, ...$expectedNotes), $ids, "Link/query $message");
+		$this->assertSame(count($expectedNotes), $response['total'], "Link/query $message");
+	}
+
+	/**
+	 * One text filter whose word is the start of two words of an item must return that item once
+	 *
+	 * Known limitation: Search/query drops the GROUP BY of the search word joins for speed, so its plain text
+	 * filter (as the global search sends it) still returns such an item twice and counts it twice in the total.
+	 * Its SQL stays as it is on purpose; the case is rare and dedupe would slow every global search.
+	 */
+	public function testTextFilterMatchingTwoWordsOfOneItemReturnsItOnce(): void
+	{
+		$x = "alpha" . uniqid();
+		$twoWords = $this->createNote("{$x}one {$x}two");
+		$other = $this->createNote("$x other");
+		$from = $this->createNote("from");
+		Link::create($from, $twoWords);
+		Link::create($from, $other);
+
+		$this->assertEquals([$twoWords->id, $other->id], $this->findNoteIds(['text' => $x]));
+		$this->assertEquals([$twoWords->id], $this->findNoteIds(['text' => "$x {$x}one"]));
+
+		$entityIds = array_map('intval', Search::find()->selectSingleValue('search.entityId')
+			->filter(['text' => $x])->orderBy(['search.entityId' => 'ASC'])->all());
+		$this->assertEquals([$twoWords->id, $other->id], $entityIds);
+
+		// Link/query is DISTINCT, so the total must count each link once too
+		$response = (new \go\core\controller\Link())->query([
+			'filter' => ['entity' => 'Note', 'entityId' => $from->id, 'text' => $x],
+			'calculateTotal' => true
+		]);
+		$ids = $response['ids'];
+		sort($ids);
+		$this->assertSame($this->linkIds($from, $twoWords, $other), $ids);
+		$this->assertSame(2, $response['total']);
+	}
+
+	/**
+	 * The first text filter of a query used to own the search word joins. Under a NOT it then excluded only the
+	 * word rows that matched, so an item that also has other words was still found.
+	 */
+	public function testNotOnFirstTextFilter(): void
+	{
+		$x = "alpha" . uniqid();
+		$y = "beta" . uniqid();
+		$both = $this->createNote("$x $y");
+		$onlyX = $this->createNote($x);
+		$onlyY = $this->createNote("$y other");
+		$from = $this->createNote("from");
+		foreach ([$both, $onlyX, $onlyY] as $note) {
+			Link::create($from, $note);
+		}
+
+		$this->assertEquals([$onlyX->id], $this->findNoteIds([
+			'operator' => 'AND',
+			'conditions' => [['operator' => 'NOT', 'conditions' => [['text' => $y]]], ['text' => $x]]
+		]));
+
+		// Only a NOT: every note of the book except the ones with $y
+		$this->assertEquals([$onlyX->id, $from->id], $this->findNoteIds([
+			'operator' => 'NOT', 'conditions' => [['text' => $y]]
+		]));
+
+		$this->assertSearchAndLinkQuery([
+			'operator' => 'AND',
+			'conditions' => [['operator' => 'NOT', 'conditions' => [['text' => $y]]], ['text' => $x]]
+		], $from, [$onlyX], "NOT first");
+	}
+
+	/**
+	 * A text filter in an OR branch must not drop the items that have no search words when another branch matches
+	 */
+	public function testTextFilterUnderOrKeepsItemsWithoutWords(): void
+	{
+		$x = "alpha" . uniqid();
+		$withX = $this->createNote($x);
+		$noWords = $this->createNote("nowords");
+		$from = $this->createNote("from");
+		Link::create($from, $withX);
+		Link::create($from, $noWords);
+
+		$noWordsSearchId = $this->searchIds($noWords)[0];
+		go()->getDbConnection()->delete('core_search_word', ['searchId' => $noWordsSearchId])->execute();
+
+		$this->assertEquals([$withX->id, $noWords->id, $from->id], $this->findNoteIds([
+			'operator' => 'OR',
+			'conditions' => [['text' => $x], ['operator' => 'NOT', 'conditions' => [['text' => $x]]]]
+		]));
+
+		$this->assertSearchAndLinkQuery([
+			'operator' => 'OR',
+			'conditions' => [['text' => $x], ['entityId' => $noWords->id]]
+		], $from, [$withX, $noWords], "text OR entityId", false);
+
+		// The link filter joins one row per link of an item, so Search/query must keep its GROUP BY here
+		$second = $this->createNote("second");
+		Link::create($second, $withX);
+		$this->assertSearchAndLinkQuery([
+			'operator' => 'OR',
+			'conditions' => [['text' => $x], ['link' => ['entity' => 'Note', 'id' => $from->id]]]
+		], $from, [$withX, $noWords], "text OR link", false);
+	}
+
 	public function testLinkFilterWithNot(): void
 	{
 		$a = $this->createNote("a");

@@ -447,9 +447,20 @@ class Filters {
 	{
 		if(isset($filter['conditions']) && isset($filter['operator'])) { // is FilterOperator
 
+			$isOrOrNot = in_array(strtoupper($filter['operator']), ['OR', 'NOT']);
+
 			foreach($filter['conditions'] as $condition) {
 				$subCriteria = new Criteria();
-				$this->internalApply($query, $condition, $subCriteria);
+				if ($isOrOrNot) {
+					$query->orOrNotFilterDepth++;
+				}
+				try {
+					$this->internalApply($query, $condition, $subCriteria);
+				} finally {
+					if ($isOrOrNot) {
+						$query->orOrNotFilterDepth--;
+					}
+				}
 
 				if(!$subCriteria->hasConditions()) {
 					continue;

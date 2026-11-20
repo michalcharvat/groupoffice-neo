@@ -306,7 +306,8 @@ abstract class EntityController extends Controller {
 
 						 $totalQuery = (new Query())->selectSingleValue('count(*)')->from($totalQuery);
 					 } else {
-						 if (count($idsQuery->getGroupBy())) {
+						 // A DISTINCT query returns each id once, but count(*) counts all its rows
+						 if (count($idsQuery->getGroupBy()) || $idsQuery->getDistinct()) {
 							 $totalQuery->selectSingleValue("count(distinct " . $totalQuery->getTableAlias() . ".id)");
 						 } else {
 							 //count(*) can be used because we use a subquery in AclItemEntity::applyAclToQuery()
