@@ -162,6 +162,58 @@ class LoginView extends Container {
                             handler  : 'up.onSendForgot'
                         }]
                     }]
+                }, {
+                    // go.login.RecoveryDialog: "#recover/<hash>-<redirect>" of the recovery mail
+                    module   : FormContainer,
+                    reference: 'recoverForm',
+                    keys     : {Enter: 'up.onSaveRecover'},
+                    layout   : {ntype: 'vbox', align: 'stretch'},
+                    items    : [{
+                        ntype    : 'container',
+                        cls      : ['go-login-fields'],
+                        reference: 'recoverFields',
+                        flex     : 'none',
+                        layout   : {ntype: 'vbox', align: 'stretch'},
+                        items    : [{
+                            ntype    : 'component',
+                            reference: 'recoverUser',
+                            text     : t('Loading...')
+                        }, {
+                            module       : PasswordField,
+                            name         : 'newPassword',
+                            labelText    : t('New password'),
+                            labelPosition: 'inline',
+                            autoComplete : 'new-password',
+                            required     : true
+                        }, {
+                            module       : PasswordField,
+                            name         : 'confirmPassword',
+                            labelText    : t('Confirm password'),
+                            labelPosition: 'inline',
+                            autoComplete : 'new-password',
+                            required     : true
+                        }]
+                    }, {
+                        ntype    : 'component',
+                        cls      : ['go-login-message'],
+                        reference: 'recoverMessage',
+                        hidden   : true
+                    }, {
+                        module: Toolbar,
+                        cls   : ['go-login-buttons'],
+                        flex  : 'none',
+                        items : [{
+                            module : Button,
+                            text   : t('Back'),
+                            handler: 'up.onRecoverDone'
+                        }, '->', {
+                            module   : Button,
+                            reference: 'recoverButton',
+                            ui       : 'primary',
+                            text     : t('Save'),
+                            handler  : 'up.onSaveRecover'
+                        }]
+                    }]
                 }]
             }]
         }, {
@@ -391,6 +443,123 @@ class LoginView extends Container {
         }
     }
 
+    /**
+     * api/auth.php POST
+     * @param {Object} data
+     * @returns {Promise<Object>}
+     */
+    async postAuth(data) {
+        const response = await fetch(client.apiUrl + 'auth.php', {
+            method     : 'POST',
+            credentials: 'same-origin',
+            headers    : {'Content-Type': 'application/json'},
+            body       : JSON.stringify(data)
+        });
+
+        return response.json().catch(() => ({}))
+    }
+
+    /**
+     * go.login.RecoveryDialog.show(): the "set a new password" card of a recovery link
+     * (docs/neo-switch.md, D5). The Viewport calls it before it restores the session.
+     * @param {String} hash 40 hex digits
+     * @param {String} [redirect] still URL encoded, as User::sendRecoveryMail() wrote it
+     */
+    async showRecover(hash, redirect='') {
+        let me = this;
+
+        me.recoverHash     = hash;
+        me.recoverRedirect = safeRedirect(redirect);
+
+        me.getReference('recoverForm').reset({newPassword: '', confirmPassword: ''});
+        me.getReference('recoverFields').hidden = false;
+        me.getReference('recoverButton').hidden = false;
+        me.getReference('recoverUser').text     = t('Loading...');
+        me.showRecoverMessage(null);
+        me.getReference('title').text = t('Reset password');
+        me.getReference('cards').layout.activeIndex = me.getReference('cards').items.indexOf(me.getReference('recoverForm'));
+
+        let result = {};
+
+        try {
+            result = await me.postAuth({action: 'recover', hash})
+        } catch (e) {
+            console.error(e)
+        }
+
+        if (result.username) {
+            me.getReference('recoverUser').text = result.displayName
+                ? `${result.displayName} (${result.username})`
+                : result.username
+        } else {
+            me.getReference('recoverFields').hidden = true;
+            me.getReference('recoverButton').hidden = true;
+            me.showRecoverMessage(t('This password recovery link is invalid'), true)
+        }
+    }
+
+    /**
+     * go.login.RecoveryDialog.submit()
+     */
+    async onSaveRecover() {
+        let me     = this,
+            form   = me.getReference('recoverForm'),
+            button = me.getReference('recoverButton');
+
+        if (button.disabled || button.hidden || !await form.validate()) {
+            return
+        }
+
+        const {newPassword, confirmPassword} = await form.getValues();
+
+        if (newPassword !== confirmPassword) {
+            me.showRecoverMessage(t("The passwords didn't match"), true);
+            return
+        }
+
+        button.disabled = true;
+
+        try {
+            const result = await me.postAuth({action: 'recover', hash: me.recoverHash, newPassword});
+
+            if (result.passwordChanged) {
+                if (me.recoverRedirect) {
+                    Neo.Main.redirectTo({url: me.recoverRedirect, windowId: me.windowId});
+                    return
+                }
+
+                me.getReference('recoverFields').hidden = true;
+                button.hidden = true;
+                me.showRecoverMessage(t('Your password was changed successfully'));
+                return
+            }
+
+            const errors = Object.values(result.validationErrors || {}).map(e => e.description).filter(Boolean);
+            me.showRecoverMessage(errors.length ? errors.join(' ') : t('This password recovery link is invalid'), true)
+        } catch (e) {
+            me.showRecoverMessage(t('Sorry, an error occurred') + ': ' + e.message, true)
+        } finally {
+            button.disabled = false
+        }
+    }
+
+    /**
+     * Back from the recovery card: the Viewport shows the login or, with a session, the main view
+     */
+    onRecoverDone() {
+        this.recoverHash = null;
+        this.showLoginCard();
+        this.up({className: 'GO.view.Viewport'})?.onRecoverDone()
+    }
+
+    showRecoverMessage(message, isError=false) {
+        let el = this.getReference('recoverMessage');
+
+        el.text   = message || '';
+        el.hidden = !message;
+        el.toggleCls('go-login-error', isError)
+    }
+
     reset(message) {
         let me = this;
 
@@ -414,6 +583,30 @@ class LoginView extends Container {
         el.text   = message || '';
         el.hidden = !message;
         el.toggleCls('go-login-error', isError)
+    }
+}
+
+/**
+ * The redirect of a recovery link, only when it stays inside this GroupOffice: decoded once
+ * (PHP urlencode()), same origin and below the installation path, http(s) only.
+ * The classic client checks the same in go/core/views/extjs3/Router.js.
+ * @param {String} value
+ * @returns {String|null} absolute URL
+ */
+export function safeRedirect(value) {
+    if (!value) {
+        return null
+    }
+
+    try {
+        const base = new URL(client.baseUrl, globalThis.location.href),
+              url  = new URL(decodeURIComponent(String(value).replace(/\+/g, ' ')), base);
+
+        return /^https?:$/.test(url.protocol) && url.origin === base.origin && url.pathname.startsWith(base.pathname)
+            ? url.href
+            : null
+    } catch (e) {
+        return null
     }
 }
 

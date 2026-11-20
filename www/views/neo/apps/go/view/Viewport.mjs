@@ -1,5 +1,6 @@
 import {loadClassicApps} from '../../../src/classicApps.mjs';
 import BaseViewport from '../../../node_modules/neo.mjs/src/container/Viewport.mjs';
+import HashHistory  from '../../../node_modules/neo.mjs/src/util/HashHistory.mjs';
 import client       from '../../../src/jmap/Client.mjs';
 import LoginView    from './LoginView.mjs';
 import MainView     from './MainView.mjs';
@@ -36,8 +37,19 @@ class Viewport extends BaseViewport {
             client.on('unauthorized', () => me.showLogin(t('Your session has expired. Please log in again.')))
         ];
 
+        // the password recovery link (User::sendRecoveryMail()) comes first, also when this
+        // browser has a session: like go.Router's "recover" route (docs/neo-switch.md, D5)
+        const hash    = (HashHistory.first(me.windowId) || Neo.windowConfigs?.[me.windowId]?.hash)?.hashString || '',
+              recover = hash.match(/^recover\/([a-f0-9]{40})-?(.*)$/);
+
+        if (recover) {
+            me.recovering = true;
+            me.showLogin();
+            me.getReference('login').showRecover(recover[1], recover[2])
+        }
+
         client.restoreSession().then(session => {
-            !session && me.showLogin()
+            !session && !me.recovering && me.showLogin()
         }).catch(e => {
             console.error(e);
             me.showLogin(e.message)
@@ -63,9 +75,25 @@ class Viewport extends BaseViewport {
         me.layout.activeIndex = 1
     }
 
+    /**
+     * The recovery card was left: the login, or the main view when there is a session
+     */
+    onRecoverDone() {
+        let me = this;
+
+        me.recovering = false;
+        Neo.Main.setRoute({value: '', windowId: me.windowId});
+        client.user ? me.showMain() : me.showLogin()
+    }
+
     async showMain() {
         let me    = this,
             token = me.showToken = Symbol();
+
+        // a recovery link stays on the login screen until its card is left
+        if (me.recovering) {
+            return
+        }
 
         if (!me.mainView) {
             // modules may add modules for this user (ModuleRegistry onLogin)

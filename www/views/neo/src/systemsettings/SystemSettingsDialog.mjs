@@ -195,7 +195,14 @@ class SystemSettingsDialog extends Dialog {
      * @param {String} itemId
      */
     showCard(itemId) {
-        const index = this.itemIds.indexOf(itemId);
+        let index = this.itemIds.indexOf(itemId);
+
+        if (index < 0 && itemId) {
+            // classic card ids are the module name ("history"), neo's "<package>-<name>"
+            const matches = this.itemIds.filter(id => id.endsWith('-' + itemId));
+            matches.length === 1 && (index = this.itemIds.indexOf(matches[0]))
+        }
+
         index > -1 && (this.cards.activeIndex = index)
     }
 

@@ -57,11 +57,22 @@ export function routePath(accountId, mailbox, uid=null) {
 }
 
 /**
- * @param {String} path e.g. "4/INBOX/12"
+ * @param {String} path e.g. "4/INBOX/12"; the classic client's "#email/<account>/<mailbox>"
+ *        has the mailbox unencoded and no uid, so "4/INBOX/Sub/Folder" is mailbox "INBOX/Sub/Folder"
+ *        (a last part of digits stays a uid, as in neo's own routes)
  * @returns {{accountId: Number, mailbox: String|null, uid: Number|null}|null}
  */
 export function parseRoutePath(path) {
-    const [account, mailbox, uid] = String(path || '').split('/');
+    const parts   = String(path || '').replace(/\/$/, '').split('/'),
+          account = parts[0];
+    let mailbox, uid;
+
+    if (parts.length > 3 || (parts.length === 3 && !/^\d+$/.test(parts[2]))) {
+        // classic: raw mailbox with its delimiter
+        mailbox = parts.slice(1).join('/')
+    } else {
+        [, mailbox, uid] = parts
+    }
 
     if (!/^\d+$/.test(account || '')) {
         return null

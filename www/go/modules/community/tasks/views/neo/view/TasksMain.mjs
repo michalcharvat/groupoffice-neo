@@ -618,11 +618,12 @@ class TasksMain extends MainThreeColumnPanel {
     }
 
     /**
-     * Called by the shell for "#tasks/<path>", e.g. "#tasks/task/5"
+     * Called by the shell for "#tasks/<path>", e.g. "#tasks/task/5"; the classic client's
+     * "#tasks/5" too (docs/neo-switch.md, D5)
      * @param {String} path
      */
     route(path) {
-        const match = path.match(/^task\/(\d+)$/);
+        const match = path.match(/^(?:task\/)?(\d+)$/);
 
         match && this.showTask(match[1])
     }
