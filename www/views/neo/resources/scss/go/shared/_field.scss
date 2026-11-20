@@ -6,6 +6,9 @@
     .go-field {
         display       : flex;
         flex-direction: column;
+        // neo's text fields have 5px above and below: rows of both line up, and a row with
+        // overflow hidden doesn't cut off the label in the top border
+        margin        : 5px 0;
         min-width     : 0;
         position      : relative;
     }
