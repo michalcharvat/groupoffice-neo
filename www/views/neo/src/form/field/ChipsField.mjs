@@ -177,9 +177,8 @@ class ChipsField extends Field {
             return
         }
 
-        // keep the vnode in sync, or clearing the input later is no change
-        me.inputNode.value = me.inputText;
-        me.update()
+        // keep the vdom and vnode in sync, or clearing the input later is no change
+        me.syncInputValue(me.inputNode, me.inputText)
     }
 
     onKeyDown({key}) {

@@ -1,4 +1,5 @@
 import BaseField from '../../../node_modules/neo.mjs/src/form/field/Base.mjs';
+import VNodeUtil from '../../../node_modules/neo.mjs/src/util/VNode.mjs';
 import {t}       from '../../Translate.mjs';
 
 /**
@@ -124,6 +125,23 @@ class Field extends BaseField {
      */
     inputFlags() {
         return {disabled: this.disabled || null, readOnly: this.readOnly || null}
+    }
+
+    /**
+     * Takes over what the user typed into an input of the box without writing it back: the
+     * vdom node and the last rendered vnode get the DOM's value, so the next update has no
+     * value delta (like neo's Text field onInputValueChange()). An update() per keystroke
+     * sent the value back late, with older text, while the user went on typing: characters
+     * got lost and the caret jumped.
+     * @param {Object} node vdom node of the input (with an id)
+     * @param {String} value
+     * @protected
+     */
+    syncInputValue(node, value) {
+        node.value = value;
+
+        const {vnode} = VNodeUtil.find(this.vnode, node.id) || {};
+        vnode?.attributes && (vnode.attributes.value = value)
     }
 
     /**
