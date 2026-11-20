@@ -6,13 +6,9 @@ import Card   from './Card.mjs';
 import HistoryDetailDialog from './HistoryDetailDialog.mjs';
 import {t} from '../Translate.mjs';
 
-// GOUI LogEntryGrid in HistoryDetailPanel: grid rows, at most 40rem high.
-// Besides the rows the neo grid has a 30px header and reserves 17px for its
-// horizontal scrollbar.
-const ROW_HEIGHT    = 35,
-      HEADER_HEIGHT = 30 + 17,
-      MAX_HEIGHT    = '40rem',
-      PAGE_SIZE     = 20;
+// GOUI LogEntryGrid in HistoryDetailPanel: grid rows, at most 40rem high
+const MAX_HEIGHT = '40rem',
+      PAGE_SIZE  = 20;
 
 /**
  * "History" of an entity: community/history LogEntry rows in a grid, like GOUI's
@@ -43,7 +39,7 @@ class HistoryPanel extends Card {
             reference: 'grid',
             cls      : ['go-history-grid'],
             hidden   : true,
-            height   : HEADER_HEIGHT + ROW_HEIGHT,
+            height   : Grid.CHROME_HEIGHT, // sized to the rows on load
             style    : {maxHeight: MAX_HEIGHT},
             store    : {
                 module    : JmapStore,
@@ -233,7 +229,7 @@ class HistoryPanel extends Card {
         }
 
         grid.hidden  = !count;
-        grid.height  = HEADER_HEIGHT + Math.max(count, 1) * ROW_HEIGHT;
+        grid.fitToRows(Math.max(count, 1));
         empty.text   = t('No items to display');
         empty.hidden = !!count;
 

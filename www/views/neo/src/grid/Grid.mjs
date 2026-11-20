@@ -148,6 +148,40 @@ class Grid extends GridContainer {
     dp = 0
 
     /**
+     * px around the rows of a grid: the 30px header, the 17px neo reserves for the horizontal
+     * scrollbar and the 1px border above and below (neo-grid-container)
+     * @member {Number} CHROME_HEIGHT
+     */
+    static CHROME_HEIGHT = 30 + 17 + 2
+
+    /**
+     * Rows the grid is sized to by fitToRows(), null when it isn't
+     * @member {Number|null} fittedRows=null
+     */
+    fittedRows = null
+
+    /**
+     * Height of a grid that shows `count` rows without scrolling. neo's body shows
+     * ceil(bodyHeight / rowHeight) - 1 rows and nothing below one row, so the body gets 1px
+     * more than the rows. 0 rows: just the header.
+     * @param {Number} count rows
+     * @returns {Number} px
+     */
+    heightForRows(count) {
+        return Grid.CHROME_HEIGHT + count * this.rowHeight + 1
+    }
+
+    /**
+     * Sizes the grid to `count` rows (a grid in a detail card; CSS max-height may cap it, then
+     * it scrolls). The height follows a later change of the row height (theme, density).
+     * @param {Number} count rows
+     */
+    fitToRows(count) {
+        this.fittedRows = count;
+        this.height     = this.heightForRows(count)
+    }
+
+    /**
      * @param {Number} rowLines
      * @param {Number} dp px of dp(1)
      * @returns {Number} px
@@ -234,6 +268,7 @@ class Grid extends GridContainer {
         }
 
         me.rowHeight = height;
+        typeof me.fittedRows === 'number' && (me.height = me.heightForRows(me.fittedRows));
 
         // content-sized rows: neo's afterSetRowHeight() moved the estimate, the group rows follow
         if (me.view?.rowGeometry) {

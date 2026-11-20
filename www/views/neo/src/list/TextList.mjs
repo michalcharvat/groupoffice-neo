@@ -1,6 +1,9 @@
 import List         from '../../node_modules/neo.mjs/src/list/Base.mjs';
 import {escapeHtml} from '../Format.mjs';
 
+// members of neo's records (data/RecordFactory.mjs): a field of that name would replace them
+const RECORD_API = ['constructor', 'get', 'set', 'setSilent', 'setOriginal', 'reset', 'notifyChange', 'isModified', 'isModifiedField', 'isRecord', 'version', 'toJSON'];
+
 /**
  * neo's List renders displayField as HTML. GO data (note book names etc.) is
  * text: escape it. Use as List, or in a ComboBox as listConfig: {module: TextList}.
@@ -32,6 +35,44 @@ class TextList extends List {
          * @member {Function|null} noDrop=null
          */
         noDrop: null
+    }
+
+    /**
+     * neo.mjs 13.4 gives a store config without a model an empty Model: its records drop every
+     * data field, string keys included (getKey() undefined, createItem() throws). neo's ComboBox
+     * adds a default model to a plain store config, List does not: add one with the key, display
+     * and group fields plus the fields of the initial data. Values keep their type. Dotted names
+     * become their root field (record.get('a.b') reads into it); names of the record API (get,
+     * set, ...) are left out, they would replace its methods. Declare a model for other fields of
+     * data loaded later.
+     *
+     *     {module: CheckList, displayField: 'name', store: {keyProperty: 'id', data: [{id: 'create', name: 'Create'}]}}
+     * @param {Object|Neo.data.Store|null} value
+     * @param {Neo.data.Store|null} oldValue
+     * @returns {Neo.data.Store|null}
+     * @protected
+     */
+    beforeSetStore(value, oldValue) {
+        if (Neo.typeOf(value) === 'Object' && !value.model && !value.module && !value.ntype) {
+            const {data} = value,
+                  items  = Array.isArray(data) ? data : (data && typeof data === 'object' ? [data] : []),
+                  names  = new Set();
+
+            [value.keyProperty || 'id', this.displayField, this.groupField].forEach(name => {
+                typeof name === 'string' && name && names.add(name.split('.')[0])
+            });
+
+            // checkedField only when the data has it: declared, it makes neo write the selection into the records
+            items.forEach(item => {
+                item && typeof item === 'object' && Object.keys(item).forEach(name => names.add(name))
+            });
+
+            RECORD_API.forEach(name => names.delete(name));
+
+            value = {...value, model: {fields: [...names].map(name => ({name}))}}
+        }
+
+        return super.beforeSetStore(value, oldValue)
     }
 
     createItem(record, index, poolIndex=index) {
