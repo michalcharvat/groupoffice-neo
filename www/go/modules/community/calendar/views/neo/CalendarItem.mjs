@@ -553,7 +553,9 @@ export default class CalendarItem {
         let me = this,
             ui = me.ui;
 
-        if (!forceWrite && !me.mayChange) {
+        // a new event is always edited: without a calendar the user may write in (none
+        // selected, none subscribed) it would be read only and open as an empty detail
+        if (!me.isNew() && !forceWrite && !me.mayChange) {
             return ui.openDetail(me)
         }
 
@@ -568,8 +570,14 @@ export default class CalendarItem {
             me.cal = calendar;
             me.data.calendarId = calendar.id;
             me.readOnly = false
-        } else if (!me.data.calendarId) {
-            me.data.calendarId = calendarData.prefs.defaultCalendarId || calendarData.writableCalendars[0].id
+        } else if (!me.data.calendarId || (me.isNew() && !calendarData.writableCalendars.some(c => c.id === String(me.data.calendarId)))) {
+            // a new event goes into a calendar the user may write in
+            const writable = calendarData.writableCalendars,
+                  calendar = writable.find(c => c.id === String(calendarData.prefs.defaultCalendarId)) || writable[0];
+
+            me.cal = calendar;
+            me.data.calendarId = calendar.id;
+            me.readOnly = false
         }
 
         return ui.openEditor(me, {onCancel})

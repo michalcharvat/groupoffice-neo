@@ -83,6 +83,7 @@ calendar/category/resource/subscribe/webcal dialogs).
 | Views | Swipe to previous/next period | goui/script/Main.ts:327,378 | missing | fixed |
 | Availability | Drag the event on the timeline | goui/script/AvailabilityWindow.ts:61-96 | click only | fixed |
 | Participant status | "Invite not sent yet" | goui/script/Index.ts:137 | key misspelled "Invite not send yet" | fixed |
+| New event | Without a writeable calendar (none subscribed, as `admin` on the dev instance): "No writeable calendars" with "Show calendars" / "Create personal calendar", then the event dialog | goui/script/CalendarItem.ts:386-440 | the unsaved event opened as an empty, read-only detail window (`CalendarItem.open()` checked `mayChange` first); a double click on a day opened two | fixed: new events always go to the editor, one new event at a time (`currentCreation`). "Create personal calendar" failed in 26.x too: `Calendar/first` saved a partly loaded user ("Typed property User::$email must not be accessed before initialization" when a module changes the profile contact on load); it loads the whole user now (`CalendarFirstTest`) |
 
 ## tasks
 
