@@ -529,7 +529,8 @@ class Extjs3 {
 		}
 
 		foreach ($files as $file) {
-			$js = $file->getContents();
+			// without comments: a commented-out registration doesn't count (whole-line // only, URLs stay)
+			$js = preg_replace(['~/\*.*?\*/~s', '~^\s*//.*$~m'], '', $file->getContents());
 			if (preg_match('/moduleManager\.addModule\(\s*[\'"]([a-z0-9_]+)[\'"]\s*,\s*[A-Za-z_$][\w.$]*/i', $js, $m)) {
 				return $m[1];
 			}
