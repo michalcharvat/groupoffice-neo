@@ -12,11 +12,8 @@ import {fmt}        from '../../../../../../../views/neo/src/Translate.mjs';
 import ConfirmDialog from '../../../../../../../views/neo/src/view/ConfirmDialog.mjs';
 import {loadPrincipalNames, t} from './util.mjs';
 
-// GOUI tables in the domain detail: rows up to 40rem (CSS max-height); the neo grid
-// adds a 30px header and reserves 17px for its horizontal scrollbar
-const ROW_HEIGHT    = 35,
-      HEADER_HEIGHT = 30 + 17,
-      PAGE_SIZE     = 50;
+// GOUI tables in the domain detail: rows up to 40rem (CSS max-height)
+const PAGE_SIZE = 50;
 
 /**
  * A card of the domain detail with the domain's mailboxes or aliases (GOUI
@@ -116,7 +113,7 @@ class DomainGridCard extends Container {
             reference  : 'grid',
             cls        : ['go-md-grid'],
             flex       : 'none',
-            height     : HEADER_HEIGHT + ROW_HEIGHT,
+            height     : Grid.CHROME_HEIGHT, // sized to the rows on load
             multiSelect: true,
             stateId    : me.gridStateId,
             store      : {
@@ -223,7 +220,7 @@ class DomainGridCard extends Container {
             count = grid.store.count;
 
         // empty: just the header, "No items to display" below it
-        grid.height = HEADER_HEIGHT + count * ROW_HEIGHT;
+        grid.fitToRows(count);
         me.getReference('empty').hidden = count > 0;
 
         const ids = grid.store.items.flatMap(r => [r.createdBy, r.modifiedBy]);
