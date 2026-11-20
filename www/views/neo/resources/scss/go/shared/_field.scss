@@ -32,9 +32,10 @@
         outline     : 1px solid var(--fg-main);
     }
 
-    // the label covers the border line only: its upper half shows the container behind
+    // the label covers the border line only: its upper half shows the container behind. The
+    // focus outline lies 1px above the border, so the cover starts 1px higher
     .go-field-label {
-        background: linear-gradient(transparent 50%, var(--bg-input) 50%);
+        background: linear-gradient(transparent calc(50% - 1px), var(--bg-input) calc(50% - 1px));
         color           : var(--fg-secondary-text);
         font-size       : 1.2rem;
         left            : 1rem;
