@@ -248,9 +248,8 @@ class AutocompleteField extends Field {
         }
 
         me.inputText = value ?? '';
-        // keep the vnode in sync, or setting the picked text later is no change
-        me.boxNode.cn[0].value = me.inputText;
-        me.update();
+        // keep the vdom and vnode in sync, or setting the picked text later is no change
+        me.syncInputValue(me.boxNode.cn[0], me.inputText);
 
         // typing makes pending suggestions, picks and value texts outdated
         clearTimeout(me.bufferTimer);

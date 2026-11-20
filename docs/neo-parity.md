@@ -257,3 +257,44 @@ tasks (list dialog, drag onto a list), notes, history, davclient, maildomains (d
 saved), calendar preferences (archive options follow their option), groups (delete two
 selected groups). apikeys, oidc, oauth2client and multi_instance are not installed in the
 shared dev database: those changes are checked by code reading and `node --check` only.
+
+## Regression walkthrough 2026-11-20
+
+After the night merges (PrincipalCombo avatar, dialog resize / Escape / header double-click,
+user time zone via `DateUtil`, go-no-drop, sortable lists and custom fields drag and drop,
+saved filter Input field, JmapStore empty reload, JMAP changes paging, Search text filters):
+walked through as neotest and neoadmin on an own container, headless Chromium with the
+browser in America/New_York (UTC−5) and the users in Europe/Amsterdam; the birthday check ran
+with the browser in Pacific/Kiritimati (UTC+14).
+
+Checked and correct: start page, notes, tasks (dates and responsible saved, avatar in the
+combo), calendar (week and month views at the user's wall time, drag across days in week and
+month view, drag-create, recurring occurrence moved with "this event" → override, event
+dialog times, Escape), e-mail (message date in the user's zone, compose, draft saved),
+files (upload, times in the user's zone, trash, permanent delete), bookmarks, My account,
+System settings cards, user and group dialogs, contact birthday (date only, unchanged on save
+at UTC+14). No console errors.
+
+Fixed on branch `task/20261120-044313-neo-ui-regression-walkthrough-after-the`, one commit each:
+
+| Bug | Fix |
+|---|---|
+| A maximized dialog (tool or header double-click) stayed 90vh high: FormWindow's inline `maxHeight` capped neo's 98% | `src/apps/go/Dialog.scss`: no max size when `.neo-maximized` |
+| GO form fields (colour, duration, chips, date-time…) sat 5px higher than neo text fields; a row with `overflow: hidden` cut their border label in half (task dialog "Colour", "Estimated duration") | `go/shared/_field.scss`: 5px margin like neo's text fields |
+| The focus outline of a GO field ran through its label | label cover starts 1px higher |
+| Calendar: the hover tip of an event could stay on top of the event dialog after a double-click | `CalendarView.onViewDblClick()` hides it |
+| Typing in chips and autocomplete fields (e-mail recipients, user/contact pickers) lost characters and moved the caret, even at 200 ms per key ("neotest@neo.test" → "noetno.tst"): every keystroke ran `update()` and the late answer wrote older text back. Older than tonight's merges | `Field.syncInputValue()` syncs vdom and vnode like neo's Text field, no DOM write; ChipsField, AutocompleteField |
+| PasswordPrompt, TextPrompt, SecretDialog, e-mail CloseDialog and files OverwriteDialog had no message padding unless a ConfirmDialog had been opened before (neo loads `ConfirmDialog.scss` only with that class) | `.go-confirm-message` padding moved to `Dialog.scss` |
+
+Remaining gaps (open, no card):
+
+| Area | Gap | Notes |
+|---|---|---|
+| Files | No Delete key and no row context menu in the trash (only the toolbar buttons) | 26.x: Delete key on the grid |
+| Translations (cs) | Untranslated: "All notes", "{n} notes", "{n} tasks", "0 items", "Nothing selected", "Add a comment...", "Are you sure you want to permanently delete the selected items?", PasswordPrompt "Required" | dev module export `--missingOnly=1` |
+| PasswordPrompt | Shows "Required" before the user typed anything | neo PasswordField validates on mount |
+| Task dialog | The colour palette is two field rows high and leaves a gap below the subject | layout, not a regression |
+| E-mail | The message list shows the arrival time, the reading pane the Date header (both in the user's zone) | same as 26.x `sort by arrival` |
+| E-mail | Folders created outside GroupOffice appear only after a reload of the account tree | |
+| Core (not neo) | `Contact/get` with `properties` that leave out `addressBookId` fails: "Typed property Contact::$addressBookId must not be accessed before initialization" (`AclItemEntity::getAclEntity()`) | other `AclItemEntity` types likely too |
+| Test setup | A worktree needs `views/Extjs3/themes/Paper/htmleditor.css` (built, not committed) or saving a draft fails; greenmail starts empty after a restart (no Drafts/Sent) | environment only |

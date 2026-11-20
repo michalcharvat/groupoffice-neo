@@ -321,6 +321,9 @@ class CalendarView extends Component {
     onViewDblClick(data) {
         const item = this.itemFromEvent(data);
 
+        // the dialog covers the event: no mouseout would hide a tip that is shown or pending
+        this.hoverTip?.hide();
+
         if (item && item.key && !item.isNew()) {
             item.open()
         }

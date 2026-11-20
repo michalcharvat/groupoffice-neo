@@ -1,4 +1,5 @@
 import BaseField from '../../../node_modules/neo.mjs/src/form/field/Base.mjs';
+import VNodeUtil from '../../../node_modules/neo.mjs/src/util/VNode.mjs';
 import {t}       from '../../Translate.mjs';
 
 /**
@@ -110,6 +111,13 @@ class Field extends BaseField {
     }
 
     /**
+     * The input value the user typed last ({id, value}), until a render writes that input
+     * @member {Object|null} reportedInput=null
+     * @protected
+     */
+    reportedInput = null
+
+    /**
      * @returns {Object[]} vdom of the box content
      * @protected
      */
@@ -124,6 +132,71 @@ class Field extends BaseField {
      */
     inputFlags() {
         return {disabled: this.disabled || null, readOnly: this.readOnly || null}
+    }
+
+    /**
+     * Takes over what the user typed into an input of the box without writing it back: the
+     * vdom node and the last rendered vnode get the DOM's value, so the next update has no
+     * value delta (like neo's Text field onInputValueChange()). An update() per keystroke
+     * sent the value back late, with older text, while the user went on typing: characters
+     * got lost and the caret jumped.
+     * @param {Object} node vdom node of the input (with an id)
+     * @param {String} value
+     * @protected
+     */
+    syncInputValue(node, value) {
+        if (!node) {
+            return
+        }
+
+        node.value = value;
+        // a render already on its way returns an older vnode: afterVnodeSync() restores this
+        this.reportedInput = {id: node.id, value};
+        this.setVnodeInputValue(node.id, value)
+    }
+
+    /**
+     * @param {String} id
+     * @param {String} value
+     * @protected
+     */
+    setVnodeInputValue(id, value) {
+        const {vnode} = VNodeUtil.find(this.vnode, id) || {};
+        vnode?.attributes && (vnode.attributes.value = value)
+    }
+
+    /**
+     * Unmounted, the typed text is gone: a remount renders the input from the vdom (as neo's
+     * Text field drops its reportedInputValue)
+     * @param {Boolean} value
+     * @param {Boolean} oldValue
+     * @protected
+     */
+    afterSetMounted(value, oldValue) {
+        super.afterSetMounted(value, oldValue);
+        value || (this.reportedInput = null)
+    }
+
+    /**
+     * neo's Text field afterVnodeSync(): a render that was collected before the user typed lands
+     * with a vnode holding the older input value. Unless that render wrote the input's value
+     * itself, the DOM still shows what was typed, so the vnode gets it back.
+     * @param {Object[]|null} deltas
+     * @protected
+     */
+    afterVnodeSync(deltas) {
+        let me       = this,
+            reported = me.reportedInput;
+
+        if (reported) {
+            if (!deltas || deltas.some(delta => delta.id === reported.id && (delta.action === 'removeNode' || Object.hasOwn(delta.attributes || {}, 'value')))) {
+                me.reportedInput = null
+            } else {
+                me.setVnodeInputValue(reported.id, reported.value)
+            }
+        }
+
+        super.afterVnodeSync(deltas)
     }
 
     /**
