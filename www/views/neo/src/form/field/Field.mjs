@@ -166,6 +166,18 @@ class Field extends BaseField {
     }
 
     /**
+     * Unmounted, the typed text is gone: a remount renders the input from the vdom (as neo's
+     * Text field drops its reportedInputValue)
+     * @param {Boolean} value
+     * @param {Boolean} oldValue
+     * @protected
+     */
+    afterSetMounted(value, oldValue) {
+        super.afterSetMounted(value, oldValue);
+        value || (this.reportedInput = null)
+    }
+
+    /**
      * neo's Text field afterVnodeSync(): a render that was collected before the user typed lands
      * with a vnode holding the older input value. Unless that render wrote the input's value
      * itself, the DOM still shows what was typed, so the vnode gets it back.
