@@ -389,6 +389,73 @@ class FiltersTest extends TestCase
 		], $from, [$withX, $noWords], "text OR link", false);
 	}
 
+	/**
+	 * The "link" filter of Search/query joined core_link. Under OR that dropped the items that match another branch
+	 * but have no link from the given item, and under NOT the other links of an item passed the NOT.
+	 */
+	public function testSearchLinkFilterUnderOrAndNot(): void
+	{
+		$x = "alpha" . uniqid();
+		$from = $this->createNote("from");
+		$other = $this->createNote("other");
+		$linkedOnly = $this->createNote("linked");
+		$textOnly = $this->createNote($x);
+		$linkedFromBoth = $this->createNote($x);
+		$linkedFromOther = $this->createNote($x);
+		Link::create($from, $linkedOnly);
+		Link::create($from, $linkedFromBoth);
+		Link::create($other, $linkedFromBoth);
+		Link::create($other, $linkedFromOther);
+
+		$this->assertSearchAndLinkQuery([
+			'operator' => 'OR',
+			'conditions' => [['text' => $x], ['link' => ['entity' => 'Note', 'id' => $from->id]]]
+		], $from, [$linkedOnly, $textOnly, $linkedFromBoth, $linkedFromOther], "text OR link", false);
+
+		$this->assertSearchAndLinkQuery([
+			'operator' => 'AND',
+			'conditions' => [['text' => $x], ['operator' => 'NOT', 'conditions' => [['link' => ['entity' => 'Note', 'id' => $from->id]]]]]
+		], $from, [$textOnly, $linkedFromOther], "text AND NOT link", false);
+
+		// Two link filters: the second one must not join core_link with the same alias again
+		$this->assertSearchAndLinkQuery([
+			'operator' => 'AND',
+			'conditions' => [['link' => ['entity' => 'Note', 'id' => $from->id]], ['link' => ['entity' => 'Note', 'id' => $other->id]]]
+		], $from, [$linkedFromBoth], "link AND link", false);
+	}
+
+	/**
+	 * The "text" filter of an entity with SearchableTrait joined core_search. Under OR or NOT that dropped the items
+	 * without a search cache row.
+	 */
+	public function testEntityTextFilterUnderOrKeepsItemsWithoutSearchRow(): void
+	{
+		$x = "alpha" . uniqid();
+		$from = $this->createNote("from");
+		$withX = $this->createNote($x);
+		$noSearchRow = $this->createNote("nosearch");
+		Link::create($from, $noSearchRow);
+
+		go()->getDbConnection()->delete('core_search', [
+			'entityTypeId' => Note::entityType()->getId(), 'entityId' => $noSearchRow->id
+		])->execute();
+
+		$this->assertEquals([$withX->id, $noSearchRow->id], $this->findNoteIds([
+			'operator' => 'OR',
+			'conditions' => [['text' => $x], ['link' => ['entity' => 'Note', 'id' => $from->id]]]
+		]));
+
+		$this->assertEquals([$from->id, $noSearchRow->id], $this->findNoteIds([
+			'operator' => 'NOT', 'conditions' => [['text' => $x]]
+		]));
+
+		// A text without search words requires a search row in both orders, also when the NOT made the join LEFT
+		$notX = ['operator' => 'NOT', 'conditions' => [['text' => $x]]];
+		$noWords = ['text' => '!'];
+		$this->assertEquals([$from->id], $this->findNoteIds(['operator' => 'AND', 'conditions' => [$notX, $noWords]]));
+		$this->assertEquals([$from->id], $this->findNoteIds(['operator' => 'AND', 'conditions' => [$noWords, $notX]]));
+	}
+
 	public function testLinkFilterWithNot(): void
 	{
 		$a = $this->createNote("a");
