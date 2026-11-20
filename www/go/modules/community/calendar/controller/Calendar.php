@@ -54,7 +54,8 @@ class Calendar extends EntityController {
 	 */
 	public function first($params)
 	{
-		$user = go()->getAuthState()->getUser(['id', 'displayName', 'calendarPreferences']);
+		// the whole user: createDefault() saves it, which needs more than the preferences
+		$user = go()->getAuthState()->getUser();
 		$calendar = model\Calendar::createDefault($user);
 
 		return [
