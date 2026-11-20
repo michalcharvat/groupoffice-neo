@@ -296,6 +296,17 @@ Closed on branch `task/20261120-054922-neo-ui-small-gaps-from-the-regression-wa`
 | E-mail: folders created outside GroupOffice appeared only after Refresh | opening an account again loads its folders again (`Tree.reloadNode()`, keeps expanded folders); only subscribed folders show, as in 26.x; no tree reload on the mail check (an IMAP LIST per account every check; 26.x neither) |
 | cs: "All notes", "{n} notes", "{n} tasks", "0 items", "Nothing selected", "Add a comment...", "Are you sure you want to permanently delete the selected items?" untranslated | the counts were English plurals (notes hardcoded): now `'1 note'` / `'{count} notes'` keys (cs "Poznámek: 4"), same for tasks and files items; cs entries imported with the dev module (its export does not scan neo `.mjs`, so the CSV was written by hand); "Required" see PasswordPrompt |
 
+Closed on branch `task/20261121-002011-neo-ui-files-detail-panel-cards-comments`:
+
+| Gap | Fix |
+|---|---|
+| Files: the detail of a file or folder had no cards (26.x `GO.DisplayPanel` adds links, comments and the custom fields of `File` / `Folder`) | `FileDetail` shows custom fields, comments, links and history (history is not in 26.x classic, but files log to it), plus the add link and browse links buttons; virtual folders (no numeric id) get none |
+| Files: a folder in the detail showed a document icon, and before the server answered the name was empty | the grid hands a neo Record (fields are getters), which `{...record}` did not copy: `record.toJSON()` first |
+| Files: the detail head and properties had no padding | `MainThreeColumnPanel.createItems()` `panel()` replaces the class's own `cls` with the item's: `FilesMain.createEast()` sets `go-files-detail` |
+| Folder detail lacked created / modified (26.x `CreateModifyPanel`) | rows Created at / by, Modified at / by |
+| Every detail: after selecting another item, the Links card kept the previous item's rows (Unlink clickable) until the new links loaded | `LinkDetail.setEntity()` clears the rows when the item changes |
+| Comments: a draft stayed when switching between two entity types with the same id (File 5 → Folder 5) | `CommentsPanel.setEntity()` compares entity and id |
+
 Remaining gaps (open, no card):
 
 | Area | Gap | Notes |

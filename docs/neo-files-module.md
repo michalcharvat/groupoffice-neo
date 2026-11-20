@@ -90,6 +90,7 @@ no JMAP backend for files yet.
 | Folder tree (personal, shared, address book, …, trash), lazy loading, deep link `#files/folder/<id>` and `#files/file/<id>` (expand_folder_id) | done (`FilesMain`) |
 | File grid: sort, paging on scroll, multi select, search below the folder, quota | done (`FolderStore`) |
 | Detail (east): preview head, properties list, open / download / properties / more | done (`FileDetail`) |
+| Detail cards: custom fields of `File` / `Folder` (values from the display response: `DetailFieldsets.setEntity(entity, id, values)`, the legacy entities have no JMAP get), comments, links (+ add link / browse links buttons), history; folder created / modified rows | done (`FileDetail.setCards()`) |
 | Upload (button, desktop drop on grid / tree / detail FilesPanel), overwrite question with yes / no / to all | done (one blob per `processUploadQueue` request: `overwrite=yes` overwrites all conflicts) |
 | New folder, rename, cut / copy / paste (overwrite queue), move to trash, delete permanently | done; Delete key = trash, ctrl+Delete = delete permanently (Grid `deleteKey` with `ctrlKey`) |
 | Drag and drop of rows onto folder rows and tree nodes (move, Ctrl copy) | done (`enableDragDrop()`) |

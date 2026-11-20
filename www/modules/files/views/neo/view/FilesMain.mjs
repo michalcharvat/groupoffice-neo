@@ -325,7 +325,9 @@ class FilesMain extends MainThreeColumnPanel {
     createEast() {
         return {
             module   : FileDetail,
-            reference: 'detail'
+            reference: 'detail',
+            // panel() replaces the class's own cls with the item's one (+ go-east)
+            cls      : ['go-files-detail']
         }
     }
 
