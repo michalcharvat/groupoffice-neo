@@ -115,12 +115,20 @@ Bookmarks has no grid and no `Bookmark/export`, so neither applies there.
   (ARIA wrapper, scrollbars), so the empty state is no child node but `::before` (icon) and
   `::after` (text) of the root, from its `data-empty-icon` / `data-empty-text` attributes
   (class `go-grid-empty`, `grid/Grid.scss`). It is shown when `store.isLoaded && store.count === 0`
-  after `load` / `filter` (neo re-fires add/remove as `load`), so not before the first load, and
-  not after a `loadError` until the next load (the old empty records are no answer). The CSS puts
+  after `load` / `filter` (neo re-fires add/remove as `load`), so not before the first load, not
+  between the store's `beforeLoad` and its `load` / `loadError` (`emptyLoading`: a store that
+  fires `beforeLoad` must end with one of those), and not after a `loadError` until the next load
+  (the old empty records are no answer). Not `store.isLoading`: neo's `beforeSetData()` sets it
+  and an equal empty array never clears it. `JmapStore`, email `MessageStore` and files
+  `FolderStore` fire `beforeLoad`. The CSS puts
   it 30px down (the header height of `Grid.CHROME_HEIGHT`). A grid sized by `fitToRows()` shows
   none: its owner shows its own text (HistoryPanel, maildomains DomainGridCard). A plain neo Store
   whose `data` is set to `[]` fires no `load` (neither the old rows nor the empty state follow):
-  fire it yourself, as `JmapStore.load()` and zpushadmin `DevicesMain.load()` do. `TextList`
+  set the data with `setDataAndFireLoad(store, records)` (`src/data/setData.mjs`; `JmapStore`,
+  email `MessageStore`, files `FolderStore`) or fire it yourself, as zpushadmin
+  `DevicesMain.load()` does. Records equal to the old ones fire no `load` either and leave
+  `store.isLoading` true (neo's `beforeSetData()` sets it, the skipped `afterSetData()` would
+  clear it); the helper resets it. `TextList`
   re-renders on a store swap to an empty store (neo only does that for a store with records).
 
 ## Left to build (2026-11-19)
