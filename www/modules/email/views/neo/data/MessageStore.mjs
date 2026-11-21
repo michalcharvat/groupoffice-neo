@@ -2,6 +2,7 @@ import Model from '../../../../../views/neo/node_modules/neo.mjs/src/data/Model.
 import Store from '../../../../../views/neo/node_modules/neo.mjs/src/data/Store.mjs';
 import {messageStore} from '../api.mjs';
 import {unescapeHtml} from '../util.mjs';
+import {setDataAndFireLoad} from '../../../../../views/neo/src/data/setData.mjs';
 
 /**
  * A message row of email/message/store, see MessageStore.toRecord()
@@ -229,30 +230,6 @@ class MessageStore extends Store {
     }
 
     /**
-     * Sets the records and makes sure 'load' fires once. Setting data fires it through the
-     * collection's mutate event, but not when an empty mailbox replaces an empty store (no
-     * mutation; an equal array skips afterSetData too), and listeners still need the new
-     * totalCount and response. `total` is the grid's chunk size, as in Store.onCollectionMutate().
-     * @param {Object[]} records
-     * @protected
-     */
-    setDataAndFireLoad(records) {
-        let me     = this,
-            fired  = false,
-            onLoad = () => {fired = true};
-
-        me.on('load', onLoad);
-
-        try {
-            me.data = records
-        } finally {
-            me.un('load', onLoad)
-        }
-
-        fired || me.fire('load', {items: me.items, total: me.chunkingTotal})
-    }
-
-    /**
      * Loads the first page; with `keepCount` as many messages as are loaded now.
      * `extra` goes with this request only: email/message/store moves and deletes messages
      * before it lists them (action: 'move', messages, to_mailbox / delete_keys).
@@ -291,7 +268,7 @@ class MessageStore extends Store {
             me.isLoading  = false;
             me.isLoaded   = true;
             me.storeResponse(response);
-            me.setDataAndFireLoad((response.results || []).map(row => me.toRecord(row, multiple)));
+            setDataAndFireLoad(me, (response.results || []).map(row => me.toRecord(row, multiple)), {total: me.chunkingTotal});
             return me.items
         } catch (e) {
             if (generation === me.loadGeneration && !me.isDestroyed) {
