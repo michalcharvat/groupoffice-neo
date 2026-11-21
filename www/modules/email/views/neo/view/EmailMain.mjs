@@ -277,6 +277,9 @@ class EmailMain extends MainThreeColumnPanel {
                 multiSelect: true,
                 // two lines per message like ExtJS
                 rowHeight  : 52,
+                // ExtJS MessagesGrid view emptyText: a folder, search or unified view without messages
+                emptyText  : coreT('No items to display'),
+                emptyIcon  : 'mail',
                 store      : {
                     module : MessageStore,
                     sorters: [{property: 'internal_udate', direction: 'DESC'}]
