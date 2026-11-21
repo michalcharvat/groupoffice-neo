@@ -1,5 +1,6 @@
 import client from '../jmap/Client.mjs';
 import Store  from '../../node_modules/neo.mjs/src/data/Store.mjs';
+import {setDataAndFireLoad} from './setData.mjs';
 
 /**
  * neo.mjs Store backed by a Group Office JMAP entity.
@@ -285,11 +286,8 @@ class JmapStore extends Store {
             me.totalCount = total;
             me.isLoading  = false;
             me.isLoaded   = true;
-            me.data       = list; // fires the load event
-
-            // ...except for an empty list: neo's beforeSetData() marks the store loading, so the
-            // clear() of the old records is no load, and add([]) is no change at all
-            list.length || me.fire('load', {items: me.items});
+            // fires the load event, also for an empty list or records equal to the old ones
+            setDataAndFireLoad(me, list);
             return me.items
         } catch (e) {
             if (generation === me.loadGeneration && !me.isDestroyed) {

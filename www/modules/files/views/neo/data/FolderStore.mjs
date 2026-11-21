@@ -1,5 +1,6 @@
 import Store  from '../../../../../views/neo/node_modules/neo.mjs/src/data/Store.mjs';
 import client from '../../../../../views/neo/src/jmap/Client.mjs';
+import {setDataAndFireLoad} from '../../../../../views/neo/src/data/setData.mjs';
 
 /**
  * Store over a legacy files list controller (ExtJS GO.data.JsonStore of the file browser):
@@ -115,6 +116,8 @@ class FolderStore extends Store {
         }
 
         me.isLoading = true;
+        // the grid hides its empty state until this load answers
+        me.fire('beforeLoad', {});
 
         try {
             const response = await client.legacy('files/folder/list', me.getParams(0, limit, opts.params));
@@ -131,7 +134,7 @@ class FolderStore extends Store {
             me.isLoaded   = true;
             // before load: listeners of load see the folder's data
             me.fire('meta', {meta, response});
-            me.data       = results; // fires load
+            setDataAndFireLoad(me, results); // fires load, also for an empty folder
             return me.items
         } catch (e) {
             if (generation === me.loadGeneration && !me.isDestroyed) {

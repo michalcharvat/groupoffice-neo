@@ -425,7 +425,8 @@ class FilesMain extends MainThreeColumnPanel {
         if (me.folderId === '' && home && /^\d+$/.test(home.id) && me.getReference('grid').store.isLoaded) {
             me.folderId = home.id;
             me.getReference('grid').store.folderId = home.id;
-            me.updateButtons()
+            me.updateButtons();
+            me.updateEmptyText()
         }
     }
 
@@ -518,7 +519,24 @@ class FilesMain extends MainThreeColumnPanel {
         me.getReference('upButton').disabled = !meta.parent_id || topLevel || !/^\d+$/.test(String(me.folderId)) || !!store.query;
 
         me.updateQuota(meta);
-        me.updateButtons()
+        me.updateButtons();
+        me.updateEmptyText()
+    }
+
+    /**
+     * Empty state of the folder grid (ExtJS FilesGrid emptyText): desktop files dropped on the
+     * grid upload into the folder, so a folder the user may add to says so; a search result
+     * or a folder without that permission ("Shared" too) shows "No items found" like
+     * ExtJS FilesDetailPanel. Set before the rows: the meta event precedes load.
+     */
+    updateEmptyText() {
+        let me       = this,
+            mayDrop  = /^\d+$/.test(String(me.folderId)) && me.folderLevel() >= LEVEL_CREATE;
+
+        me.getReference('grid').set({
+            emptyText: mayDrop ? t('Drop files here') : t('No items found'),
+            emptyIcon: mayDrop ? 'upload_file' : 'article'
+        })
     }
 
     onFolderLoad() {

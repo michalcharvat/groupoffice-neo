@@ -279,8 +279,6 @@ Left (board backlog cards, parent 20261119-011401-neo-ui-email-module):
   use the parent uid).
 - **HTML layout of mails**: `Format.sanitizeHtml()` strips `style` attributes, HTML mails lose their
   layout; an e-mail specific sanitizer option is open.
-- **Empty folder keeps the previous count**: opening an empty folder after a full one leaves the
-  subtitle at the old folder's count (MessageStore fires no `load` for an empty result on an empty store).
 - Copy/move all results of a search (`openCopyMailToDialog`) has no button yet.
 - No message threads (GO 26 has none either), no favourites ordering (`em_folders_favorites` has no
   sort column), no "print verifies the signature first" (the S/MIME bar's Verify does it).

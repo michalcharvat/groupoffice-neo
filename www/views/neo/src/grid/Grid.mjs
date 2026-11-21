@@ -56,7 +56,8 @@ import {createColumns as createCustomFieldColumns, loadNames as loadCustomFieldN
  *
  * Empty state (GOUI List/Table emptyStateHtml, ExtJS GridPanel emptyText): once the store has
  * loaded and holds no records, the grid shows `emptyIcon` and `emptyText` below its header
- * (default: "article", "No items found" like GOUI). Not before the first load, not after a failed
+ * (default: "article", "No items found" like GOUI). Not before the first load, not while a load
+ * runs (from the store's `beforeLoad` event to its `load` or `loadError`), not after a failed
  * one (until the next load); adding a record hides it again. `emptyText: null` turns it off. A
  * grid sized by fitToRows() (a detail card) has no room for it: its owner shows its own text.
  * A plain Store whose `data` is replaced by [] fires no load: fire it (see JmapStore.load()).
@@ -186,6 +187,13 @@ class Grid extends GridContainer {
     emptyLoadFailed = false
 
     /**
+     * The store fired beforeLoad and no load or loadError yet: no empty state meanwhile. Not
+     * store.isLoading: neo's beforeSetData() sets it and an equal empty array never clears it.
+     * @member {Boolean} emptyLoading=false
+     */
+    emptyLoading = false
+
+    /**
      * Height of a grid that shows `count` rows without scrolling. neo's body shows
      * ceil(bodyHeight / rowHeight) - 1 rows and nothing below one row, so the body gets 1px
      * more than the rows. 0 rows: just the header.
@@ -238,7 +246,7 @@ class Grid extends GridContainer {
             {store} = me,
             vdom    = me.vdom,
             // a fitted grid (detail card) is too low for it, its owner shows its own text
-            show    = !!me.emptyText && !!store?.isLoaded && store.count === 0 && me.fittedRows === null && !me.emptyLoadFailed;
+            show    = !!me.emptyText && !!store?.isLoaded && store.count === 0 && me.fittedRows === null && !me.emptyLoadFailed && !me.emptyLoading;
 
         if (!vdom || me.isDestroyed) {
             return
@@ -269,11 +277,20 @@ class Grid extends GridContainer {
         super.afterSetStore(value, oldValue);
 
         // a failed load leaves the records of the previous one: their empty state is no answer
-        oldValue?.un('loadError', me.onEmptyLoadError, me);
-        value?.on('loadError', me.onEmptyLoadError, me);
+        oldValue?.un({beforeLoad: me.onEmptyBeforeLoad, loadError: me.onEmptyLoadError, scope: me});
+        value?.on({beforeLoad: me.onEmptyBeforeLoad, loadError: me.onEmptyLoadError, scope: me});
 
         me.emptyLoadFailed = false;
+        me.emptyLoading    = false;
         me.updateEmptyState()
+    }
+
+    /**
+     * @protected
+     */
+    onEmptyBeforeLoad() {
+        this.emptyLoading = true;
+        this.updateEmptyState()
     }
 
     /**
@@ -281,6 +298,7 @@ class Grid extends GridContainer {
      */
     onEmptyLoadError() {
         this.emptyLoadFailed = true;
+        this.emptyLoading    = false;
         this.updateEmptyState()
     }
 
@@ -299,6 +317,7 @@ class Grid extends GridContainer {
     onStoreLoad(data) {
         super.onStoreLoad(data);
         this.emptyLoadFailed = false;
+        this.emptyLoading    = false;
         this.updateEmptyState()
     }
 
