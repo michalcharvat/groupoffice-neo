@@ -123,6 +123,8 @@ class NotesMain extends MainThreeColumnPanel {
                 reference   : 'noteBookList',
                 flex        : 'none',
                 displayField: 'name',
+                // GOUI NoteBookGrid: a Table with the default empty state
+                emptyText   : t('No items found'),
                 rowMenu     : record => this.getNoteBookMenu(record),
                 // notes can't be moved into it (onNoteBookDrop())
                 noDrop      : record => record.permissionLevel < LEVEL_WRITE,

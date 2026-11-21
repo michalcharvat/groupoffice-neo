@@ -18,3 +18,28 @@
     text-overflow: ellipsis;
     white-space  : nowrap;
 }
+
+// empty state of GO.list.TextList (emptyText, GOUI .goui-empty-state)
+.neo-list .go-list-empty {
+    color     : var(--fg-secondary-text);
+    cursor    : default;
+    list-style: none;
+    padding   : go.dp(20) go.dp(16);
+    text-align: center;
+
+    .go-icon {
+        display    : block;
+        font-family: 'Material Symbols Rounded';
+        font-size  : go.dp(48);
+        height     : go.dp(48);
+        line-height: go.dp(48);
+        margin     : 0 auto;
+        width      : go.dp(48);
+    }
+
+    p {
+        font-size  : go.sp(14);
+        line-height: go.dp(24);
+        margin     : 0;
+    }
+}

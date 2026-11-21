@@ -20,8 +20,8 @@ Status: **neo** = neo.mjs 13.4 ships it, usable as is (maybe GO styling);
 | Splitter | component/Splitter | GO.neo (`GO.component.Splitter`, state) |
 | Toolbar, OverlayToolbarButton | toolbar/Base | neo (overlay: missing) |
 | Paginator | toolbar/Paging | neo (Notes uses infinite scroll) |
-| List, ListPicker | list/Base | GO.neo (`TextList`, `CheckList`) |
-| Table, TableColumns, RowSelect | grid/Container (buffered) | GO.neo (`GO.grid.Grid`, `selectRow`; row height in px from the measured density: dp(40) one-line = 35px Paper / 29px Compact, `rowLines: 2` (avatar or two lines: users, address book, duplicates, RecipientPicker) dp(56) = 48px / 40px; follows `Preferences.applyTheme()` live); keys: `enterKey` / `deleteKey` (Delete, Ctrl/Cmd+Backspace) events with `{records}` outside inputs; `switchState(stateId)` swaps the column state, e.g. addressbook organizations view; `customFieldsEntity: 'Note'` adds a column per custom field (`customfields/gridColumns.mjs`: renderer per type from `types.mjs` `cellHtml()`, names of user/group/contact fields loaded per page, GOUI state key = databaseName, server sort on `customFields.<databaseName>`, "Hidden in grid" = hidden; the model needs a `customFields` field, neo drops undeclared keys) |
+| List, ListPicker | list/Base | GO.neo (`TextList`, `CheckList`; empty state with `emptyText` / `emptyIcon`, off by default because a TextList is also the combo drop-down) |
+| Table, TableColumns, RowSelect | grid/Container (buffered) | GO.neo (`GO.grid.Grid`, `selectRow`; row height in px from the measured density: dp(40) one-line = 35px Paper / 29px Compact, `rowLines: 2` (avatar or two lines: users, address book, duplicates, RecipientPicker) dp(56) = 48px / 40px; follows `Preferences.applyTheme()` live); keys: `enterKey` / `deleteKey` (Delete, Ctrl/Cmd+Backspace) events with `{records}` outside inputs; `switchState(stateId)` swaps the column state, e.g. addressbook organizations view; `customFieldsEntity: 'Note'` adds a column per custom field (`customfields/gridColumns.mjs`: renderer per type from `types.mjs` `cellHtml()`, names of user/group/contact fields loaded per page, GOUI state key = databaseName, server sort on `customFields.<databaseName>`, "Hidden in grid" = hidden; the model needs a `customFields` field, neo drops undeclared keys); empty state (GOUI `emptyStateHtml`): `emptyText` (default "No items found") and `emptyIcon` (default `article`) below the header once the store has loaded with no records, `emptyText: null` for none |
 | SelectAllCheckboxField, MultiSelectToolbar | – | GO.neo (`GO.grid.Grid` `multiSelect`, `RowSelectionModel` with `selectAll()`, `MultiSelectToolbar`; Notes deletes several notes) |
 | Tree, TreeStore, TreeColumn | tree/List, tree/Accordion (basic) | GO.neo (`GO.tree.Tree`: lazy `nodeProvider`, checkboxes, drag and drop with `dragNodes` / `dropOn` / `dropBetween` (fires `drop` {dragNode, node, position}, expands a node after 1 s, `moveNode()`; not `draggable`, that is neo List's own DragZone); no extra columns) |
 | DescriptionList | – | GO.neo (`GO.component.DescriptionList`) |
@@ -111,6 +111,17 @@ Bookmarks has no grid and no `Bookmark/export`, so neither applies there.
   (`view.setRowHeights()`, keyed by record id) and wraps instance methods of neo's Body
   (`createRowPool`, `isEditorEvent`) and Row (`createVdom`, which appends the header band as the
   row's last child). Check these against Body.mjs / Row.mjs after a bump.
+- `src/grid/Grid.mjs` empty state: neo's grid container builds its vdom children from its items
+  (ARIA wrapper, scrollbars), so the empty state is no child node but `::before` (icon) and
+  `::after` (text) of the root, from its `data-empty-icon` / `data-empty-text` attributes
+  (class `go-grid-empty`, `grid/Grid.scss`). It is shown when `store.isLoaded && store.count === 0`
+  after `load` / `filter` (neo re-fires add/remove as `load`), so not before the first load, and
+  not after a `loadError` until the next load (the old empty records are no answer). The CSS puts
+  it 30px down (the header height of `Grid.CHROME_HEIGHT`). A grid sized by `fitToRows()` shows
+  none: its owner shows its own text (HistoryPanel, maildomains DomainGridCard). A plain neo Store
+  whose `data` is set to `[]` fires no `load` (neither the old rows nor the empty state follow):
+  fire it yourself, as `JmapStore.load()` and zpushadmin `DevicesMain.load()` do. `TextList`
+  re-renders on a store swap to an empty store (neo only does that for a store with records).
 
 ## Left to build (2026-11-19)
 

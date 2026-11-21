@@ -15,6 +15,13 @@ const RECORD_API = ['constructor', 'get', 'set', 'setSilent', 'setOriginal', 're
  * selection, keyboard navigation and clicks skip them (neo-list-header).
  *
  *     {module: CheckList, groupField: 'groupingId', groupRenderer: ({value}) => escapeHtml(name(value))}
+ *
+ * Empty state (GOUI List emptyStateHtml): with `emptyText`, a list whose store has loaded and
+ * holds no records shows `emptyIcon` and the text as a non-interactive item (go-list-empty).
+ * Not after a failed load, and not in an animated list before neo's animate plugin is there.
+ * Off by default: a TextList is also the drop-down of combo boxes.
+ *
+ *     {module: CheckList, emptyText: t('No items found')}
  */
 class TextList extends List {
     static config = {
@@ -34,7 +41,17 @@ class TextList extends List {
          * item refuses drops (class go-no-drop: not highlighted while dragging), null for none
          * @member {Function|null} noDrop=null
          */
-        noDrop: null
+        noDrop: null,
+        /**
+         * Text shown when the loaded store has no records, null for none
+         * @member {String|null} emptyText_=null
+         */
+        emptyText_: null,
+        /**
+         * Material symbol above the emptyText, null for none
+         * @member {String|null} emptyIcon_='article'
+         */
+        emptyIcon_: 'article'
     }
 
     /**
@@ -103,17 +120,123 @@ class TextList extends List {
     }
 
     /**
-     * neo's createItems() plus a header item above the first item of each group
+     * neo's createItems() plus group headers (groupField) and the empty state (emptyText)
      * @param {Boolean} silent=false
      */
     createItems(silent=false) {
         let me = this;
 
-        if (!me.groupField || (me.animate && !me.getPlugin('list-animate'))) {
+        // neo renders nothing until the animate plugin is there
+        if (me.animate && !me.getPlugin('list-animate')) {
             return super.createItems(silent)
         }
 
-        let vdom     = me.getVdomRoot(),
+        me.groupField ? me.createGroupedItems() : super.createItems(true);
+        me.addEmptyItem();
+
+        !silent && me.promiseUpdate().then(() => {
+            me.fire('createItems')
+        })
+    }
+
+    /**
+     * The last load of the store failed: no empty state until the next load
+     * @member {Boolean} emptyLoadFailed=false
+     */
+    emptyLoadFailed = false
+
+    /**
+     * neo renders a new store's records only when it has some: the items of the old store or
+     * the empty state would stay
+     * @param {Neo.data.Store|null} value
+     * @param {Neo.data.Store|null} oldValue
+     * @protected
+     */
+    afterSetStore(value, oldValue) {
+        let me = this;
+
+        super.afterSetStore(value, oldValue);
+
+        oldValue?.un('loadError', me.onEmptyLoadError, me);
+        value?.on('loadError', me.onEmptyLoadError, me);
+
+        me.emptyLoadFailed = false;
+
+        // neo's afterSetStore() calls onStoreLoad() when the store has records
+        oldValue && value && !(value.getCount() > 0) && me.onStoreLoad()
+    }
+
+    /**
+     * A failed load leaves the records of the previous one: their empty state is no answer
+     * @protected
+     */
+    onEmptyLoadError() {
+        let me = this;
+
+        me.emptyLoadFailed = true;
+        me.emptyText && me.store && me.createItems()
+    }
+
+    /**
+     * @protected
+     */
+    onStoreLoad(...args) {
+        this.emptyLoadFailed = false;
+        return super.onStoreLoad(...args)
+    }
+
+    /**
+     * Triggered after the emptyText config got changed
+     * @param {String|null} value
+     * @param {String|null} oldValue
+     * @protected
+     */
+    afterSetEmptyText(value, oldValue) {
+        oldValue !== undefined && this.store && this.createItems()
+    }
+
+    /**
+     * Triggered after the emptyIcon config got changed
+     * @param {String|null} value
+     * @param {String|null} oldValue
+     * @protected
+     */
+    afterSetEmptyIcon(value, oldValue) {
+        oldValue !== undefined && this.store && this.createItems()
+    }
+
+    /**
+     * Appends the empty state item to the vdom when the loaded store has no records
+     * @protected
+     */
+    addEmptyItem() {
+        let me      = this,
+            {store} = me;
+
+        if (!me.emptyText || !store?.isLoaded || store.count > 0 || me.emptyLoadFailed) {
+            return
+        }
+
+        const content = [{tag: 'p', text: String(me.emptyText)}];
+
+        me.emptyIcon && content.unshift({tag: 'i', cls: ['go-icon'], 'aria-hidden': true, text: String(me.emptyIcon)});
+
+        me.getVdomRoot().cn.push({
+            tag : 'li',
+            id  : `${me.id}__empty`,
+            cls : ['go-list-empty'],
+            role: 'presentation',
+            cn  : content
+        })
+    }
+
+    /**
+     * Items with a header item above the first item of each group (vdom only, no update)
+     * @protected
+     */
+    createGroupedItems() {
+        let me       = this,
+            vdom     = me.getVdomRoot(),
             previous = Symbol('none');
 
         vdom.cn = [];
@@ -139,10 +262,6 @@ class TextList extends List {
 
             const item = me.createItem(record, index);
             item && vdom.cn.push(item)
-        });
-
-        !silent && me.promiseUpdate().then(() => {
-            me.fire('createItems')
         })
     }
 
