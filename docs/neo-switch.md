@@ -178,7 +178,7 @@ no longer reads GOUI (own copies of the tokens and the iconfont since 2026-11-24
 ## 6. Popouts (D6) and the Dev module (D4)
 
 - `webclient=neo` on popup URLs, `Popup.supported()`, hide pop-out tools when unsupported.
-- Dev module only with the debugger on.
+- Dev module only with the debugger on, and only for admins (`available` of its registration: some demos change data).
 
 ## 7. Tests
 

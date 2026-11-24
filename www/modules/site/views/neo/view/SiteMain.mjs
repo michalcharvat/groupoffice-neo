@@ -248,13 +248,39 @@ class SiteMain extends MainThreeColumnPanel {
      * @param {Object} data {id, siteId}
      */
     async onContentSaved({id, siteId}) {
-        let me   = this,
-            tree = me.getReference('tree');
+        let me      = this,
+            tree    = me.getReference('tree'),
+            nodeId  = `${siteId}_content_${id}`,
+            parents = [];
 
         await me.reloadTree();
 
-        const record = !me.isDestroyed && tree.store.get(`${siteId}_content_${id}`);
-        record && tree.selectionModel.select(record)
+        if (me.isDestroyed || !tree.getNode(nodeId)) {
+            return
+        }
+
+        // the first item of a folder: the folder came back collapsed (an empty one can't be
+        // expanded, so its state wasn't saved); open the item's ancestors to show it
+        for (let parent = tree.getParentNode(nodeId); parent; parent = tree.getParentNode(parent.id)) {
+            parents.unshift(parent.id)
+        }
+
+        for (const parentId of parents) {
+            await tree.expand(parentId)
+        }
+
+        const record = !me.isDestroyed && tree.store.get(nodeId);
+
+        if (record) {
+            tree.selectionModel.select(record);
+
+            // the expanded rows reach the DOM with the tree's next update
+            await tree.promiseUpdate();
+
+            !me.isDestroyed && !tree.isDestroyed && tree.store.get(nodeId) &&
+                Neo.main.DomAccess.scrollIntoView({id: tree.getItemId(record), behavior: 'auto', block: 'nearest', windowId: me.windowId})
+                    .catch(() => {})
+        }
     }
 
     /**

@@ -89,6 +89,12 @@ class LookAndFeelPanel extends Container {
         livePreview: true
     }
 
+    /**
+     * Main menu picked in this dialog ('launcher' or 'list'), stored by onSave()
+     * @member {String|null} pendingMainMenu=null
+     */
+    pendingMainMenu = null
+
     construct(config) {
         super.construct(config);
 
@@ -129,12 +135,13 @@ class LookAndFeelPanel extends Container {
 
                     fieldset(t('Global'), [
                         select('start_module', t('Start in module'), ModuleRegistry.getAvailable().map(m => [m.name, m.title])),
-                        // not a User property: this browser's choice for the logged-in user, saved right away
+                        // not a User property: this browser's choice for the logged-in user, stored
+                        // when the dialog saves (onSave()), not on cancel
                         select(null, t('Main menu'), [['launcher', t('Launcher')], ['list', t('List')]], {
                             reference: 'mainMenu',
                             hidden   : !me.livePreview,
                             // select: picked from the list, not set by onLoad()
-                            listeners: {select: ({value}) => value && setMainMenuMode(value.id ?? value, me.windowId)}
+                            listeners: {select: ({value}) => value && (me.pendingMainMenu = value.id ?? value)}
                         }),
                         select('max_rows_list', t('Maximum number of rows in lists'), [10, 15, 20, 25, 30, 50].map(n => [n, String(n)])),
                         select('sort_name', t('Sort names by'), [['first_name', t('First name')], ['last_name', t('Last name')]]),
@@ -189,6 +196,20 @@ class LookAndFeelPanel extends Container {
             const mode = await getMainMenuMode(me.windowId);
 
             me.isDestroyed || (me.getReference('mainMenu').value = mode)
+        }
+    }
+
+    /**
+     * Called by the dialog after a save of the own account: stores the picked main menu
+     * @returns {Promise<void>}
+     */
+    async onSave() {
+        let me   = this,
+            mode = me.pendingMainMenu;
+
+        if (mode) {
+            me.pendingMainMenu = null;
+            await setMainMenuMode(mode, me.windowId)
         }
     }
 

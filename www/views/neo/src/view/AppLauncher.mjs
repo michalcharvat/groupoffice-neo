@@ -3,6 +3,7 @@ import Container from '../../node_modules/neo.mjs/src/container/Base.mjs';
 import TextField from '../../node_modules/neo.mjs/src/form/field/Text.mjs';
 import client    from '../jmap/Client.mjs';
 import {getState, setState} from '../State.mjs';
+import {focusWithoutTooltip} from '../tooltip.mjs';
 import {t} from '../Translate.mjs';
 
 /** keys the tiles handle themselves: no page scroll, no caret move, Tab stays inside */
@@ -238,7 +239,8 @@ class AppLauncher extends Container {
             me.removeCls('go-closing')
         }, CLOSE_MS);
 
-        restoreFocus && me.returnFocusId && Neo.main.DomAccess.focus({id: me.returnFocusId, windowId: me.windowId})
+        // the button gets the focus back, its tooltip doesn't show ("Main menu" stayed after Escape)
+        restoreFocus && me.returnFocusId && focusWithoutTooltip(me, {id: me.returnFocusId})
     }
 
     /**

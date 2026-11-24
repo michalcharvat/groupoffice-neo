@@ -149,8 +149,10 @@ save on POST (`site/content/update`, `site/site/load`) are sent as GET.
 - The Markdown editor needs its DOM when it mounts: the content form is never hidden, an empty
   panel only shows a hint above it. Don't give a child the reference `content` either: SiteMain
   already uses it for the panel, and the panel's own `getReference()` then finds itself.
-- Neo keeps an input's `readonly` attribute when a field that started read-only becomes editable,
-  so the editor fields are not toggled read-only; Save is disabled instead.
+- The editor fields are read-only when the user can't write the site (Save is disabled too).
+  neo 14 itself does not toggle an input's `readonly` after the first render (the main thread sets
+  the property `readonly`, the DOM's is `readOnly`); `src/form/field/textReadOnly.mjs`, imported
+  by `apps/go/app.mjs`, fixes that for every text field.
 - `site/site/load` (renderForm) requires write permission: a refused load means the user can only
   read the site, and the tree, the row menus and the editor then offer only "View".
 - `files/folder/checkModelFolder` takes the entity name `Site`, not the class name.
@@ -161,6 +163,19 @@ save on POST (`site/content/update`, `site/site/load`) are sent as GET.
   item or adding one asks before unsaved changes are discarded.
 - Not ported: dragging files from the files module into the editor (replaced by "Insert file",
   which picks files of the site's folder), and the unused ExtJS code listed above.
+- First use of a legacy entity type races (core, not neo; checked 2026-11-24). `Site` is not
+  registered when the module is installed (`Content` is): `EntityType::findByClassName()` inserts
+  its `core_entity` row on first use. Two requests that both miss it in the entity type cache
+  (parallel `site/site/submit`s right after the install, or a second container on the same
+  database with its own APCu cache) both insert, and the second fails with "Duplicate entry 'Site'
+  for key 'clientName'" (the failed insert also skips an auto-increment id). `getDefaultAclId()`
+  has the same check-then-create race: each request creates an ACL and the last one wins, so the
+  other stays behind without an owner. Both are upstream code; a fix would re-read the row after a
+  duplicate key error, and set the default ACL with a conditional update (`... WHERE defaultAclId IS
+  NULL`) whose affected-row count decides: 0 rows means another request won, so roll back the own
+  ACL and read the winner's id. It only hits the first request(s), a retry succeeds.
+- Test sites need an installed view module: db26 has no `defaultsite`, a site with
+  `module = defaultsite` fails every content route with "Module defaultsite not found!".
 
 Walkthrough 2026-11-24 as neoadmin (everything: edit and save, add and delete content, refused
 delete with children, advanced options, site properties and permissions, add/edit/delete menus

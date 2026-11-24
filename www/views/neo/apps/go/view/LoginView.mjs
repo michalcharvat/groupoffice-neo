@@ -30,7 +30,7 @@ class LoginView extends Container {
             ntype: 'component',
             cls  : ['go-login-logo'],
             role : 'img',
-            title: Neo.config.goTitle || 'Group Office'
+            title: Neo.config.goTitle || 'GroupOffice'
         }, {
             // menu: see construct()
             module   : Button,

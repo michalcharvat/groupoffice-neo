@@ -33,7 +33,8 @@ const RELOAD = ['timezone', 'dateFormat', 'timeFormat', 'shortDateInList', 'firs
  *
  * A card's fields bind to User properties by name, a module's own settings with a
  * dotted name ("notesSettings.defaultNoteBookId"): everything is saved with one
- * User/set. A card may implement onLoad(user), called after every load.
+ * User/set. A card may implement onLoad(user), called after every load, and onSave(user),
+ * called after a save of the own account (before the dialog closes or the page reloads).
  *
  * After saving: a new language reloads the windows in that language
  * (?SET_LANGUAGE=), formats (RELOAD) reload them, the theme applies to all windows.
@@ -240,10 +241,12 @@ class UserSettingsDialog extends FormWindow {
     }
 
     /**
+     * FormWindow.onFormSave() keeps this promise for submit() to wait on: no second save
+     * while the settings are applied
      * @param {Object} data {data, isNew}
      * @protected
      */
-    async onFormSave(data) {
+    async afterSave(data) {
         let me      = this,
             changed = me.saving,
             user    = Object.fromEntries(USER_PROPERTIES.filter(key => key in data.data).map(key => [key, data.data[key]]));
@@ -257,6 +260,10 @@ class UserSettingsDialog extends FormWindow {
 
         client.setUser(user);
         me.themeSaved = true;
+
+        // settings of the cards that are no User property (Look & feel: the main menu)
+        await Promise.all(me.cards.getCardContainer().items.map(card => card?.onSave?.(user)))
+            .catch(e => notifyError(me, e));
 
         const windowIds = Object.keys(Neo.apps || {});
 

@@ -233,7 +233,8 @@ class ContentPanel extends Container {
             id   = source?.itemId && me.tree?.nodeIdOf(source.itemId),
             node = id && me.tree.getNode(id);
 
-        if (node?.site.type === 'content' && node.site.modelId && node.slug && me.current) {
+        // a reader can't change the text (the fields are read-only)
+        if (node?.site.type === 'content' && node.site.modelId && node.slug && me.current && me.mayWrite(me.current.siteId)) {
             me.getReference('editor').insertText(`[${node.text}](slug://${node.slug})`)
         }
     }
@@ -325,8 +326,8 @@ class ContentPanel extends Container {
     setEditable(editable) {
         let me = this;
 
-        // not readOnly: neo keeps the input's readonly attribute when a field that started
-        // read-only becomes editable; Save stays disabled without an item
+        // syncButtons() makes the fields read-only for readers; without an item Save stays
+        // disabled
         me.getReference('empty').hidden = editable;
         me.syncButtons()
     }
@@ -392,7 +393,12 @@ class ContentPanel extends Container {
         me.getReference('advancedButton').disabled   = !existing || !write;
         me.getReference('viewButton').disabled       = !existing;
         me.getReference('insertFileButton').disabled = !write || !me.filesModule;
-        me.getReference('browseButton').disabled     = !current || !me.filesModule
+        me.getReference('browseButton').disabled     = !current || !me.filesModule;
+
+        // a reader sees the item but can't change it (nothing could be saved)
+        me.getReference('title').readOnly    = !write;
+        me.getReference('baseslug').readOnly = !write;
+        me.getReference('editor').readOnly   = !write
     }
 
     /**

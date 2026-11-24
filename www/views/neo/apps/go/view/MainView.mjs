@@ -107,7 +107,7 @@ class MainView extends Container {
             ntype: 'component',
             cls  : ['go-brand'],
             role : 'img',
-            title: Neo.config.goTitle || 'Group Office'
+            title: Neo.config.goTitle || 'GroupOffice'
         },
         ...available.flatMap(m => [{
             module   : Button,

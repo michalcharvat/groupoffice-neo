@@ -179,16 +179,20 @@ export function fileSize(bytes) {
 }
 
 /**
- * GO's initials for an avatar (go.util.initials): first and last word
+ * GO's initials for an avatar (go.util.initials): first and last word, skipping characters
+ * that are no letter or digit
  */
 export function initials(name) {
-    let parts = String(name || '').trim().split(/\s+/);
+    // the first letter or digit of each word: "Neo Admin (test)" gives "NT", not "N("
+    let parts = String(name || '').trim().split(/\s+/)
+        .map(word => word.match(/[\p{L}\p{N}]/u)?.[0])
+        .filter(Boolean);
 
     if (parts.length > 2) {
         parts = [parts[0], parts[parts.length - 1]]
     }
 
-    return parts.map(p => p.charAt(0).toUpperCase()).join('')
+    return parts.join('').toUpperCase()
 }
 
 // go.Colors without GO's default header colour (0277BD)
