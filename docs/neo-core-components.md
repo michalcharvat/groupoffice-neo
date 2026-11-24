@@ -184,8 +184,35 @@ was below 0.1 % of its pixels after the fixes.
 6. ~~Small fields~~ — done: AutocompleteField, MapField, ListField, CheckboxGroup, ColorMenu, Month/WeekPicker (Dev demos).
 7. Chart, EntityTypeTable. ~~Alerts/notifications, reminders, session activity watcher, start page~~ — done: `src/alerts/`, module `alerts` renderers (calendar invitations, tasks), `modules/summary/views/neo` (the files portlet waits for that module; e-mail has `portlet-email`).
 8. ~~**E-mail client**~~ — done: `www/modules/email/views/neo` + sieve, smime, emailfavorites, core `src/Mail.mjs`. Files ↔ e-mail (Email files, Email download link, Save to personal folder) done too; see `docs/neo-email-module.md` → Status.
+9. Gaps found by the Dev demos of the GOUI docs pages (2026-11-24, `src/dev/demo/`):
+   - Window: no `alert()` / `error()` dialog like GOUI `Window.alert()` / `Window.error()`
+     (there are `ConfirmDialog.ask()`, `TextPrompt.ask()`, `notifyError()`); no collapsible
+     window (GOUI `collapsible`).
+   - Form fields: no boolean switch (neo `Switch` resets to `null`, like neo's CheckBox before
+     `BoolCheckBox`); no radio group field (GOUI `radio()` types button / box / list: neo `Radio`
+     fields with one name, check-mark look, `null` after `reset()`); no GOUI checkbox type
+     "button" outside `CheckboxGroup`; text fields have no leading `icon`, `prefix` / `suffix`,
+     field `buttons`, or a password field with a generator (GOUI `passwordfield`).
+   - Table: no footer / summary row (GOUI `setFooter()`, `footerRenderer`), no checkbox select
+     column (GOUI `checkboxselectcolumn`). Sticky columns: neo's `locked: 'start' | 'end'`.
+   - Buttons: no `accent` / `danger` colours (GO.button.Button has ui ghost / primary /
+     secondary), no checkbox items in menus.
+   - Patching: no runtime patch of an already set up class (GOUI `Component.patch()`);
+     `Neo.overwrites` must exist before the class is imported.
+   - HtmlField warns "HtmlEditor: node not found" when it is on the first page loaded by a
+     deep link (e.g. `#dev/form/HtmlField` in a new tab); navigating there does not.
 
 ## Gotchas from the parity audit (2026-11-19)
+
+- A `Neo.tooltip.Base` with a `delegate` matches only vdom nodes of its component: targets in
+  a component's raw `html` never fire `targetOver` (`DomEvent.verifyMouseEnterLeave()` looks
+  in the vdom). Render them as vdom (`demo/Tooltip.mjs`).
+- `GO.component.Splitter` in a vbox needs `direction: 'horizontal'` (neo's default is
+  'vertical', a 5px column that resizes widths).
+- A vbox with `align: 'stretch'` gives items without `flex` a flex of 1: in a scrolling page
+  fixed-height items shrink or get stretched. Give them `flex: 'none'` (`itemDefaults`); an
+  item that sets its own `style` may lose the `flex` the layout writes into it, so a page that
+  must not shrink its items puts `flex: '0 0 auto'` into their style (`demo/Page.mjs`).
 
 - A local store without a model whose `id` values are strings ('create', 'update', …) gets
   generated ids (-1, -2, …) and a CheckList on it crashes with `isRecord` of undefined. Give

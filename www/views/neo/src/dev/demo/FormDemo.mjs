@@ -1,3 +1,4 @@
+import BoolCheckBox  from '../../form/field/BoolCheckBox.mjs';
 import Button        from '../../button/Button.mjs';
 import Container     from '../../../node_modules/neo.mjs/src/container/Base.mjs';
 import FormContainer from '../../../node_modules/neo.mjs/src/form/Container.mjs';
@@ -56,6 +57,8 @@ class FormDemo extends Container {
                 reference: 'form',
                 layout   : {ntype: 'vbox', align: 'stretch'},
                 style    : {gap: '20px', maxWidth: '640px', paddingTop: '8px'},
+                // align stretch gives items flex 1: fields keep their own height
+                itemDefaults: {flex: 'none'},
                 items    : me.fields
             }, {
                 module   : TextArea,
@@ -121,6 +124,46 @@ class FormDemo extends Container {
     async onValidate() {
         this.log('validate(): ' + await this.getReference('form').validate())
     }
+}
+
+/**
+ * A checkbox outside the form that changes the demo, e.g. a config of a field (for `extra`):
+ *
+ *     option(t('Disabled'), (demo, checked) => {demo.getReference('text').disabled = checked})
+ *
+ * @param {String} label
+ * @param {Function} fn (demo, checked) => void
+ * @param {Object} [config] more checkbox config, e.g. {checked: true}
+ * @returns {Object}
+ */
+export function option(label, fn, config = {}) {
+    return {
+        ...config,
+        module    : BoolCheckBox,
+        valueLabel: label,
+        flex      : 'none',
+        listeners : {
+            change: ({component, value}) => {
+                let demo = component;
+
+                while (demo && !(demo instanceof FormDemo)) {
+                    demo = demo.parent
+                }
+
+                // also fires while the checkbox is created, before it is in the demo
+                demo && fn(demo, value === true)
+            }
+        }
+    }
+}
+
+/**
+ * Row of option() checkboxes and other controls (for `extra`)
+ * @param {Object[]} items
+ * @returns {Object}
+ */
+export function optionRow(items) {
+    return {ntype: 'container', layout: {ntype: 'hbox', align: 'center', wrap: 'wrap'}, style: {gap: '8px 24px', maxWidth: '640px'}, items}
 }
 
 export default Neo.setupClass(FormDemo);
