@@ -136,7 +136,15 @@ class Viewport extends BaseViewport {
                 return
             }
 
-            me.mainView = me.add({module: MainView})
+            // a module may provide the main area (ModuleRegistry mainArea, e.g. sf/workspaces);
+            // otherwise one card per module
+            const ViewClass = await ModuleRegistry.loadMainView(MainView);
+
+            if (me.isDestroyed || me.showToken !== token) {
+                return
+            }
+
+            me.mainView = me.add({module: ViewClass})
         }
 
         me.layout.activeIndex = 2

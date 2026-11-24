@@ -27,7 +27,10 @@ import {t} from '../../../src/Translate.mjs';
 const RIGHT = {edgeAlign: 't100-b100'};
 
 /**
- * Top bar with the module menu and the user, below it one card per opened module.
+ * Top bar with the module menu and the user, below it one card per opened module. A module may
+ * provide another main area with a subclass (ModuleRegistry `mainArea`, e.g. sf/workspaces: a
+ * dock, docs/neo-workspace.md); the hooks are initModulesArea() and start() plus the module
+ * methods it overrides.
  *
  * Routing: "#<module>" opens a module, everything after the first "/" is passed
  * to the module's main view as route(path), e.g. "#notes/note/5".
@@ -206,6 +209,8 @@ class MainView extends Container {
 
         me.getReference('topbar').addDomListeners({contextmenu: me.onTabContextMenu, scope: me});
 
+        me.initModulesArea();
+
         me.getReference('launcher').on('open', ({app}) => app.classic ? me.openClassic(app.route) :
             Neo.Main.setRoute({value: app.name, windowId: me.windowId}));
 
@@ -227,16 +232,7 @@ class MainView extends Container {
         // a page rendered for the login screen has no user theme yet (Neo.php)
         applyTheme({theme: client.user?.theme, colorScheme: client.user?.themeColorScheme}, [me.windowId]);
 
-        // the user's start module (My account), or the only module
-        const start = available.find(m => m.name === client.user?.start_module) || (available.length === 1 && available[0]);
-
-        if (current) {
-            me.onHashChange(current)
-        } else if (start) {
-            Neo.Main.setRoute({value: start.name, windowId: me.windowId})
-        } else {
-            me.getReference('modules').layout.activeIndex = 0
-        }
+        me.start(current);
 
         // notifications: core alerts and popup reminders of the user, desktop notifications through this window
         notificationCenter.attach(me.windowId);
@@ -350,6 +346,33 @@ class MainView extends Container {
             })
         } catch (e) {
             notifyError(me, e)
+        }
+    }
+
+    /**
+     * Sets up the main area below the top bar. Here one card per opened module; a module's
+     * main area (ModuleRegistry `mainArea`) overrides it.
+     * @protected
+     */
+    initModulesArea() {
+    }
+
+    /**
+     * Boot: the window's first hash, else the user's start module (My account) or the only module
+     * @param {Object|null} current the window's first hash
+     * @protected
+     */
+    start(current) {
+        let me        = this,
+            available = ModuleRegistry.getAvailable(),
+            start     = available.find(m => m.name === client.user?.start_module) || (available.length === 1 && available[0]);
+
+        if (current) {
+            me.onHashChange(current)
+        } else if (start) {
+            Neo.Main.setRoute({value: start.name, windowId: me.windowId})
+        } else {
+            me.getReference('modules').layout.activeIndex = 0
         }
     }
 
@@ -657,7 +680,7 @@ class MainView extends Container {
             items : [{
                 ntype: 'component',
                 cls  : ['go-empty'],
-                text : `${module?.title || name} is open in a separate window.`
+                text : t('{module} is open in a separate window.').replace('{module}', module?.title || name)
             }, {
                 module : Button,
                 iconCls: 'fa fa-down-left-and-up-right-to-center',

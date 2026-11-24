@@ -5,6 +5,10 @@
 .go-main-3-col {
     background-color: var(--bg-mid);
     height          : 100%;
+    // the layout follows the module's own width, not the viewport: a module in a half-width
+    // workspace panel (docs/neo-workspace.md) gets its narrow layout. The rules below are
+    // @container queries on this element.
+    container-type  : inline-size;
 
     > .go-west,
     > .go-center,
@@ -39,15 +43,16 @@
     display: none;
 }
 
-@media (min-width: 577px) {
+@container (min-width: 577px) {
     .go-main-3-col .go-for-small-device {
         display: none !important;
     }
 }
 
-// Phone (GOUI .goui.hbox.mobile-cards below $breakpointSmall): only the active panel, full
-// size (the splitter widths are inline styles), "menu" and "close" instead of the panel icons
-@media (max-width: 576px) {
+// Narrow (GOUI .goui.hbox.mobile-cards below $breakpointSmall, here the module's width: a phone
+// or a narrow workspace panel): only the active panel, full size (the splitter widths are inline
+// styles), "menu" and "close" instead of the panel icons
+@container (max-width: 576px) {
     .go-main-3-col.go-mobile-cards {
         > :not(.go-active) {
             display: none !important;

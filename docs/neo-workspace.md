@@ -1,8 +1,15 @@
 # neo workspaces (design, 2026-11-24)
 
-Status: design agreed with the owner in chat, reviewed by Codex (2026-11-24), not implemented.
-Implementation starts after the cards that change `apps/go/view/MainView.mjs`
-(`core-runs-without-extjs-and-goui`, `6-8-style-app-launcher`).
+Status: design agreed with the owner in chat, reviewed by Codex (2026-11-24). Phase 1 implemented
+(2026-11-24, see "Phase 1: as built"); phases 2 and 3 open.
+
+**Where it lives (owner decision 2026-11-24):** everything workspace-specific is the module
+**`sf/workspaces`** in the sf-mono repository (`go/modules/sf/workspaces`: entity, JMAP, tables, tests and
+its neo frontend in `views/neo`). Workspaces are **off by default**: without the module installed, or for a
+user without access to it (standard module permissions, the module is shared with "Internal" on install),
+the neo `MainView` is today's one card per module and loads no dock code. neo core only has a generic
+extension point (ModuleRegistry `mainArea`, below) and the generic pieces (top-bar drag source, per-window
+storage, container queries). neo adds no database updates to core (`docs/neo-upstream-sync.md`).
 
 ## Goal
 
@@ -39,8 +46,8 @@ in its own browser window, for example one per monitor.
 ## Workspaces
 
 - **Several named workspaces per user**, from the first phase. The first one ("Default") is created
-  server side on the first `Workspace/query` that finds none (one transaction, unique per user, so two
-  windows opening at once create one). The default workspace id is a user property (`defaultWorkspaceId`);
+  server side on the first `SfWorkspacesWorkspace/query` that finds none (one transaction, unique per user, so two
+  windows opening at once create one). The default workspace id is a user property (`sfWorkspacesSettings.defaultWorkspaceId`);
   deleting the default makes the first remaining one the default, deleting the last one is refused.
 - **One workspace per browser window.** Each window runs its own `Viewport` / `MainView`
   (`apps/go/app.mjs` `onStart`), so every window has its own module views. The same module can be open in
@@ -102,7 +109,7 @@ item, so those are not repeated elsewhere.
 - **Write queue per window:** autosave, Save and Revert go through one queue bound to the workspace id and
   profile the change was made in (a switch of workspace or profile flushes or drops the pending debounce,
   never sends it to the new one). Revert cancels a pending debounce first and is committed as a new state.
-- **Conditional writes:** every `Workspace/set` carries `ifInState` (JMAP, `EntityController` checks it when
+- **Conditional writes:** every layout autosave (`SfWorkspacesWorkspace/set` from the save queue) carries `ifInState`; New, Rename and Delete in the switcher don't (JMAP, `EntityController` checks it when
   supplied). The client sends only the changed properties: `panels` and the one changed
   `layouts.<profile>` (patch syntax), not the whole object.
 - **Conflict** (another window saved the same workspace in between): re-read, then
@@ -112,12 +119,14 @@ item, so those are not repeated elsewhere.
 - **Checkpoint:** "Save" copies `panels` and `layouts` to `savedPanels` / `savedLayouts`. "Revert" restores
   both together, so a reverted layout never refers to a panel that is gone.
 
-## Backend: entity `Workspace` (go\core)
+## Backend: entity `Workspace` (module sf/workspaces)
 
-- `go\core\model\Workspace` with its controller in `go\core\controller`, table `core_workspace`
-  (`id`, `aclId`, `createdBy`, `name`, `icon`, `sortOrder`, `panels`, `layouts`, `savedPanels`,
-  `savedLayouts` as JSON text, `modifiedAt`); a timestamped entry in `www/go/core/install/updates.php` and the
-  table in `www/go/core/install/install.sql`. `defaultWorkspaceId` on the user via an update entry too.
+- `go\modules\sf\workspaces\model\Workspace` (JMAP name `SfWorkspacesWorkspace`, the sf convention) with
+  its controller in the module, table `sf_workspaces_workspace` (`id`, `aclId`, `createdBy`, `name`, `icon`,
+  `sortOrder`, `panels`, `layouts`, `savedPanels`, `savedLayouts` as JSON text, `modifiedAt`) in the module's
+  `install/install.sql`. The default workspace is `User.sfWorkspacesSettings.defaultWorkspaceId`, a
+  `UserSettings` property hung on the core User by the module (table `sf_workspaces_user_settings`), not a
+  core column.
 - **Personal only:** `AclOwnerEntity`, but on create the server sets `createdBy` to the authenticated
   user and a private ACL (owner manage, nobody else; the entity type's default ACL is not copied). Writable
   properties are an allowlist (`name`, `icon`, `sortOrder`, `panels`, `layouts`, `savedPanels`,
@@ -145,8 +154,8 @@ item, so those are not repeated elsewhere.
 - Badges, module popout, global keyboard shortcuts and dialogs relate to the focused panel. The module
   popout (`MainView` placeholder card + `GO.view.PopupView`, `src/Popup.mjs`, shared App worker only) is
   replaced by the dock tear-out in phase 3; until then it pops out a panel's module the same way.
-- The dock API is new in neo 14 and still moving. Wrap it in one GO class, `GO.view.Workspace`
-  (`src/view/Workspace.mjs`), so a neo upgrade touches one place; note it in
+- The dock API is new in neo 14 and still moving. Wrap it in one GO class, `GO.workspaces.Workspace`
+  (`sf/workspaces/views/neo/Workspace.mjs`), so a neo upgrade touches one place; note it in
   `docs/neo-core-components.md` → "neo.mjs upgrades".
 
 ## Phases
@@ -161,6 +170,97 @@ item, so those are not repeated elsewhere.
 3. **Advanced:** tear-out of single panels instead of the module popout, auto-hide at edges, lock,
    export/import as JSON, a module more than once in one window.
 
+## Phase 1: as built (2026-11-24)
+
+Where it lives:
+
+Module `sf/workspaces` (sf-mono, paths below `go/modules/sf/workspaces/`):
+
+| Part | File |
+|---|---|
+| Entity, validation, default workspace | `model/Workspace.php`, `model/WorkspaceLayout.php` (mirror of neo's document validator), `model/UserSettings.php` |
+| JMAP | `controller/Workspace.php` (`SfWorkspacesWorkspace/*`); `User.sfWorkspacesSettings.defaultWorkspaceId` (read-only) |
+| Tables | `install/install.sql` (`sf_workspaces_workspace`, `sf_workspaces_user_settings`) |
+| Tests | `tests/WorkspaceTest.php` (+ `tests/ensure-default.php`, a child process for the concurrent first open; `tests/setup-database.php` creates the `GO_TEST_DB`, see the go:tests skill) |
+| Registration | `views/neo/Index.mjs` (no app; `mainArea`) |
+| Main area, profiles, switcher | `views/neo/MainArea.mjs` (`GO.workspaces.MainView`, a subclass of `GO.view.MainView`) |
+| Dock wrapper | `views/neo/Workspace.mjs` (`GO.workspaces.Workspace`) |
+| Write queue | `views/neo/SaveQueue.mjs` |
+| Styles | `views/neo/style.css` |
+
+neo core (groupoffice26-neo), generic:
+
+| Part | File |
+|---|---|
+| Extension point | `src/ModuleRegistry.mjs`: a module's `mainArea: () => import(...)` resolves to a subclass of `GO.view.MainView`; `loadMainView()` picks the first one the user has access to, `apps/go/view/Viewport.mjs` builds it. `MainView` hooks: `initModulesArea()` (set up the area below the top bar), `start(current)` (boot), plus the module methods a subclass overrides (`onHashChange`, `openModule`, `quickAdd`, `popOutModule`, `moveModuleToWindow`, `dockModule`, `closeModules`, `removeModules`). The top bar, launcher (`getReference('launcher')`, its `openBeside` event), badges and popout stay in `MainView`. |
+| Window binding | `views/neo/src/windowStorage.mjs` + main-thread addon `src/main/addon/WindowStorage.mjs` (`sessionStorage`) |
+| Drag from the top bar | main-thread addon `src/main/addon/DockDrag.mjs` (native drag and drop of the module tabs, custom DOM events `goDockDragStart` / `goDockDragEnd` / `goDockDrop` to the App worker); loaded by the main area that wants it |
+| Container queries | `MainThreeColumnPanel.scss`, calendar and bookmarks follow their panel width |
+
+How it works:
+
+- A panel is a module view in a host container (`go-module-host`); the panel id is the dock item id
+  (`p<time><random>`). MainView owns the hosts, the dock keeps them alive through `getPreservedItemIds()`
+  and shows them through `resolvePane()`. One panel per module per workspace (phase 3 lifts that).
+- The focused panel is the last one clicked (pane or its tab). The address follows it with
+  `replaceRoute` (`<module>/<route>`); a route change inside a panel is saved as that panel's route.
+- Window binding precedence: `#ws/<id>` > the window's `sessionStorage` (`go-workspace-id`) > the user's
+  default. `#ws/<id>` loads the workspace, then the address moves on to its focused panel.
+- Profile from a `ResizeObserver` on MainView: ≤ 576px narrow, < 1200px medium, otherwise wide. Narrow
+  shows the panels as one tab group with the dock header hidden (CSS `go-workspace-narrow`), the top bar
+  switches modules, nothing is saved; widening reloads the workspace from the server plus the module the
+  user switched to.
+- Saving: every committed dock change (and a panel's route) is queued; 1.5 s debounce per workspace and
+  profile; `SfWorkspacesWorkspace/set` with `ifInState` and a patch of `panels` plus `layouts/<profile>`. On
+  `stateMismatch` the queue reads `Workspace/changes`: when this workspace didn't change it only moves on to
+  the new state, otherwise it re-reads the workspace and applies only what this window changed against
+  the copy it edited: panels it added, changed or closed (all other panels, their routes included, are
+  the server's); the profile's layout only when this window changed it (then last write wins, items of
+  panels gone are dropped; "changed" means a dock edit, not only a route). The same local edit is applied
+  again to each fresh copy, and the type state is taken together with that copy. Up to 5 attempts; after a merge the window reloads the workspace to show
+  the result. A save that fails otherwise (network) stays queued for the next flush.
+- Another window's save arrives as a `SfWorkspacesWorkspace` state change: a window that shows the workspace reloads
+  it when the panels or its own profile's layout changed (with the notice "This workspace was changed in
+  another window."), otherwise it only takes the new base.
+- Switcher (top bar, icon `dashboard`, hidden when narrow): the workspaces, New (name prompt), Rename,
+  Delete (confirm; the last one can't be deleted, the server moves the default to the next one).
+
+Deviations from the design above:
+
+- Workspaces are a module, off by default (owner decision 2026-11-24, see the status above); the first
+  version put them in core with a core database update, which breaks upstream merges.
+- The module's strings are in its own `language/en.php` (and `cs.php`); the client uses
+  `t(key, 'sf', 'workspaces')`.
+- `ifInState` is compared with the global `SfWorkspacesWorkspace` state (JMAP has no per-entity state), so any save
+  of another workspace of the user is a mismatch too; `SfWorkspacesWorkspace/changes` tells the two apart (above).
+- Access is the owner's (and an administrator's) whatever the ACL holds (`internalGetPermissionLevel()`,
+  `applyAclToQuery()`, `getChanges()`): a default grant of the entity type applied to all ACLs must not share a
+  workspace, nor report its changes to another user.
+- A bookmark opened as a module (`bookmarks-<id>`, bookmarks `views/neo/Index.mjs`) is a panel; the server
+  checks access to the bookmarks module, the client opens only bookmarks the user can see.
+- A malformed `panels` / `layouts` value (not an object) is a validation error of that record.
+- `sfWorkspacesSettings.defaultWorkspaceId` is read-only for the client and shown only to its user and
+  administrators. Its foreign key sets it to null when the workspace is deleted (the server moves the
+  default to the next one first; a missing default falls back to the first workspace). Choosing a default
+  in the UI is phase 2.
+- The server validates only a profile layout that changed against the panels; a stale reference in
+  another profile is reconciled by the client when that profile is shown ("Reconciling profiles").
+  Module access is checked for new or changed panels only, and the client drops panels of modules the
+  user can no longer open.
+- PHP turns `{}` into `[]` on the JSON round trip; the client normalizes the document
+  (`normalizeDocument()`).
+- The maximized panel is not kept in `sessionStorage`: a reload restores the layout, not the maximize.
+  The layout is captured with `getDocument()`, a copy of `getPerspectiveDocument()`.
+- The dock's maximize button shows when the pointer is over the group header (neo's contextual actions);
+  Esc restores.
+- Known neo warning: "Neo.tab.header.Button: 'cls' / 'maxWidth' was set after destroy()" can show once when
+  a profile change reloads the workspace (the tab Overflow plugin measures buttons the reconciler just
+  replaced; neo ignores the write). Not an error; check again after a neo.mjs upgrade.
+- The launcher's Shift+click "open beside" is left for phase 2 (the event is reachable from the main area
+  through `getReference('launcher')`).
+- Limits confirmed: 256 KB for `panels` + `layouts` + saved copies, 30 panels, 200 nodes, depth 16,
+  route 1024 characters, item title 190.
+
 ## Decisions taken (owner, 2026-11-24)
 
 - Workspaces are generic, several per user, not one fixed layout.
@@ -173,4 +273,15 @@ item, so those are not repeated elsewhere.
 
 ## Open
 
-- Limits for validation (size, panel count) to confirm in phase 1.
+- Found by the review of the module move (2026-11-24), not fixed in phase 1:
+  - Logout destroys the main view after `client.logout()`, so a layout edit made in the last 1.5 s before
+    logging out is not saved. Fix: flush the save queue before the logout request.
+  - `SaveQueue` keeps one failed write per workspace; a failed save of one profile can be replaced by a
+    newer edit of the other profile. Fix: keep failed writes per workspace and profile.
+  - The core addon `WS/DockDrag` stays active in a tab after logout; a user without the module who logs in
+    there gets draggable module tabs (dropping does nothing). Fix: register and unregister it with the
+    workspace main view.
+  - `SfWorkspacesWorkspace/changes` filters `changed` to the user's own workspaces, not `removed`: when an
+    administrator grants another user rights on someone's workspace ACL by hand, that user can see the id
+    of the workspace once it is deleted (an id only, no data).
+- Otherwise see the phases above.

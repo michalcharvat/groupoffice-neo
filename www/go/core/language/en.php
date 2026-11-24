@@ -487,4 +487,6 @@ If you did not request a new password please delete this mail.',
   'Launcher' => 'Launcher',
   'List' => 'List',
   'Opens the classic UI in a new tab' => 'Opens the classic UI in a new tab',
+  '{module} is open in a separate window.' => '{module} is open in a separate window.',
+  'Select a module from the menu.' => 'Select a module from the menu.',
 );
