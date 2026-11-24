@@ -6,6 +6,7 @@
 # GitHub, the Debian repository, SourceForge and Docker Hub.
 #
 # Usage: ./build.sh [--distro=twentysixzero] [--branch=master] [--test] [--skip-tests] [--skip-docker]
+#                   [--webclient=all|neo] [--allow-without-neo=<module,...>]
 #
 #   --distro      Debian distribution. "testing" creates a GitHub prerelease and
 #                 pushes the Docker image as intermesh/groupoffice:testing. (default: twentysixzero)
@@ -13,6 +14,13 @@
 #   --test        Run tests and build the packages, but don't publish anything.
 #   --skip-tests  Skip the unit tests. Only for emergencies.
 #   --skip-docker Skip building of docker images (own laptops are way faster)
+#   --webclient   "all" (default) ships the classic client (ExtJS, GOUI) and neo. "neo" removes the
+#                 classic client after assembling the package (scripts/strip-classic.sh), skips the
+#                 SASS and GOUI builds and names the package groupoffice-<version>-neo. Fails when a
+#                 module has a classic UI but no neo UI. Only with --test for now: the Debian package
+#                 and the Docker image would replace the classic release. See docs/neo-switch.md.
+#   --allow-without-neo  With --webclient=neo: modules that may ship without a neo UI, added to
+#                 NEO_ALLOW_WITHOUT_NEO, e.g. "business/finance,projects2".
 #
 # Requirements on the build server:
 #   git, composer (any PHP version, platform requirements are ignored), npm, debuild, reprepro, gpg, gh (logged in with
@@ -50,6 +58,9 @@ SF_USER="mschering"
 GIT_SSH_KEY="/root/.ssh/groupoffice-deploy"
 ENCODER=(/usr/local/share/sourceguardian/bin/sourceguardian --phpversion 8.2+)
 NOTIFY_EMAIL="info@intermesh.nl"
+# Modules that --webclient=neo lets through without a neo UI. reminders: the classic panel to
+# create reminders for other users has no neo port yet (docs/neo-switch.md section 1).
+NEO_ALLOW_WITHOUT_NEO=(reminders)
 PRO_MODULES=(gota documenttemplates savemailas professional tickets scanbox leavedays projects2 timeregistration2 hoursapproval2 pr2analyzer workflow filesearch assistant billing)
 
 if [[ -f "$BUILD_ROOT/config.sh" ]]; then
@@ -60,6 +71,7 @@ fi
 TEST=false
 SKIP_TESTS=false
 SKIP_DOCKER=false
+WEBCLIENT=all
 
 for arg in "$@"; do
 	case "$arg" in
@@ -68,9 +80,25 @@ for arg in "$@"; do
 		--test) TEST=true ;;
 		--skip-tests) SKIP_TESTS=true ;;
     --skip-docker) SKIP_DOCKER=true ;;
+		--webclient=*) WEBCLIENT="${arg#*=}" ;;
+		--allow-without-neo=*)
+			IFS=, read -ra allow <<< "${arg#*=}"
+			NEO_ALLOW_WITHOUT_NEO+=("${allow[@]}")
+			;;
 		*) echo "Unknown argument: $arg" >&2; exit 1 ;;
 	esac
 done
+
+case "$WEBCLIENT" in
+	all) ;;
+	neo)
+		if [[ "$TEST" == false ]]; then
+			echo "--webclient=neo needs --test: publishing would replace the Debian package and Docker image of the classic release" >&2
+			exit 1
+		fi
+		;;
+	*) echo "Unknown --webclient=$WEBCLIENT, use all or neo" >&2; exit 1 ;;
+esac
 
 SOURCE_DIR="$BUILD_ROOT/deploy/source"
 REPREPRO_DIR="$BUILD_ROOT/deploy/reprepro"
@@ -328,9 +356,19 @@ build_package() {
 
 	encode_pro_and_business
 
-	# Builds SASS and the GOUI modules, without type definitions
+	if [[ "$WEBCLIENT" == neo ]]; then
+		# Before the npm build: without views/Extjs3 and views/goui install-npm.sh builds neo only
+		log "Removing the classic client"
+		local allow
+		allow="$(IFS=,; echo "${NEO_ALLOW_WITHOUT_NEO[*]}")"
+		"$REPO_DIR/scripts/strip-classic.sh" "--allow-without-neo=$allow" "$PACKAGE_DIR"
+	fi
+
+	# Builds neo and, with the classic client, SASS and the GOUI modules, without type definitions
 	"$REPO_DIR/scripts/install-npm.sh" nodev "$PACKAGE_DIR"
-	(cd "$PACKAGE_DIR" && npm prune --omit=dev --ignore-scripts --audit=false --fund=false)
+	if [[ "$WEBCLIENT" == all ]]; then
+		(cd "$PACKAGE_DIR" && npm prune --omit=dev --ignore-scripts --audit=false --fund=false)
+	fi
 
 	# neo webclient: own node_modules (see install-npm.sh); the generated theme sources are build input only
 	(cd "$PACKAGE_DIR/views/neo" && npm prune --omit=dev --ignore-scripts --audit=false --fund=false)
@@ -484,9 +522,13 @@ MAJOR_VERSION="${VERSION%.*}"
 TAG="v$VERSION"
 PACKAGE_NAME="groupoffice-$VERSION"
 BUILD_DIR="$BUILD_ROOT/deploy/build/$MAJOR_VERSION/$DISTRO"
+if [[ "$WEBCLIENT" == neo ]]; then
+	PACKAGE_NAME="$PACKAGE_NAME-neo"
+	BUILD_DIR="$BUILD_DIR-neo"
+fi
 PACKAGE_DIR="$BUILD_DIR/$PACKAGE_NAME"
 
-log "Building GroupOffice $VERSION for $DISTRO from $BRANCH"
+log "Building GroupOffice $VERSION for $DISTRO from $BRANCH (webclient: $WEBCLIENT)"
 
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
