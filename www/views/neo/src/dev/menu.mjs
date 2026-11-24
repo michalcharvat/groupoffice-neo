@@ -62,5 +62,6 @@ export default [
     {id: 'core/Upload',       text: 'Upload',            level: 1, status: 'done', demo: 'Upload', neo: 'GO.jmap.Uploader, GO.component.UploadPanel', goui: 'ExtJS go.Uploader, groupoffice-core/script/jmap/Client.ts upload()'},
     {id: 'core/Image',        text: 'Image zoom',        level: 1, status: 'done', demo: 'MarkdownField', neo: 'GO.view.ImageWindow, enableImageZoom()', goui: 'groupoffice-core/script/jmap/Image.ts'},
     {id: 'core/Mail',         text: 'showComposer',      level: 1, status: 'neo', neo: 'src/Mail.mjs showComposer(), e-mail module compose()', goui: 'ExtJS go.showComposer (go/core/views/extjs3/Mail.js)'},
+    {id: 'core/AppLauncher',  text: 'App launcher',      level: 1, status: 'done', demo: 'AppLauncher', neo: 'GO.view.AppLauncher (header main menu)', goui: 'ExtJS 6.8 MainLayout.js startMenu, Paper _modules.scss #startMenu'},
     {id: 'core/Recipients',   text: 'RecipientPicker',   level: 1, status: 'done', demo: 'Recipients', neo: 'GO.form.field.RecipientsField, GO.view.RecipientPicker', goui: 'goui-docs/script/components/RecipientsField.ts, groupoffice-core/script/components/picker/RecipientPicker.ts'}
 ];
