@@ -60,7 +60,7 @@ Status: **neo** = neo.mjs 13.4 ships it (14 since 2026-11-24), usable as is (may
 | JMAP client, Entities, Modules | GO.neo (`jmap/Client`, `JmapStore`, `ModuleRegistry`; module hooks `onMainView`, `onCreateUserDialog`, `fileHandlers`, see `docs/neo-small-modules.md`; `Badges.mjs`: counts on the module tab and main menu item (GO.mainLayout.setNotification()), registry key `badge: {entities, count}` recounted on push, or `badges.set(name, count)`; a dot on the main menu button while a closed module has one; calendar invitations, tasks due, e-mail unseen; `NotificationCenter` message `muteSound`: the user property that mutes its sound, default `mute_reminder_sound`) |
 | Upload (`client.upload()`, ExtJS `go.Uploader`) | GO.neo (`jmap/Uploader.mjs`: XHR with progress, queue of `maxConcurrentUpload`, `maxSizeUpload` check, abort; `component/UploadPanel.mjs` shows the uploads of a window bottom right; used by `UploadButton` `autoUpload`, `BlobField`, `AttachmentsField`, `ImageField`, `MarkdownField`, `FilesPanel`, imports; demo `#dev/core/Upload`) |
 | auth/Login | GO.neo (`apps/go/view/LoginView.mjs`: forgot credentials, 2FA via `loginPanels`) |
-| Main area (GOUI/ExtJS card per module) | GO.neo workspaces (`src/view/Workspace.mjs` over neo's dock, `apps/go/view/MainView.mjs`; panels side by side, drag from the top bar, maximize, saved per user and screen profile; `docs/neo-workspace.md`) |
+| Main area (GOUI/ExtJS card per module) | GO.neo `apps/go/view/MainView.mjs`: one card per module. With the module sf/workspaces (sf-mono, off by default) its `mainArea` replaces it with a dock (`GO.workspaces.Workspace` over neo's dock; panels side by side, drag from the top bar, maximize, saved per user and screen profile; `docs/neo-workspace.md`) |
 | MainThreeColumnPanel, TableTitle | GO.neo |
 | DetailPanel | GO.neo (`detail/Card` + panels); `Card` `capability` hides a card without module access (history, comments, files) |
 | Comments, Files (legacy files), History | GO.neo (`CommentsPanel`, `FilesPanel`, `HistoryPanel` + `HistoryDetailDialog`). `FilesPanel` takes files dropped from the desktop; with the files module's neo UI a click opens the file with the user's file handler (ModuleRegistry hook `openFile`) and "Browse files" opens the entity's folder in `#files/folder/<id>` |
@@ -126,13 +126,14 @@ was below 0.1 % of its pixels after the fixes.
   that GO sets in `go/button/Base.scss` and `go/toolbar/Base.scss`: `--button-primary-*` for
   `ui: 'primary'`, `--button-*-pressed` (14 recolours a pressed button; 13.4 changed only its
   border) and `--toolbar-button-*` (a toolbar sizes its buttons).
-- `src/view/Workspace.mjs` (`GO.view.Workspace`) wraps `Neo.dashboard.dock.Workspace`; check its
+- `sf/workspaces/views/neo/Workspace.mjs` (`GO.workspaces.Workspace`, sf-mono) wraps `Neo.dashboard.dock.Workspace`; check its
   overrides against the new dock: `applyDockZoneOperation` (adds a dragged-in module to the catalog
   before the drop's operation), `resolvePane`, `getPreservedItemIds`, `getDockProjectionOptions` (the
   drag affordances' cross-zone seams), `beforeRefreshDockWorkspace`, the reconciler quirk handled in
   `syncCards()` (an added pane is activated silently, the old card stays visible until the next
   update) and the tab button → pane lookup in `onPaneClick()` (tab buttons don't keep `dockItemId`).
-  Then drag a module from the top bar, maximize, close and switch workspaces in the browser.
+  Then, with sf/workspaces installed, drag a module from the top bar, maximize, close and switch
+  workspaces in the browser.
 - `src/data/setData.mjs`: neo skips an assignment equal to the last assigned `data`, also when
   the store changed since (`add()`, `remove()`); the helper then replaces the records itself.
 - `Neo.php` build id carries the installed neo.mjs version (`NeoTest::testBuildIdCarriesTheNeoVersion`).

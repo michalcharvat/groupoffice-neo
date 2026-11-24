@@ -4,6 +4,14 @@ The neo branch (`neo-ui`, pushed to the `neo` remote) follows GroupOffice `maste
 same as upstream so updates stay simple: merge `origin/master` into neo regularly, for example after every
 GroupOffice release. First done on 2026-11-24 (merge of 26.0.62).
 
+**No database updates in core (owner decision 2026-11-24).** neo never adds an entry to
+`www/go/core/install/updates.php` or a table or column to `www/go/core/install/install.sql`:
+`git diff origin/master -- www/go/core/install` stays empty. GO counts the update queries by position, so a
+neo-only core update breaks the next upstream merge and any database shared with upstream GroupOffice. A neo
+feature that needs tables lives in a module with its own `install/` (example: `sf/workspaces` in sf-mono,
+`docs/neo-workspace.md`), with per-user data hung on the User entity by the module (a `UserSettings`
+property), not a `core_user` column.
+
 ## Procedure
 
 1. Work in a task worktree on a branch from `neo-ui`.
