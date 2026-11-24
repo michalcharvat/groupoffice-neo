@@ -22,6 +22,24 @@ export async function focusWithoutTooltip(component, options) {
     const app = Neo.apps?.[windowId];
 
     if (!component.isDestroyed && app && Neo.tooltip?.Base) {
-        Neo.tooltip.Base.createSingleton(app, windowId).hide()
+        const tooltip = Neo.tooltip.Base.createSingleton(app, windowId);
+
+        // only the tooltip of the node focused here: the user may have moved on meanwhile
+        isWithin(tooltip.activeTargetId, options.id) && tooltip.hide()
     }
+}
+
+/**
+ * @param {String|null} targetId the tooltip's target, a component id
+ * @param {String} id the focused node, or the component whose first focusable node got the focus
+ * @returns {Boolean}
+ */
+function isWithin(targetId, id) {
+    for (let cmp = targetId && Neo.getComponent(targetId); cmp; cmp = cmp.parentId && Neo.getComponent(cmp.parentId)) {
+        if (cmp.id === id) {
+            return true
+        }
+    }
+
+    return false
 }
