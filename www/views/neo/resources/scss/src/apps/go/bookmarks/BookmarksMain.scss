@@ -1,5 +1,8 @@
 // GO.bookmarks.BookmarksMain: toolbar and the scrolling bookmarks
 .neo-theme-go .go-bookmarks {
+    // the rule below follows the module's width (a workspace panel), not the viewport's
+    container-type: inline-size;
+
     .go-bookmarks-scroll {
         overflow-y: auto;
     }
@@ -15,8 +18,8 @@
     }
 }
 
-// phone: the buttons keep their icons only
-@media (max-width: 576px) {
+// narrow (phone or a narrow workspace panel): the buttons keep their icons only
+@container (max-width: 576px) {
     .neo-theme-go .go-bookmarks-toolbar .neo-button-text,
     .neo-theme-go .go-bookmarks-filter-label {
         display: none;

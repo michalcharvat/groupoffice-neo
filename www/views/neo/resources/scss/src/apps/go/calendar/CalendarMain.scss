@@ -80,8 +80,9 @@
         display: none;
     }
 
-    // GOUI $breakpointMedium: the views as a menu
-    @media (max-width: 1000px) {
+    // GOUI $breakpointMedium: the views as a menu. The calendar's width (its MainThreeColumnPanel is
+    // the container), not the viewport's: a calendar in a half-width workspace panel gets the menu
+    @container (max-width: 1000px) {
         .go-cal-not-phone {
             display: none;
         }
