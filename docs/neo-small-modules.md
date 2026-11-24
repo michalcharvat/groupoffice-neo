@@ -126,3 +126,28 @@ could read, change, sort and delete the content and menus of sites they can't ev
 controllers now check the site's ACL through `Site::requirePermission()`: read for the tree,
 loads, stores and redirects, write for create, update, sort and "create menu item from
 content", delete for deletes. Test: `tests/go/modules/legacy/site/SitePermissionTest.php`.
+
+### neo port (`views/neo`)
+
+`SiteMain` (MainThreeColumnPanel: `SiteTree` west, `ContentPanel` center, cheat sheet east),
+dialogs `SiteDialog` (with the site's ACL in a SharePanel), `ContentDialog` ("Advanced options"),
+`MenuDialog`, `MenuItemDialog`. All talk to the legacy controllers (`client.legacy()`); loads that
+save on POST (`site/content/update`, `site/site/load`) are sent as GET.
+
+- The Markdown editor needs its DOM when it mounts: the content form is never hidden, an empty
+  panel only shows a hint above it. Don't give a child the reference `content` either: SiteMain
+  already uses it for the panel, and the panel's own `getReference()` then finds itself.
+- Neo keeps an input's `readonly` attribute when a field that started read-only becomes editable,
+  so the editor fields are not toggled read-only; Save is disabled instead.
+- `site/site/load` (renderForm) requires write permission: a refused load means the user can only
+  read the site, and the tree, the row menus and the editor then offer only "View".
+- `files/folder/checkModelFolder` takes the entity name `Site`, not the class name.
+- Not ported: dragging files from the files module into the editor (replaced by "Insert file",
+  which picks files of the site's folder), and the unused ExtJS code listed above.
+
+Walkthrough 2026-11-24 as neoadmin (everything: edit and save, add and delete content, refused
+delete with children, advanced options, site properties and permissions, add/edit/delete menus
+and menu items, content dropped on a menu, sorting, tree node dropped into the editor, Insert
+file, Browse files, View, cheat sheet) and as neotest with read access to the site (only View,
+Save disabled, drags ignored); no console errors. Done on `localhost` with a fresh browser
+context, not `127.0.0.1`: on 127.0.0.1 the license host check serves the classic client.
