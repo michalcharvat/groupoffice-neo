@@ -163,6 +163,18 @@ save on POST (`site/content/update`, `site/site/load`) are sent as GET.
   item or adding one asks before unsaved changes are discarded.
 - Not ported: dragging files from the files module into the editor (replaced by "Insert file",
   which picks files of the site's folder), and the unused ExtJS code listed above.
+- First use of a legacy entity type races (core, not neo; checked 2026-11-24). `Site` is not
+  registered when the module is installed (`Content` is): `EntityType::findByClassName()` inserts
+  its `core_entity` row on first use. Two requests that both miss it in the entity type cache
+  (parallel `site/site/submit`s right after the install, or a second container on the same
+  database with its own APCu cache) both insert, and the second fails with "Duplicate entry 'Site'
+  for key 'clientName'" (the failed insert also skips an auto-increment id). `getDefaultAclId()`
+  has the same check-then-create race: each request creates an ACL and the last one wins, so the
+  other stays behind without an owner. Both are upstream code; a fix would re-read the row after a
+  duplicate key error and create the default ACL with a conditional update
+  (`... WHERE defaultAclId IS NULL`). It only hits the first request(s), a retry succeeds.
+- Test sites need an installed view module: db26 has no `defaultsite`, a site with
+  `module = defaultsite` fails every content route with "Module defaultsite not found!".
 
 Walkthrough 2026-11-24 as neoadmin (everything: edit and save, add and delete content, refused
 delete with children, advanced options, site properties and permissions, add/edit/delete menus
