@@ -39,10 +39,12 @@ class SharePanel extends Field {
          */
         levels: null,
         /**
-         * Shown groups: 'both', 'users' or 'groups' (GOUI starts with groups)
-         * @member {String} principalType_='groups'
+         * Shown groups: 'both', 'users' or 'groups'. GOUI starts with groups, which hides
+         * the personal groups of users the entity is shared with; 'both' lists every
+         * group in the ACL first (Group filter inAcl), so existing shares always show.
+         * @member {String} principalType_='both'
          */
-        principalType_: 'groups',
+        principalType_: 'both',
         /**
          * @member {Object|null} value=null
          */
@@ -415,7 +417,8 @@ class SharePanel extends Field {
 
         if (oldValue !== undefined) {
             me.renderSegments();
-            me.entity !== null && me.load()
+            // also without an entity (setAclId(), no entity at all): reload once loaded
+            me.loadGeneration && me.load()
         }
     }
 
