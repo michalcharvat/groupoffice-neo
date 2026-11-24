@@ -1,0 +1,14 @@
+// legend and description of a custom field set: GO.customfields.FormFieldset and
+// GO.form.BatchEditDialog render the same markup
+.neo-theme-go {
+    .go-cf-legend {
+        color      : var(--fg-text);
+        font-size  : calc(1.4rem * var(--font-scale, 1));
+        font-weight: 600;
+        margin     : 0;
+    }
+
+    .go-cf-description {
+        color: var(--fg-secondary-text);
+    }
+}

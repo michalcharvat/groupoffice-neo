@@ -66,9 +66,6 @@ class PrincipalCombo extends JmapComboBox {
         properties  : ['id', 'name', 'description', 'avatarId', 'type', 'email'],
         jmapSort    : [{property: 'name', isAscending: true}],
         listConfig  : {module: PrincipalList},
-        // the avatar trigger is styled in PrincipalList.scss, which neo loads only with the list:
-        // without it the avatar keeps the generic trigger chevron (::before), peeking out at its left
-        additionalThemeFiles: ['GO.form.field.PrincipalList'],
         /**
          * Only principals of this entity, e.g. "User" (Principal filter "entity")
          * @member {String|null} principalEntity=null

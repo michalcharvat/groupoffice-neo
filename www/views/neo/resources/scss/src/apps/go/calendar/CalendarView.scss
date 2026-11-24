@@ -1,5 +1,6 @@
 @use "../../../../go/go";
 @use "cal" as *;
+@use "item";
 
 // GO.calendar.CalendarView: shared by all views
 .go-cal {
@@ -98,13 +99,4 @@
     padding         : .8rem 1.2rem;
     word-break      : break-word;
     z-index         : 10000;
-}
-
-.go-cal-quick-title {
-    margin : 0;
-    padding: 0;
-}
-
-.go-cal-pre {
-    white-space: pre;
 }

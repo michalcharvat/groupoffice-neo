@@ -1,5 +1,11 @@
 // GO.view.FormWindow (GOUI FormWindow)
 .neo-theme-go {
+    // the form of a FormWindow holds the tabs and cards, which pad themselves: no default
+    // dialog form padding (Dialog.scss) around them
+    .go-form-window .go-dialog-body > .neo-form-container {
+        padding: 0;
+    }
+
     .go-form-window .go-form-card {
         gap       : 2rem;
         overflow-y: auto;

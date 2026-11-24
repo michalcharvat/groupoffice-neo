@@ -77,16 +77,24 @@ class FileDetail extends Container {
             flex     : 1,
             layout   : {ntype: 'vbox', align: 'stretch'},
             items    : [{
-                ntype    : 'component',
-                reference: 'head',
-                cls      : ['go-files-detail-head'],
+                // the first card of the detail, like the other modules' (GOUI DetailPanel)
+                ntype    : 'container',
+                reference: 'card',
+                cls      : ['go-files-detail-card'],
                 flex     : 'none',
-                html     : ''
-            }, {
-                module   : DescriptionList,
-                reference: 'list',
-                cls      : ['go-files-detail-list'],
-                flex     : 'none'
+                layout   : {ntype: 'vbox', align: 'stretch'},
+                items    : [{
+                    ntype    : 'component',
+                    reference: 'head',
+                    cls      : ['go-files-detail-head'],
+                    flex     : 'none',
+                    html     : ''
+                }, {
+                    module   : DescriptionList,
+                    reference: 'list',
+                    cls      : ['go-files-detail-list'],
+                    flex     : 'none'
+                }]
             }, {
                 // a card per custom field set with values
                 module   : DetailFieldsets,
@@ -214,6 +222,9 @@ class FileDetail extends Container {
         me.getReference('downloadButton').hidden   = !data || folder;
         me.getReference('propertiesButton').disabled = !data || (folder && !/^\d+$/.test(String(data.id)));
         me.getReference('moreButton').disabled     = !data;
+
+        // "Nothing selected" stands without a card
+        data ? me.getReference('card').addCls('go-card') : me.getReference('card').removeCls('go-card');
 
         if (!data) {
             me.getReference('head').html = `<div class="go-empty"><i class="go-icon">folder_open</i><p>${escapeHtml(t('Nothing selected'))}</p></div>`;

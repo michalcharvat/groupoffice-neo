@@ -38,7 +38,7 @@ class CalendarIdsField extends Field {
     createControl() {
         const ids = this.value || [];
 
-        return [{tag: 'ul', cls: ['go-cal-check-rows'], cn: this.calendars.map(c => ({
+        return [{tag: 'ul', cls: ['go-cal-ids-list'], cn: this.calendars.map(c => ({
             tag: 'li', cls: ['go-cal-ids-row'], 'data-cid': String(c.id), cn: [
                 {tag: 'span', cls: ['go-check', 'go-cal-check', ids.includes(String(c.id)) ? 'go-checked' : null].filter(Boolean), style: {color: '#' + (c.color || '356772')}},
                 {tag: 'span', cls: ['go-cal-check-text'], html: escapeHtml(c.name)}

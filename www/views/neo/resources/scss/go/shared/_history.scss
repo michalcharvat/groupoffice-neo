@@ -1,0 +1,26 @@
+// Cells of a history (LogEntry) grid, rendered by src/detail/historyCells.mjs for the
+// detail panel (GO.detail.HistoryPanel) and the history module (GO.history.view.HistoryMain)
+.neo-theme-go {
+    // the user: avatar and name
+    .go-history-user {
+        align-items: center;
+        display    : flex;
+        gap        : .8rem;
+        min-width  : 0;
+
+        > span:last-child {
+            overflow     : hidden;
+            text-overflow: ellipsis;
+        }
+    }
+
+    // the "changes" icon opens GO.detail.HistoryDetailDialog (GOUI HistoryDetailWindow)
+    .go-history-changes {
+        color : var(--fg-secondary-text);
+        cursor: pointer;
+
+        &:hover {
+            color: var(--fg-text);
+        }
+    }
+}

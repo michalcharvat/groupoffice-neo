@@ -1,0 +1,11 @@
+// markup of CalendarItem (title and location of the quick text, tooltips): rendered by the
+// calendar views, the event detail and dialogs, the invitation panels and the participant field
+.go-cal-quick-title {
+    margin : 0;
+    padding: 0;
+}
+
+// location: keeps the line breaks
+.go-cal-pre {
+    white-space: pre;
+}

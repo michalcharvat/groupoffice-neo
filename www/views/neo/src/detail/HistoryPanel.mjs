@@ -1,9 +1,10 @@
 import client    from '../jmap/Client.mjs';
 import JmapStore from '../data/JmapStore.mjs';
 import Grid      from '../grid/Grid.mjs';
-import {avatarHtml, escapeHtml, formatUserDateTime, smartDateTime} from '../Format.mjs';
+import {escapeHtml, formatUserDateTime, smartDateTime} from '../Format.mjs';
 import Card   from './Card.mjs';
 import HistoryDetailDialog from './HistoryDetailDialog.mjs';
+import {changesHtml, creatorHtml} from './historyCells.mjs';
 import {t} from '../Translate.mjs';
 
 // GOUI LogEntryGrid in HistoryDetailPanel: grid rows, at most 40rem high
@@ -38,6 +39,7 @@ class HistoryPanel extends Card {
             module   : Grid,
             reference: 'grid',
             cls      : ['go-history-grid'],
+            rowLines : 2, // avatar and name (GOUI LogEntryGrid: dp(46) avatar)
             hidden   : true,
             height   : Grid.CHROME_HEIGHT, // sized to the rows on load
             style    : {maxHeight: MAX_HEIGHT},
@@ -69,16 +71,14 @@ class HistoryPanel extends Card {
                 text     : t('User'),
                 flex     : 1,
                 sortable : false,
-                renderer : ({record}) => me.renderCreator(record)
+                renderer : ({record}) => creatorHtml(record)
             }, {
                 dataField: 'changes',
                 text     : t('Changes'),
                 cellAlign: 'center',
                 width    : 80,
                 sortable : false,
-                renderer : ({value}) => value
-                    ? `<i class="go-icon go-history-changes" title="${escapeHtml(t('Show changes'))}">note</i>`
-                    : ''
+                renderer : ({value}) => changesHtml(value)
             }, {
                 dataField: 'action',
                 text     : t('Action'),
@@ -150,19 +150,6 @@ class HistoryPanel extends Card {
         super.destroy(...args);
         // the grid only detaches its store; this one is ours and watches LogEntry
         store && !store.isDestroyed && store.destroy()
-    }
-
-    /**
-     * @param {Object} record
-     * @returns {String} html
-     */
-    renderCreator(record) {
-        const name   = record.creatorName || (record.createdBy ? '' : t('Unknown user')),
-              avatar = record.avatarId
-                  ? `<img class="go-avatar go-avatar-small" alt="" src="${escapeHtml(client.baseUrl + 'api/thumb.php?blob=' + encodeURIComponent(record.avatarId) + '&w=64&h=64&zc=1')}">`
-                  : avatarHtml(name || '?', ['go-avatar-small']);
-
-        return `<span class="go-history-user">${avatar}<span>${escapeHtml(name)}</span></span>`
     }
 
     /**

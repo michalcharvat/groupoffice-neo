@@ -1,5 +1,7 @@
 @use "../../../../go/go";
 @use "cal" as *;
+@use "field/attachment";
+@use "item";
 
 // GO.calendar.EventDetail
 .neo-theme-go .go-cal-detail {

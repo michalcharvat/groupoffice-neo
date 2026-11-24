@@ -15,34 +15,3 @@
         justify-content: center;
     }
 }
-
-// Drag and drop (WS/DragDrop addon, enableDragDrop()): the dragged element, the drop target
-// under the pointer, and the insert line of a sortable list (GOUI .drag-src, .drop-pin)
-.neo-theme-go {
-    .go-drag-src {
-        opacity: .4;
-    }
-
-    .go-drop-over {
-        outline       : .2rem dashed var(--c-primary);
-        outline-offset: -.2rem;
-    }
-
-    .go-drop-before {
-        box-shadow: inset 0 .2rem 0 var(--c-primary);
-    }
-
-    .go-drop-after {
-        box-shadow: inset 0 -.2rem 0 var(--c-primary);
-    }
-
-    [data-go-drop-horizontal="true"] {
-        .go-drop-before {
-            box-shadow: inset .2rem 0 0 var(--c-primary);
-        }
-
-        .go-drop-after {
-            box-shadow: inset -.2rem 0 0 var(--c-primary);
-        }
-    }
-}

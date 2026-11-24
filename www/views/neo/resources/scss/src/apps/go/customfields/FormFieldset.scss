@@ -1,19 +1,10 @@
+@use "legend";
+
 // GO.customfields.FormFieldset: GOUI FormFieldset, its fields from src/customfields/types.mjs
 .neo-theme-go {
     .go-cf-fieldset {
         gap       : 1.6rem;
         margin-top: .8rem;
-    }
-
-    .go-cf-legend {
-        color      : var(--fg-text);
-        font-size  : calc(1.4rem * var(--font-scale, 1));
-        font-weight: 600;
-        margin     : 0;
-    }
-
-    .go-cf-description {
-        color: var(--fg-secondary-text);
     }
 
     .go-cf-fields,
@@ -29,25 +20,8 @@
         min-width: 0;
     }
 
-    .go-cf-notes,
-    .go-cf-readonly {
-        color: var(--fg-text);
-    }
-
-    .go-cf-readonly label {
-        color    : var(--fg-secondary-text);
-        display  : block;
-        font-size: 1.2rem;
-    }
-
     // a field set nested in a tab (parentFieldSetId)
     .go-cf-nested {
         margin-top: 1.6rem;
-    }
-
-    // Data: JSON lists
-    .go-cf-readonly .go-cf-data-list {
-        margin      : 0;
-        padding-left: 1.6rem;
     }
 }

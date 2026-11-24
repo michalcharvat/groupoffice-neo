@@ -1,3 +1,5 @@
+@use "../customfields/legend";
+
 // GO.form.BatchEditDialog: per custom field a checkbox (its name) and the field, which is
 // enabled while checked; field set legends between them, the body scrolls
 .neo-theme-go .go-batch-edit-dialog {
@@ -26,5 +28,10 @@
         flex-shrink: 0;
         padding-top: 1.2rem;
         width      : 30%;
+
+        // the offset above does the alignment, not the padding of the checkbox row
+        > .neo-checkbox-label {
+            padding-block: 0;
+        }
     }
 }

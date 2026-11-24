@@ -28,6 +28,13 @@
         text-align: center;
     }
 
+    // message of ConfirmDialog and of the dialogs and panels that reuse its class
+    // (PasswordPrompt, TextPrompt, SecretDialog, e-mail CloseDialog, files OverwriteDialog,
+    // davclient AccountsPanel)
+    .go-confirm-message {
+        padding: 2rem 1.6rem;
+    }
+
     .go-form-error {
         color: var(--fg-error);
     }

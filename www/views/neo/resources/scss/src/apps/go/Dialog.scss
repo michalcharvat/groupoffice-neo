@@ -16,11 +16,11 @@
     }
 }
 
-// message of ConfirmDialog and of the other dialogs that reuse its class (PasswordPrompt,
-// TextPrompt, SecretDialog, e-mail CloseDialog, files OverwriteDialog): here, because neo
-// loads ConfirmDialog.scss only with that class
-.neo-theme-go {
-    .go-confirm-message {
-        padding: 2rem 1.6rem;
-    }
+// A form placed directly in the dialog body (GO.view.Dialog adds go-dialog-body) gets GOUI's
+// window form padding, so a new dialog is not glued to its edges (the fields keep neo's
+// spacing). Three classes: it has to beat theme-go's `.neo-theme-go .neo-form-container
+// {padding: 0}`. A dialog that wants other padding sets it in its own sheet with as many
+// classes (that sheet loads after this one, so it wins).
+.neo-theme-go .go-dialog-body > .neo-form-container {
+    padding: 1.6rem;
 }

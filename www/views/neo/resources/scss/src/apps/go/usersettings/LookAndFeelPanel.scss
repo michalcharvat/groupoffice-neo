@@ -1,0 +1,28 @@
+// GO.usersettings.LookAndFeelPanel (My account → Look & feel)
+.neo-theme-go {
+    // two columns, one on narrow screens
+    .go-usersettings-columns {
+        column-gap           : 3.2rem;
+        display              : grid;
+        grid-template-columns: repeat(auto-fit, minmax(30rem, 1fr));
+    }
+
+    .go-usersettings-schemes {
+        gap: .8rem;
+
+        .go-usersettings-scheme {
+            border       : 1px solid var(--fg-outline);
+            border-radius: .8rem;
+            flex         : 1;
+
+            &.pressed {
+                background-color: var(--bg-selected);
+                border-color    : var(--c-primary);
+            }
+        }
+    }
+
+    .go-usersettings-reset {
+        align-self: flex-start;
+    }
+}

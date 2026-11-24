@@ -28,33 +28,3 @@
         font-size: .9em;
     }
 }
-
-// GO.form.field.PrincipalCombo: avatar of the selected principal left of the text
-.neo-theme-go {
-    .go-principal-combo .neo-input-wrapper .go-principal-combo-avatar {
-        align-items : center;
-        cursor      : text;
-        display     : flex;
-        padding-left: .8rem;
-
-        // not a button: no hover tint, no chevron (GO theme triggers show 'expand_more')
-        &:hover {
-            background-color: transparent;
-        }
-
-        &::before {
-            content: none;
-        }
-
-        .go-avatar.go-avatar-small {
-            font-size  : 1rem;
-            height     : 2.4rem;
-            line-height: 2.4rem;
-            width      : 2.4rem;
-        }
-
-        img.go-avatar {
-            object-fit: cover;
-        }
-    }
-}

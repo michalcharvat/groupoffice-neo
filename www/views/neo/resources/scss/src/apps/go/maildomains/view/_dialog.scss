@@ -1,0 +1,52 @@
+@use "../../../../../go/go";
+
+// form parts the module's dialogs share
+.neo-theme-go {
+    // dialogs: "user" + "@example.com", two columns (one on a phone)
+    .go-md-form-scroll {
+        gap       : 2rem;
+        min-height: 0;
+    }
+
+    .go-md-address {
+        gap: go.dp(8);
+    }
+
+    .go-md-at-domain {
+        color      : var(--fg-secondary-text);
+        white-space: nowrap;
+    }
+
+    .go-md-columns {
+        gap: 2rem go.dp(24);
+    }
+
+    // equal columns, wrapped below each other when they get narrower than 30rem
+    .go-md-column {
+        gap      : 2rem;
+        min-width: 30rem;
+    }
+
+    // as a form container it has to beat the theme-wide padding reset and, in a dialog body,
+    // Dialog.scss's default form spacing, which may load after this sheet
+    .go-md-dialog-form,
+    .go-md-dialog-form.neo-form-container,
+    .go-dialog-body > .go-md-dialog-form.neo-form-container {
+        gap    : 2rem;
+        padding: go.dp(16);
+    }
+
+    .go-md-export-result {
+        align-items: center;
+        display    : flex;
+        gap        : go.dp(8);
+    }
+
+    .go-md-muted {
+        color: var(--fg-secondary-text);
+    }
+
+    .go-md-error {
+        color: var(--fg-error);
+    }
+}

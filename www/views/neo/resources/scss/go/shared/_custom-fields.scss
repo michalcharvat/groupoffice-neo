@@ -1,0 +1,67 @@
+// Values of custom fields as src/customfields/types.mjs renders them: in detail panels
+// (DetailFieldsets), read-only and notes fields of forms (FormFieldset), batch edit and grid cells
+.neo-theme-go {
+    .go-cf-notes,
+    .go-cf-readonly {
+        color: var(--fg-text);
+    }
+
+    .go-cf-readonly label {
+        color    : var(--fg-secondary-text);
+        display  : block;
+        font-size: 1.2rem;
+    }
+
+    // Attachments: download links, or thumbnails for image fields
+    .go-cf-attachments {
+        display  : flex;
+        flex-wrap: wrap;
+        gap      : .4rem 1.2rem;
+    }
+
+    .go-cf-attachment {
+        align-items: center;
+        color      : var(--fg-text);
+        display    : inline-flex;
+        gap        : .4rem;
+
+        .go-icon {
+            font-family: 'Material Symbols Rounded';
+            font-size  : 1.8rem;
+        }
+    }
+
+    .go-cf-thumbs {
+        display  : flex;
+        flex-wrap: wrap;
+        gap      : .8rem;
+    }
+
+    .go-cf-thumb {
+        color          : var(--fg-text);
+        display        : flex;
+        flex-direction : column;
+        gap            : .4rem;
+        text-decoration: none;
+        width          : 16rem;
+
+        img {
+            aspect-ratio : 16 / 9;
+            border-radius: .4rem;
+            object-fit   : cover;
+            width        : 100%;
+        }
+
+        span {
+            overflow     : hidden;
+            text-overflow: ellipsis;
+            white-space  : nowrap;
+        }
+    }
+
+    // Data: JSON lists
+    .go-cf-data-list {
+        margin      : 0;
+        padding-left: 1.6rem;
+    }
+}

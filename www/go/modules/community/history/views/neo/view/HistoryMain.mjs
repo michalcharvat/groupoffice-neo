@@ -4,6 +4,7 @@ import Splitter       from '../../../../../../../views/neo/src/component/Splitte
 import TableTitle     from '../../../../../../../views/neo/src/component/TableTitle.mjs';
 import JmapStore      from '../../../../../../../views/neo/src/data/JmapStore.mjs';
 import HistoryDetailDialog from '../../../../../../../views/neo/src/detail/HistoryDetailDialog.mjs';
+import {changesHtml, creatorHtml} from '../../../../../../../views/neo/src/detail/historyCells.mjs';
 import DateRangeField from '../../../../../../../views/neo/src/form/field/DateRangeField.mjs';
 import PrincipalCombo from '../../../../../../../views/neo/src/form/field/PrincipalCombo.mjs';
 import {fieldset}     from '../../../../../../../views/neo/src/form/fieldset.mjs';
@@ -13,7 +14,7 @@ import CheckList      from '../../../../../../../views/neo/src/list/CheckList.mj
 import {notifyError}  from '../../../../../../../views/neo/src/Notify.mjs';
 import MainThreeColumnPanel from '../../../../../../../views/neo/src/view/MainThreeColumnPanel.mjs';
 import {addDays, toYmd, weekStart, userNow} from '../../../../../../../views/neo/src/DateUtil.mjs';
-import {avatarHtml, escapeHtml, formatUserDateTime, smartDateTime} from '../../../../../../../views/neo/src/Format.mjs';
+import {escapeHtml, formatUserDateTime, smartDateTime} from '../../../../../../../views/neo/src/Format.mjs';
 import {t as coreT, translator} from '../../../../../../../views/neo/src/Translate.mjs';
 
 const t = translator('community', 'history');
@@ -121,6 +122,7 @@ class HistoryMain extends MainThreeColumnPanel {
             }, {
                 module   : Grid,
                 reference: 'grid',
+                rowLines : 2, // avatar and name (GOUI LogEntryGrid: dp(46) avatar)
                 flex     : 1,
                 stateId  : 'history-logentry-grid',
                 store    : {
@@ -164,16 +166,14 @@ class HistoryMain extends MainThreeColumnPanel {
                     text     : coreT('User'),
                     width    : 200,
                     sortable : false,
-                    renderer : ({record}) => me.renderCreator(record)
+                    renderer : ({record}) => creatorHtml(record)
                 }, {
                     dataField: 'changes',
                     text     : coreT('Changes'),
                     cellAlign: 'center',
                     width    : 80,
                     sortable : false,
-                    renderer : ({value}) => value
-                        ? `<i class="go-icon go-history-changes" title="${escapeHtml(coreT('Show changes'))}">note</i>`
-                        : ''
+                    renderer : ({value}) => changesHtml(value)
                 }, {
                     dataField: 'action',
                     text     : coreT('Action'),
@@ -304,19 +304,6 @@ class HistoryMain extends MainThreeColumnPanel {
         } catch (e) {
             me.isDestroyed || notifyError(me, e)
         }
-    }
-
-    /**
-     * @param {Object} record
-     * @returns {String} html
-     */
-    renderCreator(record) {
-        const name   = record.creatorName || (record.createdBy ? '' : coreT('Unknown user')),
-              avatar = record.avatarId
-                  ? `<img class="go-avatar go-avatar-small" alt="" src="${escapeHtml(client.baseUrl + 'api/thumb.php?blob=' + encodeURIComponent(record.avatarId) + '&w=64&h=64&zc=1')}">`
-                  : avatarHtml(name || '?', ['go-avatar-small']);
-
-        return `<span class="go-history-user">${avatar}<span>${escapeHtml(name)}</span></span>`
     }
 
     /**

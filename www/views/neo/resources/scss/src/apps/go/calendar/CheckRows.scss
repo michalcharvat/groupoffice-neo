@@ -1,5 +1,6 @@
 @use "../../../../go/go";
 @use "cal" as *;
+@use "check";
 
 // GO.calendar.CheckRows: GOUI check-list with coloured check boxes
 .neo-theme-go .go-cal-check-rows {
@@ -46,34 +47,6 @@
 
         &:hover .go-row-menu {
             visibility: visible;
-        }
-    }
-
-    // GOUI checkbox({color}): the box in the colour, white tick
-    .go-cal-check {
-        border-color: currentColor;
-        border-width: 2px;
-
-        &.go-checked {
-            background-color: currentColor;
-
-            &::before {
-                background-color: #fff;
-            }
-        }
-    }
-
-    .go-cal-check-text {
-        flex         : 1;
-        min-width    : 0;
-        overflow     : hidden;
-        text-overflow: ellipsis;
-        white-space  : nowrap;
-
-        > .go-icon {
-            font-size     : go.dp(16);
-            margin-left   : go.dp(4);
-            vertical-align: middle;
         }
     }
 }

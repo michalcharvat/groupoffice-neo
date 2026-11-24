@@ -165,6 +165,20 @@ class Dialog extends BaseDialog {
         popup?.name && closePopup(popup.name, popup.openerWindowId)
     }
 
+    /**
+     * The body container gets the class go-dialog-body, whatever containerConfig a subclass
+     * sets: Dialog.scss pads a form placed directly in it (GOUI pads a window's form fieldset).
+     */
+    createItems() {
+        const me = this;
+
+        // without headers Panel.createItems() applies containerConfig to the dialog itself, and
+        // its cls would replace the dialog's own (neo creates a header for every dialog)
+        me.hasHeaders() && (me.containerConfig = {...me.containerConfig, cls: [...me.containerConfig?.cls || [], 'go-dialog-body']});
+
+        super.createItems()
+    }
+
     construct(config) {
         super.construct(config);
 

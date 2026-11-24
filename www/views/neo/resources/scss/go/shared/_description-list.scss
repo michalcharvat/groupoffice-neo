@@ -1,5 +1,6 @@
-// GO.component.DescriptionList: GOUI dl.goui-dl (goui/style/_description_list.scss):
-// term dp(12) in the main colour, the value below it
+// GOUI dl.goui-dl (goui/style/_description_list.scss): term dp(12) in the main colour, the
+// value below it. GO.component.DescriptionList renders it, detail panels also write
+// <dl class="go-dl"> into their html (ContactDetail).
 .neo-theme-go .go-dl {
     margin: 0;
 

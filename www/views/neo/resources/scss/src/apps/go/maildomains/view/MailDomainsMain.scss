@@ -1,33 +1,10 @@
 @use "../../../../../go/go";
+@use "status";
 
-// community/maildomains (go/modules/community/maildomains/views/neo). GO.maildomains.view.MailDomainsMain
-// loads before any of the module's dialogs, so their classes are here too.
+// community/maildomains (go/modules/community/maildomains/views/neo): GO.maildomains.view.MailDomainsMain.
+// The dialogs have their own sheets: they pop out into their own window, and the system
+// settings card opens without the module.
 .neo-theme-go {
-    // GOUI icon colours: success, danger, warning; inactive domain
-    .go-md-success {
-        color: #2e7d32;
-    }
-
-    .go-md-danger {
-        color: var(--fg-error);
-    }
-
-    .go-md-warning {
-        color: var(--fg-warning);
-    }
-
-    .go-md-disabled {
-        color: var(--fg-secondary-text);
-    }
-
-    .go-md-status {
-        vertical-align: middle;
-    }
-
-    &.dark .go-md-success {
-        color: #81c784;
-    }
-
     // "PTR OK" / "PTR error (ip)" in the list toolbar
     .go-md-ptr {
         align-items: center;
@@ -148,51 +125,5 @@
         &:hover {
             color: var(--fg-text);
         }
-    }
-
-    // dialogs: "user" + "@example.com", two columns (one on a phone)
-    .go-md-form-scroll {
-        gap       : 2rem;
-        min-height: 0;
-    }
-
-    .go-md-address {
-        gap: go.dp(8);
-    }
-
-    .go-md-at-domain {
-        color      : var(--fg-secondary-text);
-        white-space: nowrap;
-    }
-
-    .go-md-columns {
-        gap: 2rem go.dp(24);
-    }
-
-    // equal columns, wrapped below each other when they get narrower than 30rem
-    .go-md-column {
-        gap      : 2rem;
-        min-width: 30rem;
-    }
-
-    // as a form container it has to beat the theme-wide padding reset (same specificity)
-    .go-md-dialog-form,
-    .go-md-dialog-form.neo-form-container {
-        gap    : 2rem;
-        padding: go.dp(16);
-    }
-
-    .go-md-export-result {
-        align-items: center;
-        display    : flex;
-        gap        : go.dp(8);
-    }
-
-    .go-md-muted {
-        color: var(--fg-secondary-text);
-    }
-
-    .go-md-error {
-        color: var(--fg-error);
     }
 }

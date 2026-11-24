@@ -3,10 +3,16 @@
 @use "../../../../goui/groupoffice-core/style/theme" as goTheme;
 // GO helper classes rendered by several GO.* classes
 @use "shared/common";
+@use "shared/layout";
 @use "shared/links";
 @use "shared/settings-cards";
+@use "shared/settings-panel";
 @use "shared/field";
 @use "shared/content";
+@use "shared/drag-drop";
+@use "shared/custom-fields";
+@use "shared/description-list";
+@use "shared/history";
 
 @font-face {
     font-family: 'Lato';

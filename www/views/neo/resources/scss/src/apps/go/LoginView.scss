@@ -1,4 +1,5 @@
 @use "../../../go/go";
+@use "login/form";
 
 // GO.view.LoginView: go.login.LoginPanel (Paper _go-style.scss #login, #go-select-language,
 // #go-powered-by) with go.login.LoginDialog, a dp(480) window "Login required"
@@ -66,43 +67,6 @@
         > * {
             margin: 0;
         }
-    }
-
-    .go-login-fields {
-        gap    : go.dp(16);
-        padding: go.dp(16) go.dp(18) go.dp(8);
-
-        > * {
-            margin: 0;
-        }
-
-        // neo fixes a text field's height to its input, so the "Required" error text would
-        // overflow onto the next field: let the field grow by its error line
-        > .neo-textfield {
-            height: auto;
-        }
-    }
-
-    .go-login-remember {
-        color: var(--fg-text);
-    }
-
-    .go-login-error {
-        color: var(--fg-error);
-    }
-
-    .go-login-message {
-        color: var(--fg-secondary-text);
-
-        &.go-login-error {
-            color: var(--fg-error);
-        }
-    }
-
-    // bbar: "Forgot login credentials?" ... Next
-    .go-login-buttons {
-        gap    : go.dp(8);
-        padding: go.dp(8) go.dp(12) go.dp(16);
     }
 
     // "Sign in with ..." of modules (go.login.LoginDialog.addSignInButton(), .oidc-signin-btn)

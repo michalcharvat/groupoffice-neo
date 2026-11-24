@@ -9,28 +9,6 @@
         padding: 0;
     }
 
-    .go-history-user {
-        align-items: center;
-        display    : flex;
-        gap        : .8rem;
-        min-width  : 0;
-    }
-
-    .go-history-user > span:last-child {
-        overflow     : hidden;
-        text-overflow: ellipsis;
-    }
-
-    /* the "changes" icon opens GO.detail.HistoryDetailDialog (GOUI HistoryDetailWindow) */
-    .go-history-changes {
-        color : var(--fg-secondary-text);
-        cursor: pointer;
-    }
-
-    .go-history-changes:hover {
-        color: var(--fg-text);
-    }
-
     /* one line per entry, like GOUI's table cells */
     .go-history-grid .neo-grid-cell {
         overflow     : hidden;

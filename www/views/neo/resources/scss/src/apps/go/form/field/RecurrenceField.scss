@@ -13,23 +13,3 @@
         white-space  : nowrap;
     }
 }
-
-// GO.form.field.RecurrenceDialog (GOUI RecurrencePicker form card)
-.neo-theme-go .go-recurrence-form {
-    gap    : 1.6rem;
-    padding: 2rem 1.6rem 1rem;
-
-    .go-recurrence-row {
-        flex: none;
-        gap : .8rem;
-    }
-
-    .go-recurrence-caption {
-        flex : none;
-        width: 6rem;
-    }
-
-    .go-recurrence-weekdays {
-        padding-left: 6.8rem;
-    }
-}

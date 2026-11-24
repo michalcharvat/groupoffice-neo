@@ -369,7 +369,6 @@ class CalendarMain extends MainThreeColumnPanel {
                         }, {
                             module   : EventDetail,
                             reference: 'listDetail',
-                            cls      : ['go-cal-detail'],
                             flex     : 'none',
                             width    : '44rem',
                             listeners: {edit: ({item}) => item.open(null, true)}

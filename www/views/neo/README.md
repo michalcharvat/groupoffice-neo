@@ -105,6 +105,34 @@ The reference is GO 26's GOUI module UI (e.g. Notes), not the ExtJS Paper theme.
   `GO.view.MainThreeColumnPanel`, `GO.grid.Grid`, …) with their own SCSS in
   `resources/scss/src/apps/go/` (`GO.x.Y` → `apps/go/x/Y.scss`, a leading `view` is dropped).
   Set structural classes with `baseCls`: a subclass's `cls` replaces `cls`.
+- **Where a style goes**: neo loads a class's sheet only when that class is created (plus its
+  parents' sheets and its `additionalThemeFiles`), so a style works on every page only where
+  the class that renders the markup loads it:
+  - a class rendered by one component: in that component's own sheet (`GO.x.Y` → `x/Y.scss`),
+    not in the sheet of the panel or dialog that happens to contain it. A dialog always has its
+    own: it pops out into a window where its opener (e.g. the module's main panel) is not;
+  - the same markup rendered by several classes of one module (calendar check rows, event
+    attachments, login steps): a partial next to them that each of their sheets `@use`s;
+  - classes any GO component may render (GOUI helpers `go-card` with `go-pad`, `go-scroll`,
+    `go-border-bottom`, `go-bg-mid`, `go-toolbar-heading`, `go-dl`, `go-confirm-message`,
+    settings card bodies, history cells of `src/detail/historyCells.mjs`):
+    `resources/scss/go/shared/` (`Global.scss`), never scoped to a container such as
+    `.go-main-3-col`;
+  - a class that reuses another class's markup and styles: `additionalThemeFiles:
+    ['GO.x.Other']` (e.g. the addressbook `ProfilePanel`).
+  - Base components give the defaults so modules don't repeat them: `GO.view.Dialog` pads a
+    form placed directly in its body (`go-dialog-body`, `Dialog.scss`), the west panel of
+    `MainThreeColumnPanel` pads its `go-fieldset`s. A dialog or module that wants other
+    spacing overrides it in its own sheet.
+  - `npm run audit-styles` (`buildScripts/auditStyles.mjs`, after `build-themes`) lists `go-*`
+    classes a class renders whose styles only another class's sheet has; markup of a helper
+    module without a class (e.g. `historyCells.mjs`) counts for every class that imports it.
+    Classes of one file are read per class body (module code outside them counts for all); a
+    dialog may use the sheet of another class in its file only when its body creates that class
+    (it pops out without the rest). It exits with 1 when it finds one (2 without generated
+    CSS). Known exceptions with their reason are in its `allowed` list.
+  - Module `views/neo/style.css` files load in the page head, before every neo sheet: a rule
+    there needs more classes than the neo rule it overrides.
 - **Icons**: Material Symbols ligatures (`{module: Button, icon: 'add'}`), font from
   `views/goui/goui/resources/iconfont`. Font Awesome stays for `iconCls`.
 - **Splitter state**: same keys as GOUI (`state-<module>-west-splitter`, width in dp), so
@@ -268,13 +296,12 @@ text (no rich text editor, labels, attachments), no import/export menu. Dark mod
   resolved its record returns `"65"`. `DataSourceForm.isSameValue()` compares scalars as
   strings, otherwise the form is "modified" right after loading.
 - **Left tab bar**: neo turns `tabBarPosition: 'left'` tabs sideways and sizes their buttons
-  (also the pressed one) for it; `usersettings/UserSettingsDialog.scss` sets them upright.
+  (also the pressed one) for it; `go/shared/_settings-cards.scss` sets them upright.
 - **Scrolling vbox cards**: a container in a card with `overflow-y: auto` needs `flex: 'none'`,
   or the vbox squeezes it to the card height and its content is cut off (narrow screens).
-- **Shared SCSS of several classes**: neo loads a class's SCSS only with that class. Styles two
-  unrelated classes need (the left card list of My account and System settings) go to
-  `resources/scss/go/shared/` (Global). Their selectors must outrank neo's component rules, which
-  load later: `.go-settings-cards.neo-tab-container`, not just `.go-settings-cards`.
+- **Shared SCSS of several classes** (see [Where a style goes](#go-look-theme-go)): selectors in
+  `resources/scss/go/shared/` must outrank neo's component rules, which load later:
+  `.go-settings-cards.neo-tab-container`, not just `.go-settings-cards`.
 - **NumberField limits**: neo's `maxValue` defaults to 100, and on blur it clamps with
   `Math.min(maxValue, value)` / `Math.max(minValue, value)`, so `null` turns values into 0. Give
   open limits as `±Number.MAX_SAFE_INTEGER`.

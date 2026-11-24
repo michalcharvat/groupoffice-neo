@@ -22,6 +22,7 @@
   },
   "scripts": {
     "build": "npm run build-themes",
-    "build-themes": "node buildScripts/generateGoTheme.mjs && node node_modules/neo.mjs/buildScripts/build/themes.mjs -n -e dev -t all"
+    "build-themes": "node buildScripts/generateGoTheme.mjs && node node_modules/neo.mjs/buildScripts/build/themes.mjs -n -e dev -t all",
+    "audit-styles": "node buildScripts/auditStyles.mjs"
   }
 }

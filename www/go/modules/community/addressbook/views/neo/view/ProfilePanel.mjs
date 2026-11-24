@@ -13,7 +13,10 @@ class ProfilePanel extends Container {
     static config = {
         className: 'GO.addressbook.view.ProfilePanel',
         baseCls  : ['go-addressbook-profile', 'neo-container'],
+        // the same fields (./fields.mjs) as the contact dialog, styled by its sheet: neo loads that
+        // only with ContactDialog, and My account can open without one
         cls      : ['go-addressbook-contact-dialog'],
+        additionalThemeFiles: ['GO.addressbook.view.ContactDialog'],
         layout   : {ntype: 'vbox', align: 'stretch'},
         style    : {overflowY: 'auto'},
         items    : [

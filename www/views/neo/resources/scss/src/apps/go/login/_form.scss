@@ -1,0 +1,42 @@
+@use "../../../../go/go";
+
+// the fields, error and buttons of a login step: GO.view.LoginView and the 2FA steps
+// (GO.login.AuthenticatorPanel subclasses) render the same markup
+.neo-theme-go {
+    .go-login-fields {
+        gap    : go.dp(16);
+        padding: go.dp(16) go.dp(18) go.dp(8);
+
+        > * {
+            margin: 0;
+        }
+
+        // neo fixes a text field's height to its input, so the "Required" error text would
+        // overflow onto the next field: let the field grow by its error line
+        > .neo-textfield {
+            height: auto;
+        }
+    }
+
+    .go-login-remember {
+        color: var(--fg-text);
+    }
+
+    .go-login-error {
+        color: var(--fg-error);
+    }
+
+    .go-login-message {
+        color: var(--fg-secondary-text);
+
+        &.go-login-error {
+            color: var(--fg-error);
+        }
+    }
+
+    // bbar: "Forgot login credentials?" ... Next
+    .go-login-buttons {
+        gap    : go.dp(8);
+        padding: go.dp(8) go.dp(12) go.dp(16);
+    }
+}

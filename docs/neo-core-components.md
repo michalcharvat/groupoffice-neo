@@ -94,6 +94,21 @@ grid export (`src/export/exportEntities.mjs`: `exportMenuItem()` / `exportEntiti
 custom fields, like ExtJS; notes, tasks, address book). Downloads use `src/download.mjs`.
 Bookmarks has no grid and no `Bookmark/export`, so neither applies there.
 
+## Styles of components (2026-11-24)
+
+neo loads a class's SCSS only with that class, so a style placed in the sheet of a panel or
+dialog that happens to contain a component is missing wherever that component appears without
+it (the history user cell, the domain dialog's user combo, `go-scroll` in dialogs). Rules and the
+check: `www/views/neo/README.md`, "Where a style goes". Run `npm run audit-styles` in
+`www/views/neo` after `build-themes` when adding or moving styles. Base components carry the
+defaults: `GO.view.Dialog` pads a form placed directly in its body, the west panel of
+`MainThreeColumnPanel` pads its fieldsets, the GOUI helpers (`go-card`, `go-pad`, `go-scroll`, …)
+are global in `resources/scss/go/shared/_layout.scss`. Neo's own fields get the GOUI look in their
+theme overlay, for example `resources/scss/go/form/field/CheckBox.scss` draws the GOUI checkbox
+(outlined dp(24) box with a tick, label padded like a field row) instead of the FontAwesome icons.
+A component that restyles its checkboxes (CheckboxGroup shows them as buttons) overrides that in its
+own sheet. The select-all boxes of Notes and Calendar are `GO.component.CheckBox`, a separate component.
+
 ## neo.mjs upgrades
 
 `neo.mjs` is pinned in `views/neo/package.json` (14.0.0 since 2026-11-24; read the release

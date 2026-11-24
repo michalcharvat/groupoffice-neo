@@ -1,4 +1,83 @@
+@use "../../go";
+
 :where(.neo-theme-go) {
     --checkboxfield-color        : var(--fg-secondary-text);
     --checkboxfield-color-checked: var(--fg-main);
+}
+
+// GOUI checkbox (views/goui/goui/style/_form.scss %boxgroup, `.check.box`): an outlined
+// dp(24) box with a tick instead of neo's FontAwesome square / check icons, and the
+// label padded like a form field row. The checked state comes from `input:checked`, so
+// the icon classes neo swaps do not matter. :where() keeps the specificity at (0,3,0),
+// so components that restyle their checkboxes (CheckboxGroup buttons) still win.
+.neo-theme-go .neo-checkboxfield:where(:not(.neo-radiofield)) {
+    // the outer <label>; neo gives the labelText span the same class
+    > .neo-checkbox-label {
+        padding: go.dp(14) 0;
+    }
+
+    .neo-checkbox-icon {
+        background-color: var(--bg-input);
+        border          : .2rem solid var(--fg-outline);
+        border-radius   : go.dp(4);
+        box-sizing      : border-box;
+        flex            : none;
+        height          : go.dp(24);
+        margin          : 0 go.dp(12) 0 0;
+        position        : relative;
+        width           : go.dp(24);
+
+        // hide the FontAwesome glyph
+        &::before {
+            content: none;
+        }
+
+        // tick (GOUI clip-path)
+        &::after {
+            background-color: var(--checkboxfield-color-checked);
+            clip-path       : polygon(39.375% 74.375%, 16% 51%, 20.48% 46.52%, 39.33% 65.37%, 79.33% 25.37%, 83.81% 29.85%);
+            content         : '';
+            inset           : -.2rem;
+            position        : absolute;
+            transform       : scale(0);
+            transition      : 90ms transform ease-in-out;
+        }
+    }
+
+    .neo-checkbox-input:checked + .neo-checkbox-icon::after {
+        transform: scale(1);
+    }
+
+    .neo-checkbox-input:focus-visible + .neo-checkbox-icon {
+        outline       : .2rem solid var(--fg-main);
+        outline-offset: .2rem;
+    }
+
+    // neo colours the icon glyph; the box and the tick need the colour themselves
+    &.neo-invalid .neo-checkbox-icon {
+        border-color: var(--textfield-border-color-invalid);
+
+        &::after {
+            background-color: var(--textfield-border-color-invalid);
+        }
+    }
+
+    &.neo-invalid.neo-use-alert-state .neo-checkbox-icon {
+        border-color: var(--textfield-border-color-alert);
+
+        &::after {
+            background-color: var(--textfield-border-color-alert);
+        }
+    }
+
+    // forced colours replace backgrounds with Canvas, which would hide the tick; the same
+    // specificity as the invalid / alert rules above, so the error colour does not stay
+    @media (forced-colors: active) {
+        .neo-checkbox-icon::after,
+        &.neo-invalid .neo-checkbox-icon::after,
+        &.neo-invalid.neo-use-alert-state .neo-checkbox-icon::after {
+            background-color: CanvasText;
+            forced-color-adjust: none;
+        }
+    }
 }

@@ -1,0 +1,33 @@
+@use "../../../../go/go";
+
+// a coloured calendar check box and its name: GO.calendar.CheckRows and
+// GO.calendar.field.CalendarIdsField render the same markup
+.neo-theme-go {
+    // GOUI checkbox({color}): the box in the colour, white tick
+    .go-cal-check {
+        border-color: currentColor;
+        border-width: 2px;
+
+        &.go-checked {
+            background-color: currentColor;
+
+            &::before {
+                background-color: #fff;
+            }
+        }
+    }
+
+    .go-cal-check-text {
+        flex         : 1;
+        min-width    : 0;
+        overflow     : hidden;
+        text-overflow: ellipsis;
+        white-space  : nowrap;
+
+        > .go-icon {
+            font-size     : go.dp(16);
+            margin-left   : go.dp(4);
+            vertical-align: middle;
+        }
+    }
+}

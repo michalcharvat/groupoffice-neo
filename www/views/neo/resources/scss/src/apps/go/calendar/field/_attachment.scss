@@ -1,0 +1,24 @@
+@use "../../../../../go/go";
+
+// one attachment row: AttachmentsField (dialog) and EventDetail render the same markup
+.neo-theme-go .go-cal-attachment {
+    display: flex;
+
+    > button {
+        background: none;
+        border    : 0;
+        color     : var(--fg-text);
+        cursor    : pointer;
+        font      : inherit;
+        padding   : go.dp(6) go.dp(4);
+        text-align: left;
+
+        &:hover {
+            background-color: var(--bg-hover);
+        }
+    }
+
+    .go-cal-attachment-file {
+        flex: 1;
+    }
+}

@@ -206,13 +206,16 @@
     margin-top: .4rem;
 }
 
-/* dialogs: the theme's .neo-form-container padding outranks one class */
-.neo-theme-go .go-announcement-form.neo-form-container {
+/* dialogs: the theme's .neo-form-container padding outranks one class, GO.view.Dialog's default
+   form padding (Dialog.scss, loaded after this file) outranks it in the dialog body */
+.neo-theme-go .go-announcement-form.neo-form-container,
+.neo-theme-go .go-dialog-body > .go-announcement-form.neo-form-container {
     gap    : .8rem;
     padding: 1.6rem;
 }
 
-.neo-theme-go .go-feeds-form.neo-form-container {
+.neo-theme-go .go-feeds-form.neo-form-container,
+.neo-theme-go .go-dialog-body > .go-feeds-form.neo-form-container {
     border-top: 1px solid var(--fg-line);
     padding   : 1.6rem 1.6rem 0;
 }

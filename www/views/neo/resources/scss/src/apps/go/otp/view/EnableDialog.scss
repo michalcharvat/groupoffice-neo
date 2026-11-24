@@ -2,7 +2,8 @@
 
 // GO.otp.view.EnableDialog (go.modules.community.otp.EnableAuthenticatorDialog, otp/views/extjs3/themes)
 .neo-theme-go {
-    .go-otp-enable-form {
+    // in the dialog body: as specific as Dialog.scss's default form spacing, loaded after it
+    .go-dialog-body > .go-otp-enable-form {
         gap    : go.dp(12);
         padding: go.dp(16);
     }

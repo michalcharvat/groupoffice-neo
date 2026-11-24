@@ -1,4 +1,5 @@
 @use "../../../../go/go";
+@use "form";
 
 // GO.login.AuthenticatorPanel: a 2FA step in the login window (GO.view.LoginView), room for
 // the error below the code field
