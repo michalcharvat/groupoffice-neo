@@ -1,0 +1,228 @@
+@use "../../../go/go";
+
+// GO.view.AppLauncher: GO 6.8 #startMenu (Paper _modules.scss), a blurred dark overlay over
+// the whole window with the logo, a centred search field and a grid of app tiles
+.neo-theme-go {
+    .go-app-launcher {
+        -webkit-backdrop-filter: blur(10px);
+        animation              : go-app-launcher-in 200ms cubic-bezier(.4, 0, .6, 1);
+        backdrop-filter        : blur(10px);
+        background-color       : rgba(0, 0, 0, .68);
+        color                  : #fff;
+        inset                  : 0;
+        position               : fixed;
+        // above the header search and notifications, below dialogs (1000)
+        z-index                : 900;
+    }
+
+    &.dark .go-app-launcher {
+        background-color: rgba(0, 0, 0, .8);
+    }
+
+    .go-app-launcher.go-closing {
+        animation     : go-app-launcher-out 150ms cubic-bezier(.4, 0, .6, 1) forwards;
+        pointer-events: none;
+    }
+
+    .go-app-launcher .go-app-launcher-grid {
+        animation: go-app-launcher-scale 200ms cubic-bezier(.4, 0, .6, 1);
+    }
+
+    .go-app-launcher.go-closing .go-app-launcher-grid {
+        animation: go-app-launcher-scale 150ms cubic-bezier(.4, 0, .6, 1) reverse forwards;
+    }
+
+    /* logo top left (6.8 :before, dp(240) x dp(40)), search field centred */
+    .go-app-launcher .go-app-launcher-header {
+        align-items   : center;
+        box-sizing    : border-box;
+        display       : flex;
+        justify-content: center;
+        min-height    : go.dp(64);
+        padding       : go.dp(12) go.dp(16);
+        position      : relative;
+    }
+
+    .go-app-launcher .go-app-launcher-logo {
+        background: url(../../../../../../../Extjs3/themes/Paper/img/logo-white.svg) no-repeat left center / contain;
+        height    : go.dp(40);
+        left      : go.dp(16);
+        position  : absolute;
+        top       : go.dp(12);
+        width     : go.dp(240);
+    }
+
+    /* GO .search-field-wrap, as the header search */
+    .go-app-launcher .go-app-launcher-search {
+        background-color: rgba(255, 255, 255, .15);
+        border-radius   : go.dp(8);
+        margin-top      : go.dp(56);
+        max-width       : calc(100% - #{go.dp(32)});
+        width           : go.dp(400);
+    }
+
+    .go-app-launcher .go-app-launcher-search .neo-input-wrapper,
+    .go-app-launcher .go-app-launcher-search .neo-textfield-input {
+        background-color: transparent;
+        border          : 0;
+        box-shadow      : none;
+        color           : #fff;
+    }
+
+    .go-app-launcher .go-app-launcher-search .neo-textfield-input::placeholder {
+        color: rgba(255, 255, 255, .7);
+    }
+
+    .go-app-launcher .go-app-launcher-grid {
+        align-content        : start;
+        box-sizing           : border-box;
+        display              : grid;
+        gap                  : 4vh 4vw;
+        grid-template-columns: repeat(auto-fill, minmax(min(10rem, 17%), 1fr));
+        margin               : 0 auto;
+        overflow-y           : auto;
+        padding              : go.dp(40) 5% go.dp(24);
+        width                : 100%;
+    }
+
+    .go-app-launcher .go-app-launcher-tile {
+        align-items   : center;
+        border-radius : go.dp(8);
+        cursor        : pointer;
+        display       : flex;
+        flex-direction: column;
+        min-width     : 0;
+        outline       : none;
+        padding       : go.dp(8) go.dp(4);
+    }
+
+    .go-app-launcher .go-app-launcher-tile:hover {
+        background-color: rgba(255, 255, 255, .08);
+    }
+
+    .go-app-launcher .go-app-launcher-tile:focus-visible {
+        background-color: rgba(255, 255, 255, .12);
+        box-shadow      : 0 0 0 2px var(--c-primary);
+    }
+
+    .go-app-launcher .go-app-launcher-icon {
+        align-items    : center;
+        display        : flex;
+        height         : go.dp(96);
+        justify-content: center;
+        max-width      : go.dp(96);
+        position       : relative;
+        width          : 100%;
+    }
+
+    .go-app-launcher .go-app-launcher-icon img {
+        height    : 100%;
+        object-fit: contain;
+        width     : 100%;
+    }
+
+    .go-app-launcher .go-app-launcher-icon .go-icon {
+        font-size: go.dp(72);
+    }
+
+    // module counts (src/Badges.mjs): as on the module tabs
+    .go-app-launcher .go-app-launcher-badge {
+        background-color: var(--c-danger, #c62828);
+        border-radius   : go.dp(10.5);
+        box-sizing      : border-box;
+        color           : rgba(255, 255, 255, .87);
+        font-size       : go.sp(13);
+        font-weight     : 600;
+        height          : go.dp(21);
+        line-height     : go.dp(21);
+        min-width       : go.dp(21);
+        padding         : 0 go.dp(4);
+        position        : absolute;
+        right           : go.dp(-4);
+        text-align      : center;
+        top             : 0;
+    }
+
+    // a classic-only app: opens the classic client in a new tab
+    .go-app-launcher .go-app-launcher-icon .go-icon.go-app-launcher-external {
+        background-color: rgba(0, 0, 0, .55);
+        border-radius   : 50%;
+        bottom          : 0;
+        font-size       : go.dp(18);
+        padding         : go.dp(3);
+        position        : absolute;
+        right           : go.dp(-4);
+    }
+
+    .go-app-launcher .go-app-launcher-title {
+        font-size    : go.sp(14);
+        max-width    : 100%;
+        overflow     : hidden;
+        padding      : go.dp(8) 0 0;
+        text-align   : center;
+        text-overflow: ellipsis;
+        white-space  : nowrap;
+    }
+
+    .go-app-launcher .go-app-launcher-empty {
+        color     : rgba(255, 255, 255, .7);
+        grid-column: 1 / -1;
+        text-align: center;
+    }
+
+    // phone (GOUI $breakpointSmall): 3-4 columns, smaller icons, no blur (slow on phones)
+    @media (max-width: 576px) {
+        .go-app-launcher,
+        &.dark .go-app-launcher {
+            -webkit-backdrop-filter: none;
+            backdrop-filter        : none;
+            // full screen: nothing of the page behind it shows through
+            background-color       : rgb(24, 24, 24);
+        }
+
+        .go-app-launcher .go-app-launcher-logo {
+            width: go.dp(160);
+        }
+
+        .go-app-launcher .go-app-launcher-grid {
+            gap                  : go.dp(16) go.dp(8);
+            grid-template-columns: repeat(auto-fill, minmax(max(23%, #{go.dp(72)}), 1fr));
+            padding              : go.dp(24) go.dp(8);
+        }
+
+        .go-app-launcher .go-app-launcher-icon {
+            height   : go.dp(56);
+            max-width: go.dp(56);
+        }
+
+        .go-app-launcher .go-app-launcher-icon .go-icon {
+            font-size: go.dp(44);
+        }
+
+        .go-app-launcher .go-app-launcher-title {
+            font-size: go.sp(12);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .go-app-launcher,
+        .go-app-launcher .go-app-launcher-grid {
+            animation: none !important;
+        }
+    }
+}
+
+@keyframes go-app-launcher-in {
+    from {opacity: 0}
+    to   {opacity: 1}
+}
+
+@keyframes go-app-launcher-out {
+    from {opacity: 1}
+    to   {opacity: 0}
+}
+
+@keyframes go-app-launcher-scale {
+    from {transform: scale(.9)}
+    to   {transform: scale(1)}
+}

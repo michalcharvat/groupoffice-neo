@@ -169,7 +169,7 @@ settings or admin screens. neo paths "n/" = `www/views/neo/src/`.
 
 ### My account
 
-Present: look & feel (all formats, theme, start module, shortcuts, reset state),
+Present: look & feel (all formats, theme, start module, main menu launcher | list (neo only), shortcuts, reset state),
 sounds, "Visible to", groups, custom field tabs, module cards, current-password prompt,
 2FA (otp).
 

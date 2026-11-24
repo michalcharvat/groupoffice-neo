@@ -7,6 +7,7 @@ import LocalCombo     from '../form/field/LocalCombo.mjs';
 import {fieldset}     from '../form/fieldset.mjs';
 import TextList       from '../list/TextList.mjs';
 import ModuleRegistry from '../ModuleRegistry.mjs';
+import {getMainMenuMode, setMainMenuMode} from '../view/AppLauncher.mjs';
 import ConfirmDialog  from '../view/ConfirmDialog.mjs';
 import {applyTheme, clearState} from '../Preferences.mjs';
 import {t} from '../Translate.mjs';
@@ -128,6 +129,13 @@ class LookAndFeelPanel extends Container {
 
                     fieldset(t('Global'), [
                         select('start_module', t('Start in module'), ModuleRegistry.getAvailable().map(m => [m.name, m.title])),
+                        // not a User property: this browser's choice for the logged-in user, saved right away
+                        select(null, t('Main menu'), [['launcher', t('Launcher')], ['list', t('List')]], {
+                            reference: 'mainMenu',
+                            hidden   : !me.livePreview,
+                            // select: picked from the list, not set by onLoad()
+                            listeners: {select: ({value}) => value && setMainMenuMode(value.id ?? value, me.windowId)}
+                        }),
                         select('max_rows_list', t('Maximum number of rows in lists'), [10, 15, 20, 25, 30, 50].map(n => [n, String(n)])),
                         select('sort_name', t('Sort names by'), [['first_name', t('First name')], ['last_name', t('Last name')]]),
                         check('enableSendShortcut', t('Use shortcut to send forms') + ' (Ctrl / ⌘ + Enter)'),
@@ -172,8 +180,16 @@ class LookAndFeelPanel extends Container {
      * Called by the dialog after loading the user
      * @param {Object} user
      */
-    onLoad(user) {
-        this.syncSchemeButtons(user.themeColorScheme)
+    async onLoad(user) {
+        let me = this;
+
+        me.syncSchemeButtons(user.themeColorScheme);
+
+        if (me.livePreview) {
+            const mode = await getMainMenuMode(me.windowId);
+
+            me.isDestroyed || (me.getReference('mainMenu').value = mode)
+        }
     }
 
     /**
