@@ -1,3 +1,31 @@
+- Core: in the new web client, a person field with an avatar (for example the attendees in the event dialog) no longer shows a stray dropdown arrow.
+- Files, Email: in the new web client, an empty folder, search or trash shows a text ("Drop files here", "No items found", "No items to display") instead of nothing.
+- Core: in the new web client, grids and lists show "No items found" (or the text of the classic client) when they have no items.
+- Core: in the new web client, module pages no longer run outdated cached code after an update, and the History page and the history in item details show their entries again.
+- Calendar: "Create personal calendar" failed with an error for users without a calendar. In the new web client, a new event opens the event dialog, or offers to create a calendar when the user has no calendar to write in.
+- Files: the detail of a file or folder in the new web client shows custom fields, comments, links and history, and a folder icon for folders.
+- Syncfusion: new module to edit Word documents and spreadsheets in the browser, in the new and the classic web client. Saving creates a new version of the file. Saving a .doc, .dotx or .rtf file as .docx now needs read access to the file and the file must not be locked.
+- Core: security fix. A password recovery link could redirect to another website after the new password was set. It now redirects only to pages of this GroupOffice.
+- Core: the neo webclient is now the default. The classic client stays available: users switch in the user menu (remembered per browser), ?webclient=classic opens one page in it, and $config["webclient"] = "classic" keeps it as the default of an installation; $config["webclientSwitch"] = false hides the switch. Modules without a neo UI open in the classic client from the apps menu.
+- Tasks: a request to the tasks API without being logged in or without access to the module got a server error instead of "Unauthorized" or "Forbidden".
+- Core: a filter that combines the link or text filter with OR or NOT no longer drops items that have no such link or no search cache entry.
+- Core: in the new web client, the Delete key and a row menu work in the files trash, the password prompt shows "Required" only after OK, the task dialog shows the colour as a palette menu, and opening an e-mail account again shows folders created elsewhere.
+- Sieve: security fix. When the mail server of an account doesn't support filters, the error sent to the browser contained the full stack trace of the server, with file paths and possibly call arguments. It now shows only the message. Listing the alias addresses of an account for the out of office reply now needs manage permission on the account, like the filters themselves; before, users who could only use a shared account could list them too.
+- Email favorites: security fix. The favorite folder list returned the ids of other users' favorites. It now returns only your own. The same applies to the list of changed favorites that clients use to stay up to date.
+- Email: the "move all" and "delete all" confirmations in the message list can now be translated.
+- Core: synchronizing many changes at once (JMAP changes with more changes than fit in one response) failed with "cannotCalculateChanges" and forced the client to reload everything, or returned the same page again for items with permissions.
+- Core: a search that combined two text filters (for example a saved filter with a search query and the search field) found nothing. Now items must match both.
+- Core: the global search and the link search could show an item several times, with a too high total, when a text filter was combined with OR or NOT.
+- Core: search filters with OR or NOT gave wrong results: NOT on a search word didn't exclude items with other words, and OR left out items that another condition matched. The link search total could be too high.
+- Address book: requesting contacts through the API with a limited list of properties without "addressBookId" failed with an error.
+- Core: Japanese translations with broken keys work again, and "Refresh token" in the e-mail account dialog is translated.
+- Core: the permissions overview (System settings → Users) showed the name of another item when items of different types had the same ID.
+- Email: the new web client (neo) has an e-mail client: accounts and folders, reading, writing with templates, signatures and drafts, account settings with aliases, filters, labels and folder permissions, the e-mail settings and templates, and an e-mail portlet on the start page.
+- Email: opening a message from the Sent items (or another folder than Drafts) and sending it could delete an unrelated draft with the same number in the Drafts folder.
+- Email: when the IMAP password of an account is wrong, the account tree asks for the password again instead of showing a general error.
+- Sieve: the server side filters and the out of office message are available in the account dialog of the new web client.
+- S/MIME: signing, encrypting, decrypting and verifying messages and managing certificates work in the new web client.
+- Email favorites: favorite folders show at the top of the folder tree in the new web client.
 - Comments: mentioning "@username" in a comment no longer alerts a user who can't read the commented item. Before, that user got an alert with an excerpt of the comment. "@" followed by a word that isn't a username no longer alerts the author, and usernames with a dot ("@john.doe") can be mentioned.
 - Tasks: fix icon in main panel
 - Core: turning on maintenance mode could fail with "Record has changed since last read" when another request was using a login token at the same moment. Logging out the other users is now retried after a short wait.
