@@ -59,7 +59,8 @@ class TextList extends List {
      * data field, string keys included (getKey() undefined, createItem() throws). neo's ComboBox
      * adds a default model to a plain store config, List does not: add one with the key, display
      * and group fields plus the fields of the initial data. Values keep their type. Dotted names
-     * become their root field (record.get('a.b') reads into it); names of the record API (get,
+     * become their root field (record.get('a.b') reads into it); the key field is an Integer when
+     * every initial id is an integer; names of the record API (get,
      * set, ...) are left out, they would replace its methods. Declare a model for other fields of
      * data loaded later.
      *
@@ -86,7 +87,13 @@ class TextList extends List {
 
             RECORD_API.forEach(name => names.delete(name));
 
-            value = {...value, model: {fields: [...names].map(name => ({name}))}}
+            // integer ids need an Integer key field: the item ids of the DOM are strings, and
+            // store.getCanonicalKey() only turns them back into numbers for an 'int' key type
+            // (without it a click finds no record and a CheckList row cannot be checked)
+            const key       = value.keyProperty || 'id',
+                  intKeys   = items.length > 0 && items.every(item => Number.isInteger(item?.[key]));
+
+            value = {...value, model: {fields: [...names].map(name => name === key && intKeys ? {name, type: 'Integer'} : {name})}}
         }
 
         return super.beforeSetStore(value, oldValue)

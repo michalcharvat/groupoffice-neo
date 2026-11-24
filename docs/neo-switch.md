@@ -29,7 +29,7 @@ UI exist, and nothing a user, an e-mail or an OAuth client links to breaks.
 | Caching | `views/neo/.htaccess` makes `.mjs/.js/.css/.json` revalidate (neo imports modules without version query strings); the Debian Apache config has `AllowOverride None`, so it doesn't apply there | `www/views/neo/.htaccess`, `build/debian/etc/apache2/conf-available/groupoffice.conf:52` |
 | neo runtime | `environment: 'development'`: the browser loads neo.mjs sources unbundled from `views/neo/node_modules/neo.mjs` (installed: 64 MB package, 7.4 MB `src`) | `Neo.php:236` |
 | Page load cost | `Neo::buildId()` walks every file under `views/neo/apps`, `views/neo/src` and each module's `views/neo` on every neo page load except popups (shared worker name) | `Neo.php:80-121` |
-| views/goui users | the classic client (`Extjs3::loadGoui()` loads module `views/goui/dist/Index.js`; `getCSSFile()` aggregates module CSS incl. GOUI), standalone pages (`views/Layout.php`), and the neo theme build (`groupoffice-core/style/_theme.scss` tokens, `goui/style` partials, the Material Symbols iconfont) | `Extjs3.php:68,426`, `views/neo/resources/scss/go/Global.scss:3,28` |
+| views/goui users | the classic client (`Extjs3::loadGoui()` loads module `views/goui/dist/Index.js`; `getCSSFile()` aggregates module CSS incl. GOUI), standalone pages (`views/Layout.php`). Since 2026-11-24 not the neo theme build: neo has its own copies of the tokens and the iconfont (section 8) | `Extjs3.php:68,426` |
 
 ## Decisions to approve
 
@@ -118,8 +118,8 @@ and "Open in new window" items hide when unsupported instead of failing after 30
 `@fortawesome` by path (hoisting would move them).
 
 **D8. views/goui.** Nothing of it is removed in this task: the classic fallback (D2/D3)
-still renders the GOUI modules, standalone pages use its core stylesheet, and neo's theme
-build reads GOUI's SCSS tokens and iconfont. What can go, and when, is in section 8.
+still renders the GOUI modules, standalone pages use its core stylesheet. neo's theme build
+no longer reads GOUI (own copies of the tokens and the iconfont since 2026-11-24). What can go, and when, is in section 8.
 
 ## 2. Build and release
 
@@ -127,8 +127,8 @@ build reads GOUI's SCSS tokens and iconfont. What can go, and when, is in sectio
   to `dependencies`; add `"build": "npm run build-themes"`.
 - `scripts/install-npm.sh`: "Building neo" after the GOUI shared libs: in `views/neo`
   `npm install` (dev) / `npm ci` (nodev, still with dev dependencies: the theme build needs
-  `sass`, `postcss`), then `npm run build`. Needs the GOUI submodules, which the script
-  already requires. Document the Node version.
+  `sass`, `postcss`), then `npm run build`. Doesn't need the GOUI submodules (neo has its own
+  copies of the tokens and the iconfont since 2026-11-24). Document the Node version.
 - `build/build.sh` `build_package()`: after `install-npm.sh`, `npm prune --omit=dev` in
   `views/neo` too, and remove the generated `resources/css` (build input only; up to neo.mjs
   13.4 `resources/scss/theme-go`).
@@ -201,7 +201,7 @@ build reads GOUI's SCSS tokens and iconfont. What can go, and when, is in sectio
 |---|---|---|
 | Module `views/goui` (apikeys, bookmarks, calendar, comments, davclient, history, jitsimeet, maildomains, notes, oidc, tasks) | stays: classic renders them | remove with their `package.json` and the workspace entries |
 | `views/goui` shell, esbuild setup, `dist/` | stays: classic loads the GOUI runtime, standalone pages its core stylesheet | remove after the standalone pages (installer, RSVP, theft screen, version/licence) have their own CSS; `Extjs3::loadGoui()` goes with Extjs3 |
-| Submodules `goui`, `groupoffice-core` | stay: classic + neo theme tokens | copy what neo uses (`groupoffice-core/style/_theme.scss` tokens, the `goui/style` partials neo's SCSS `@use`s, `MaterialSymbolsOutlined.woff2`) into `views/neo/resources`, then remove the submodules |
+| Submodules `goui`, `groupoffice-core` | stay for the classic client. neo no longer reads them (2026-11-24): it builds and runs without `views/goui`, with copies of `groupoffice-core/style/_theme.scss` (`views/neo/resources/scss/go/goui-theme/`) and `MaterialSymbolsOutlined.woff2` (`views/neo/resources/fonts/`); neo's SCSS `@use`d no `goui/style` partials. Refreshing the copies: `docs/neo-upstream-sync.md` | remove the submodules |
 | `www/package.json` workspaces | stays | removed or reduced to `pdfjs-dist`; neo is the only npm build |
 | Docs that use GOUI as the reference (`docs/neo-*.md`, Dev module statuses) | stay until parity is closed | keep as history |
 

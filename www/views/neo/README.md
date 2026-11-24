@@ -16,8 +16,8 @@ Small modules, 2FA login, module hooks: `docs/neo-small-modules.md`.
 - Built by `scripts/install-npm.sh` (and so the release, `build/build.sh` prunes the dev
   dependencies afterwards); by hand: `npm install && npm run build` (= `build-themes`) in this folder: generates the `theme-go` neo theme
   and builds it with neo's workspace theme build into `dist/development` +
-  `resources/theme-map.json` (see [GO look](#go-look-theme-go)). Needs the GOUI submodules
-  (`views/goui/goui`, `views/goui/groupoffice-core`): the theme uses GO's SCSS tokens.
+  `resources/theme-map.json` (see [GO look](#go-look-theme-go)). Doesn't need `views/goui`: the GO
+  tokens and the icon font are copies in `resources/` (refresh: `docs/neo-upstream-sync.md`).
 - Local instance: `~/Projects/go-docker/docker-compose.go26neo.yml` → http://localhost:8027
   (same database as classic GO on :8026). Test login in `test/credentials.local` (not committed).
 
@@ -98,8 +98,8 @@ The reference is GO 26's GOUI module UI (e.g. Notes), not the ExtJS Paper theme.
   `go/design-tokens/Core.scss`, `Semantic.scss` go into `Global.css`: neo 14 declares its tokens
   there), and compiles `resources/scss/src/**` to `resources/css/src/**`. Overlays get
   `go.dp()`/`go.sp()` (GOUI units) and may `@use` GO SCSS.
-- **GO tokens**: `go/Global.scss` `@use`s `views/goui/groupoffice-core/style/_theme.scss`,
-  so `--fg-main`, `--bg-mid`, `--density`, … are GO's own (incl. `body.dark`). neo tokens
+- **GO tokens**: `go/Global.scss` `@use`s `go/goui-theme/_theme.scss`, a copy of GOUI's
+  `groupoffice-core/style/_theme.scss`, so `--fg-main`, `--bg-mid`, `--density`, … are GO's own (incl. `body.dark`). neo tokens
   (`--purple-*`, `--sem-*`, `--button-*`, `--grid-*`, …) point at them. `<html>` font-size
   is `--density` (8.64px) like GOUI: 1dp = .1rem, so GOUI sizes carry over 1:1.
 - **Components**: GO structure comes from derived classes (`GO.button.Button`,
@@ -134,8 +134,8 @@ The reference is GO 26's GOUI module UI (e.g. Notes), not the ExtJS Paper theme.
     CSS). Known exceptions with their reason are in its `allowed` list.
   - Module `views/neo/style.css` files load in the page head, before every neo sheet: a rule
     there needs more classes than the neo rule it overrides.
-- **Icons**: Material Symbols ligatures (`{module: Button, icon: 'add'}`), font from
-  `views/goui/goui/resources/iconfont`. Font Awesome stays for `iconCls`.
+- **Icons**: Material Symbols ligatures (`{module: Button, icon: 'add'}`), font in
+  `resources/fonts` (a copy of GOUI's iconfont). Font Awesome stays for `iconCls`.
 - **Splitter state**: same keys as GOUI (`state-<module>-west-splitter`, width in dp), so
   on one origin GOUI and neo share the panel widths.
 - **Phone** (below 577px, GOUI `$breakpointSmall`, CSS only): `MainThreeColumnPanel` shows one

@@ -78,11 +78,12 @@ class List extends MenuList {
     }
 
     /**
-     * neo creates submenus as Neo.menu.List: give them the GO menu look, and the window
-     * (without it their align goes to the deprecated "main" destination)
+     * neo creates submenus as Neo.menu.List: make them GO.menu.List (icons, badges, and so their
+     * own submenus get this too), with the GO menu look and the window (without it their
+     * align goes to the deprecated "main" destination)
      */
     getSubMenuData(record) {
-        return {...super.getSubMenuData(record), cls: ['go-menu'], windowId: this.windowId}
+        return {...super.getSubMenuData(record), module: List, cls: ['go-menu'], windowId: this.windowId}
     }
 
     /**

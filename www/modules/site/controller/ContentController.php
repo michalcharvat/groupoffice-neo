@@ -4,6 +4,8 @@
 namespace GO\Site\Controller;
 
 use GO;
+use GO\Base\Exception\AccessDenied;
+use GO\Base\Model\Acl;
 use GO\Site\Model\Content;
 use GO\Site\Model\Site;
 
@@ -19,7 +21,8 @@ class ContentController extends \GO\Base\Controller\AbstractJsonController {
 	 */
 	protected function actionRedirect($content_id){
 		
-		$content = Content::model()->findByPk($content_id);
+		$content = $this->_loadModel($content_id);
+		Site::requirePermission($content->site_id, Acl::READ_PERMISSION);
 		
 		header("Location: ".GO::config()->host.'modules/site/index.php?site_id='.$content->site_id.'&slug='.$content->slug);
 		exit();
@@ -59,7 +62,7 @@ class ContentController extends \GO\Base\Controller\AbstractJsonController {
 		$site = Site::model()->findByPk($params['siteId']);
 		
 		if(!$site)
-			Throw new \Exception('No site found with the following id: '.$id);
+			Throw new \Exception('No site found with the following id: '.$params['siteId']);
 		
 		$templateFiles = array();
 		
@@ -94,15 +97,13 @@ class ContentController extends \GO\Base\Controller\AbstractJsonController {
 			Throw new \Exception('No ID given!');
 		
 		$model = $this->_loadModel($params['id']);
+		$isPost = \GO\Base\Util\Http::isPostRequest();
+		// before setAttributes(): the user must have access to the item's current site
+		Site::requirePermission($model->site_id, $isPost ? Acl::WRITE_PERMISSION : Acl::READ_PERMISSION);
 			
-		unset($params['id']); // unset because it doesn't need to be updated
-				
-		$model->setAttributes($params);
-		
-		
-		if(\GO\Base\Util\Http::isPostRequest()){	
-			
-			
+		if($isPost){
+			// the site and the parent change only by sorting in the tree (site/site/treeSort)
+			$model->setAttributes($this->_editableParams($params));
 			$model->save();
 			echo $this->renderSubmit($model);
 		}  else {
@@ -116,11 +117,15 @@ class ContentController extends \GO\Base\Controller\AbstractJsonController {
 	
 	protected function actionCreate($params) {
 		$model = new \GO\Site\Model\Content();
-		$model->setAttributes($params);
+		// site and parent first: the slug is built from the parent's
+		$model->setAttributes(array_intersect_key($params, array_flip(['site_id', 'parent_id'])));
+		$model->setAttributes($this->_editableParams($params));
+		$isPost = \GO\Base\Util\Http::isPostRequest();
+		$this->_checkSiteAndParent($model, $isPost ? Acl::WRITE_PERMISSION : Acl::READ_PERMISSION);
 				
 		$model->setDefaultTemplate();
 
-		if(\GO\Base\Util\Http::isPostRequest()){
+		if($isPost){
 			$model->save();
 			echo $this->renderSubmit($model);
 		}  else {
@@ -135,6 +140,7 @@ class ContentController extends \GO\Base\Controller\AbstractJsonController {
 			Throw new \Exception('No ID given!');
 		
 		$model = $this->_loadModel($params['id']);
+		Site::requirePermission($model->site_id, Acl::DELETE_PERMISSION);
 		
 		$response = array();
 		
@@ -143,6 +149,37 @@ class ContentController extends \GO\Base\Controller\AbstractJsonController {
 		echo $this->renderJson($response);
 	}
 	
+	/**
+	 * The posted attributes a user may change (not the site, parent, author or times)
+	 *
+	 * @param array $params
+	 * @return array
+	 */
+	private function _editableParams(array $params): array
+	{
+		return array_intersect_key($params, array_flip(['title', 'baseslug', 'content', 'status', 'template',
+			'default_child_template', 'meta_title', 'meta_keywords', 'meta_description', 'customFieldsJSON']));
+	}
+
+	/**
+	 * Checks the level on the content item's site, and that its parent belongs to that site
+	 *
+	 * @param Content $model
+	 * @param int $level
+	 * @throws AccessDenied
+	 */
+	private function _checkSiteAndParent(Content $model, int $level): void
+	{
+		Site::requirePermission($model->site_id, $level);
+
+		if(!empty($model->parent_id)) {
+			$parent = Content::model()->findByPk($model->parent_id);
+			if(!$parent || (string) $parent->site_id !== (string) $model->site_id) {
+				throw new AccessDenied();
+			}
+		}
+	}
+
 	private function _loadModel($id){
 		$model = \GO\Site\Model\Content::model()->findByPk($id);
 		
@@ -161,7 +198,7 @@ class ContentController extends \GO\Base\Controller\AbstractJsonController {
 		if(!isset($params['node']))
 			return $response;
 		
-		$site = Site::model()->findByPk($params['site_id']);
+		$site = Site::requirePermission($params['site_id'], Acl::READ_PERMISSION);
 		
 		$args = explode('_', $params['node']);
 		
@@ -183,7 +220,7 @@ class ContentController extends \GO\Base\Controller\AbstractJsonController {
 					$response = $site->loadContentNodes();
 				} else {
 					$parentNode = \GO\Site\Model\Content::model()->findByPk($parentId);
-					if($parentNode)
+					if($parentNode && (string) $parentNode->site_id === (string) $site->id)
 						$response = $parentNode->getChildrenTree();
 				}
 				break;
