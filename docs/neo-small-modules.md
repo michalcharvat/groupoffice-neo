@@ -171,8 +171,9 @@ save on POST (`site/content/update`, `site/site/load`) are sent as GET.
   for key 'clientName'" (the failed insert also skips an auto-increment id). `getDefaultAclId()`
   has the same check-then-create race: each request creates an ACL and the last one wins, so the
   other stays behind without an owner. Both are upstream code; a fix would re-read the row after a
-  duplicate key error and create the default ACL with a conditional update
-  (`... WHERE defaultAclId IS NULL`). It only hits the first request(s), a retry succeeds.
+  duplicate key error, and set the default ACL with a conditional update (`... WHERE defaultAclId IS
+  NULL`) whose affected-row count decides: 0 rows means another request won, so roll back the own
+  ACL and read the winner's id. It only hits the first request(s), a retry succeeds.
 - Test sites need an installed view module: db26 has no `defaultsite`, a site with
   `module = defaultsite` fails every content route with "Module defaultsite not found!".
 
