@@ -25,6 +25,9 @@
 
 namespace GO\Site\Controller;
 
+use GO\Base\Model\Acl;
+use GO\Site\Model\Site;
+
 
 class MenuController extends \GO\Base\Controller\AbstractJsonController {
 		
@@ -37,6 +40,10 @@ class MenuController extends \GO\Base\Controller\AbstractJsonController {
 	public function actionContentStore($menu_id){
 		
 		$menu = \GO\Site\Model\Menu::model()->findByPk($menu_id);
+		if(!$menu) {
+			throw new \GO\Base\Exception\NotFound();
+		}
+		Site::requirePermission($menu->site_id, Acl::READ_PERMISSION);
 		
 		$findCriteria = \GO\Base\Db\FindCriteria::newInstance()->addCondition('site_id', $menu->site_id);
 		$findParams = \GO\Base\Db\FindParams::newInstance()->criteria($findCriteria);
@@ -58,6 +65,7 @@ class MenuController extends \GO\Base\Controller\AbstractJsonController {
 		$remoteComboFields = array();
 		
 		$model = $this->_loadModel($site_id,$id);
+		Site::requirePermission($model->site_id, Acl::READ_PERMISSION);
 		
 		if(!empty($model->content_id))
 			$remoteComboFields['content_id']=var_export($model->content->title, true);
@@ -77,7 +85,10 @@ class MenuController extends \GO\Base\Controller\AbstractJsonController {
 		
 		if(\GO\Base\Util\Http::isPostRequest()){
 			$model->setAttributes($_POST);
+			Site::requirePermission($model->site_id, Acl::WRITE_PERMISSION);
 			$model->save();
+		} else {
+			Site::requirePermission($model->site_id, Acl::READ_PERMISSION);
 		}
 		
 		echo $this->renderForm($model,$remoteComboFields);
@@ -93,12 +104,16 @@ class MenuController extends \GO\Base\Controller\AbstractJsonController {
 		$remoteComboFields = array();
 		
 		$model = $this->_loadModel($site_id,$id);
+		$isPost = \GO\Base\Util\Http::isPostRequest();
+		Site::requirePermission($model->site_id, $isPost ? Acl::WRITE_PERMISSION : Acl::READ_PERMISSION);
 		
 		if(!empty($model->content_id))
 			$remoteComboFields['content_id']=var_export($model->content->title, true);
 		
-		if(\GO\Base\Util\Http::isPostRequest()){
+		if($isPost){
 			$model->setAttributes($_POST);
+			// a menu moved to another site needs write permission there too
+			Site::requirePermission($model->site_id, Acl::WRITE_PERMISSION);
 			$model->save();
 		}
 		
@@ -114,6 +129,7 @@ class MenuController extends \GO\Base\Controller\AbstractJsonController {
 	public function actionDelete($id,$site_id){
 		
 		$model = $this->_loadModel($site_id,$id);
+		Site::requirePermission($model->site_id, Acl::DELETE_PERMISSION);
 		$model->delete();
 		
 		echo $this->renderForm($model);

@@ -116,3 +116,13 @@ Dead code, not ported: `ContextMenu.js` (older menus, replaced by `treenodes/`),
 `SelectMultiFile.js`, `MultifileDialog.js`, `MultifileView.js` (only for the custom field
 types, whose registration in `Customfield.js` is commented out), `ModuleSettingsDialog.js`
 (never opened). Routes: none besides the module tab (`#site`).
+
+### Permissions
+
+Only users with access to the module reach the controllers (legacy `AbstractController`).
+Sites have their own ACL (`site_sites.acl_id`, `Site::aclField()`); content items, menus and
+menu items have none, so `findByPk()` and `save()` of those checked nothing: every module user
+could read, change, sort and delete the content and menus of sites they can't even see. The
+controllers now check the site's ACL through `Site::requirePermission()`: read for the tree,
+loads, stores and redirects, write for create, update, sort and "create menu item from
+content", delete for deletes. Test: `tests/go/modules/legacy/site/SitePermissionTest.php`.

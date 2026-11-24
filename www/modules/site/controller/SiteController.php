@@ -3,6 +3,14 @@
 
 namespace GO\Site\Controller;
 
+use GO\Base\Exception\AccessDenied;
+use GO\Base\Model\Acl;
+use GO\Site\Model\Content;
+use GO\Site\Model\Menu;
+use GO\Site\Model\MenuItem;
+use GO\Site\Model\Site;
+use GO\Site\SiteModule;
+
 
 class SiteController extends \GO\Base\Controller\AbstractJsonController {
 	
@@ -26,8 +34,21 @@ class SiteController extends \GO\Base\Controller\AbstractJsonController {
 	}
 	
 	protected function actionSubmit($params) {
-		$model = \GO\Site\Model\Site::model()->createOrFindByParams($params);
-		$model->setAttributes($params);
+		// not createOrFindByParams(): it sets every posted attribute of a new site
+		if(empty($params['id'])) {
+			$model = new Site();
+		} else {
+			$model = Site::model()->findByPk($params['id']);
+			if(!$model) {
+				throw new \GO\Base\Exception\NotFound();
+			}
+		}
+		// only what the site dialog edits: not the owner, ACL or files folder
+		$editable = ['name', 'domain', 'base_path', 'language', 'ssl', 'mod_rewrite', 'mod_rewrite_base_path'];
+		if($model->isNew) {
+			$editable[] = 'module';
+		}
+		$model->setAttributes(array_intersect_key($params, array_flip($editable)));
 		$model->save();
 		echo $this->renderSubmit($model);
 	}
@@ -62,19 +83,25 @@ class SiteController extends \GO\Base\Controller\AbstractJsonController {
 					$response = \GO\Site\Model\Site::getTreeNodes();
 				} else {
 					$content = \GO\Site\Model\Content::model()->findByPk($extractedNode['modelId']);
-					if($content)
+					if($content) {
+						Site::requirePermission($content->site_id, Acl::READ_PERMISSION);
 						$response = $content->getChildrenTree();
+					}
 				}
 				break;
 			case 'menu':
 				$menu = \GO\Site\Model\Menu::model()->findByPk($extractedNode['modelId']);
-					if($menu)
+					if($menu) {
+						Site::requirePermission($menu->site_id, Acl::READ_PERMISSION);
 						$response = $menu->getChildrenTree();
+					}
 				break;
 			case 'menuitem':
 				$menuitem = \GO\Site\Model\MenuItem::model()->findByPk($extractedNode['modelId']);
-					if($menuitem)
+					if($menuitem) {
+						Site::requirePermission($menuitem->menu->site_id, Acl::READ_PERMISSION);
 						$response = $menuitem->getChildrenTree();
+					}
 				break;
 		}
 		
@@ -94,6 +121,20 @@ class SiteController extends \GO\Base\Controller\AbstractJsonController {
 //		sortOrder:["1_menuitem_30","1_menuitem_31","1_menuitem_33","1_menuitem_8"]
 			$sortOrder = json_decode($sortOrder, true);
 			$extractedParentNode = \GO\Site\SiteModule::extractTreeNode($parent);
+
+			// the items are moved below the parent: the user must be able to write its site,
+			// and may only sort items of that site
+			if(!is_array($sortOrder) || !is_array($extractedParentNode)) {
+				throw new \GO\Base\Exception\NotFound();
+			}
+			$siteId = $this->siteIdOfNode($extractedParentNode);
+			Site::requirePermission($siteId, Acl::WRITE_PERMISSION);
+			foreach($sortOrder as $sortItem) {
+				$child = SiteModule::extractTreeNode((string) $sortItem);
+				if(!is_array($child) || empty($child['modelId']) || (string) $this->siteIdOfNode($child) !== (string) $siteId) {
+					throw new AccessDenied();
+				}
+			}
 			
 			switch($extractedParentNode['type']){
 				case 'content':
@@ -128,6 +169,34 @@ class SiteController extends \GO\Base\Controller\AbstractJsonController {
 	
 	
 	
+	/**
+	 * The site a tree node belongs to, from its model (not from the site id in the node id,
+	 * which the client sends)
+	 *
+	 * @param array $extractedNode SiteModule::extractTreeNode()
+	 * @return int|null
+	 */
+	private function siteIdOfNode(array $extractedNode): ?int
+	{
+		if(empty($extractedNode['modelId'])) {
+			// a root node: "<siteId>_content" or "<siteId>_menu"
+			return ctype_digit((string) $extractedNode['siteId']) ? (int) $extractedNode['siteId'] : null;
+		}
+
+		switch($extractedNode['type']) {
+			case 'content':
+				$model = Content::model()->findByPk($extractedNode['modelId']);
+				return $model ? (int) $model->site_id : null;
+			case 'menu':
+				$model = Menu::model()->findByPk($extractedNode['modelId']);
+				return $model ? (int) $model->site_id : null;
+			case 'menuitem':
+				$model = MenuItem::model()->findByPk($extractedNode['modelId']);
+				return $model && $model->menu ? (int) $model->menu->site_id : null;
+		}
+		return null;
+	}
+
 	protected function actionCheatSheet(){
 		echo  '<pre style="padding:10px; font-family: \'Lucida Console\', Monaco, monospace;">
 			

@@ -184,6 +184,29 @@ class Site extends \GO\Base\Db\ActiveRecord {
 		return $module;
 	}
 	
+	/**
+	 * Finds a site and checks the current user's level on its ACL. Content items, menus and
+	 * menu items have no ACL of their own: the controllers check their site's ACL with this.
+	 *
+	 * @param int|string|null $siteId
+	 * @param int $level \GO\Base\Model\Acl::*_PERMISSION
+	 * @return Site
+	 * @throws \GO\Base\Exception\NotFound when the site doesn't exist
+	 * @throws \GO\Base\Exception\AccessDenied when the user has less than $level
+	 */
+	public static function requirePermission(int|string|null $siteId, int $level): Site
+	{
+		// findByPk() checks read permission
+		$site = empty($siteId) ? false : self::model()->findByPk($siteId);
+		if (!$site) {
+			throw new \GO\Base\Exception\NotFound();
+		}
+		if (!$site->checkPermissionLevel($level)) {
+			throw new \GO\Base\Exception\AccessDenied();
+		}
+		return $site;
+	}
+
 	public static function getTreeNodes(){
 		
 		$tree = array();
