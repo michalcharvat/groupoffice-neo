@@ -39,6 +39,135 @@ class CalendarEvent extends EntityController {
 	{
 		return $entity->hasPermissionLevel(30 /* writeown */);
 	}
+
+	/**
+	 * Filters that don't say anything about the details of an event. Only with these, and sorted by start, a query
+	 * returns the busy events of calendars with free / busy permission too. Other filters, like "text", would tell
+	 * the user what the events are about by which ones come back.
+	 */
+	const BUSY_ONLY_FILTERS = ['incalendars', 'after', 'before', 'hidecancelled', 'hidesecret', 'permissionlevel'];
+
+	/**
+	 * The events are limited by {@see model\CalendarEvent::applyVisibleToQuery()} instead of the default read
+	 * permission. Also when the client passes a "permissionLevel" filter, so a lower level can't find more events.
+	 */
+	protected function getQueryQuery(\go\core\util\ArrayObject $params): \go\core\orm\Query
+	{
+		$query = parent::getQueryQuery($params);
+		model\CalendarEvent::applyVisibleToQuery($query,
+			self::onlyBusyOnlyFilters($params['filter'] ?? []) && self::onlyStartSort($params['sort'] ?? []));
+		return $query;
+	}
+
+	protected function applyPermissionLevelToQueryQuery(\go\core\orm\Query $query)
+	{
+		// Done in getQueryQuery()
+	}
+
+	/**
+	 * Check if a JMAP filter only has {@see BUSY_ONLY_FILTERS}. Empty values don't filter, so they're allowed.
+	 */
+	private static function onlyBusyOnlyFilters(mixed $filter): bool
+	{
+		if(!is_array($filter)) {
+			return empty($filter);
+		}
+		if(isset($filter['operator']) || isset($filter['conditions'])) {
+			foreach($filter['conditions'] ?? [] as $condition) {
+				if(!self::onlyBusyOnlyFilters($condition)) {
+					return false;
+				}
+			}
+			return true;
+		}
+		foreach($filter as $name => $value) {
+			if(!in_array(strtolower((string) $name), self::BUSY_ONLY_FILTERS) && !($value === null || $value === '' || $value === [])) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Check if a JMAP sort is empty or only by "start"
+	 */
+	private static function onlyStartSort(mixed $sort): bool
+	{
+		if(!is_array($sort)) {
+			return empty($sort);
+		}
+		foreach($sort as $s) {
+			if(($s['property'] ?? null) !== 'start') {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Read permission, or free / busy permission for the busy events ({@see model\CalendarEvent::busyCriteria()}).
+	 * Their details are left out by {@see model\CalendarEvent::toArray()}.
+	 */
+	protected function canRead(Entity $entity): bool
+	{
+		/** @var model\CalendarEvent $entity */
+		$level = $entity->getPermissionLevel();
+		if($level >= Acl::LEVEL_READ) {
+			return true;
+		}
+		return $level >= model\Calendar::LEVEL_FREEBUSY && $entity->isVisibleAsBusy();
+	}
+
+	/**
+	 * Users that may only read the free / busy information may change nothing, also not their own properties like
+	 * alerts. An alert would show the title.
+	 */
+	protected function canUpdate(Entity $entity): bool
+	{
+		/** @var model\CalendarEvent $entity */
+		if(!$entity->hasPermissionLevel(Acl::LEVEL_READ) || !parent::canUpdate($entity)) {
+			return false;
+		}
+		// The admin of a resource may only answer a private booking, see canUpdateBeforePatch()
+		return !$entity->showAsPrivate() || $entity->onlyResourceAnswerModified();
+	}
+
+	/**
+	 * The properties of an event that belong to the user, which may change on a private event of someone else
+	 */
+	const OWN_PROPERTIES = ['color', 'keywords', 'freeBusyStatus', 'useDefaultAlerts', 'alerts'];
+
+	/**
+	 * A private event of someone else is read only, because the user doesn't get its details, like the participants.
+	 * Only the user's own properties, like the color and alerts, may change. Checked on the event as it is stored, so
+	 * making it public in the same update doesn't help.
+	 *
+	 * The admins of a resource may also answer a private booking for the resource. canUpdate() checks that the
+	 * participation status of the resource is the only change to the participants.
+	 */
+	protected function canUpdateBeforePatch(Entity $entity, array $properties): bool
+	{
+		/** @var model\CalendarEvent $entity */
+		if(!$entity->showAsPrivate()) {
+			return true;
+		}
+		$allowed = $entity->managesResource() ? [...self::OWN_PROPERTIES, 'participants'] : self::OWN_PROPERTIES;
+		foreach(array_keys($properties) as $path) {
+			if(!in_array(explode('/', (string) $path)[0], $allowed)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * A private event of someone else is read only, see {@see canUpdateBeforePatch()}
+	 */
+	protected function canDestroy(Entity $entity): bool
+	{
+		/** @var model\CalendarEvent $entity */
+		return !$entity->showAsPrivate() && parent::canDestroy($entity);
+	}
 	
 	/**
 	 * @param array $params
@@ -267,7 +396,8 @@ class CalendarEvent extends EntityController {
 	 * Read an event from an ICS file or e-mail attachment without saving it
 	 *
 	 * Reads the ICS data from a file, or else from a part of an e-mail message. The event is put in the personal
-	 * calendar of the user, when the user has one.
+	 * calendar of the user, when the user has one. When the event is already in a calendar the user owns, that event
+	 * is returned with its id.
 	 *
 	 * @apiParam int fileId ID of a file with the ICS data
 	 * @apiParam int account_id E-mail account ID, when no fileId is given
@@ -275,7 +405,7 @@ class CalendarEvent extends EntityController {
 	 * @apiParam int uid UID of the message
 	 * @apiParam string number Number of the message part with the ICS data
 	 * @apiParam string encoding Encoding of the message part
-	 * @apiResponse {success: bool, data: CalendarEvent} The event. It is not saved.
+	 * @apiResponse {success: bool, data: CalendarEvent} The event. It is not saved, unless it was already in a calendar of the user.
 	 * @apiPermission Checked in ActiveRecord::findByPk(): read permission on the folder of the file, or on the e-mail account. The event is parsed but not saved.
 	 * @param array $params
 	 * @return array
@@ -297,15 +427,32 @@ class CalendarEvent extends EntityController {
 			$data = $imap->get_message_part_decoded($params['uid'], $params['number'], $params['encoding'], false, true, false);
 		}
 
+		return ['success' => true, 'data' => $this->eventFromIcs($data)];
+	}
+
+	/**
+	 * The event of the ICS data. When the event is already in a calendar of the user, for example an invitation that
+	 * the user received, that event is returned, so the user responds to it instead of adding a copy.
+	 */
+	protected function eventFromIcs(string $data): model\CalendarEvent
+	{
 		$event = new model\CalendarEvent();
 		$personalCalendar = go()->getAuthState()->getUser(['calendarPreferences'])->calendarPreferences->personalCalendarId;
 		if(!empty($personalCalendar)) {
 			$event->calendarId = $personalCalendar;
 		}
 
-		//$event = model\ICalendarHelper::fromICal($data, $event);
 		$event = ICalendarHelper::parseVObject($data, $event);
-		return ['success' => true, 'data' => $event];
+
+		if(!empty($event->uid)) {
+			$existing = model\CalendarEvent::findForUser($event->uid, go()->getUserId())
+				->andWhere('recurrenceId', '=', $event->recurrenceId)
+				->single();
+			if($existing) {
+				return $existing;
+			}
+		}
+		return $event;
 
 	}
 

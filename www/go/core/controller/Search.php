@@ -151,6 +151,11 @@ class Search extends EntityController {
 				->select("search.id")
 				->removeJoin('core_entity', 'e');
 
+		$excluded = model\Search::getExcludedEntityTypeIds();
+		if(!empty($excluded)) {
+			$query->andWhere('search.entityTypeId', 'NOT IN', $excluded);
+		}
+
 		// Grouping is slow on the big search table, so it is dropped unless a text filter is combined with an OR or NOT operator
 		if (!model\Search::queryNeedsGroupBy($query, $params['filter'] ?? null)) {
 			$query->groupBy([]);
