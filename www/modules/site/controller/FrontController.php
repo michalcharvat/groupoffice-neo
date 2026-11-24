@@ -69,8 +69,10 @@ class FrontController extends \GO\Site\Components\Controller {
 										->addSearchCondition('content', $searchString, false)
 							);
 		
+		// only the content of this site; without delete_keys: DbStore deletes those records before it lists
+		$searchParams->getCriteria()->addCondition('site_id', \Site::model()->id);
 		$columnModel = new \GO\Base\Data\ColumnModel();
-		$store = new \GO\Base\Data\DbStore('GO\Site\Model\Content',$columnModel,$params,$searchParams);
+		$store = new \GO\Base\Data\DbStore('GO\Site\Model\Content',$columnModel,\GO\Site\Model\Site::listParams($params),$searchParams);
 	
 		echo $this->render('search', array('searchResults'=>$store));
 	}

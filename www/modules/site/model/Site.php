@@ -185,6 +185,19 @@ class Site extends \GO\Base\Db\ActiveRecord {
 	}
 	
 	/**
+	 * Request parameters for a DbStore that only lists: DbStore deletes the records of
+	 * `delete_keys` before it lists them, without the checks of the site's controllers.
+	 *
+	 * @param array $params
+	 * @return array the parameters without delete_keys
+	 */
+	public static function listParams(array $params): array
+	{
+		unset($params['delete_keys']);
+		return $params;
+	}
+
+	/**
 	 * Finds a site and checks the current user's level on its ACL. Content items, menus and
 	 * menu items have no ACL of their own: the controllers check their site's ACL with this.
 	 *

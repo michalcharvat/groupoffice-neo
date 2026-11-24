@@ -15,6 +15,9 @@ class MultifileController extends \GO\Base\Controller\AbstractJsonController {
 			Throw new \GO\Base\Exception\NotFound('NO FIELD ID GIVEN');
 		
 		// When a file is added to the multifileview
+		if(isset($params['addFileStorageFilesById']) || isset($params['delete_keys'])){
+			$this->requireManage();
+		}
 		if(isset($params['addFileStorageFilesById'])){
 			$files = json_decode($params['addFileStorageFilesById'],true);
 			foreach($files as $fileId){
@@ -85,6 +88,21 @@ class MultifileController extends \GO\Base\Controller\AbstractJsonController {
 	}
 
 	/**
+	 * Changes need manage permission on the module: no custom field type of GroupOffice 26
+	 * creates multi file fields any more, so the record that owns model_id and field_id
+	 * can't be checked
+	 *
+	 * @throws \GO\Base\Exception\AccessDenied
+	 */
+	private function requireManage(): void
+	{
+		$module = \go\core\model\Module::findByName('legacy', 'site');
+		if (!$module || empty($module->getUserRights()->mayManage)) {
+			throw new \GO\Base\Exception\AccessDenied();
+		}
+	}
+
+	/**
 	 * Only files the user may read can be added
 	 *
 	 * @throws \GO\Base\Exception\AccessDenied
@@ -106,6 +124,7 @@ class MultifileController extends \GO\Base\Controller\AbstractJsonController {
 	
 	
 	public function actionAdd($params){
+		$this->requireManage();
 		
 		$this->checkFile($params['file_id'] ?? 0);
 
@@ -123,6 +142,7 @@ class MultifileController extends \GO\Base\Controller\AbstractJsonController {
 	 * @throws \GO\Base\Exception
 	 */
 	public function actionSaveSort($params){
+		$this->requireManage();
 
 		if(!isset($params['sort']))
 			Throw new \GO\Base\Exception('Failed to save the sort.');

@@ -21,9 +21,10 @@ class SiteController extends \GO\Base\Controller\AbstractJsonController {
 	 */
 	protected function actionRedirectToFront($params){
 		
-		$site = \GO\Site\Model\Site::model()->findByPk($params['id']);
+		$site = Site::requirePermission($params['id'] ?? null, Acl::READ_PERMISSION);
 		
-		header("Location: ".$site->getBaseUrl());
+		// the site's front page, like "View" in the tree
+		header("Location: ".\GO::config()->host.'modules/site/index.php?site_id='.urlencode((string) $site->id));
 		exit();
 	}
 	
@@ -44,7 +45,7 @@ class SiteController extends \GO\Base\Controller\AbstractJsonController {
 			}
 		}
 		// only what the site dialog edits: not the owner, ACL or files folder
-		$editable = ['name', 'domain', 'base_path', 'language', 'ssl', 'mod_rewrite', 'mod_rewrite_base_path'];
+		$editable = ['name', 'domain', 'base_path', 'language', 'ssl', 'mod_rewrite', 'mod_rewrite_base_path', 'customFieldsJSON'];
 		if($model->isNew) {
 			$editable[] = 'module';
 		}
@@ -93,7 +94,7 @@ class SiteController extends \GO\Base\Controller\AbstractJsonController {
 				$menu = \GO\Site\Model\Menu::model()->findByPk($extractedNode['modelId']);
 					if($menu) {
 						Site::requirePermission($menu->site_id, Acl::READ_PERMISSION);
-						$response = $menu->getChildrenTree();
+						$response = $menu->getMenuChildrenTree();
 					}
 				break;
 			case 'menuitem':
@@ -129,10 +130,23 @@ class SiteController extends \GO\Base\Controller\AbstractJsonController {
 			}
 			$siteId = $this->siteIdOfNode($extractedParentNode);
 			Site::requirePermission($siteId, Acl::WRITE_PERMISSION);
+			$ancestors = $this->ancestorsOfNode($extractedParentNode);
+			$menuId = $this->menuIdOfNode($extractedParentNode);
 			foreach($sortOrder as $sortItem) {
 				$child = SiteModule::extractTreeNode((string) $sortItem);
 				if(!is_array($child) || empty($child['modelId']) || (string) $this->siteIdOfNode($child) !== (string) $siteId) {
 					throw new AccessDenied();
+				}
+				// not below itself or one of its own children
+				if(in_array($child['type'] . '_' . $child['modelId'], $ancestors, true)) {
+					throw new AccessDenied();
+				}
+				// menu items stay in their menu
+				if($child['type'] === 'menuitem') {
+					$item = MenuItem::model()->findByPk($child['modelId']);
+					if(!$item || $menuId === null || (string) $item->menu_id !== (string) $menuId) {
+						throw new AccessDenied();
+					}
 				}
 			}
 			
@@ -193,6 +207,46 @@ class SiteController extends \GO\Base\Controller\AbstractJsonController {
 			case 'menuitem':
 				$model = MenuItem::model()->findByPk($extractedNode['modelId']);
 				return $model && $model->menu ? (int) $model->menu->site_id : null;
+		}
+		return null;
+	}
+
+	/**
+	 * The parent node and its ancestors as "<type>_<id>"
+	 *
+	 * @param array $extractedNode SiteModule::extractTreeNode()
+	 * @return string[]
+	 */
+	private function ancestorsOfNode(array $extractedNode): array
+	{
+		$ids = [];
+		$class = ['content' => Content::class, 'menuitem' => MenuItem::class][$extractedNode['type']] ?? null;
+		$id = $extractedNode['modelId'] ?? null;
+		while($class && !empty($id) && !in_array($extractedNode['type'] . '_' . $id, $ids, true)) {
+			$ids[] = $extractedNode['type'] . '_' . $id;
+			$model = $class::model()->findByPk($id);
+			$id = $model ? $model->parent_id : null;
+		}
+		return $ids;
+	}
+
+	/**
+	 * The menu that the children of a menu or menu item node belong to
+	 *
+	 * @param array $extractedNode SiteModule::extractTreeNode()
+	 * @return int|null
+	 */
+	private function menuIdOfNode(array $extractedNode): ?int
+	{
+		if(empty($extractedNode['modelId'])) {
+			return null;
+		}
+		if($extractedNode['type'] === 'menu') {
+			return (int) $extractedNode['modelId'];
+		}
+		if($extractedNode['type'] === 'menuitem') {
+			$item = MenuItem::model()->findByPk($extractedNode['modelId']);
+			return $item ? (int) $item->menu_id : null;
 		}
 		return null;
 	}

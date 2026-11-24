@@ -101,14 +101,9 @@ class ContentController extends \GO\Base\Controller\AbstractJsonController {
 		// before setAttributes(): the user must have access to the item's current site
 		Site::requirePermission($model->site_id, $isPost ? Acl::WRITE_PERMISSION : Acl::READ_PERMISSION);
 			
-		unset($params['id']); // unset because it doesn't need to be updated
-				
-		$model->setAttributes($this->_editableParams($params));
-		
-		
-		if($isPost){	
-			
-			$this->_checkSiteAndParent($model, Acl::WRITE_PERMISSION);
+		if($isPost){
+			// the site and the parent change only by sorting in the tree (site/site/treeSort)
+			$model->setAttributes($this->_editableParams($params));
 			$model->save();
 			echo $this->renderSubmit($model);
 		}  else {
@@ -122,6 +117,8 @@ class ContentController extends \GO\Base\Controller\AbstractJsonController {
 	
 	protected function actionCreate($params) {
 		$model = new \GO\Site\Model\Content();
+		// site and parent first: the slug is built from the parent's
+		$model->setAttributes(array_intersect_key($params, array_flip(['site_id', 'parent_id'])));
 		$model->setAttributes($this->_editableParams($params));
 		$isPost = \GO\Base\Util\Http::isPostRequest();
 		$this->_checkSiteAndParent($model, $isPost ? Acl::WRITE_PERMISSION : Acl::READ_PERMISSION);
@@ -153,15 +150,15 @@ class ContentController extends \GO\Base\Controller\AbstractJsonController {
 	}
 	
 	/**
-	 * Posted attributes without the ones the server sets (author, times)
+	 * The posted attributes a user may change (not the site, parent, author or times)
 	 *
 	 * @param array $params
 	 * @return array
 	 */
 	private function _editableParams(array $params): array
 	{
-		unset($params['user_id'], $params['ctime'], $params['mtime']);
-		return $params;
+		return array_intersect_key($params, array_flip(['title', 'baseslug', 'content', 'status', 'template',
+			'default_child_template', 'meta_title', 'meta_keywords', 'meta_description', 'customFieldsJSON']));
 	}
 
 	/**

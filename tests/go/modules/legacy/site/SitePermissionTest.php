@@ -6,6 +6,7 @@ use GO\Base\Model\Acl;
 use GO\Site\Controller\ContentController;
 use GO\Site\Controller\MenuController;
 use GO\Site\Controller\MenuItemController;
+use GO\Site\Controller\MultifileController;
 use GO\Site\Controller\SiteController;
 use GO\Site\Model\Content;
 use GO\Site\Model\Menu;
@@ -29,6 +30,7 @@ class SitePermissionTest extends TestCase
 
 	private static User $reader;
 	private static User $writer;
+	private static User $editor;
 	private static User $outsider;
 	private static Site $site;
 	private static Site $otherSite;
@@ -36,6 +38,9 @@ class SitePermissionTest extends TestCase
 	private static Content $otherContent;
 	private static Menu $menu;
 	private static MenuItem $menuItem;
+	private static Menu $secondMenu;
+	private static MenuItem $secondMenuItem;
+	private static Menu $otherMenu;
 
 	private $authState;
 	private bool $ignoreAcl;
@@ -50,23 +55,23 @@ class SitePermissionTest extends TestCase
 			$ignore = \GO::setIgnoreAclPermissions();
 			self::$reader = self::createUser('sitereader');
 			self::$writer = self::createUser('sitewriter');
+			self::$editor = self::createUser('siteeditor');
 			self::$outsider = self::createUser('siteoutsider');
 
 			self::$site = self::createSite('Site permission test');
 			self::$site->acl->addGroup(self::$reader->getPersonalGroup()->id, Acl::READ_PERMISSION);
 			self::$site->acl->addGroup(self::$writer->getPersonalGroup()->id, Acl::DELETE_PERMISSION);
+			self::$site->acl->addGroup(self::$editor->getPersonalGroup()->id, Acl::WRITE_PERMISSION);
 			self::$otherSite = self::createSite('Other site');
 
 			self::$content = self::createContent(self::$site, 'home');
 			self::$otherContent = self::createContent(self::$otherSite, 'other');
 
-			self::$menu = new Menu();
-			self::$menu->setAttributes(['site_id' => self::$site->id, 'label' => 'Main', 'menu_slug' => 'main']);
-			self::assertTrue(self::$menu->save(), var_export(self::$menu->getValidationErrors(), true));
-
-			self::$menuItem = new MenuItem();
-			self::$menuItem->setAttributes(['menu_id' => self::$menu->id, 'label' => 'Home', 'content_id' => self::$content->id]);
-			self::assertTrue(self::$menuItem->save(), var_export(self::$menuItem->getValidationErrors(), true));
+			self::$menu = self::createMenu(self::$site, 'Main');
+			self::$menuItem = self::createMenuItem(self::$menu, 'Home', self::$content->id);
+			self::$secondMenu = self::createMenu(self::$site, 'Footer');
+			self::$secondMenuItem = self::createMenuItem(self::$secondMenu, 'Contact');
+			self::$otherMenu = self::createMenu(self::$otherSite, 'Other');
 			\GO::setIgnoreAclPermissions($ignore);
 		} catch (\Throwable $e) {
 			self::tearDownAfterClass();
@@ -79,15 +84,23 @@ class SitePermissionTest extends TestCase
 		go()->setAuthState(new TemporaryState(User::ID_SUPER_ADMIN));
 		\GO::session()->setCurrentUser(User::ID_SUPER_ADMIN);
 		\GO::setIgnoreAclPermissions(true);
-		foreach (['site_menu_item', 'site_menu', 'site_content'] as $table) {
-			go()->getDbConnection()->exec('DELETE FROM `' . $table . '`');
+		// only the rows of this test's sites: the tables may hold other fixtures
+		$siteIds = array_map(fn(Site $site) => $site->id, array_filter([self::$site ?? null, self::$otherSite ?? null], fn($site) => $site && !$site->isNew));
+		if ($siteIds) {
+			$db = go()->getDbConnection();
+			$menuIds = $db->selectSingleValue('id')->from('site_menu')->where(['site_id' => $siteIds])->all();
+			if ($menuIds) {
+				$db->delete('site_menu_item', ['menu_id' => $menuIds])->execute();
+				$db->delete('site_menu', ['id' => $menuIds])->execute();
+			}
+			$db->delete('site_content', ['site_id' => $siteIds])->execute();
 		}
 		foreach ([self::$site ?? null, self::$otherSite ?? null] as $site) {
 			if ($site && !$site->isNew) {
 				$site->delete(true);
 			}
 		}
-		$users = array_filter([self::$reader ?? null, self::$writer ?? null, self::$outsider ?? null]);
+		$users = array_filter([self::$reader ?? null, self::$writer ?? null, self::$editor ?? null, self::$outsider ?? null]);
 		if ($users) {
 			User::delete(['id' => array_map(fn(User $u) => $u->id, $users)]);
 		}
@@ -146,6 +159,22 @@ class SitePermissionTest extends TestCase
 		$content->setAttributes(['site_id' => $site->id, 'title' => ucfirst($slug), 'slug' => $slug, 'content' => 'Text']);
 		self::assertTrue($content->save(), var_export($content->getValidationErrors(), true));
 		return $content;
+	}
+
+	private static function createMenu(Site $site, string $label): Menu
+	{
+		$menu = new Menu();
+		$menu->setAttributes(['site_id' => $site->id, 'label' => $label, 'menu_slug' => strtolower($label)]);
+		self::assertTrue($menu->save(), var_export($menu->getValidationErrors(), true));
+		return $menu;
+	}
+
+	private static function createMenuItem(Menu $menu, string $label, ?int $contentId = null): MenuItem
+	{
+		$item = new MenuItem();
+		$item->setAttributes(['menu_id' => $menu->id, 'label' => $label, 'content_id' => $contentId]);
+		self::assertTrue($item->save(), var_export($item->getValidationErrors(), true));
+		return $item;
 	}
 
 	/**
@@ -225,10 +254,118 @@ class SitePermissionTest extends TestCase
 		$this->runAction(new ContentController(), 'actionDelete', [['id' => self::$content->id]], self::$reader, true);
 	}
 
-	public function testWriterCannotMoveContentBelowAnotherSite(): void
+	public function testUpdateDoesNotMoveContent(): void
+	{
+		// the site and the parent change only by sorting in the tree
+		$this->runAction(new ContentController(), 'actionUpdate', [['id' => self::$content->id, 'parent_id' => self::$otherContent->id, 'site_id' => self::$otherSite->id]], self::$writer, true);
+		$row = go()->getDbConnection()->select('parent_id, site_id')->from('site_content')->where(['id' => self::$content->id])->single();
+		$this->assertNull($row['parent_id']);
+		$this->assertEquals(self::$site->id, $row['site_id']);
+	}
+
+	public function testWriterCannotCreateContentBelowAnotherSite(): void
 	{
 		$this->expectException(AccessDenied::class);
-		$this->runAction(new ContentController(), 'actionUpdate', [['id' => self::$content->id, 'parent_id' => self::$otherContent->id]], self::$writer, true);
+		$this->runAction(new ContentController(), 'actionCreate', [['site_id' => self::$site->id, 'parent_id' => self::$otherContent->id, 'title' => 'New', 'baseslug' => 'new']], self::$writer, true);
+	}
+
+	public function testCreateCannotOverwriteAnotherSitesRecords(): void
+	{
+		// isNew and id are writable properties of a legacy model: a create must not turn into an update
+		// (below a parent with a default child template: the test has no site module config for the default)
+		\GO::$ignoreAclPermissions = true;
+		go()->getDbConnection()->update('site_content', ['default_child_template' => 'page'], ['id' => self::$content->id])->execute();
+		\GO::$ignoreAclPermissions = false;
+		$this->runAction(new ContentController(), 'actionCreate', [['site_id' => self::$site->id, 'parent_id' => self::$content->id, 'isNew' => 0, 'id' => self::$otherContent->id, 'title' => 'Hijacked', 'baseslug' => 'hijacked']], self::$writer, true);
+		$this->assertSame('Other', $this->contentTitle(self::$otherContent->id));
+
+		$_POST = ['isNew' => 0, 'id' => self::$otherMenu->id, 'site_id' => self::$site->id, 'label' => 'Hijacked'];
+		try {
+			$this->runAction(new MenuController(), 'actionCreate', [self::$site->id], self::$writer, true);
+		} finally {
+			$_POST = [];
+		}
+		$row = go()->getDbConnection()->select('label, site_id')->from('site_menu')->where(['id' => self::$otherMenu->id])->single();
+		$this->assertSame('Other', $row['label']);
+		$this->assertEquals(self::$otherSite->id, $row['site_id']);
+
+		\GO::$ignoreAclPermissions = true;
+		$db = go()->getDbConnection();
+		$db->delete('site_content', ['site_id' => self::$site->id, 'title' => 'Hijacked'])->execute();
+		$db->update('site_content', ['default_child_template' => null], ['id' => self::$content->id])->execute();
+		$db->delete('site_menu', ['site_id' => self::$site->id, 'label' => 'Hijacked'])->execute();
+	}
+
+	public function testListsDoNotDelete(): void
+	{
+		// DbStore deletes the records of delete_keys before it lists them
+		$_REQUEST = ['delete_keys' => json_encode([self::$content->id])];
+		try {
+			$this->runAction(new MenuController(), 'actionContentStore', [self::$menu->id], self::$reader);
+			$_REQUEST = ['delete_keys' => json_encode([self::$secondMenuItem->id])];
+			$this->runAction(new MenuItemController(), 'actionParentStore', [0, self::$secondMenu->id], self::$reader);
+		} finally {
+			$_REQUEST = [];
+		}
+		$db = go()->getDbConnection();
+		$this->assertNotEmpty($db->selectSingleValue('id')->from('site_content')->where(['id' => self::$content->id])->single());
+		$this->assertNotEmpty($db->selectSingleValue('id')->from('site_menu_item')->where(['id' => self::$secondMenuItem->id])->single());
+	}
+
+	public function testEditorCanChangeButNotDelete(): void
+	{
+		$this->runAction(new ContentController(), 'actionUpdate', [['id' => self::$content->id, 'title' => 'Edited']], self::$editor, true);
+		$this->assertSame('Edited', $this->contentTitle(self::$content->id));
+		\GO::$ignoreAclPermissions = true;
+		go()->getDbConnection()->update('site_content', ['title' => 'Home'], ['id' => self::$content->id])->execute();
+		\GO::$ignoreAclPermissions = false;
+
+		foreach ([
+			[new ContentController(), 'actionDelete', [['id' => self::$content->id]]],
+			[new MenuController(), 'actionDelete', [self::$menu->id, self::$site->id]],
+			[new MenuItemController(), 'actionDelete', [self::$menuItem->id, self::$menu->id]]
+		] as [$controller, $action, $args]) {
+			try {
+				$this->runAction($controller, $action, $args, self::$editor, true);
+				$this->fail(get_class($controller) . '::' . $action . ' needs delete permission');
+			} catch (AccessDenied $e) {
+			}
+		}
+		$db = go()->getDbConnection();
+		$this->assertNotEmpty($db->selectSingleValue('id')->from('site_content')->where(['id' => self::$content->id])->single());
+		$this->assertNotEmpty($db->selectSingleValue('id')->from('site_menu')->where(['id' => self::$menu->id])->single());
+		$this->assertNotEmpty($db->selectSingleValue('id')->from('site_menu_item')->where(['id' => self::$menuItem->id])->single());
+	}
+
+	public function testSortKeepsMenuItemsInTheirMenu(): void
+	{
+		$this->expectException(AccessDenied::class);
+		$this->runAction(new SiteController(), 'actionTreeSort', [json_encode([self::$site->id . '_menuitem_' . self::$secondMenuItem->id]), self::$site->id . '_menuitem_' . self::$menuItem->id], self::$writer, true);
+	}
+
+	public function testSortCannotMoveContentBelowItself(): void
+	{
+		\GO::$ignoreAclPermissions = true;
+		$child = new Content();
+		$child->setAttributes(['site_id' => self::$site->id, 'parent_id' => self::$content->id, 'title' => 'Child', 'slug' => 'home/child', 'content' => 'Text']);
+		$this->assertTrue($child->save());
+		\GO::$ignoreAclPermissions = false;
+
+		try {
+			$this->runAction(new SiteController(), 'actionTreeSort', [json_encode([self::$site->id . '_content_' . self::$content->id]), self::$site->id . '_content_' . $child->id], self::$writer, true);
+			$this->fail('Content may not be moved below its own child');
+		} catch (AccessDenied $e) {
+			$this->assertNull(go()->getDbConnection()->selectSingleValue('parent_id')->from('site_content')->where(['id' => self::$content->id])->single());
+		} finally {
+			\GO::$ignoreAclPermissions = true;
+			go()->getDbConnection()->delete('site_content', ['id' => $child->id])->execute();
+		}
+	}
+
+	public function testMultifileChangesNeedManagePermission(): void
+	{
+		$this->expectException(AccessDenied::class);
+		$this->runAction(new MultifileController(), 'actionSaveSort', [['sort' => json_encode([])]], self::$writer, true);
 	}
 
 	public function testReaderCannotSortTheTree(): void

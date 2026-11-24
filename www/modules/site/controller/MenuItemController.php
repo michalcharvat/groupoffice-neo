@@ -48,7 +48,8 @@ class MenuItemController extends \GO\Base\Controller\AbstractJsonController {
 		$findCriteria->addCondition('id', $id,'<>');
 		$findParams = \GO\Base\Db\FindParams::newInstance()->criteria($findCriteria);
 		
-		$store = new \GO\Base\Data\DbStore('GO\Site\Model\MenuItem', new \GO\Base\Data\ColumnModel('GO\Site\Model\MenuItem'), $_REQUEST,$findParams);
+		// without delete_keys: DbStore deletes those records before it lists
+		$store = new \GO\Base\Data\DbStore('GO\Site\Model\MenuItem', new \GO\Base\Data\ColumnModel('GO\Site\Model\MenuItem'), Site::listParams($_REQUEST),$findParams);
 
 		// nosemgrep
 		echo $this->renderStore($store);
@@ -83,9 +84,12 @@ class MenuItemController extends \GO\Base\Controller\AbstractJsonController {
 		$model = $this->_loadModel($menu_id);
 		
 		if(\GO\Base\Util\Http::isPostRequest()){
-			$model->setAttributes($_POST);
+			$model->setAttributes($this->_editableParams($_POST));
 			$this->_checkItem($model, Acl::WRITE_PERMISSION);
-			$model->save();
+			if(!$model->save()) {
+				echo $this->renderSubmit($model);
+				return;
+			}
 		} else {
 			$this->_checkItem($model, Acl::READ_PERMISSION);
 		}
@@ -144,7 +148,10 @@ class MenuItemController extends \GO\Base\Controller\AbstractJsonController {
 // * @property String $target The target for the url in this menu item
 //				
 //			$model->setAttributes($_POST);
-			$model->save();
+			if(!$model->save()) {
+				echo $this->renderSubmit($model);
+				return;
+			}
 		}
 		
 		echo $this->renderJson(array('success'=>true));
@@ -167,10 +174,13 @@ class MenuItemController extends \GO\Base\Controller\AbstractJsonController {
 			$remoteComboFields['content_id']=var_export($model->content->title, true);
 		
 		if($isPost){
-			$model->setAttributes($_POST);
-			// and in the menu, parent and content it may have been moved to
+			// the menu of an item doesn't change; its new parent and content are checked
+			$model->setAttributes($this->_editableParams($_POST));
 			$this->_checkItem($model, Acl::WRITE_PERMISSION);
-			$model->save();
+			if(!$model->save()) {
+				echo $this->renderSubmit($model);
+				return;
+			}
 		}
 
 		echo $this->renderForm($model,$remoteComboFields);
@@ -191,6 +201,18 @@ class MenuItemController extends \GO\Base\Controller\AbstractJsonController {
 		echo $this->renderForm($model);
 	}
 	
+	/**
+	 * The posted attributes a user may change; the menu is the request's menu_id (create) or
+	 * the item's (update)
+	 *
+	 * @param array $params
+	 * @return array
+	 */
+	private function _editableParams(array $params): array
+	{
+		return array_intersect_key($params, array_flip(['label', 'url', 'display_children', 'parent_id', 'content_id', 'target']));
+	}
+
 	/**
 	 * Checks the level on the site of a menu
 	 *
@@ -220,14 +242,23 @@ class MenuItemController extends \GO\Base\Controller\AbstractJsonController {
 	{
 		$menu = $this->_requireMenuPermission($model->menu_id, $level);
 
-		if(!empty($model->parent_id)) {
+		// only links that are set now: an item whose content was deleted stays editable
+		$isNew = $model->isNew;
+
+		if(!empty($model->parent_id) && ($isNew || $model->isModified('parent_id'))) {
 			$parent = MenuItem::model()->findByPk($model->parent_id);
 			if(!$parent || (string) $parent->menu_id !== (string) $model->menu_id) {
 				throw new AccessDenied();
 			}
+			// not below itself or one of its own items
+			for($ancestor = $parent; $ancestor; $ancestor = empty($ancestor->parent_id) ? null : MenuItem::model()->findByPk($ancestor->parent_id)) {
+				if(!$isNew && (string) $ancestor->id === (string) $model->id) {
+					throw new AccessDenied();
+				}
+			}
 		}
 
-		if(!empty($model->content_id)) {
+		if(!empty($model->content_id) && ($isNew || $model->isModified('content_id'))) {
 			$content = Content::model()->findByPk($model->content_id);
 			if(!$content || (string) $content->site_id !== (string) $menu->site_id) {
 				throw new AccessDenied();
