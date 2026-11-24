@@ -116,16 +116,44 @@
         width      : 100%;
     }
 
-    .go-welcome {
-        align-items    : center;
-        color          : var(--fg-secondary-text);
-        display        : flex;
-        height         : 100%;
-        justify-content: center;
-    }
-
     .go-modules {
         min-height: 0;
+    }
+
+    // GO.view.Workspace (docs/neo-workspace.md): the dock in the main area
+    .go-workspace {
+        position: relative;
+
+        // nothing open: the hint where the welcome card was
+        &.go-workspace-empty::after {
+            align-items    : center;
+            color          : var(--fg-secondary-text);
+            content        : attr(data-empty-text);
+            display        : flex;
+            inset          : 0;
+            justify-content: center;
+            pointer-events : none;
+            position       : absolute;
+        }
+
+        .go-dock-host {
+            position: relative;
+        }
+
+        .go-module-host {
+            min-height: 0;
+            min-width : 0;
+        }
+
+        // narrow profile: one module at a time, switched with the top bar (no dock chrome)
+        &.go-workspace-narrow .neo-tab-header-toolbar {
+            display: none;
+        }
+    }
+
+    // the module tabs of the top bar can be dragged into the workspace
+    .go-topbar .neo-button.go-module-button[draggable="true"] {
+        cursor: grab;
     }
 
     /* card of a module that is open in its own window */
