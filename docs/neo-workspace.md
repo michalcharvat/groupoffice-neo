@@ -1,8 +1,7 @@
 # neo workspaces (design, 2026-11-24)
 
-Status: design agreed with the owner in chat, reviewed by Codex (2026-11-24), not implemented.
-Implementation starts after the cards that change `apps/go/view/MainView.mjs`
-(`core-runs-without-extjs-and-goui`, `6-8-style-app-launcher`).
+Status: design agreed with the owner in chat, reviewed by Codex (2026-11-24). Phase 1 implemented
+(2026-11-24, see "Phase 1: as built"); phases 2 and 3 open.
 
 ## Goal
 
@@ -161,6 +160,65 @@ item, so those are not repeated elsewhere.
 3. **Advanced:** tear-out of single panels instead of the module popout, auto-hide at edges, lock,
    export/import as JSON, a module more than once in one window.
 
+## Phase 1: as built (2026-11-24)
+
+Where it lives:
+
+| Part | File |
+|---|---|
+| Entity, validation, default workspace | `go/core/model/Workspace.php`, `go/core/model/WorkspaceLayout.php` (mirror of neo's document validator) |
+| JMAP | `go/core/controller/Workspace.php`; `User.defaultWorkspaceId` (read-only) |
+| Tests | `tests/go/core/controller/WorkspaceTest.php` (+ `fixtures/workspace-ensure-default.php`, a child process for the concurrent first open) |
+| Dock wrapper | `views/neo/src/view/Workspace.mjs` (`GO.view.Workspace`) |
+| Main area, profiles, switcher | `views/neo/apps/go/view/MainView.mjs` |
+| Write queue | `views/neo/src/workspace/SaveQueue.mjs` |
+| Window binding | `views/neo/src/windowStorage.mjs` + main-thread addon `src/main/addon/WindowStorage.mjs` (`sessionStorage`) |
+| Drag from the top bar | main-thread addon `src/main/addon/DockDrag.mjs` (native drag and drop, custom DOM events to the App worker) |
+
+How it works:
+
+- A panel is a module view in a host container (`go-module-host`); the panel id is the dock item id
+  (`p<time><random>`). MainView owns the hosts, the dock keeps them alive through `getPreservedItemIds()`
+  and shows them through `resolvePane()`. One panel per module per workspace (phase 3 lifts that).
+- The focused panel is the last one clicked (pane or its tab). The address follows it with
+  `replaceRoute` (`<module>/<route>`); a route change inside a panel is saved as that panel's route.
+- Window binding precedence: `#ws/<id>` > the window's `sessionStorage` (`go-workspace-id`) > the user's
+  default. `#ws/<id>` loads the workspace, then the address moves on to its focused panel.
+- Profile from a `ResizeObserver` on MainView: ≤ 576px narrow, < 1200px medium, otherwise wide. Narrow
+  shows the panels as one tab group with the dock header hidden (CSS `go-workspace-narrow`), the top bar
+  switches modules, nothing is saved; widening reloads the workspace from the server plus the module the
+  user switched to.
+- Saving: every committed dock change (and a panel's route) is queued; 1.5 s debounce per workspace and
+  profile; `Workspace/set` with `ifInState` and a patch of `panels` plus `layouts/<profile>`. On
+  `stateMismatch` the queue reads `Workspace/changes`: when this workspace didn't change it only moves on to
+  the new state, otherwise it re-reads the workspace, merges the panels (theirs, minus the ones we closed,
+  plus ours) and retries; the layout of the profile is last write wins (up to 5 attempts).
+- Another window's save arrives as a `Workspace` state change: a window that shows the workspace reloads
+  it when the panels or its own profile's layout changed (with the notice "This workspace was changed in
+  another window."), otherwise it only takes the new base.
+- Switcher (top bar, icon `dashboard`, hidden when narrow): the workspaces, New (name prompt), Rename,
+  Delete (confirm; the last one can't be deleted, the server moves the default to the next one).
+
+Deviations from the design above:
+
+- `ifInState` is compared with the global `Workspace` state (JMAP has no per-entity state), so any save
+  of another workspace of the user is a mismatch too; `Workspace/changes` tells the two apart (above).
+- `defaultWorkspaceId` is read-only for the client and has no foreign key (a dangling id falls back to
+  the first workspace); choosing a default in the UI is phase 2.
+- The server validates only a profile layout that changed against the panels; a stale reference in
+  another profile is reconciled by the client when that profile is shown ("Reconciling profiles").
+  Module access is checked for new or changed panels only, and the client drops panels of modules the
+  user can no longer open.
+- PHP turns `{}` into `[]` on the JSON round trip; the client normalizes the document
+  (`normalizeDocument()`).
+- The maximized panel is not kept in `sessionStorage`: a reload restores the layout, not the maximize.
+  The layout is captured with `getDocument()` (no tear-out in phase 1, so no `getPerspectiveDocument()`).
+- The dock's maximize button shows when the pointer is over the group header (neo's contextual actions);
+  Esc restores.
+- The launcher's Shift+click "open beside" is left for phase 2.
+- Limits confirmed: 256 KB for `panels` + `layouts` + saved copies, 30 panels, 200 nodes, depth 16,
+  route 1024 characters, item title 190.
+
 ## Decisions taken (owner, 2026-11-24)
 
 - Workspaces are generic, several per user, not one fixed layout.
@@ -173,4 +231,4 @@ item, so those are not repeated elsewhere.
 
 ## Open
 
-- Limits for validation (size, panel count) to confirm in phase 1.
+- Nothing for phase 1; see the phases above.
