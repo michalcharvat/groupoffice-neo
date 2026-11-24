@@ -13,8 +13,34 @@ GroupOffice release. First done on 2026-11-24 (merge of 26.0.62).
    (`git ls-tree origin/master www/views/goui/goui www/views/goui/groupoffice-core`). Don't stage the checkouts of the main checkout, which may be on
    other commits. After the merge check `git ls-files -s www/views/goui/goui www/views/goui/groupoffice-core`.
 5. Resolve the conflicts (hot spots below), commit the merge with a message that lists them.
+   If the merge moved a submodule pointer, refresh neo's copies of GOUI (next section) in a separate commit.
 6. Build and test (see Checks), then hand the branch to the coordinator. Never push to `origin`; only the
    coordinator pushes to `neo`.
+
+## Refreshing neo's copies of GOUI
+
+neo builds and runs without `www/views/goui`. It keeps two copies from the GOUI submodules, each with the
+commit it was copied from:
+
+| Copy in `www/views/neo/resources` | Source | Commit noted in |
+|---|---|---|
+| `scss/go/goui-theme/_theme.scss` (GO tokens `--fg-main`, `--bg-low`, ..., light and dark) | `groupoffice-core/style/_theme.scss` | its header comment |
+| `fonts/MaterialSymbolsOutlined.woff2` (icon font) | `goui/resources/iconfont/MaterialSymbolsOutlined.woff2` | `fonts/README.md` |
+
+After a merge that changed `www/views/goui/goui` or `www/views/goui/groupoffice-core` (with both submodules
+checked out at the new pointers):
+
+1. Compare: `tail -n +5 www/views/neo/resources/scss/go/goui-theme/_theme.scss | diff -
+   www/views/goui/groupoffice-core/style/_theme.scss` (the copy has a 4-line header) and `cmp
+   www/views/neo/resources/fonts/MaterialSymbolsOutlined.woff2 www/views/goui/goui/resources/iconfont/MaterialSymbolsOutlined.woff2`.
+   What upstream changed: `git -C www/views/goui/groupoffice-core diff <noted commit> HEAD -- style/_theme.scss`.
+2. If they differ, copy the file again (keep the header) and write the new commit (`git ls-tree HEAD
+   www/views/goui/groupoffice-core www/views/goui/goui`) into the header or `fonts/README.md`. A new or renamed
+   token may need a change in neo's SCSS that uses it.
+3. `npm run build-themes` and `npm run audit-styles` in `www/views/neo`, then a browser check of icons and dark mode.
+
+Don't point neo's SCSS back into `www/views/goui`: the submodules go when the classic client goes
+(`docs/neo-switch.md` section 8).
 
 ## Conflict hot spots
 
