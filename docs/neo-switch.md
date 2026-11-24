@@ -204,7 +204,7 @@ no longer reads GOUI (own copies of the tokens and the iconfont since 2026-11-24
 A checkout without `www/views/Extjs3`, `www/views/goui` and every module's `views/extjs3` and
 `views/goui` boots, installs, upgrades, logs in and runs the neo client and the standalone pages
 (checked on a copy of the tree with those folders removed, business modules included, section
-"Checks" below). `build/build.sh --webclient=neo` builds such a package (next section).
+"Checks" below). `build/build.sh --test --webclient=neo` builds such a package (next section).
 
 | Removable folder | What replaced it |
 |---|---|
@@ -244,31 +244,36 @@ multi_instance and OAuth 2 client pages (same `Page::render()`).
 `scripts/strip-classic.sh` on the assembled package (after the pro and business modules are
 encoded into it, before the npm build) and names it `groupoffice-<version>-neo`
 (`deploy/build/<major>/<distro>-neo/`). The script can also run on its own on any assembled
-`www` folder; `--check-only` runs the gate alone.
+`www` folder; `--check-only` runs the gate alone. On its own it allows nothing by default
+(build.sh passes `NEO_ALLOW_WITHOUT_NEO`), and it refuses a tree with symlinked module or view
+folders (a development checkout with mounted module repositories: it would delete through the
+link), so strip a copy made with `cp -rL`.
 
 - **Parity gate** first: a module (`go/modules/<package>/<name>` or `modules/<name>`) with a
   classic UI (`views/extjs3`, `views/Extjs3`, `views/goui` or a non-empty `scripts.txt` in its
-  folder, the legacy modules) but without `views/neo` fails the build with the list. A module
+  folder with at least one non-blank line, the legacy modules) but without `views/neo` fails the build with the list. A module
   may still ship when it is named in `--allow-without-neo` (`business/finance`, `projects2`) or
   in `NEO_ALLOW_WITHOUT_NEO` (build.sh default, overridable in `config.sh`): its classic files
   stay but nobody can open them. Default: `reminders` (section 1). In this repository every
   other module has neo; the pro modules (`modules/<name>`), business and the external packages
   (amd, sf, nuw) don't yet, so a release package with them fails until they are ported or
   allowed.
-- **Removes**: `views/Extjs3`, `views/goui`, `views/Layout.php`; of every module with
+- **Removes**: `views/Extjs3`, `views/goui`, `views/Layout.php`, `go/core/views/extjs3` (the
+  core's ExtJS code); of every module with
   `views/neo` its `views/extjs3`, `views/Extjs3`, `views/goui` and, for legacy modules, the
   `scripts.txt` and `*.js` in the module folder (email, files, sieve, smime, summary, sync,
   customcss); the root `package.json`, `package-lock.json`, `node_modules` (GOUI workspace;
   its `pdfjs-dist` is only read by the classic `modules/files/FilePanel.js`). Kept: module
   `themes/` (legacy icons, guarded), `scripts.inc.php` (only read by the classic loader),
-  `go/core/webclient/Extjs3.php` (its code only runs with classic).
+  `go/core/webclient/Extjs3.php` (the class stays in use: neo and `Page` call its URL helpers
+  such as `getRelativeUrl()`; only its asset loading needs the classic files and is guarded).
 - `install-npm.sh` then builds neo only, and build.sh skips the `npm prune` of the root.
 - Only with `--test`: published, the Debian package and the Docker image (which downloads
   `groupoffice-<version>.tar.gz`) would replace the classic release. Publishing a neo-only
   release needs a decision on package names first.
 
 Runtime references to the removed paths in such a package (grep of the built tarball,
-2026-11-24): only the guarded ones listed above, `Extjs3.php` (classic only), comments, the Dev
+2026-11-24): only the guarded ones listed above, `Extjs3.php` (classic asset loading), comments, the Dev
 module's status data in `src/dev/menu.mjs` and its `LanguageScanner` (guarded).
 
 Checks (2026-11-24, branch `task/20261124-204636-neo-ui-build-without-the-classic-client`),

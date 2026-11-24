@@ -9,14 +9,18 @@
 #                        classic files stay in the package, but no user can reach them. A module
 #                        is named by its path below go/modules ("business/finance") or by its
 #                        folder name below modules ("projects2"). May be given more than once.
+#                        Nothing is allowed by default (build.sh passes its NEO_ALLOW_WITHOUT_NEO).
 #   --check-only         Run the parity gate only, remove nothing.
+#
+# Refuses a package with symlinked module folders (a development checkout with mounted module
+# repositories): removing through the link would delete files of the other repository.
 #
 # Parity gate: fails, listing the modules, when a module in the package has a classic UI
 # (views/extjs3, views/Extjs3, views/goui or a non-empty scripts.txt in its folder) but no
 # views/neo, unless it is allowed with --allow-without-neo.
 #
 # Removes:
-#   - views/Extjs3, views/goui and views/Layout.php (the classic client)
+#   - views/Extjs3, views/goui, views/Layout.php and go/core/views/extjs3 (the classic client)
 #   - of every module with views/neo: views/extjs3, views/Extjs3, views/goui and, for legacy
 #     modules, the classic scripts in the module folder (scripts.txt and *.js)
 #   - package.json, package-lock.json and node_modules of the package root (the npm workspace
@@ -36,7 +40,13 @@ for arg in "$@"; do
 			;;
 		--check-only) CHECK_ONLY=true ;;
 		-*) echo "Unknown argument: $arg" >&2; exit 1 ;;
-		*) PACKAGE_DIR="$arg" ;;
+		*)
+			if [[ -n "$PACKAGE_DIR" ]]; then
+				echo "Only one package dir, got $PACKAGE_DIR and $arg" >&2
+				exit 1
+			fi
+			PACKAGE_DIR="$arg"
+			;;
 	esac
 done
 
@@ -60,6 +70,15 @@ module_dirs() {
 		[[ -d "$dir" ]] && echo "${dir%/}"
 	done
 }
+
+links="$(find "$PACKAGE_DIR/go" "$PACKAGE_DIR/modules" "$PACKAGE_DIR/views" -maxdepth 4 -type l \
+	\( -path '*/go/modules/*' -o -path '*/modules/*' -o -path '*/go/core/*' -o -path '*/views/*' \) \
+	-not -path '*/node_modules/*' -not -path '*/vendor/*' 2>/dev/null || true)"
+if [[ "$CHECK_ONLY" == false && -n "$links" ]]; then
+	echo "ERROR: symlinks in the package; strip a copy without links (cp -rL) instead:" >&2
+	echo "$links" >&2
+	exit 1
+fi
 
 # "business/finance" for go/modules/business/finance, "projects2" for modules/projects2
 module_name() {
@@ -131,14 +150,16 @@ fi
 
 echo "Removing the classic client from $PACKAGE_DIR"
 
-rm -rf "$PACKAGE_DIR/views/Extjs3" "$PACKAGE_DIR/views/goui" "$PACKAGE_DIR/views/Layout.php"
+rm -rf "$PACKAGE_DIR/views/Extjs3" "$PACKAGE_DIR/views/goui" "$PACKAGE_DIR/views/Layout.php" \
+	"$PACKAGE_DIR/go/core/views/extjs3"
 rm -rf "$PACKAGE_DIR/package.json" "$PACKAGE_DIR/package-lock.json" "$PACKAGE_DIR/node_modules"
 
 for dir in ${with_neo[@]+"${with_neo[@]}"}; do
 	rm -rf "$dir/views/extjs3" "$dir/views/Extjs3" "$dir/views/goui"
 	if [[ -f "$dir/scripts.txt" ]]; then
-		rm -f "$dir/scripts.txt"
+		# scripts.txt last: it marks the folder as legacy for a rerun after an interruption
 		find "$dir" -maxdepth 1 -type f -name '*.js' -delete
+		rm -f "$dir/scripts.txt"
 	fi
 done
 
