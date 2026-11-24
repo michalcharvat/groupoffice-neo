@@ -59,3 +59,11 @@
         }
     }
 }
+
+// Links in rendered content (announcements, notes, comments, …) use the theme's link colour
+// like GOUI (_normalize.scss: $colorMain = --fg-main, which dark mode changes); the browser's
+// blue is hard to read on a dark background. :where() keeps the specificity at 0, so a
+// component's own link colour still wins.
+:where(.neo-theme-go a:not(.neo-button)) {
+    color: var(--fg-main);
+}
