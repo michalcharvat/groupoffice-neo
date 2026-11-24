@@ -122,4 +122,8 @@ return array (
   'moduleSettings' => 'Nastavení modulů',
   'globalProperties' => 'Globální vlastnosti',
   'Global properties' => 'Globální vlastnosti',
+  'Browse files' => 'Procházet soubory',
+  'Cheat sheet' => 'Tahák',
+  'Insert file' => 'Vložit soubor',
+  'Select a content item in the tree, or add one with its menu.' => 'Vyberte položku obsahu ve stromu nebo ji přidejte z jeho nabídky.',
 );
