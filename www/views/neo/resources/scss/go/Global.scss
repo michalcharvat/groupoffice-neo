@@ -27,12 +27,13 @@
     src: url('../../../../../Extjs3/themes/Paper/fonts/Lato-Bold.woff2') format('woff2');
 }
 
-// GO icons: <i class="icon">search</i> (ligatures), see GO.component.Icon
+// GO icons: <i class="icon">search</i> (ligatures), see GO.component.Icon. The font is a copy of
+// GOUI's iconfont in views/neo/resources/fonts; the url is relative to dist/<mode>/css/theme-go/
 @font-face {
     font-family: 'Material Symbols Rounded';
     font-style: normal;
     font-weight: 400;
-    src: url('../../../../../goui/goui/resources/iconfont/MaterialSymbolsOutlined.woff2') format('woff2');
+    src: url('../../../../resources/fonts/MaterialSymbolsOutlined.woff2') format('woff2');
 }
 
 html {
