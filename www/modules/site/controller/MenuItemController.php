@@ -67,7 +67,8 @@ class MenuItemController extends \GO\Base\Controller\AbstractJsonController {
 		$model = $this->_loadModel($menu_id,$id);
 		$this->_checkItem($model, Acl::READ_PERMISSION);
 		
-		if(!empty($model->content_id))
+		// the content may have been deleted
+		if(!empty($model->content_id) && $model->content)
 			$remoteComboFields['content_id']=var_export($model->content->title, true);
 		
 		echo $this->renderForm($model,$remoteComboFields);
@@ -170,7 +171,8 @@ class MenuItemController extends \GO\Base\Controller\AbstractJsonController {
 		$isPost = \GO\Base\Util\Http::isPostRequest();
 		$this->_checkItem($model, $isPost ? Acl::WRITE_PERMISSION : Acl::READ_PERMISSION);
 		
-		if(!empty($model->content_id))
+		// the content may have been deleted
+		if(!empty($model->content_id) && $model->content)
 			$remoteComboFields['content_id']=var_export($model->content->title, true);
 		
 		if($isPost){

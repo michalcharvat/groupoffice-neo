@@ -153,8 +153,9 @@ class ContentDialog extends LegacyFormWindow {
         const params = {id: this.contentId};
 
         FIELDS.forEach(key => key in modified && (params[key] = modified[key] ?? ''));
-        // the legacy model takes its custom fields as JSON
-        'customFields' in modified && (params.customFieldsJSON = JSON.stringify(values.customFields || {}));
+        // the legacy model takes its custom fields as JSON; only the changed ones, so a save
+        // doesn't undo another user's change of another field
+        'customFields' in modified && (params.customFieldsJSON = JSON.stringify(modified.customFields || {}));
 
         Object.keys(params).length > 1 && await client.legacy('site/content/update', params);
         return {id: this.contentId}

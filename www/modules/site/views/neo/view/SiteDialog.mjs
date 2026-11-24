@@ -144,8 +144,9 @@ class SiteDialog extends LegacyFormWindow {
             }
         });
 
-        // the legacy model takes its custom fields as JSON
-        'customFields' in modified && (params.customFieldsJSON = JSON.stringify(values.customFields || {}));
+        // the legacy model takes its custom fields as JSON; only the changed ones, so a save
+        // doesn't undo another user's change of another field
+        'customFields' in modified && (params.customFieldsJSON = JSON.stringify(modified.customFields || {}));
 
         Object.keys(params).length > 1 && await client.legacy('site/site/submit', params);
 

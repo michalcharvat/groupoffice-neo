@@ -59,18 +59,21 @@ class FrontController extends \GO\Site\Components\Controller {
 		$searchString = $params['searchString'];
 		
 		
+		$searchCriteria = \GO\Base\Db\FindCriteria::newInstance()
+						->addSearchCondition('title', $searchString, false)
+						->addSearchCondition('meta_title', $searchString, false)
+						->addSearchCondition('meta_description', $searchString, false)
+						->addSearchCondition('meta_keywords', $searchString, false)
+						->addSearchCondition('content', $searchString, false);
+
+		// only the content of this site: mergeWith() puts the ORed search terms in parentheses
 		$searchParams = \GO\Base\Db\FindParams::newInstance()
 						->select('*')
 						->criteria(\GO\Base\Db\FindCriteria::newInstance()
-										->addSearchCondition('title', $searchString, false)
-										->addSearchCondition('meta_title', $searchString, false)
-										->addSearchCondition('meta_description', $searchString, false)
-										->addSearchCondition('meta_keywords', $searchString, false)
-										->addSearchCondition('content', $searchString, false)
+										->addCondition('site_id', \Site::model()->id)
+										->mergeWith($searchCriteria)
 							);
-		
-		// only the content of this site; without delete_keys: DbStore deletes those records before it lists
-		$searchParams->getCriteria()->addCondition('site_id', \Site::model()->id);
+		// without delete_keys: DbStore deletes those records before it lists
 		$columnModel = new \GO\Base\Data\ColumnModel();
 		$store = new \GO\Base\Data\DbStore('GO\Site\Model\Content',$columnModel,\GO\Site\Model\Site::listParams($params),$searchParams);
 	

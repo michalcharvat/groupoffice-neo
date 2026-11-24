@@ -367,6 +367,28 @@ class SitePermissionTest extends TestCase
 		}
 	}
 
+	public function testMenuItemOfDeletedContentStaysEditable(): void
+	{
+		\GO::$ignoreAclPermissions = true;
+		$content = self::createContent(self::$site, 'gone');
+		$item = self::createMenuItem(self::$secondMenu, 'Gone', $content->id);
+		go()->getDbConnection()->delete('site_content', ['id' => $content->id])->execute();
+		\GO::$ignoreAclPermissions = false;
+
+		try {
+			$output = $this->runAction(new MenuItemController(), 'actionLoad', [$item->id, self::$secondMenu->id], self::$writer);
+			$this->assertStringContainsString('"success":true', $output);
+
+			$_POST = ['label' => 'Renamed'];
+			$this->runAction(new MenuItemController(), 'actionUpdate', [$item->id, self::$secondMenu->id], self::$writer, true);
+			$this->assertSame('Renamed', go()->getDbConnection()->selectSingleValue('label')->from('site_menu_item')->where(['id' => $item->id])->single());
+		} finally {
+			$_POST = [];
+			\GO::$ignoreAclPermissions = true;
+			go()->getDbConnection()->delete('site_menu_item', ['id' => $item->id])->execute();
+		}
+	}
+
 	public function testMultifileChangesNeedManagePermission(): void
 	{
 		$this->expectException(AccessDenied::class);
