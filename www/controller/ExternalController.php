@@ -9,6 +9,13 @@ class ExternalController extends \GO\Base\Controller\AbstractController {
 		return array('index');
 	}
 	protected function actionIndex($params) {
+
+		// the "external" view launches a function of the classic client: without it (a build without
+		// views/Extjs3) open the webclient instead of answering with the decoded parameters
+		if(!\go\core\webclient\Webclient::classicAvailable()) {
+			header('Location: ' . \go\core\webclient\Extjs3::get()->getRelativeUrl());
+			exit();
+		}
 		
 		//$funcParams = \GO\Base\Util\Crypt::decrypt($params['f']);
 		

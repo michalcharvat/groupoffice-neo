@@ -74,6 +74,8 @@ class LanguageScanner
 			['core', 'core', $root . '/views/goui/groupoffice-core/script'],
 			['core', 'core', $root . '/views/goui/goui/script'],
 		];
+		// a build without the classic client has no views/Extjs3 or views/goui
+		$modules = array_values(array_filter($modules, fn($m) => is_dir($m[2])));
 
 		foreach (glob($root . '/go/modules/*', GLOB_ONLYDIR) as $pkgDir) {
 			$pkg = basename($pkgDir);

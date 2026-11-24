@@ -726,6 +726,10 @@ class StringHelper {
 			$rel = 'views/Extjs3/themes/' . \GO::user()->theme . '/img/emoticons/normal/' . $img;
 			if(!file_exists(\GO::config()->root_path.$rel)) {
 				$rel = 'views/Extjs3/themes/Paper/img/emoticons/normal/' . $img;
+				if(!file_exists(\GO::config()->root_path.$rel)) {
+					// a build without the classic client has no emoticon images: keep the text
+					continue;
+				}
 			}
 			
 			$imgpath = \GO::config()->host . $rel;

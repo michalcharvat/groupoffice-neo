@@ -16,11 +16,22 @@ class WebclientTest extends TestCase
 	protected function setUp(): void
 	{
 		$this->config = go()->getConfig();
+		// the resolution rules of a build with the classic client, also where it is left out
+		self::setClassicAvailable(true);
 	}
 
 	protected function tearDown(): void
 	{
 		go()->setConfig($this->config);
+		self::setClassicAvailable(null);
+	}
+
+	/**
+	 * Pretend a build with or without the classic client (null: detect again)
+	 */
+	public static function setClassicAvailable(?bool $value): void
+	{
+		(new \ReflectionProperty(Webclient::class, 'classicAvailable'))->setValue(null, $value);
 	}
 
 	private function config(array $values): void
@@ -82,6 +93,56 @@ class WebclientTest extends TestCase
 		$this->config([]);
 		$this->expectException(InvalidArguments::class);
 		(new WebclientController())->setPreference(['client' => 'extjs3']);
+	}
+
+	/**
+	 * Without views/Extjs3 and views/goui nothing may pick the classic client: its Layout.php is gone
+	 */
+	public static function withoutClassicProvider(): array
+	{
+		return [
+			'config classic' => [['webclient' => 'classic'], [], []],
+			'config extjs3 alias' => [['webclient' => 'extjs3'], [], []],
+			'query classic' => [[], ['webclient' => 'classic'], []],
+			'cookie classic' => [[], [], ['GO_WEBCLIENT' => 'classic']],
+			'oauth authorize' => [[], ['oauthAuthorize' => '1'], []],
+			'oauth consent' => [[], ['oauthConsent' => '1'], []],
+			'external url' => [[], ['r' => '', 'f' => 'eyJ9'], []],
+		];
+	}
+
+	/**
+	 * @dataProvider withoutClassicProvider
+	 */
+	public function testWithoutClassicAlwaysNeo(array $config, array $query, array $cookies): void
+	{
+		$this->config($config);
+		// the same request gets classic while the classic client is there
+		self::setClassicAvailable(true);
+		$this->assertSame('classic', Webclient::current($query, $cookies));
+
+		self::setClassicAvailable(false);
+		$this->assertSame('neo', Webclient::current($query, $cookies));
+	}
+
+	public function testNoSwitchWithoutClassic(): void
+	{
+		$this->config(['webclientSwitch' => true]);
+		self::setClassicAvailable(false);
+		$this->assertFalse(Webclient::switchAllowed());
+
+		$this->expectException(Forbidden::class);
+		(new WebclientController())->setPreference(['client' => 'classic']);
+	}
+
+	public function testClassicAvailableChecksTheClassicFolders(): void
+	{
+		self::setClassicAvailable(null);
+		$views = go()->getEnvironment()->getInstallPath() . '/views/';
+		$this->assertSame(
+			is_file($views . 'Extjs3/themes/Paper/Layout.php') && is_dir($views . 'goui'),
+			Webclient::classicAvailable()
+		);
 	}
 
 	public function testPreferenceRefusesInvalidClient(): void

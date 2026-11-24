@@ -449,9 +449,9 @@ class Module extends core\Module
 			}
 		}
 		$status = [$participant->participationStatus => 'active'];
-		require(go()->getEnvironment()->getInstallFolder() . '/views/Extjs3/themes/Paper/pageHeader.php');
+		\go\core\webclient\Page::header($title, 'go-page-invite');
 		include __DIR__.'/views/imip.php'; // use same html as email because why not
-		require(go()->getEnvironment()->getInstallFolder() . '/views/Extjs3/themes/Paper/pageFooter.php');
+		\go\core\webclient\Page::footer();
 	}
 
 	protected function beforeInstall(GoModule $model): bool

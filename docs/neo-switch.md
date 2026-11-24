@@ -14,7 +14,7 @@ UI exist, and nothing a user, an e-mail or an OAuth client links to breaks.
 |---|---|---|
 | Entry point | `index.php` → `GO\Core\Controller\AuthController::actionInit()` → `Neo::get()->render()` when `$config['webclient'] === 'neo'`, else the theme's `Layout.php` (ExtJS + GOUI bundles) | `www/controller/AuthController.php:48`, `www/go/core/webclient/Neo.php:24` |
 | Other pages that render the classic client | `views/Extjs3/Init.php` and `LoginHtml.php` include `Layout.php` directly | `www/views/Extjs3/Init.php:2`, `LoginHtml.php:2` |
-| Standalone pages | installer, version/licence screens, the RememberMe theft screen, the calendar RSVP page use the Paper `pageHeader.php`; the common `views/Layout.php` links the GOUI core stylesheet | `www/install/header.php`, `www/index.php:167`, `www/go/modules/community/calendar/Module.php:419`, `www/views/Layout.php:47` |
+| Standalone pages | installer, upgrade, maintenance / licence screens, the RememberMe theft screen, error pages, the calendar RSVP page and module pages render with `go\core\webclient\Page` and the standalone stylesheet `views/neo/dist/page.css` (since 2026-11-24, section 8); the classic Paper `pageHeader.php` / `pageFooter.php` and `externalHeader.php` are wrappers around it for code outside this repository | `www/go/core/webclient/Page.php`, `www/views/neo/resources/scss/page/page.scss` |
 | Module registration in neo | `views/neo/Index.mjs` of installed, enabled modules (`Neo::moduleFiles()`, no per-user filter; modules check `capability` / rights in the registry), plus `views/neo/style.css` and `views/neo/login.php`. neo never loads ExtJS or GOUI module scripts. The shell also always loads the prototype Dev module | `Neo.php:35`, `src/ModuleRegistry.mjs`, `apps/go/app.mjs:84` |
 | Modules without a neo UI (this checkout) | `modules/reminders` (ExtJS panel to create reminders for users), the CMS modules `site`, `defaultsite`, `manualsite`. The other folders without `views/neo` have no client UI (activesync, carddav, caldav, dav, z-push, autoconfig, googleauthenticator, postfixadmin, community/email backend, test); legacy `modules/calendar`, `tasks`, `bookmarks` are backend only | module folders |
 | Modules outside this repo | business and pro modules (fetched by `build.sh`) and customer modules (`go/modules/amd`, `sf`, `nuw`): not verified here; customer modules are ExtJS. They are why the classic client must stay reachable | `build/build.sh:158-175` |
@@ -29,7 +29,7 @@ UI exist, and nothing a user, an e-mail or an OAuth client links to breaks.
 | Caching | `views/neo/.htaccess` makes `.mjs/.js/.css/.json` revalidate (neo imports modules without version query strings); the Debian Apache config has `AllowOverride None`, so it doesn't apply there | `www/views/neo/.htaccess`, `build/debian/etc/apache2/conf-available/groupoffice.conf:52` |
 | neo runtime | `environment: 'development'`: the browser loads neo.mjs sources unbundled from `views/neo/node_modules/neo.mjs` (installed: 64 MB package, 7.4 MB `src`) | `Neo.php:236` |
 | Page load cost | `Neo::buildId()` walks every file under `views/neo/apps`, `views/neo/src` and each module's `views/neo` on every neo page load except popups (shared worker name) | `Neo.php:80-121` |
-| views/goui users | the classic client (`Extjs3::loadGoui()` loads module `views/goui/dist/Index.js`; `getCSSFile()` aggregates module CSS incl. GOUI), standalone pages (`views/Layout.php`). Since 2026-11-24 not the neo theme build: neo has its own copies of the tokens and the iconfont (section 8) | `Extjs3.php:68,426` |
+| views/goui users | the classic client only (`Extjs3::loadGoui()` loads module `views/goui/dist/Index.js`; `getCSSFile()` aggregates module CSS incl. GOUI). Since 2026-11-24 neither the neo theme build (own copies of the tokens and the iconfont) nor the standalone pages (section 8) | `Extjs3.php:68,426` |
 
 ## Decisions to approve
 
@@ -197,10 +197,51 @@ no longer reads GOUI (own copies of the tokens and the iconfont since 2026-11-24
 
 ## 8. views/goui: what can go
 
+### What a build can leave out today (2026-11-24)
+
+A checkout without `www/views/Extjs3`, `www/views/goui` and every module's `views/extjs3` and
+`views/goui` boots, installs, upgrades, logs in and runs the neo client and the standalone pages
+(checked on a copy of the tree with those folders removed, business modules included, section
+"Checks" below). The build flag that strips them is a later card.
+
+| Removable folder | What replaced it |
+|---|---|
+| `views/Extjs3` (ExtJS, Paper theme, `Layout.php`, `externalHeader.php`) | `Webclient::classicAvailable()` (the one check: `views/Extjs3/themes/Paper/Layout.php` and `views/goui` exist). Without classic `Webclient::current()` is always neo, also for `?webclient=classic`, the cookie, `$config['webclient'] = 'classic'` and the classic-only queries; `switchAllowed()` is false (no switch menu items, `core/Webclient/setPreference` refuses), `Neo::classicApps()` is empty (no launchers). Legacy FileView templates (`Default.php` = the JSON output of every `index.php?r=` controller, `Exception`, `Disabled`, `Plain`, `Reminder`) moved to `go/base/view/templates/` |
+| Paper assets neo used | copies in `views/neo/resources`: Lato woff2 (`fonts/`), `logo-white.svg`, `default-app-icon.svg` (module icon fallback of `App::downloadModuleIcon()`), `reminder.png`, `filetype/*.svg` (`index.php?r=core/thumb`), notification sounds (`sounds/`); sources in `resources/images/README.md`, `resources/fonts/README.md` |
+| `views/goui` core stylesheet of the standalone pages | `go\core\webclient\Page` (header, footer, `render()`; no database or user needed) linking `views/neo/dist/page.css`, compiled from `resources/scss/page/page.scss` (the neo theme tokens, light and `body.dark`, colour scheme of the user or the OS) by `npm run build-themes` (`buildScripts/buildPageCss.mjs`). Pages: installer and upgrade (`install/header.php`), maintenance and invalid licence (`index.php`), theft screen, `Router::printException()`, legacy error / plain pages, calendar RSVP (`pageInvite()`), multi_instance "not found", OAuth 2 client success. `Extjs3::renderPage()` is deprecated and calls `Page::render()` |
+| build | `scripts/install-npm.sh` builds neo (themes and `dist/page.css`) first and stops after it when `views/Extjs3` or `views/goui` is missing: the `www` npm workspace, the SASS themes and GOUI belong to the classic client |
+| module `views/extjs3`, `views/goui` | nothing on the server reads them except the classic client and `Extjs3::classicMainPanel()` (only called when classic is available) |
+
+Guards that stay for files of the classic client (all check that the file exists): legacy
+module icons (`go/base/Module.php`, `App::downloadModuleIcon()`), the theme's `htmleditor.css`
+for HTML mail (`go/base/mail/Message.php`, a generated file; without it the mail has no editor
+style), emoticon images (`StringHelper`, without them the text emoticon stays), the classic theme
+list (`CoreController::actionThemes()`), the Dev module's language scanner.
+`tests/go/core/webclient/PageTest.php` (`testNoNewReferencesToClassicFiles`) fails when PHP
+outside `views/` starts to name a classic path without joining that list.
+
+Not yet without classic (known limits): `?oauthAuthorize` / `?oauthConsent` (OAuth login with a
+pending authorization, the consent dialog) and `?r=&f=` external URLs render neo, which ignores
+them (neo ports are later cards); `index.php?r=external/index` (the classic `external.php`
+launcher) redirects to the webclient. Code outside this repository that requires `views/Extjs3/...` files directly
+(e.g. `themes/Paper/pageHeader.php`) breaks in such a build: use `Page`.
+
+Checks (2026-11-24, branch `task/20261124-170805-neo-ui-core-runs-without-extjs-and-goui`):
+fresh install on an empty database, license page, upgrade run as admin, neo login and main
+view as the test user (light and dark), `?webclient=classic` → neo, `classicApps` empty,
+`setPreference` refused, a blob upload and download, module icon fallback, `core/thumb`
+icons, a legacy JSON controller and a legacy error page, the RSVP page (light and dark), theft,
+maintenance and invalid-licence screens. With the folders back: `?webclient=classic` loads
+ExtJS, neo stays the default, the classic apps are listed, the standalone pages use the new
+stylesheet. Not checked: the RSVP reply (sends iMIP mail; no SMTP on the test instance), the
+multi_instance and OAuth 2 client pages (same `Page::render()`).
+
+### When the classic client is removed (later chain)
+
 | Part | Now | When the classic client is removed (later chain) |
 |---|---|---|
 | Module `views/goui` (apikeys, bookmarks, calendar, comments, davclient, history, jitsimeet, maildomains, notes, oidc, tasks) | stays: classic renders them | remove with their `package.json` and the workspace entries |
-| `views/goui` shell, esbuild setup, `dist/` | stays: classic loads the GOUI runtime, standalone pages its core stylesheet | remove after the standalone pages (installer, RSVP, theft screen, version/licence) have their own CSS; `Extjs3::loadGoui()` goes with Extjs3 |
+| `views/goui` shell, esbuild setup, `dist/` | stays: classic loads the GOUI runtime. The standalone pages no longer use it (2026-11-24) | `Extjs3::loadGoui()` goes with Extjs3 |
 | Submodules `goui`, `groupoffice-core` | stay for the classic client. neo no longer reads them (2026-11-24): it builds and runs without `views/goui`, with copies of `groupoffice-core/style/_theme.scss` (`views/neo/resources/scss/go/goui-theme/`) and `MaterialSymbolsOutlined.woff2` (`views/neo/resources/fonts/`); neo's SCSS `@use`d no `goui/style` partials. Refreshing the copies: `docs/neo-upstream-sync.md` | remove the submodules |
 | `www/package.json` workspaces | stays | removed or reduced to `pdfjs-dist`; neo is the only npm build |
 | Docs that use GOUI as the reference (`docs/neo-*.md`, Dev module statuses) | stay until parity is closed | keep as history |

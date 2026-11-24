@@ -16,8 +16,8 @@ if(Http::isAjaxRequest()){
 		echo $data['response']['exception']."\n\n";
 }else
 {
-	require("externalHeader.php");
-	echo '<h1>'.GO::t("Error").'</h1>';
+	\go\core\webclient\Page::header(GO::t("Error"));
+	echo '<section><fieldset><h1>'.GO::t("Error").'</h1>';
 	echo '<p style="color:red">'.  StringHelper::encodeHtml($data['response']['feedback']).'</p>';
 	if(App::get()->getDebugger()->enabled){
 		unset($data['response']['feedback']);
@@ -33,5 +33,6 @@ if(Http::isAjaxRequest()){
 		
 	}
 	
-	require("externalFooter.php");
+	echo '</fieldset></section>';
+	\go\core\webclient\Page::footer();
 }

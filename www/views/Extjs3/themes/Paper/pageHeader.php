@@ -1,12 +1,3 @@
 <?php
-$client = go\core\webclient\Extjs3::get();
-$client->loadExt ??= false;
-$client->bodyCls = $bodyCls ?? 'go-page';
-$client->loadGoui ??=  false;
-require($client->getBasePath().'/views/Layout.php');?>
-
-<header>
-    <div class="go-app-logo"></div>
-</header>
-
-<section>
+// Kept for code outside this repository: use go\core\webclient\Page::header(), which works without the classic client
+\go\core\webclient\Page::header($title ?? null, $bodyCls ?? '');

@@ -14,7 +14,7 @@ class FileView extends AbstractView{
 		$viewPath = GO::config()->root_path.'views/'.GO::viewName().'/';
 		
 		if(!($file = $this->findViewFile($viewName))){
-			$file = $viewPath.'/Default.php';						
+			$file = file_exists($viewPath . 'Default.php') ? $viewPath . 'Default.php' : self::templatePath() . 'Default.php';
 		}
 		
 		
@@ -68,11 +68,25 @@ class FileView extends AbstractView{
 		}elseif(($file = $viewPath.$viewName.'.php') && file_exists($file))
 		{
 			return $file;
+		}elseif(($file = self::templatePath().$viewName.'.php') && file_exists($file))
+		{
+			return $file;
 		}else
 		{			
 			return false;
 		}
 		
+	}
+
+	/**
+	 * Folder of the views every client shares (JSON output, error, plain and "disabled" pages)
+	 *
+	 * They live here and not in views/Extjs3, so legacy controllers also work in a build without
+	 * the classic client.
+	 */
+	public static function templatePath(): string
+	{
+		return __DIR__ . '/templates/';
 	}
 	
 }

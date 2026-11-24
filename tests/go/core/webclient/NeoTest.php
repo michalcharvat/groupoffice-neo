@@ -73,6 +73,7 @@ class NeoTest extends TestCase
 
 	public function testMainPanelRegistrationsAreFound(): void
 	{
+		$this->requireClassic();
 		$bookmarks = self::legacyModule('bookmarks');
 		$this->assertNotNull($bookmarks, 'bookmarks module is installed');
 		// go.Modules.register(…, {mainPanel: …}) in views/extjs3/Module.js
@@ -87,13 +88,37 @@ class NeoTest extends TestCase
 
 	public function testOnlyModulesTheUserMayReadAreListed(): void
 	{
+		$this->requireClassic();
 		$this->assertContains('bookmarks', $this->appsOf(User::ID_SUPER_ADMIN));
 		// the guard: "Everyone" has no read permission on bookmarks
 		$this->assertNotContains('bookmarks', $this->appsOf(self::$everyoneOnly->id));
 	}
 
+	/**
+	 * The classic main panels are found in the module scripts of the classic client
+	 */
+	private function requireClassic(): void
+	{
+		if (!Webclient::classicAvailable()) {
+			$this->markTestSkipped('a build without the classic client (views/Extjs3, views/goui)');
+		}
+	}
+
+	public function testNoAppsWithoutTheClassicClient(): void
+	{
+		// a build without views/Extjs3 and views/goui
+		$classic = new \ReflectionProperty(Webclient::class, 'classicAvailable');
+		$classic->setValue(null, false);
+		try {
+			$this->assertSame([], $this->appsOf(User::ID_SUPER_ADMIN));
+		} finally {
+			$classic->setValue(null, null);
+		}
+	}
+
 	public function testAppsCarryTheirEntities(): void
 	{
+		$this->requireClassic();
 		$authState = go()->getAuthState();
 		go()->setAuthState(new TemporaryState(User::ID_SUPER_ADMIN));
 		try {

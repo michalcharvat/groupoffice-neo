@@ -1,5 +1,6 @@
 #!/bin/bash
-# This script installs the NPM packages, builds SASS, the GOUI modules and the neo webclient
+# This script installs the NPM packages, builds the neo webclient and, when the classic client is
+# there, SASS and the GOUI modules
 #
 # Usage: install-npm.sh [nodev] [www dir]
 #
@@ -27,6 +28,29 @@ DIR="$(pwd)";
 
 WWW="$( cd "${1:-$DIR/www}" && pwd )"
 cd "$WWW"
+
+# The neo webclient (default client) has its own lock file and node_modules: Neo.php serves
+# views/neo/node_modules/neo.mjs and @fortawesome by path, so it can't be hoisted into the
+# www workspace. The theme build needs the dev dependencies (sass, postcss), not the GOUI
+# submodules; build.sh prunes the dev dependencies afterwards.
+echo "Building neo webclient"
+cd "$WWW/views/neo"
+if [ "$IS_DEV" == "true" ]; then
+  npm install --prefer-offline --audit=false --progress=false --fund=false
+else
+  npm ci --include=dev --prefer-offline --audit=false --progress=false --fund=false
+fi
+npm run build
+cd "$WWW";
+echo "DONE";
+
+# A build without the classic client (no views/Extjs3, views/goui; docs/neo-switch.md section 8)
+# has nothing more to build: the www workspace, the SASS themes and GOUI are the classic client's.
+if [ ! -d views/Extjs3 ] || [ ! -d views/goui ]; then
+  echo "No classic client (views/Extjs3, views/goui): skipping SASS and GOUI"
+  exit 0
+fi
+
 #npm up
 if [ "$IS_DEV" == "true" ]; then
   # Dev checkouts may have modules on other branches that aren't in the lock file yet
@@ -101,20 +125,6 @@ fi
 cd "$WWW";
 echo "DONE";
 
-# The neo webclient (default client) has its own lock file and node_modules: Neo.php serves
-# views/neo/node_modules/neo.mjs and @fortawesome by path, so it can't be hoisted into the
-# www workspace. The theme build needs the dev dependencies (sass, postcss), not the GOUI
-# submodules; build.sh prunes the dev dependencies afterwards.
-echo "Building neo webclient"
-cd "$WWW/views/neo"
-if [ "$IS_DEV" == "true" ]; then
-  npm install --prefer-offline --audit=false --progress=false --fund=false
-else
-  npm ci --include=dev --prefer-offline --audit=false --progress=false --fund=false
-fi
-npm run build
-cd "$WWW";
-echo "DONE";
 
 if [ "$IS_DEV" == "true" ]; then
   find . -name tsconfig.tsbuildinfo -delete

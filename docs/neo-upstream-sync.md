@@ -42,6 +42,12 @@ checked out at the new pointers):
 Don't point neo's SCSS back into `www/views/goui`: the submodules go when the classic client goes
 (`docs/neo-switch.md` section 8).
 
+It also keeps copies of classic Paper theme files (`views/Extjs3/themes/Paper`: Lato fonts, logo, module
+icon fallback, filetype icons, notification image and sounds; list and commit in
+`resources/images/README.md` and `resources/fonts/README.md`). After a merge that changed one of those
+originals, copy it again the same way. Don't point neo, `go\core\webclient\Page` or server code back into
+`views/Extjs3` or `views/goui`: `tests/go/core/webclient/PageTest.php` guards the PHP side.
+
 ## Conflict hot spots
 
 - `CHANGELOG.md`: always conflicts. Keep neo's unreleased lines at the top, then upstream's unreleased lines, then

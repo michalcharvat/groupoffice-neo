@@ -259,8 +259,8 @@ class CoreController extends \GO\Base\Controller\AbstractController {
 
 		GO::session()->closeWriting();
 
-		$dir = GO::config()->root_path . 'views/Extjs3/themes/Paper/img/filetype/';
-		$url = GO::config()->host . 'views/Extjs3/themes/Paper/img/filetype/';
+		// neo's copy of the classic filetype icons: also there without the classic client
+		$dir = GO::config()->root_path . 'views/neo/resources/images/filetype/';
 		// GO\Base\Fs\File rejects ".." in paths and the file is only read after checkThumbFilePermission().
 		// nosemgrep: go-path-from-request
 		$file = new \GO\Base\Fs\File(GO::config()->file_storage_path . $params['src']);
@@ -854,7 +854,7 @@ class CoreController extends \GO\Base\Controller\AbstractController {
 		$store = new \GO\Base\Data\ArrayStore();
 		
 		$view = new \GO\Base\View\Extjs3();
-		$themes = $view->getThemeNames();
+		$themes = \go\core\webclient\Webclient::classicAvailable() ? $view->getThemeNames() : [];
 		
 		foreach($themes as $theme){
 			$store->addRecord(array('theme'=>$theme, 'label'=>str_replace('Group-Office', GO::config()->product_name, $theme)));

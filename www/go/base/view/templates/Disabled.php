@@ -13,9 +13,9 @@
  */
 //require_once(\GO::config()->root_path."Group-Office.php");
 
-$this->render('externalHeader');
+\go\core\webclient\Page::header();
 
-echo \GO::t("<p>This Group-Office account has been suspended.</p><p>Please contact your account manager.</p>");
+echo '<section><fieldset>' . \GO::t("<p>This Group-Office account has been suspended.</p><p>Please contact your account manager.</p>") . '</fieldset></section>';
 
-$this->render('externalFooter');
+\go\core\webclient\Page::footer();
 

@@ -89,6 +89,11 @@ class Neo {
 	 */
 	public function classicApps(): array
 	{
+		// a build without the classic client has nothing to launch (and no scripts to scan)
+		if (!Webclient::classicAvailable()) {
+			return [];
+		}
+
 		// scanning the scripts is per installation, the ACL filter per user
 		// by module id: modules of different packages may share a name (amd/tasks, community/tasks)
 		$panels = $this->cached('neoClassicPanels', function () {
@@ -289,34 +294,11 @@ class Neo {
 			$css .= '.neo-theme-go.dark .go-brand, .neo-theme-go.dark .go-app-launcher-logo { background-image: url(' . $root . 'api/download.php?blob=' . rawurlencode($settings->logoIdDark) . ') !important; }';
 		}
 
-		$light = $this->colorVars($settings, 'Color');
-		$dark = $this->colorVars($settings, 'Dark');
+		$light = Page::colorVars($settings, 'Color');
+		$dark = Page::colorVars($settings, 'Dark');
 
 		$light && ($css .= 'html body.neo-theme-go:not(.dark) {' . $light . '}');
 		$dark && ($css .= 'html body.neo-theme-go.dark {' . $dark . '}');
-
-		return $css;
-	}
-
-	/**
-	 * Settings::printCssVars() for valid colours only (6 hex digits): a setting must never
-	 * add CSS of its own
-	 */
-	private function colorVars($settings, string $theme): string
-	{
-		$css = '';
-
-		foreach (['--fg-main' => 'primary', '--c-primary' => 'secondary', '--c-secondary' => 'tertiary', '--c-accent' => 'accent'] as $var => $type) {
-			$value = (string) $settings->{$type . $theme};
-
-			if (preg_match('/^[0-9a-f]{6}$/i', $value)) {
-				$css .= $var . ': #' . $value . ';';
-
-				if ($type === 'primary') {
-					$css .= '--fg-main-tp: rgba(' . implode(', ', array_map('hexdec', str_split($value, 2))) . ', .16);';
-				}
-			}
-		}
 
 		return $css;
 	}
