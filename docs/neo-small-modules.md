@@ -149,8 +149,10 @@ save on POST (`site/content/update`, `site/site/load`) are sent as GET.
 - The Markdown editor needs its DOM when it mounts: the content form is never hidden, an empty
   panel only shows a hint above it. Don't give a child the reference `content` either: SiteMain
   already uses it for the panel, and the panel's own `getReference()` then finds itself.
-- Neo keeps an input's `readonly` attribute when a field that started read-only becomes editable,
-  so the editor fields are not toggled read-only; Save is disabled instead.
+- The editor fields are read-only when the user can't write the site (Save is disabled too).
+  neo 14 itself does not toggle an input's `readonly` after the first render (the main thread sets
+  the property `readonly`, the DOM's is `readOnly`); `src/form/field/textReadOnly.mjs`, imported
+  by `apps/go/app.mjs`, fixes that for every text field.
 - `site/site/load` (renderForm) requires write permission: a refused load means the user can only
   read the site, and the tree, the row menus and the editor then offer only "View".
 - `files/folder/checkModelFolder` takes the entity name `Site`, not the class name.
