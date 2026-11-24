@@ -12,3 +12,9 @@ https://developers.google.com/fonts/docs/material_symbols#licensing).
 compiled `dist/<mode>/css/theme-go/Global.css` points at this folder
 (`../../../../resources/fonts/`), which is served with the rest of `views/neo`, so the build
 does not copy it. Refreshing after a GOUI update: `docs/neo-upstream-sync.md`.
+
+| `Lato-Regular.woff2`, `Lato-Bold.woff2` | `www/views/Extjs3/themes/Paper/fonts/` | `99e6af9674fd2c2ce9c4164028e51f852d612af7` (2026-11-24) |
+
+Lato is © Łukasz Dziedzic, licensed under the SIL Open Font License 1.1 (`LICENSE-Lato.txt`).
+The neo theme (`Global.scss`) and the standalone pages (`resources/scss/page/page.scss`) load it,
+so neither needs `views/Extjs3`.

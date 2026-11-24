@@ -17,6 +17,9 @@ use go\core\http\Response;
  *
  * Queries the neo client doesn't handle yet (OAuth authorize / consent, `?r=&f=` external
  * URLs) always get the classic client.
+ *
+ * A checkout without the classic client (no views/Extjs3 or views/goui, see
+ * classicAvailable()) always gets neo, whatever the URL, cookie or config ask for.
  */
 class Webclient {
 
@@ -33,6 +36,10 @@ class Webclient {
 	 */
 	public static function current(?array $query = null, ?array $cookies = null): string
 	{
+		if (!self::classicAvailable()) {
+			return self::NEO;
+		}
+
 		$query = $query ?? $_GET;
 		$cookies = $cookies ?? $_COOKIE;
 
@@ -71,10 +78,32 @@ class Webclient {
 
 	/**
 	 * Whether users may switch their browser to the other client (`$config['webclientSwitch']`, default true)
+	 *
+	 * Never without the classic client (classicAvailable()).
 	 */
 	public static function switchAllowed(): bool
 	{
-		return (go()->getConfig()['webclientSwitch'] ?? true) !== false;
+		return self::classicAvailable() && (go()->getConfig()['webclientSwitch'] ?? true) !== false;
+	}
+
+	private static ?bool $classicAvailable = null;
+
+	/**
+	 * Whether this installation ships the classic client: the ExtJS 3 views (views/Extjs3) and
+	 * the GOUI runtime it embeds (views/goui)
+	 *
+	 * A build may leave both out (docs/neo-switch.md, section 8). Without them neo is the only
+	 * client, nothing may require a file below those folders, and the classic launchers,
+	 * the client switch and the classic-only queries are off. Code that would read a file of the
+	 * classic client checks this first.
+	 */
+	public static function classicAvailable(): bool
+	{
+		if (self::$classicAvailable === null) {
+			$root = go()->getEnvironment()->getInstallPath() . '/views/';
+			self::$classicAvailable = is_file($root . 'Extjs3/themes/Paper/Layout.php') && is_dir($root . 'goui');
+		}
+		return self::$classicAvailable;
 	}
 
 	/**

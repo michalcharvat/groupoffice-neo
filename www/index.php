@@ -92,20 +92,20 @@ try {
 
         if(go()->getSettings()->databaseVersion != go()->getVersion()) {
 
-            require('views/Extjs3/externalHeader.php');
+            \go\core\webclient\Page::header(go()->t("Service unavailable"));
 
-            echo "<h1>". go()->t("Service unavailable") . "</h1>";
-            echo "<p>". go()->t("The system is not available because an update is currently being installed. Please try again later.") . "</p>";
+            echo "<section><fieldset><h1>". go()->t("Service unavailable") . "</h1>";
+            echo "<p>". go()->t("The system is not available because an update is currently being installed. Please try again later.") . "</p></fieldset></section>";
 
-            require('views/Extjs3/externalFooter.php');
+            \go\core\webclient\Page::footer();
             exit();
         }
 
         if(!empty(go()->getSettings()->license) && !License::isValid()) {
-	        require('views/Extjs3/externalHeader.php');
-            echo "<h1>Invalid license</h1>";
-            echo "<p>" . License::$validationError. "</p>";
-	        require('views/Extjs3/externalFooter.php');
+	        \go\core\webclient\Page::header("Invalid license");
+            echo "<section><fieldset><h1>Invalid license</h1>";
+            echo "<p>" . htmlspecialchars((string) License::$validationError) . "</p></fieldset></section>";
+	        \go\core\webclient\Page::footer();
             exit();
         }
 
@@ -165,8 +165,7 @@ try {
 	GO::router()->runController();
 
 } catch(\go\core\exception\RememberMeTheft $e) {
-	$tp = \go\core\webclient\Extjs3::get()->getThemePath();
-	require($tp .'pageHeader.php');
+	\go\core\webclient\Page::header(go()->t("Security warning"));
 	?>
 	<section>
 			<fieldset>
@@ -176,7 +175,7 @@ try {
 			</fieldset>
 	</section>
 	<?php
-	require($tp .'pageFooter.php');
+	\go\core\webclient\Page::footer();
 } catch(Error $e) {
   errorHander($e);  
 } catch(Exception $e) {

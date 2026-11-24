@@ -7,7 +7,7 @@ use go\core\exception\Forbidden;
 use go\core\http\Request;
 use go\core\http\Response;
 use go\core\Installer;
-use go\core\webclient\Extjs3;
+use go\core\webclient\Page;
 use go\modules\community\multi_instance\model\Instance;
 
 class Module extends \go\core\Module {
@@ -73,7 +73,7 @@ class Module extends \go\core\Module {
 		$p = parse_url($configUrl, PHP_URL_HOST);
 
 		if($p != Request::get()->getHost())  {
-			Extjs3::get()->renderPage(
+			Page::render(
 				"<section><div class='card'><h1>" .go()->t("Not found") . "</h1><p>" .
 				go()->t("Sorry, this instance wasn't found. Please double check the URL you've entered.")
 				."</p></div></section>"

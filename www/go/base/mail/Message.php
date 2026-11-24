@@ -565,10 +565,13 @@ class Message extends \go\core\mail\Message {
 			}
 			$params['htmlbody']=$this->_fixRelativeUrls($params['htmlbody']);
 
-			if(file_exists(Extjs3::get()->getThemePath() . 'htmleditor.css')) {
-				$style = preg_replace("'/\*.*\*/'", "", file_get_contents(Extjs3::get()->getThemePath() . 'htmleditor.css'));
-			} else {
-				$style = preg_replace("'/\*.*\*/'", "", file_get_contents(Extjs3::get()->getBasePath() . '/views/Extjs3/themes/Paper/htmleditor.css'));
+			// the classic themes' editor style, when the build has one (none of today's themes ships it)
+			$style = '';
+			foreach([Extjs3::get()->getThemePath() . 'htmleditor.css', Extjs3::get()->getBasePath() . '/views/Extjs3/themes/Paper/htmleditor.css'] as $styleFile) {
+				if(is_file($styleFile)) {
+					$style = preg_replace("'/\*.*\*/'", "", file_get_contents($styleFile));
+					break;
+				}
 			}
 
 			$htmlTop = '<html>

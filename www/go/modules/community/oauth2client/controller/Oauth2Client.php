@@ -10,7 +10,7 @@ use go\core\exception\Forbidden;
 use go\core\http\Exception;
 use go\core\jmap\EntityController;
 use go\core\model\Acl;
-use go\core\webclient\Extjs3;
+use go\core\webclient\Page;
 use go\modules\community\email\model\Account;
 use go\modules\community\oauth2client\model;
 use go\modules\community\oauth2client\provider\Azure;
@@ -286,13 +286,12 @@ final class Oauth2Client extends EntityController
 			header("Location: " . go()->getSettings()->URL);
 		}else {
 
-			$str = '<div class="card"><h3>' . go()->t('Hello', 'community', 'oauth2client') . '</h3>' .
+			$str = '<section><div class="card"><h3>' . go()->t('Hello', 'community', 'oauth2client') . '</h3>' .
 				'<p>' . go()->t('OAuth2 authentication was successful.', 'community', 'oauth2client') . '</p>' .
 				'<p><a href="javascript:window.close()">' . go()->t("Click here", 'community', 'oauth2client') . '</a>&nbsp;' .
-				go()->t("to close this window.", 'community', 'oauth2client') . '</p></div>';
+				go()->t("to close this window.", 'community', 'oauth2client') . '</p></div></section>';
 
-			$webClient = Extjs3::get();
-			$webClient->renderPage($str, go()->t('Success'));
+			Page::render($str, go()->t('Success'));
 		}
 	}
 

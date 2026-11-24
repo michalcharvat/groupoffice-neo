@@ -25,7 +25,7 @@ const ADDON = 'WS/Notifications';
  *         snooze    : seconds => Promise,       // adds the Snooze menu (src/alerts/snooze.mjs)
  *         onDismiss : () => Promise,            // removes it on the server (close, Dismiss, Dismiss all)
  *         notify    : true,                     // desktop notification + sound, once per id
- *         sound     : 'dialog-question',        // views/Extjs3/themes/Paper/sounds/<sound>.mp3, null: silent
+ *         sound     : 'dialog-question',        // views/neo/resources/sounds/<sound>.mp3, null: silent
  *         muteSound : 'mute_reminder_sound'     // user property that mutes the sound besides mute_sound
  *     });
  *
@@ -245,14 +245,14 @@ class NotificationCenter {
                 title: message.title || t('Reminders'),
                 body : message.text ?? '',
                 tag  : message.id,
-                icon : (Neo.config.goBaseUrl || '/') + 'views/Extjs3/themes/Paper/img/notify/reminder.png',
+                icon : (Neo.config.goBaseUrl || '/') + 'views/neo/resources/images/reminder.png',
                 route: message.route || null,
                 windowId
             });
 
             // GO.Notifier.playSound(): the user's "mute all sounds" and e.g. "mute reminder sounds"
             if (message.sound && !user.mute_sound && !(message.muteSound && user[message.muteSound])) {
-                addon.playSound({url: (Neo.config.goBaseUrl || '/') + 'views/Extjs3/themes/Paper/sounds/' + message.sound + '.mp3', windowId})
+                addon.playSound({url: (Neo.config.goBaseUrl || '/') + 'views/neo/resources/sounds/' + message.sound + '.mp3', windowId})
             }
         } catch (e) {
             console.warn('Desktop notification failed', e)

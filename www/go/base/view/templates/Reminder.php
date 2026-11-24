@@ -1,10 +1,12 @@
 <?php
+/** @var array $data */
 extract($data);
+/** @var int $count */
+/** @var string $html */
 
-$head="<style>#container{width:300px;}</style>";
-
-require("externalHeader.php");
+\go\core\webclient\Page::header();
 ?>
+<section><fieldset>
 		<div id="reminderText">
 		<?php
 			$reminders= $count==1 ? \GO::t("1 reminder") : sprintf(\GO::t("%s reminders"), $count);
@@ -16,6 +18,7 @@ require("externalHeader.php");
 
 		?>
 		</div>
+</fieldset></section>
 <?php
-require("externalFooter.php");
+\go\core\webclient\Page::footer();
 ?>

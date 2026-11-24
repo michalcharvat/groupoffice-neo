@@ -270,11 +270,11 @@ class Extjs3 {
 		return $relativeUrl . 'views/Extjs3/themes/' . $this->getTheme() . '/';
 	}
 
+	/**
+	 * @deprecated use Page::render(), which works without the classic client
+	 */
 	public function renderPage($html, $title = null) {
-		$themePath = $this->getThemePath();
-		require($themePath . 'pageHeader.php');
-		echo $html;
-		require($themePath . 'pageFooter.php');
+		Page::render((string) $html, $title);
 	}
 
 	public $loadGoui;

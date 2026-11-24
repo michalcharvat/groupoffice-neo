@@ -7,6 +7,7 @@ use go\core\exception\Forbidden;
 use go\core\exception\NotFound;
 use go\core\ErrorHandler;
 use go\core\util\StringUtil;
+use go\core\webclient\Page;
 use Psr\Http\Message\ResponseInterface;
 use RuntimeException;
 use Throwable;
@@ -126,23 +127,24 @@ class Router {
 
 		ErrorHandler::logException($e);
 
-		require(go()->getEnvironment()->getInstallFolder() . '/views/Extjs3/themes/Paper/pageHeader.php');
+		Page::header(get_class($e));
 
-		echo '<h1>' . get_class($e) .'</h1><p>'.$e->getMessage();
+		echo '<section><fieldset><h1>' . get_class($e) .'</h1><p>'.htmlspecialchars($e->getMessage());
 
 		if(go()->getDebugger()->enabled) {
 
-			echo " in file " . $e->getFile() .' at line '. $e->getLine();
+			echo " in file " . htmlspecialchars($e->getFile()) .' at line '. $e->getLine();
 
 			echo '</p>';
 			echo '<pre>';
-			echo $e->getTraceAsString();
+			echo htmlspecialchars($e->getTraceAsString());
 			echo '</pre>';
 		} else{
 			echo '</p>';
 		}
 
-		require(go()->getEnvironment()->getInstallFolder() . '/views/Extjs3/themes/Paper/pageFooter.php');
+		echo '</fieldset></section>';
+		Page::footer();
 
 	}
 

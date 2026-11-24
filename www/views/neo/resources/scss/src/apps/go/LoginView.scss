@@ -16,7 +16,7 @@
 
     // .go-app-logo: logo-white.svg, dp(240) x dp(40), top left
     .go-login-logo {
-        background: url(../../../../../../../Extjs3/themes/Paper/img/logo-white.svg) no-repeat left center / contain;
+        background: url(../../../../../../resources/images/logo-white.svg) no-repeat left center / contain;
         height    : go.dp(40);
         left      : go.dp(16);
         max-width : calc(100% - #{go.dp(88)});
