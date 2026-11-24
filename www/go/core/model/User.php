@@ -302,6 +302,14 @@ class User extends AclItemEntity {
 	 */
 	public ?string $timezone;
 	public $start_module;
+
+	/**
+	 * The workspace the neo webclient opens by default (docs/neo-workspace.md). Managed by
+	 * {@see Workspace}: read only through the API.
+	 *
+	 * @var ?int
+	 */
+	protected ?int $defaultWorkspaceId = null;
 	public $language;
 	public $theme;
 	public $themeColorScheme;
@@ -1834,5 +1842,15 @@ public function historyLog(): bool|array
 	protected function principalType(): string
 	{
 		return Principal::Individual;
+	}
+
+	/**
+	 * The default workspace of the neo webclient, if any
+	 *
+	 * @return int|null
+	 */
+	public function getDefaultWorkspaceId(): ?int
+	{
+		return $this->defaultWorkspaceId;
 	}
 }

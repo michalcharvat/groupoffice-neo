@@ -254,6 +254,7 @@ CREATE TABLE `core_user` (
   `passwordModifiedAt` datetime null,
   `forcePasswordChange` boolean default false not null,
   enableSendShortcut boolean default true not null,
+  `defaultWorkspaceId` int(11) NULL DEFAULT NULL,
     PRIMARY KEY (`id`)
 )
   ENGINE=InnoDB;
@@ -1327,3 +1328,22 @@ CREATE TABLE `core_app_password_scope`
             ON DELETE CASCADE
             ON UPDATE NO ACTION
 );
+
+CREATE TABLE `core_workspace` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `aclId` int(11) NOT NULL,
+  `createdBy` int(11) NOT NULL,
+  `name` varchar(190) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `icon` varchar(64) COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `sortOrder` int(11) NOT NULL DEFAULT 0,
+  `panels` mediumtext COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `layouts` mediumtext COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `savedPanels` mediumtext COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `savedLayouts` mediumtext COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `modifiedAt` datetime NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `createdBy` (`createdBy`),
+  KEY `aclId` (`aclId`),
+  CONSTRAINT `core_workspace_core_user` FOREIGN KEY (`createdBy`) REFERENCES `core_user` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `core_workspace_core_acl` FOREIGN KEY (`aclId`) REFERENCES `core_acl` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
