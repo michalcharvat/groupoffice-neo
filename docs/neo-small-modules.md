@@ -127,6 +127,18 @@ controllers now check the site's ACL through `Site::requirePermission()`: read f
 loads, stores and redirects, write for create, update, sort and "create menu item from
 content", delete for deletes. Test: `tests/go/modules/legacy/site/SitePermissionTest.php`.
 
+Fixed after the review of the port (same test):
+
+- `site/menu/contentStore`, `site/menuItem/parentStore` and the public `site/front/search` passed
+  the request to `DbStore`, which deletes the records of `delete_keys` before it lists, without
+  any check (`Site::listParams()` drops them). The front search lists only the current site.
+- `setAttributes()` of a legacy model also sets `id` and `isNew`, so a create could overwrite a
+  record of another site. Saves now take only the fields the dialogs edit; the site of content
+  and menus and the menu of menu items change only on create (content moves by tree sort).
+- Tree sort keeps menu items in their menu and refuses to move an item below itself.
+- `site/multifile/*` changes need manage permission on the module: no custom field type of
+  GroupOffice 26 creates multi file fields, so their owner can't be checked.
+
 ### neo port (`views/neo`)
 
 `SiteMain` (MainThreeColumnPanel: `SiteTree` west, `ContentPanel` center, cheat sheet east),
@@ -142,6 +154,11 @@ save on POST (`site/content/update`, `site/site/load`) are sent as GET.
 - `site/site/load` (renderForm) requires write permission: a refused load means the user can only
   read the site, and the tree, the row menus and the editor then offer only "View".
 - `files/folder/checkModelFolder` takes the entity name `Site`, not the class name.
+- Custom fields: the legacy models use `CustomFieldsTrait` (entity types `Site` and `Content`). The
+  dialogs set `entityName`, take `customFields` from the legacy load and save them as
+  `customFieldsJSON`.
+- Until `site/site/load` answered for a site, the UI treats it as read-only; switching to another
+  item or adding one asks before unsaved changes are discarded.
 - Not ported: dragging files from the files module into the editor (replaced by "Insert file",
   which picks files of the site's folder), and the unused ExtJS code listed above.
 

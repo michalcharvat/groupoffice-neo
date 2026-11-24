@@ -159,6 +159,7 @@ No gaps: dokuwiki, imapauthenticator, ldapauthenticator, jitsimeet, otp, pwned, 
 | site | Whole module (2026-11-24) | Website Manager: site tree, content editor, content/site/menu/menu item dialogs, permissions, drag and drop (ExtJS only) | extjs3/MainPanel.js, inventory in `docs/neo-small-modules.md` | no neo UI | done (`modules/site/views/neo`) |
 | site | Content editor | Files dragged from the files module become `file://` links | extjs3/ContentPanel.js:211-249 (`FilesDD`) | no drag from the files module into neo's editor; "Insert file" picks files of the site's folder instead | deviation |
 | site | Cheat sheet | Help panel (its "paste images" line describes the unused HtmlEditor code) | extjs3/MainPanel.js (cheatSheet) | the same text as plain preformatted text, toggled with the help button | deviation |
+| site | Dialogs | Custom fields of sites and content items | extjs3/SiteDialog.js:15, extjs3/ContentDialog.js:16 (`customFieldType`) | done | done |
 | site | Read-only site | Write actions answered with the server's "Access denied" | extjs3/SiteTreePanel.js | write actions hidden and Save disabled without write permission (the controllers check it as well, `SitePermissionTest`) | improved |
 
 ## Core screens
