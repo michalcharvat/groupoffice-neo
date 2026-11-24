@@ -2323,4 +2323,6 @@ Pokud jste o nové heslo nežádali, tento e-mail prosím smažte.',
   'Add a comment...' => 'Přidat komentář...',
   'Switch to the classic UI' => 'Přepnout na klasické rozhraní',
   'Switch to the new UI' => 'Přepnout na nové rozhraní',
+  'Launcher' => 'Spouštěč',
+  'Opens the classic UI in a new tab' => 'Otevře klasické rozhraní na nové kartě',
 );

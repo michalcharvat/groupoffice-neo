@@ -282,11 +282,11 @@ class Neo {
 
 		if ($settings->logoId) {
 			// the blob id only busts the cache; rawurlencode() keeps quotes and parentheses out
-			$css .= '.neo-theme-go .go-brand, .neo-theme-go .go-login-logo { background-image: url(' . $root . 'api/page.php/core/logo?v=' . rawurlencode($settings->logoId) . ') !important; }';
+			$css .= '.neo-theme-go .go-brand, .neo-theme-go .go-login-logo, .neo-theme-go .go-app-launcher-logo { background-image: url(' . $root . 'api/page.php/core/logo?v=' . rawurlencode($settings->logoId) . ') !important; }';
 		}
 
 		if ($settings->logoIdDark && go()->getAuthState() && go()->getAuthState()->isAuthenticated()) {
-			$css .= '.neo-theme-go.dark .go-brand { background-image: url(' . $root . 'api/download.php?blob=' . rawurlencode($settings->logoIdDark) . ') !important; }';
+			$css .= '.neo-theme-go.dark .go-brand, .neo-theme-go.dark .go-app-launcher-logo { background-image: url(' . $root . 'api/download.php?blob=' . rawurlencode($settings->logoIdDark) . ') !important; }';
 		}
 
 		$light = $this->colorVars($settings, 'Color');
