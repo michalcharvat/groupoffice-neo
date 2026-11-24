@@ -169,7 +169,7 @@ class MainView extends Container {
             flex     : 'none',
             reference: 'mainMenuButton',
             tooltip  : t('Main menu'),
-            handler  : () => me.openMainMenu()
+            handler  : data => me.openMainMenu(data)
         }, {
             // go.util.avatar(): initials on a colour from the name
             module : GoButton,
@@ -407,8 +407,9 @@ class MainView extends Container {
 
     /**
      * Header main menu button: the app launcher, or a list (My account → Look & feel)
+     * @param {Object} [data] the button's click: detail 0 is a click by the keyboard (Enter, Space)
      */
-    async openMainMenu() {
+    async openMainMenu(data) {
         let me       = this,
             button   = me.getReference('mainMenuButton'),
             launcher = me.getReference('launcher'),
@@ -432,6 +433,9 @@ class MainView extends Container {
             return
         }
 
+        // the button gets the focus back on close: with a focus ring only when opened by the keyboard
+        const modality = data?.detail === 0 ? 'keyboard' : 'pointer';
+
         if (mode === 'list') {
             me.mainMenuList = MenuList.showAt({
                 appName : me.appName,
@@ -445,6 +449,7 @@ class MainView extends Container {
                     handler: () => Neo.Main.setRoute({value: m.name, windowId: me.windowId})
                 })), ...me.classicMenuItems()]
             });
+            me.mainMenuList.returnFocusModality = modality;
             return
         }
 
@@ -462,7 +467,7 @@ class MainView extends Container {
             classic: true
         }))]);
 
-        launcher.open(button.id)
+        launcher.open(button.id, modality)
     }
 
     /**
