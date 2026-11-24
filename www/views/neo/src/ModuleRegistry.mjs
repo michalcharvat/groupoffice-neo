@@ -39,6 +39,12 @@ import client from './jmap/Client.mjs';
  *     // ExtJS/GOUI linkDetailCards), e.g. GO.link.LinkListCard configs; the generic "Links" card
  *     // leaves out links to `entities`. cards() resolves to the card configs (module, title…).
  *     linkDetailCards: {entities: ['Task'], cards: () => import('./linkDetailCards.mjs').then(m => m.default())},
+ *     // optional: the main area below the top bar. Resolves to a subclass of GO.view.MainView
+ *     // (apps/go/view/MainView.mjs) that overrides its main area hooks: initModulesArea(), start(),
+ *     // onHashChange(), openModule(), quickAdd(), popOutModule(), moveModuleToWindow(), dockModule(),
+ *     // closeModules(), removeModules() (sf/workspaces: the dock). The first module the user has
+ *     // access to wins; without one MainView shows one card per module and loads nothing more.
+ *     mainArea: () => import('./MainArea.mjs'),
  *     // optional, called with each window's main view after login (e.g. a dialog to show then)
  *     onMainView: mainView => {},
  *     // optional, called with each new src/users/CreateUserDialog (e.g. an extra card)
@@ -114,6 +120,26 @@ class ModuleRegistry {
      */
     getAvailable() {
         return this.#accessible().filter(m => m.mainView)
+    }
+
+    /**
+     * The main view class: GO.view.MainView, or the subclass of the first module with `mainArea`
+     * the user has access to. A module whose main area fails to load leaves the default.
+     * @param {Function} MainView GO.view.MainView
+     * @returns {Promise<Function>}
+     */
+    async loadMainView(MainView) {
+        const module = this.#accessible().find(m => m.mainArea);
+
+        if (module) {
+            try {
+                return (await module.mainArea()).default
+            } catch (e) {
+                console.error(`mainArea of ${module.name}`, e)
+            }
+        }
+
+        return MainView
     }
 
     /**
