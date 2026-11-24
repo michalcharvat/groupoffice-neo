@@ -104,9 +104,10 @@
     }
 
     /* GO #secondary-menu: white Material icons, dp(40) round hover */
+    /* round for an icon, a pill for a wider button (count, the workspace switcher): 50% made those an ellipse */
     .go-topbar.neo-toolbar .neo-button.go-header-button {
         border       : none;
-        border-radius: 50%;
+        border-radius: 999px;
         color        : #fff;
         height       : 4rem;
         margin       : 0 .4rem;
