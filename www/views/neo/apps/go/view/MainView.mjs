@@ -285,7 +285,9 @@ class MainView extends Container {
         // conflicts with another window, see src/workspace/SaveQueue.mjs
         me.saveQueue = new SaveQueue({
             onError    : e => notifyError(me, e),
-            onDestroyed: id => String(id) === String(me.workspace?.id) && me.loadWorkspace(null)
+            onDestroyed: id => String(id) === String(me.workspace?.id) && me.loadWorkspace(null),
+            // a save was merged with another window's change: show the result
+            onMerged   : id => String(id) === String(me.workspace?.id) && me.reloadFromRemote(id)
         });
         me.removeStateListener = client.on?.('stateChange', ({changed}) => changed?.includes('Workspace') && me.onRemoteChange());
         client.watch?.(['Workspace']);
@@ -433,6 +435,7 @@ class MainView extends Container {
         this.removeStateListener?.();
         // the last change of this window
         this.saveQueue?.flush();
+        this.resizeAddon?.unregister({id: this.id, windowId: this.windowId});
         this.removeNotificationListener?.();
         this.removeBadgeListener?.();
         notificationCenter.detach(this.windowId);
@@ -648,6 +651,7 @@ class MainView extends Container {
             const addon = await Neo.currentWorker.getAddon('ResizeObserver', me.windowId);
 
             addon.register({id: me.id, windowId: me.windowId});
+            me.resizeAddon = addon;
 
             const rect = await me.getDomRect();
             me.setProfile(me.profileFor(rect?.width))
@@ -690,6 +694,7 @@ class MainView extends Container {
 
         me.profile = profile;
         ws.toggleCls('go-workspace-narrow', profile === 'narrow');
+        me.updateWorkspaceButton();
 
         // the change belongs to the profile it was made in
         me.saveQueue.flush();
@@ -718,26 +723,45 @@ class MainView extends Container {
     /**
      * Loads a workspace into this window: its panels (module views) and the layout of the profile
      * @param {String|Number|null} id null: the default one
-     * @param {String|null} [keepModule] a module to keep as the focused panel
+     * @param {String|null} [keepModule] a module to keep as the focused panel (added when the workspace lacks it)
+     * @param {String|null} [focusModule] a module to focus when the workspace has it
      */
-    async loadWorkspace(id, keepModule = null) {
-        let me = this;
+    async loadWorkspace(id, keepModule = null, focusModule = null) {
+        let me  = this,
+            // a later load (another switch, a push) supersedes this one
+            seq = me.loadSeq = (me.loadSeq || 0) + 1,
+            stale = () => me.isDestroyed || seq !== me.loadSeq,
+            response, workspace;
 
-        me.saveQueue.flush();
+        // the window's last change reaches the server before it is read back
+        await me.saveQueue.flush();
 
         const {list} = await client.queryGet('Workspace', {filter: {mine: true}, properties: ['id', 'name', 'isDefault', 'sortOrder']}),
               meta   = list.find(w => String(w.id) === String(id)) || list.find(w => w.isDefault) || list[0];
 
-        me.workspaces = list;
-
-        if (!meta || me.isDestroyed) {
+        if (stale()) {
             return
         }
 
-        const response  = await client.call('Workspace/get', {ids: [meta.id]}),
-              workspace = response.list[0];
+        me.workspaces = list;
 
-        if (!workspace || me.isDestroyed) {
+        if (!meta) {
+            return
+        }
+
+        // an edit made while the workspace was read: saved first, then read again
+        for (let attempt = 0; attempt < 3; attempt++) {
+            response  = await client.call('Workspace/get', {ids: [meta.id]});
+            workspace = response.list[0];
+
+            if (stale() || !workspace || !me.saveQueue.isPending(workspace.id)) {
+                break
+            }
+
+            await me.saveQueue.flush()
+        }
+
+        if (stale() || !workspace) {
             return
         }
 
@@ -776,10 +800,20 @@ class MainView extends Container {
             Object.keys(me.openModules).forEach(name => wanted.has(name) || me.openModules[name].popup || me.destroyModule(name));
 
             for (const [panelId, panel] of Object.entries(panels)) {
-                await me.ensureModule(ModuleRegistry.get(panel.module), panelId);
+                const entry = await me.ensureModule(ModuleRegistry.get(panel.module), panelId);
+
+                if (stale()) {
+                    return
+                }
+
+                // every visible pane shows its own route; a deep link is applied after this (start())
+                entry?.view.route?.(panel.route || '')
             }
 
-            await me.applyLayout(keep?.panelId)
+            const focusEntry = focusModule && me.openModules[focusModule],
+                  focus      = keep?.panelId || (focusEntry && panels[focusEntry.panelId] ? focusEntry.panelId : undefined);
+
+            await me.applyLayout(focus)
         } finally {
             me.loading--
         }
@@ -1053,25 +1087,48 @@ class MainView extends Container {
      * @protected
      */
     async onRemoteChange() {
-        let me = this,
-            id = me.workspace?.id;
+        let me  = this,
+            id  = me.workspace?.id,
+            seq = me.loadSeq,
+            // the window moved on (another workspace, a load) while this was read
+            stale = () => me.isDestroyed || seq !== me.loadSeq || String(id) !== String(me.workspace?.id);
 
-        if (!id || me.saveQueue.isPending(id) || me.isDestroyed) {
+        if (!id || me.isDestroyed) {
             return
         }
 
         try {
+            // names and the list of the switcher (renamed, created or deleted in another window)
+            const {list} = await client.queryGet('Workspace', {filter: {mine: true}, properties: ['id', 'name', 'isDefault', 'sortOrder']});
+
+            if (stale()) {
+                return
+            }
+
+            me.workspaces = list;
+            const meta = list.find(w => String(w.id) === String(id));
+            meta && (me.workspace.name = meta.name);
+            me.updateWorkspaceButton();
+
+            if (me.saveQueue.isPending(id)) {
+                return
+            }
+
             const response = await client.call('Workspace/get', {ids: [id]}),
                   remote   = response.list[0];
 
+            if (stale() || me.saveQueue.isPending(id)) {
+                return
+            }
+
             if (!remote) {
-                me.loadWorkspace(null);
+                await me.loadWorkspace(null);
                 return
             }
 
             const base = me.saveQueue.base[id] || {};
 
-            if (me.saveQueue.isPending(id) || (stableEqual(remote.panels, base.panels) && stableEqual(remote.layouts, base.layouts))) {
+            if (stableEqual(remote.panels, base.panels) && stableEqual(remote.layouts, base.layouts)) {
                 return
             }
 
@@ -1079,7 +1136,7 @@ class MainView extends Container {
 
             if (ours || !stableEqual(remote.panels, base.panels)) {
                 notify(me, t('This workspace was changed in another window.'));
-                await me.loadWorkspace(id, me.focusedModule())
+                await me.reloadFromRemote(id)
             } else {
                 // another profile only
                 me.saveQueue.setBase(remote, response.state);
@@ -1087,6 +1144,27 @@ class MainView extends Container {
             }
         } catch (e) {
             console.warn('GO.view.MainView: workspace reload failed', e)
+        }
+    }
+
+    /**
+     * Shows the server copy of the current workspace (another window changed it). A panel closed there
+     * stays closed: the address moves on to a panel that is left.
+     * @param {String|Number} id
+     */
+    async reloadFromRemote(id) {
+        let me = this;
+
+        // this window keeps its own focused panel, unless the other window closed it
+        await me.loadWorkspace(id, null, me.routeModule);
+
+        if (me.isDestroyed || String(id) !== String(me.workspace?.id)) {
+            return
+        }
+
+        if (!me.routeModule || !me.openModules[me.routeModule]) {
+            const focused = me.focusedModule();
+            focused ? me.routeToPanel(focused, true) : replaceRoute(me.windowId, '')
         }
     }
 
@@ -1321,7 +1399,7 @@ class MainView extends Container {
 
         const route = rest.join('/');
 
-        await me.openModule(module, route);
+        await me.openModule(module);
 
         const entry = me.openModules[name];
 
@@ -1393,7 +1471,7 @@ class MainView extends Container {
             });
 
             host.panelId = panelId;
-            me.openModules[module.name] = {panelId, host, view: host.items[0]};
+            me.openModules[module.name] = {name: module.name, panelId, host, view: host.items[0]};
             me.panels[panelId] ??= {module: module.name, route: ''}
         }
 
@@ -1401,19 +1479,17 @@ class MainView extends Container {
     }
 
     /**
-     * Opens a module: its panel shown and focused (a new one in the focused panel's group)
+     * Opens a module: its panel shown and focused (a new one in the focused panel's group).
+     * The panel's route is set by onHashChange(), which compares it with the stored one.
      * @param {Object} module ModuleRegistry entry
-     * @param {String} [route] the panel's route
      */
-    async openModule(module, route) {
+    async openModule(module) {
         let me    = this,
             entry = await me.ensureModule(module);
 
         if (!entry) {
             return
         }
-
-        route !== undefined && me.panels[entry.panelId] && (me.panels[entry.panelId].route = route);
 
         await me.getReference('modules').showPanel(entry.panelId, {title: module.title});
 
@@ -1439,7 +1515,8 @@ class MainView extends Container {
         delete me.openModules[name];
         me.activeModule === name && (me.activeModule = null);
 
-        // a popped out view lives in the popup until it closes (dockModule())
+        // a popped out view lives in the popup until it closes: dockModule() destroys the host then
+        entry.closed = true;
         entry.popup || entry.host.destroy(true)
     }
 
@@ -1502,8 +1579,9 @@ class MainView extends Container {
             windowId: me.windowId,
             // the panel; a panel in a hidden tab has no size: the workspace
             rect    : await me.popupRect(entry),
-            onAdopt : popupView => me.moveModuleToWindow(name, popupView),
-            onClose : popupView => me.dockModule(name, popupView),
+            // bound to this entry: the module may be closed and opened again before the popup reports
+            onAdopt : popupView => me.moveModuleToWindow(entry, popupView),
+            onClose : popupView => me.dockModule(entry, popupView),
             onFailed: () => {
                 entry.popup = null
             }
@@ -1529,15 +1607,15 @@ class MainView extends Container {
     }
 
     /**
-     * @param {String} name
+     * @param {Object} entry openModules entry
      * @param {GO.view.PopupView} popupView
      */
-    moveModuleToWindow(name, popupView) {
+    moveModuleToWindow(entry, popupView) {
         let me     = this,
-            entry  = me.openModules[name],
+            name   = entry.name,
             module = ModuleRegistry.get(name);
 
-        if (!entry) {
+        if (entry.closed || entry.host.isDestroyed) {
             return
         }
 
@@ -1566,22 +1644,23 @@ class MainView extends Container {
 
     /**
      * The popup window closed: the module view goes back to its panel
-     * @param {String} name
+     * @param {Object} entry openModules entry
      * @param {GO.view.PopupView} popupView
      */
-    dockModule(name, popupView) {
-        let me    = this,
-            entry = me.openModules[name],
-            view  = popupView.items[0];
+    dockModule(entry, popupView) {
+        let me   = this,
+            view = popupView.items[0];
 
         // silent: the popup window is gone, there is no DOM to update
         view && popupView.remove(view, false, true);
 
-        // the opener closed first, or the panel was closed meanwhile
-        if (me.isDestroyed || !entry || entry.host.isDestroyed || entry.view !== view) {
-            entry?.popup && (entry.popup = null);
-            entry && !me.panels[entry.panelId] && entry.host.destroy(true);
+        // the opener closed first, or the panel was closed meanwhile: the view and its host go, once
+        if (me.isDestroyed || entry.closed || entry.host.isDestroyed || entry.view !== view || me.openModules[entry.name] !== entry) {
+            entry.popup = null;
             view?.destroy();
+            // the host of a closed panel (destroyModule() left it for the popup)
+            const orphan = me.isDestroyed || entry.closed || me.openModules[entry.name] !== entry;
+            orphan && !entry.host.isDestroyed && entry.host.destroy(true);
             return
         }
 

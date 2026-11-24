@@ -361,7 +361,8 @@ class Grid extends GridContainer {
     destroy(...args) {
         this.removeThemeListener?.();
         this.groupListeners && this.groupStore?.un(this.groupListeners);
-        this.customFieldNameListeners && this.store?.un?.(this.customFieldNameListeners);
+        // the store they were added to, also when the grid got another one since
+        this.customFieldNameListeners && this.customFieldNameStore?.un?.(this.customFieldNameListeners);
         super.destroy(...args)
     }
 
@@ -734,6 +735,7 @@ class Grid extends GridContainer {
 
         // the store can outlive the grid (a module view closed with its panel): removed in destroy()
         me.customFieldNameListeners = {load: loadNames, loadMore: loadNames};
+        me.customFieldNameStore     = me.store;
         me.store.on(me.customFieldNameListeners);
 
         if (!columns.length) {

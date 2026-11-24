@@ -26,9 +26,10 @@ const equal = (a, b) => stableJson(a ?? null) === stableJson(b ?? null);
  * ifInState compares the state of the Workspace type, which every user's saves move. On a
  * stateMismatch the queue asks Workspace/changes whether this workspace changed:
  * - no: retry with the new state;
- * - yes: re-read it. Panels merge (our additions and removals applied to theirs); the layout of
- *   our profile is ours (last write wins), the other window reloads it after the push
- *   (GO.view.Workspace onRemoteChange()).
+ * - yes: re-read it and apply only what this window changed (against the copy it edited) to the
+ *   server copy: panels it added, changed or closed; the layout of its profile only when it changed
+ *   that layout (then last write wins). `onMerged` tells the window to show the merged result.
+ * A save that fails for another reason (network) stays queued for the next flush.
  */
 class SaveQueue {
     /**
@@ -59,10 +60,12 @@ class SaveQueue {
      * @param {Object} options
      * @param {Function} [options.onError] (error) a save failed for another reason than a conflict
      * @param {Function} [options.onDestroyed] (workspaceId) the workspace was deleted meanwhile
+     * @param {Function} [options.onMerged] (workspaceId) a save was merged with another window's
      */
-    constructor({onError, onDestroyed} = {}) {
+    constructor({onError, onDestroyed, onMerged} = {}) {
         this.onError     = onError;
         this.onDestroyed = onDestroyed;
+        this.onMerged    = onMerged;
     }
 
     /**
@@ -96,7 +99,9 @@ class SaveQueue {
         }
 
         clearTimeout(me.pending?.timer);
-        me.pending = {...change, timer: setTimeout(() => me.flush(), DELAY)}
+        me.pending = {...change, timer: setTimeout(() => me.flush(), DELAY)};
+        // what the change was made against: a conflict applies only the difference (resolveConflict())
+        me.pending.origin = me.origin(change)
     }
 
     /**
@@ -125,9 +130,29 @@ class SaveQueue {
         clearTimeout(change.timer);
         me.pending = null;
 
-        me.running = me.running.then(() => me.send(change)).catch(e => me.onError?.(e));
+        me.running = me.running.then(() => me.send(change)).catch(e => {
+            // a network failure: kept for the next flush, unless a newer change of the same target waits
+            if (!e.setError && e.type !== 'notFound' && !me.pending) {
+                me.pending = {...change, timer: null}
+            }
+            me.onError?.(e)
+        });
 
         return me.running
+    }
+
+    /**
+     * @param {Object} change
+     * @returns {Object} {panels, layoutChanged} against the server copy the window edited
+     * @protected
+     */
+    origin(change) {
+        const base = this.base[change.workspaceId] || {panels: {}, layouts: {}};
+
+        return {
+            panels       : clone(base.panels || {}),
+            layoutChanged: !equal(change.layout, base.layouts?.[change.profile])
+        }
     }
 
     /**
@@ -136,15 +161,17 @@ class SaveQueue {
      * @protected
      */
     async send(change, attempt = 0) {
-        let me   = this,
-            base = me.base[change.workspaceId] || {panels: {}, layouts: {}},
-            patch = {};
+        let me     = this,
+            base   = me.base[change.workspaceId] || {panels: {}, layouts: {}},
+            origin = change.origin ||= me.origin(change),
+            patch  = {};
 
         if (!equal(change.panels, base.panels)) {
             patch.panels = change.panels
         }
 
-        if (!equal(change.layout, base.layouts[change.profile])) {
+        // a layout the window didn't change is not written back over another window's
+        if (origin.layoutChanged && !equal(change.layout, base.layouts?.[change.profile])) {
             patch['layouts/' + change.profile] = change.layout
         }
 
@@ -168,14 +195,16 @@ class SaveQueue {
                     return
                 }
 
-                throw new Error(client.constructor.describeSetError?.(error) || error.type)
+                throw Object.assign(new Error(client.constructor.describeSetError?.(error) || error.type), {setError: error})
             }
 
             me.state = response.newState;
             me.base[change.workspaceId] = clone({
                 panels : change.panels,
-                layouts: {...base.layouts, [change.profile]: change.layout}
-            })
+                layouts: patch['layouts/' + change.profile] ? {...base.layouts, [change.profile]: change.layout} : base.layouts
+            });
+
+            change.merged && me.onMerged?.(change.workspaceId)
         } catch (e) {
             if (e.type !== 'stateMismatch' || attempt > 4) {
                 throw e
@@ -226,37 +255,79 @@ class SaveQueue {
 
         me.state = response.state;
 
-        const base = me.base[id] || {panels: {}, layouts: {}};
+        const origin = change.origin || me.origin(change),
+              theirs = Array.isArray(remote.panels) ? {} : remote.panels || {};
 
-        change.panels = mergePanels(base.panels, change.panels, remote.panels || {});
-        me.base[id] = clone({panels: remote.panels || {}, layouts: remote.layouts || {}})
+        change.panels = mergePanels(origin.panels, change.panels, theirs);
+        // our layout refers only to panels that are left
+        change.layout = dropItems(change.layout, change.panels);
+        change.merged = true;
+        me.base[id] = clone({panels: theirs, layouts: Array.isArray(remote.layouts) ? {} : remote.layouts || {}})
     }
 }
 
 /**
- * Applies our panel changes (base → ours) to theirs: our panels stay (our layout refers to them,
- * last write wins), the ones we closed go, theirs that we don't know are added
- * @param {Object} base
+ * Applies our panel changes (origin → ours) to theirs: panels we added or changed are ours, panels
+ * we closed go, all others are theirs (their route changes, additions and removals stay)
+ * @param {Object} origin the panels our change was made against
  * @param {Object} ours
  * @param {Object} theirs
  * @returns {Object}
  */
-export function mergePanels(base, ours, theirs) {
-    const result  = {...theirs},
-          modules = new Set(Object.values(ours).map(panel => panel.module));
+export function mergePanels(origin, ours, theirs) {
+    const result = {...theirs};
 
     // their panels we closed
-    Object.keys(base).forEach(id => {
+    Object.keys(origin).forEach(id => {
         id in ours || delete result[id]
     });
 
-    Object.entries(result).forEach(([id, panel]) => {
-        // one module in one panel: ours wins
-        !(id in ours) && modules.has(panel.module) && delete result[id]
+    Object.entries(ours).forEach(([id, panel]) => {
+        if (equal(panel, origin[id])) {
+            return
+        }
+
+        // one module in one panel: the one we opened wins
+        Object.entries(result).forEach(([other, theirPanel]) => {
+            other !== id && theirPanel.module === panel.module && delete result[other]
+        });
+
+        result[id] = panel
     });
 
-    // ours stay (our layout refers to them), changed or not
-    return Object.assign(result, ours)
+    return result
+}
+
+/**
+ * A dock document without the items whose panel is gone (a tab group may end up empty: the dock
+ * prunes it on its next change)
+ * @param {Object} doc
+ * @param {Object} panels
+ * @returns {Object}
+ */
+export function dropItems(doc, panels) {
+    if (!doc?.items) {
+        return doc
+    }
+
+    const result = clone(doc);
+
+    Object.keys(result.items).forEach(id => {
+        if (id in panels) {
+            return
+        }
+
+        delete result.items[id];
+
+        Object.values(result.nodes || {}).forEach(node => {
+            if (node.type === 'tabs' && node.items.includes(id)) {
+                node.items = node.items.filter(item => item !== id);
+                node.activeItemId === id && (node.activeItemId = node.items[0] ?? null)
+            }
+        })
+    });
+
+    return result
 }
 
 export default SaveQueue;
