@@ -25,6 +25,13 @@
 
 namespace GO\Site\Controller;
 
+use GO\Base\Exception\AccessDenied;
+use GO\Base\Model\Acl;
+use GO\Site\Model\Content;
+use GO\Site\Model\Menu;
+use GO\Site\Model\MenuItem;
+use GO\Site\Model\Site;
+
 
 class MenuItemController extends \GO\Base\Controller\AbstractJsonController {
 	
@@ -35,12 +42,14 @@ class MenuItemController extends \GO\Base\Controller\AbstractJsonController {
 	 * @param int $site_id
 	 */
 	public function actionParentStore($id, $menu_id){
+		$this->_requireMenuPermission($menu_id, Acl::READ_PERMISSION);
 		
 		$findCriteria = \GO\Base\Db\FindCriteria::newInstance()->addCondition('menu_id', $menu_id);
 		$findCriteria->addCondition('id', $id,'<>');
 		$findParams = \GO\Base\Db\FindParams::newInstance()->criteria($findCriteria);
 		
-		$store = new \GO\Base\Data\DbStore('GO\Site\Model\MenuItem', new \GO\Base\Data\ColumnModel('GO\Site\Model\MenuItem'), $_REQUEST,$findParams);
+		// without delete_keys: DbStore deletes those records before it lists
+		$store = new \GO\Base\Data\DbStore('GO\Site\Model\MenuItem', new \GO\Base\Data\ColumnModel('GO\Site\Model\MenuItem'), Site::listParams($_REQUEST),$findParams);
 
 		// nosemgrep
 		echo $this->renderStore($store);
@@ -56,8 +65,10 @@ class MenuItemController extends \GO\Base\Controller\AbstractJsonController {
 		$remoteComboFields = array();
 		
 		$model = $this->_loadModel($menu_id,$id);
+		$this->_checkItem($model, Acl::READ_PERMISSION);
 		
-		if(!empty($model->content_id))
+		// the content may have been deleted
+		if(!empty($model->content_id) && $model->content)
 			$remoteComboFields['content_id']=var_export($model->content->title, true);
 		
 		echo $this->renderForm($model,$remoteComboFields);
@@ -74,8 +85,14 @@ class MenuItemController extends \GO\Base\Controller\AbstractJsonController {
 		$model = $this->_loadModel($menu_id);
 		
 		if(\GO\Base\Util\Http::isPostRequest()){
-			$model->setAttributes($_POST);
-			$model->save();
+			$model->setAttributes($this->_editableParams($_POST));
+			$this->_checkItem($model, Acl::WRITE_PERMISSION);
+			if(!$model->save()) {
+				echo $this->renderSubmit($model);
+				return;
+			}
+		} else {
+			$this->_checkItem($model, Acl::READ_PERMISSION);
 		}
 		
 		echo $this->renderForm($model,$remoteComboFields);
@@ -92,12 +109,21 @@ class MenuItemController extends \GO\Base\Controller\AbstractJsonController {
 			
 			$target = json_decode($target);
 			$content = json_decode($content);
+
+			// a menu item is created in a menu or below a menu item, for a content item
+			if(!is_object($target) || !is_object($content) || !in_array($target->type ?? null, ['menu', 'menuitem'], true)
+				|| ($content->type ?? null) !== 'content' || empty($target->modelId) || empty($content->modelId)) {
+				throw new \GO\Base\Exception\NotFound();
+			}
 			
 			$targetModelName = \GO\Site\SiteModule::getModelNameFromTreeNodeType($target->type);
 			$contentModelName = \GO\Site\SiteModule::getModelNameFromTreeNodeType($content->type);
 			
 			$targetModel = $targetModelName::model()->findByPk($target->modelId);
 			$contentModel = $contentModelName::model()->findByPk($content->modelId);
+			if(!$targetModel || !$contentModel) {
+				throw new \GO\Base\Exception\NotFound();
+			}
 			if($targetModel instanceof \GO\Site\Model\MenuItem){
 				$menuId = $targetModel->menu_id;
 			}else{
@@ -105,9 +131,11 @@ class MenuItemController extends \GO\Base\Controller\AbstractJsonController {
 			}
 
 			$model = $this->_loadModel($menuId);
-			$model->parent_id = $targetModel->id;
+			// dropped on a menu: a top level item
+			$model->parent_id = $targetModel instanceof \GO\Site\Model\MenuItem ? $targetModel->id : null;
 			$model->content_id = $contentModel->id;
 			$model->label = $contentModel->title;
+			$this->_checkItem($model, Acl::WRITE_PERMISSION);
 			
 	
 // * @property int $menu_id The menu_id of this menu
@@ -121,7 +149,10 @@ class MenuItemController extends \GO\Base\Controller\AbstractJsonController {
 // * @property String $target The target for the url in this menu item
 //				
 //			$model->setAttributes($_POST);
-			$model->save();
+			if(!$model->save()) {
+				echo $this->renderSubmit($model);
+				return;
+			}
 		}
 		
 		echo $this->renderJson(array('success'=>true));
@@ -137,13 +168,21 @@ class MenuItemController extends \GO\Base\Controller\AbstractJsonController {
 		$remoteComboFields = array();
 		
 		$model = $this->_loadModel($menu_id,$id);
+		$isPost = \GO\Base\Util\Http::isPostRequest();
+		$this->_checkItem($model, $isPost ? Acl::WRITE_PERMISSION : Acl::READ_PERMISSION);
 		
-		if(!empty($model->content_id))
+		// the content may have been deleted
+		if(!empty($model->content_id) && $model->content)
 			$remoteComboFields['content_id']=var_export($model->content->title, true);
 		
-		if(\GO\Base\Util\Http::isPostRequest()){
-			$model->setAttributes($_POST);
-			$model->save();
+		if($isPost){
+			// the menu of an item doesn't change; its new parent and content are checked
+			$model->setAttributes($this->_editableParams($_POST));
+			$this->_checkItem($model, Acl::WRITE_PERMISSION);
+			if(!$model->save()) {
+				echo $this->renderSubmit($model);
+				return;
+			}
 		}
 
 		echo $this->renderForm($model,$remoteComboFields);
@@ -158,11 +197,79 @@ class MenuItemController extends \GO\Base\Controller\AbstractJsonController {
 	public function actionDelete($id,$menu_id){
 		
 		$model = $this->_loadModel($menu_id,$id);
+		$this->_checkItem($model, Acl::DELETE_PERMISSION);
 		$model->delete();
 		
 		echo $this->renderForm($model);
 	}
 	
+	/**
+	 * The posted attributes a user may change; the menu is the request's menu_id (create) or
+	 * the item's (update)
+	 *
+	 * @param array $params
+	 * @return array
+	 */
+	private function _editableParams(array $params): array
+	{
+		return array_intersect_key($params, array_flip(['label', 'url', 'display_children', 'parent_id', 'content_id', 'target']));
+	}
+
+	/**
+	 * Checks the level on the site of a menu
+	 *
+	 * @param int|string|null $menuId
+	 * @param int $level
+	 * @return Menu
+	 */
+	private function _requireMenuPermission($menuId, int $level): Menu
+	{
+		$menu = empty($menuId) ? false : Menu::model()->findByPk($menuId);
+		if(!$menu) {
+			throw new \GO\Base\Exception\NotFound();
+		}
+		Site::requirePermission($menu->site_id, $level);
+		return $menu;
+	}
+
+	/**
+	 * Checks the level on the menu item's site, and that its parent item and content belong
+	 * to its menu and site (menu items have no ACL of their own)
+	 *
+	 * @param MenuItem $model
+	 * @param int $level
+	 * @throws AccessDenied
+	 */
+	private function _checkItem(MenuItem $model, int $level): void
+	{
+		$menu = $this->_requireMenuPermission($model->menu_id, $level);
+
+		// only links that are set now: an item whose content was deleted stays editable
+		$isNew = $model->isNew;
+
+		if(!empty($model->parent_id) && ($isNew || $model->isModified('parent_id'))) {
+			$parent = MenuItem::model()->findByPk($model->parent_id);
+			if(!$parent || (string) $parent->menu_id !== (string) $model->menu_id) {
+				throw new AccessDenied();
+			}
+			// not below itself or one of its own items; stops at a cycle already in the database
+			$seen = [];
+			for($ancestor = $parent; $ancestor && !isset($seen[(int) $ancestor->id]); $ancestor = empty($ancestor->parent_id) ? null : MenuItem::model()->findByPk($ancestor->parent_id)) {
+				$seen[(int) $ancestor->id] = true;
+				if(!$isNew && (int) $ancestor->id === (int) $model->id) {
+					throw new AccessDenied();
+				}
+			}
+		}
+
+		if(!empty($model->content_id) && ($isNew || $model->isModified('content_id'))) {
+			$content = Content::model()->findByPk($model->content_id);
+			if(!$content || (string) $content->site_id !== (string) $menu->site_id) {
+				throw new AccessDenied();
+			}
+		}
+	}
+
 	/**
 	 * Load the model menu object
 	 * 
