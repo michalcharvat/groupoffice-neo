@@ -92,8 +92,10 @@ item, so those are not repeated elsewhere.
   server state, plus the module the user switched to as the focused panel.
   The width decides, not the device type: a large tablet or a phone in landscape above the limit gets
   workspaces.
-- **Medium** and **wide**, split at about 1400px (to tune after phase 1): each has its own layout. A
-  profile without a saved layout opens the workspace's panels as tabs in one group.
+- **Medium** and **wide**, split at GO's `$breakpointMedium` = 1200px (`goui/style/_config.scss`; the
+  breakpoints GO already uses, owner 2026-11-24): each has its own layout. Two columns can get tight on
+  some widths above that; revisit after phase 1. A profile without a saved layout opens the workspace's
+  panels as tabs in one group.
 
 ## Saving and conflicts
 
@@ -116,11 +118,11 @@ item, so those are not repeated elsewhere.
   (`id`, `aclId`, `createdBy`, `name`, `icon`, `sortOrder`, `panels`, `layouts`, `savedPanels`,
   `savedLayouts` as JSON text, `modifiedAt`); a timestamped entry in `www/go/core/install/updates.php` and the
   table in `www/go/core/install/install.sql`. `defaultWorkspaceId` on the user via an update entry too.
-- **Personal by default:** `AclOwnerEntity`, but on create the server sets `createdBy` to the authenticated
+- **Personal only:** `AclOwnerEntity`, but on create the server sets `createdBy` to the authenticated
   user and a private ACL (owner manage, nobody else; the entity type's default ACL is not copied). Writable
   properties are an allowlist (`name`, `icon`, `sortOrder`, `panels`, `layouts`, `savedPanels`,
-  `savedLayouts`); `createdBy`, `aclId` and ACL entries from the client are ignored or refused in phase 1
-  and 2 (no sharing UI yet). Administrators get manage access through the ACL like on every entity; the
+  `savedLayouts`); `createdBy`, `aclId` and ACL entries from the client are ignored or refused (workspaces are
+  never shared). Administrators get manage access through the ACL like on every entity; the
   UI lists only the user's own workspaces.
 - Controller: ACL-filtered queries (`applyAclToQuery()`), permission-checked loads, write/manage checks on
   update and destroy; custom methods (if any) with `@apiPermission`, read-only ones with `@apiReadOnly`.
@@ -156,9 +158,8 @@ item, so those are not repeated elsewhere.
 2. **Management and windows:** open in a new window, Save/Revert checkpoints, launcher row of workspaces
    and Shift+click "open beside" (the launcher card leaves an event for it), keyboard shortcuts, the
    after-login preference, the empty-centre option, undo/redo.
-3. **Advanced:** tear-out of single panels instead of the module popout, auto-hide at edges, lock, admin
-   templates for groups (sharing, a personal copy for read-only users), export/import as JSON, a module
-   more than once in one window.
+3. **Advanced:** tear-out of single panels instead of the module popout, auto-hide at edges, lock,
+   export/import as JSON, a module more than once in one window.
 
 ## Decisions taken (owner, 2026-11-24)
 
@@ -167,9 +168,9 @@ item, so those are not repeated elsewhere.
   hosts of the same views and drag and drop between them).
 - No workspace on narrow screens.
 - Layout differs per screen profile; the panels are shared.
+- Personal workspaces only; no admin templates or sharing for now.
+- Profile limits follow GO's breakpoints: 576px (narrow) and 1200px (medium / wide).
 
 ## Open
 
-- Admin templates for groups: wanted, or personal workspaces only? (assumed phase 3)
-- Profile limit between medium and wide (1400px assumed).
 - Limits for validation (size, panel count) to confirm in phase 1.
