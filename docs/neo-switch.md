@@ -130,7 +130,8 @@ build reads GOUI's SCSS tokens and iconfont. What can go, and when, is in sectio
   `sass`, `postcss`), then `npm run build`. Needs the GOUI submodules, which the script
   already requires. Document the Node version.
 - `build/build.sh` `build_package()`: after `install-npm.sh`, `npm prune --omit=dev` in
-  `views/neo` too, and remove the generated `resources/scss/theme-go` (build input only).
+  `views/neo` too, and remove the generated `resources/css` (build input only; up to neo.mjs
+  13.4 `resources/scss/theme-go`).
 - Debian Apache config: the revalidation header of `views/neo/.htaccess`
   (`Cache-Control: no-cache` for `.mjs/.js/.css/.json` under `views/neo` and module
   `views/neo`), because `AllowOverride None` skips the `.htaccess`. `.mjs` must be served

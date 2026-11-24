@@ -1,103 +1,115 @@
-// Generates the neo theme "theme-go" (resources/scss/theme-go, not committed).
+// Compiles the GO Sass sources to the CSS that neo's theme build reads (resources/css, not committed).
 //
-// neo has no theme inheritance at runtime: only the first theme's class lands on <body>
-// and every value sheet is scoped to it. So theme-go is theme-neo-light re-scoped to
-// .neo-theme-go, with the GO values of resources/scss/go/<same path>.scss appended to
-// each file. GO overlay files without a neo-light counterpart are added as they are.
+// neo.mjs 14 ships its themes as plain CSS and its build (buildScripts/build/themes.mjs) only
+// reads .css files from node_modules/neo.mjs/resources/css and the workspace's resources/css.
+// GO keeps Sass as its source (GOUI units dp()/sp(), the GOUI theme), so this script writes:
 //
-// @use rules of both parts are hoisted to the top. GO helpers (dp(), sp(), as in GOUI)
-// live in resources/scss/go/_go.scss and are available as `go.` in every overlay; other
-// @use paths in overlays are relative to resources/scss/go/.
-import fs   from 'node:fs';
-import path from 'node:path';
+// - resources/css/theme-go: neo has no theme inheritance at runtime: only the first theme's
+//   class lands on <body> and every value sheet is scoped to it. So theme-go is theme-neo-light
+//   re-scoped to .neo-theme-go, with the compiled GO values of resources/scss/go/<same path>.scss
+//   appended to each file. GO overlays without a neo-light counterpart become their own file.
+//   neo 14 declares its design tokens in Global.css itself, so the GO token overlays
+//   (go/design-tokens/Core.scss, Semantic.scss) are appended there, before go/Global.scss.
+// - resources/css/src: resources/scss/src compiled file by file (structural styles of GO classes).
+//
+// GO helpers (dp(), sp(), as in GOUI) live in resources/scss/go/_go.scss and are available as
+// `go.` in every overlay; other @use paths are relative to the file itself.
+import fs                from 'node:fs';
+import path              from 'node:path';
+import {pathToFileURL}   from 'node:url';
+import * as sass         from 'sass';
 
 const root     = path.resolve(import.meta.dirname, '..'),
-      neoScss  = path.join(root, 'node_modules/neo.mjs/resources/scss'),
-      base     = path.join(neoScss, 'theme-neo-light'),
-      overlay  = path.join(root, 'resources/scss/go'),
-      target   = path.join(root, 'resources/scss/theme-go'),
-      skipDirs = ['apps', 'examples', 'code', 'calendar', 'dashboard', 'draggable/table'];
+      base     = path.join(root, 'node_modules/neo.mjs/resources/css/theme-neo-light'),
+      scss     = path.join(root, 'resources/scss'),
+      overlay  = path.join(scss, 'go'),
+      srcScss  = path.join(scss, 'src'),
+      goHelper = path.join(overlay, '_go.scss'),
+      target   = path.join(root, 'resources/css'),
+      theme    = path.join(target, 'theme-go'),
+      // neo's own apps and examples: GO never loads them
+      skipDirs = ['apps', 'examples'],
+      // appended to Global.css in this order
+      tokens   = ['design-tokens/Core.scss', 'design-tokens/Semantic.scss'];
 
-function walk(dir, rel = '') {
+/**
+ * @param {String} dir
+ * @param {String} ext '.css' or '.scss'
+ * @param {String[]} [skip] relative directories to leave out
+ * @param {String} [rel]
+ * @returns {String[]} paths relative to dir, Sass partials left out
+ */
+function walk(dir, ext, skip = [], rel = '') {
     return fs.readdirSync(path.join(dir, rel), {withFileTypes: true}).flatMap(entry => {
         const relPath = path.join(rel, entry.name);
 
         if (entry.isDirectory()) {
-            return skipDirs.includes(relPath) ? [] : walk(dir, relPath)
+            return skip.includes(relPath) ? [] : walk(dir, ext, skip, relPath)
         }
 
-        return entry.name.endsWith('.scss') ? [relPath] : []
+        return entry.name.endsWith(ext) && !entry.name.startsWith('_') ? [relPath] : []
     })
 }
 
 /**
- * neo-light uses paths relative to its own folder; point them back into the package
+ * @param {String} file absolute path of a .scss file
+ * @param {Boolean} [withHelper] make _go.scss available as `go.` (overlays)
+ * @returns {String} CSS
  */
-function rebase(scss, relPath) {
-    const fromDir = path.dirname(path.join(target, relPath)),
-          srcDir  = path.dirname(path.join(base, relPath));
+function compile(file, withHelper = false) {
+    let source = fs.readFileSync(file, 'utf8');
 
-    return scss
-        .replaceAll('neo-theme-neo-light', 'neo-theme-go')
-        .replace(/@use\s+(["'])([^"']+)\1/g, (match, quote, url) => {
-            if (url.startsWith('sass:')) {
-                return match
-            }
+    // an overlay that does not @use the helper itself gets it injected; @use rules may
+    // follow it, so it goes first
+    if (withHelper && !/@use\s+["']([^"']*\/)?_?go(\.scss)?["'](\s+as\s+go)?\s*;/.test(source)) {
+        source = `@use "${path.relative(path.dirname(file), goHelper)}" as go;\n${source}`
+    }
 
-            // design tokens: keep using the generated (re-scoped) copies
-            if (url.includes('theme-neo-light/')) {
-                url = path.relative(fromDir, path.join(target, url.split('theme-neo-light/')[1]));
-                return `@use ${quote}${url}${quote}`
-            }
-
-            const resolved = path.resolve(srcDir, url);
-
-            // partials inside the theme are copied as well
-            if (resolved.startsWith(base + path.sep)) {
-                return match
-            }
-
-            return `@use ${quote}${path.relative(fromDir, resolved)}${quote}`
-        })
+    return sass.compileString(source, {
+        url      : pathToFileURL(file),
+        style    : 'expanded',
+        quietDeps: true
+    }).css
 }
 
-function goUse(relPath) {
-    const helper = path.relative(path.dirname(path.join(target, relPath)), path.join(overlay, '_go.scss'));
-
-    return `@use "${helper}" as go;\n`
+/**
+ * @param {String} file
+ * @param {String} css
+ */
+function write(file, css) {
+    fs.mkdirSync(path.dirname(file), {recursive: true});
+    fs.writeFileSync(file, `/* GENERATED by buildScripts/generateGoTheme.mjs, do not edit */\n${css}\n`)
 }
 
 fs.rmSync(target, {recursive: true, force: true});
 
-const baseFiles    = walk(base),
-      overlayFiles = walk(overlay).filter(f => !path.basename(f).startsWith('_'));
+const baseFiles    = walk(base, '.css', skipDirs),
+      overlayFiles = walk(overlay, '.scss').filter(f => !tokens.includes(f)),
+      srcFiles     = walk(srcScss, '.scss');
 
-for (const relPath of new Set([...baseFiles, ...overlayFiles])) {
-    const dest = path.join(target, relPath);
+for (const relPath of new Set([...baseFiles, ...overlayFiles.map(f => f.replace(/\.scss$/, '.css'))])) {
+    const parts = [];
 
-    let scss = baseFiles.includes(relPath) ? rebase(fs.readFileSync(path.join(base, relPath), 'utf8'), relPath) : '',
-        go   = fs.existsSync(path.join(overlay, relPath)) ? fs.readFileSync(path.join(overlay, relPath), 'utf8') : '';
-
-    if (go) {
-        const useRe   = /^@use\s+(["'])([^"']+)\1([^;]*);\s*$/gm,
-              fromDir = path.dirname(path.join(target, relPath)),
-              goDir   = path.dirname(path.join(overlay, relPath)),
-              goUses  = [...go.matchAll(useRe)].map(([, q, url, rest]) => url.startsWith('sass:')
-                  ? `@use ${q}${url}${q}${rest};`
-                  : `@use ${q}${path.relative(fromDir, path.resolve(goDir, url))}${q}${rest};`);
-
-        // @use rules must precede everything else
-        scss = [
-            ...new Set([...[...scss.matchAll(useRe)].map(m => m[0].trim()), ...goUses]),
-            goUse(relPath),
-            scss.replace(useRe, ''),
-            `// ---- GO: resources/scss/go/${relPath} ----`,
-            go.replace(useRe, '')
-        ].join('\n')
+    if (baseFiles.includes(relPath)) {
+        parts.push(fs.readFileSync(path.join(base, relPath), 'utf8').replaceAll('neo-theme-neo-light', 'neo-theme-go'))
     }
 
-    fs.mkdirSync(path.dirname(dest), {recursive: true});
-    fs.writeFileSync(dest, `// GENERATED by buildScripts/generateGoTheme.mjs, do not edit\n${scss}`)
+    const goFiles = (relPath === 'Global.css' ? tokens : []).concat(relPath.replace(/\.css$/, '.scss'));
+
+    for (const goFile of goFiles) {
+        const file = path.join(overlay, goFile);
+
+        if (fs.existsSync(file)) {
+            parts.push(`/* ---- GO: resources/scss/go/${goFile} ---- */\n${compile(file, true)}`)
+        }
+    }
+
+    write(path.join(theme, relPath), parts.join('\n'))
 }
 
-console.log(`theme-go: ${baseFiles.length} neo-light files, ${overlayFiles.length} GO overlays → ${target}`);
+for (const relPath of srcFiles) {
+    write(path.join(target, 'src', relPath.replace(/\.scss$/, '.css')), compile(path.join(srcScss, relPath)))
+}
+
+console.log(`theme-go: ${baseFiles.length} neo-light files, ${overlayFiles.length + tokens.length} GO overlays; ` +
+    `src: ${srcFiles.length} files → ${target}`);

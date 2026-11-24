@@ -5,7 +5,7 @@ webclient. The live per-component status is the Dev module (`src/dev/menu.mjs`, 
 `views/goui/groupoffice-core/script` = GO core), plus ExtJS-only core parts
 (`go/core/views/extjs3`).
 
-Status: **neo** = neo.mjs 13.4 ships it, usable as is (maybe GO styling);
+Status: **neo** = neo.mjs 13.4 ships it (14 since 2026-11-24), usable as is (maybe GO styling);
 **GO.neo** = we have a GO class in `views/neo/src`; **missing** = to build.
 
 ## Base library (GOUI `goui`)
@@ -96,11 +96,36 @@ Bookmarks has no grid and no `Bookmark/export`, so neither applies there.
 
 ## neo.mjs upgrades
 
-`neo.mjs` is pinned in `views/neo/package.json` (13.4.0). After a bump run `npm install`,
-`npm run build-themes` and check what we patch or override against the new neo source:
+`neo.mjs` is pinned in `views/neo/package.json` (14.0.0 since 2026-11-24; read the release
+notes' "Upgrading from" section and diff `src/` of both versions). After a
+bump run `npm install`, `npm run build-themes` and check what we patch or override against the
+new neo source. Compare with the old version side by side: a second container on another port
+with a worktree of the previous commit (same database, a clone of the data folder) and
+screenshots of the same pages (`magick compare -metric AE -fuzz 3%`); a 13.4 → 14 diff of a page
+was below 0.1 % of its pixels after the fixes.
+
+- Themes (14): neo ships plain CSS, `generateGoTheme.mjs` compiles GO's SCSS into
+  `resources/css` before neo's build (README "GO look"). neo 14 reads new variable families
+  that GO sets in `go/button/Base.scss` and `go/toolbar/Base.scss`: `--button-primary-*` for
+  `ui: 'primary'`, `--button-*-pressed` (14 recolours a pressed button; 13.4 changed only its
+  border) and `--toolbar-button-*` (a toolbar sizes its buttons).
+- `src/data/setData.mjs`: neo skips an assignment equal to the last assigned `data`, also when
+  the store changed since (`add()`, `remove()`); the helper then replaces the records itself.
+- `Neo.php` build id carries the installed neo.mjs version (`NeoTest::testBuildIdCarriesTheNeoVersion`).
+- Toggle buttons start with `pressed: false`: 14's default is `null` (a plain button, no
+  `aria-pressed`).
 
 - `src/form/field/textAutoComplete.mjs`: replaces `Text.afterSetAutoComplete` (string values).
-- `src/view/Dialog.mjs`: overrides `close`, `closeOrHide`, `revertFocus`, `onKeyDownEscape`, `afterSetHidden`.
+- `src/view/Dialog.mjs`: overrides `close`, `closeOrHide`, `getFocusReturnTarget` (14 returns the
+  focus through it on close and on destroy; 13.4 only via `revertFocus`), `onKeyDownEscape`,
+  `afterSetHidden`, `getFirstField` (14 focuses the first field on open; skip inactive cards).
+  Escape goes through `onEscape()` (`keys` config and the body-Escape patch): 14 cancels a
+  header drag on Escape, and that Escape must not also close (keydown and `drag:cancel` arrive
+  in either order). `DialogResizable` no longer copies the size into `style`: 14 resizes `style`
+  itself (`styleConfig: 'style'`). Popout `wrapperStyle` uses `'0px'`: 14's `initVnode()` turns a
+  falsy `left`/`top` into `'initial'`.
+- `src/form/field/HtmlField.mjs` `focus()` forwards neo 14's `restoreFrom` to the editor addons
+  (`HtmlEditor`, `MarkdownEditor`), which focus only if the focus got lost meanwhile.
 - `resources/scss/go/dialog/Base.scss`: keeps a `.neo-floating` dialog `position: fixed` against neo's
   `position: relative` on `.neo-masked` and (13.4+) `.neo-store-loading`.
 - Configs redeclared with a trailing `_` in a subclass: neo refuses them ("Invalid config ... already
@@ -110,7 +135,9 @@ Bookmarks has no grid and no `Bookmark/export`, so neither applies there.
   `contentSizedRows`, gives the first row of a group the height of row + header
   (`view.setRowHeights()`, keyed by record id) and wraps instance methods of neo's Body
   (`createRowPool`, `isEditorEvent`) and Row (`createVdom`, which appends the header band as the
-  row's last child). Check these against Body.mjs / Row.mjs after a bump.
+  row's last child). Check these against Body.mjs / Row.mjs after a bump. 14's silent
+  `createVdom(true)` marks the body dirty (`hasSilentVdomChanges`); the wrapper restores the flag
+  when it updates the row itself.
 - `src/grid/Grid.mjs` empty state: neo's grid container builds its vdom children from its items
   (ARIA wrapper, scrollbars), so the empty state is no child node but `::before` (icon) and
   `::after` (text) of the root, from its `data-empty-icon` / `data-empty-text` attributes
@@ -123,7 +150,7 @@ Bookmarks has no grid and no `Bookmark/export`, so neither applies there.
   `FolderStore` fire `beforeLoad`. The CSS puts
   it 30px down (the header height of `Grid.CHROME_HEIGHT`). A grid sized by `fitToRows()` shows
   none: its owner shows its own text (HistoryPanel, maildomains DomainGridCard). A plain neo Store
-  whose `data` is set to `[]` fires no `load` (neither the old rows nor the empty state follow):
+  whose `data` is set to `[]` again (equal to the last assignment) fires no `load`:
   set the data with `setDataAndFireLoad(store, records)` (`src/data/setData.mjs`; `JmapStore`,
   email `MessageStore`, files `FolderStore`) or fire it yourself, as zpushadmin
   `DevicesMain.load()` does. Records equal to the old ones fire no `load` either and leave

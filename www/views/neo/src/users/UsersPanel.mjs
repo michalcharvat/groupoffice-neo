@@ -61,6 +61,7 @@ class UsersPanel extends Container {
             items : [{
                 module   : Button,
                 reference: 'showDisabled',
+                pressed  : false, // a toggle: neo 14 renders aria-pressed only for a boolean
                 icon     : 'person_off',
                 text     : t('Show disabled'),
                 handler  : () => me.toggleDisabled()

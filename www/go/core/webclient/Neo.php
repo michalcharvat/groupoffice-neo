@@ -43,8 +43,9 @@ class Neo {
 	/**
 	 * Value from the cache unless the debugger is on (dev checkouts see every change at once)
 	 *
-	 * The key carries the GO version and the theme map's mtime, so an upgrade or a theme build
-	 * gives new values; module install, enable and upgrade flush the cache like the ExtJS scripts.
+	 * The key carries the GO and neo.mjs versions and the theme map's mtime, so an upgrade or a
+	 * theme build gives new values; module install, enable and upgrade flush the cache like the
+	 * ExtJS scripts.
 	 */
 	private function cached(string $key, callable $fn)
 	{
@@ -53,7 +54,7 @@ class Neo {
 		}
 
 		$themeMap = GO::config()->root_path . 'views/neo/resources/theme-map.json';
-		$key .= '-' . go()->getVersion() . '-' . (is_file($themeMap) ? filemtime($themeMap) : 0);
+		$key .= '-' . go()->getVersion() . '-' . $this->neoVersion() . '-' . (is_file($themeMap) ? filemtime($themeMap) : 0);
 
 		$value = go()->getCache()->get($key);
 		if ($value === null) {
@@ -184,8 +185,9 @@ class Neo {
 	 * Build id for the shared worker name
 	 *
 	 * A SharedWorker lives as long as any GO tab is open, and new tabs connect
-	 * to it. Its name carries the GO version and the newest mtime of the neo UI
-	 * sources and theme map, so a changed UI gets a new worker instead of the old code.
+	 * to it. Its name carries the GO and neo.mjs versions and the newest mtime of the
+	 * neo UI sources and theme map, so a changed UI gets a new worker instead of the old code.
+	 * The neo.mjs version is needed because npm installs its files with a fixed mtime.
 	 */
 	private function buildId(): string
 	{
@@ -211,7 +213,24 @@ class Neo {
 				$mtime = max($mtime, $file->getMTime());
 			}
 		}
-		return go()->getVersion() . '-' . $mtime;
+		return go()->getVersion() . '-' . $this->neoVersion() . '-' . $mtime;
+	}
+
+	/**
+	 * Installed neo.mjs version, from views/neo/node_modules/neo.mjs/package.json
+	 *
+	 * @return string the version, or "0" when neo.mjs is not installed
+	 */
+	private function neoVersion(): string
+	{
+		static $version = null;
+
+		if ($version === null) {
+			$file = GO::config()->root_path . 'views/neo/node_modules/neo.mjs/package.json';
+			$json = is_file($file) ? json_decode((string) file_get_contents($file), true) : null;
+			$version = is_array($json) && is_string($json['version'] ?? null) ? $json['version'] : '0';
+		}
+		return $version;
 	}
 
 	/**

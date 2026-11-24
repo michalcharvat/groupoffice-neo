@@ -1,5 +1,6 @@
 // GOUI .goui-button (goui/style/_button.scss)
-//   ui 'primary' (neo default) = GO "filled primary" (teal)
+//   ui 'primary'               = GO "filled primary" (teal); neo 14 reads --button-primary-*,
+//                                the plain --button-* values are the same for buttons without a ui
 //   ui 'ghost'                 = GO default button: flat, text colour inherited
 //   ui 'secondary'             = GO "outlined"
 :where(.neo-theme-go) {
@@ -32,6 +33,36 @@
     --button-glyph-color-active       : white;
     --button-glyph-color-disabled     : var(--fg-secondary-text);
 
+    // neo 14 recolours a pressed button from --button-*-pressed; up to 13.4 only its border
+    // changed. Keep the rest colours: GO styles a pressed state where it wants one
+    // (e.g. CalendarMain .go-cal-view-buttons)
+    --button-background-color-pressed : var(--c-primary);
+    --button-border-pressed           : none; // as neo-light 13.4
+    --button-text-color-pressed       : white;
+    --button-glyph-color-pressed      : white;
+
+    --button-primary-background-color         : var(--c-primary);
+    --button-primary-background-color-hover   : var(--c-primary);
+    --button-primary-background-color-active  : var(--c-primary);
+    --button-primary-background-color-pressed : var(--c-primary);
+    --button-primary-background-color-disabled: var(--bg-hover);
+    --button-primary-border                   : 1px solid var(--c-primary);
+    --button-primary-border-hover             : 1px solid var(--c-primary);
+    --button-primary-border-active            : 1px solid var(--c-primary);
+    --button-primary-border-pressed           : none; // as the plain button in 13.4
+    --button-primary-border-disabled          : 1px solid transparent;
+    --button-primary-text-color               : white;
+    --button-primary-text-color-hover         : white;
+    --button-primary-text-color-active        : white;
+    --button-primary-text-color-pressed       : white;
+    --button-primary-text-color-disabled      : var(--fg-secondary-text);
+    --button-primary-glyph-color              : white;
+    --button-primary-glyph-color-hover        : white;
+    --button-primary-glyph-color-active       : white;
+    --button-primary-glyph-color-pressed      : white;
+    --button-primary-glyph-color-disabled     : var(--fg-secondary-text);
+    --button-primary-ripple-background-color  : var(--bg-pressed);
+
     --button-ghost-background-color         : transparent;
     --button-ghost-background-color-hover   : var(--bg-hover);
     --button-ghost-background-color-active  : var(--bg-focus);
@@ -49,6 +80,9 @@
     --button-ghost-glyph-color-hover        : inherit;
     --button-ghost-glyph-color-active       : inherit;
     --button-ghost-glyph-color-disabled     : var(--fg-secondary-text);
+    --button-ghost-background-color-pressed : transparent;
+    --button-ghost-text-color-pressed       : inherit;
+    --button-ghost-glyph-color-pressed      : inherit;
     --button-ghost-ripple-background-color  : var(--bg-pressed);
 
     --button-secondary-background-color      : transparent;
@@ -59,4 +93,22 @@
     --button-secondary-text-color-hover      : inherit;
     --button-secondary-glyph-color           : inherit;
     --button-secondary-glyph-color-hover     : inherit;
+    --button-secondary-background-color-pressed: transparent;
+    --button-secondary-border-pressed          : 1px solid var(--fg-outline);
+    --button-secondary-text-color-pressed      : inherit;
+    --button-secondary-glyph-color-pressed     : inherit;
+    // 13.4 resolved these to nothing: text and glyph kept the button colour
+    --button-secondary-text-color-disabled     : inherit;
+    --button-secondary-glyph-color-disabled    : inherit;
+}
+
+// neo 14 draws a pressed button's hover from its pressed background: keep GO's hover
+.neo-theme-go .neo-button.pressed {
+    &.neo-button-ghost {
+        --button-ghost-background-color-hover: var(--bg-hover);
+    }
+
+    &.neo-button-secondary {
+        --button-secondary-background-color-hover: var(--bg-hover);
+    }
 }

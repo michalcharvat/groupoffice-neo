@@ -194,12 +194,14 @@ class EmailMain extends MainThreeColumnPanel {
                         module   : Button,
                         icon     : 'mark_email_unread',
                         reference: 'unreadButton',
+                        pressed  : false, // a toggle: neo 14 renders aria-pressed only for a boolean
                         tooltip  : t('Show unread'),
                         handler  : () => this.toggleFilter('unread')
                     }, {
                         module   : Button,
                         icon     : 'flag',
                         reference: 'flaggedButton',
+                        pressed  : false, // a toggle: neo 14 renders aria-pressed only for a boolean
                         tooltip  : t('Show flagged'),
                         handler  : () => this.toggleFilter('flagged')
                     }, {

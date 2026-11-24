@@ -210,8 +210,16 @@ class HtmlEditor extends Base {
     /**
      * @param {Object} data
      * @param {String} data.id
+     * @param {String} [data.restoreFrom] id of a departing component that hands the focus back:
+     *     focus only if the focus got lost (as neo's DomAccess.focus() does)
      */
-    focus({id}) {
+    focus({id, restoreFrom}) {
+        if (restoreFrom) {
+            return DomAccess.settleFocusDeparture(restoreFrom).then(lost => {
+                lost() && this.map[id]?.editor.focus()
+            })
+        }
+
         this.map[id]?.editor.focus()
     }
 

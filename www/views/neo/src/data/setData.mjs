@@ -6,6 +6,10 @@
  * set back to its value before: neo's beforeSetData() sets it and only afterSetData() clears it,
  * so a skipped afterSetData left the store "loading" (no loadMore()).
  *
+ * The equal-array check compares with the last assigned data, not with what the store holds:
+ * after `add()` or `remove()` (e.g. loadMore() appending a page) an equal first page would keep the
+ * extra rows. Then the records are replaced here (neo 13.4 and 14).
+ *
  *     me.totalCount = total;
  *     me.isLoaded   = true;
  *     setDataAndFireLoad(me, records);
@@ -22,7 +26,14 @@ export function setDataAndFireLoad(store, records, event={}) {
     store.on('load', onLoad);
 
     try {
-        store.data = records
+        store.data = records;
+
+        if (!fired && !holdsExactly(store, records)) {
+            // as neo's afterSetData() does
+            store.clear();
+            store.isLoading = false;
+            store.add(records, store.autoInitRecords)
+        }
     } finally {
         store.un('load', onLoad)
     }
@@ -32,4 +43,15 @@ export function setDataAndFireLoad(store, records, event={}) {
         store.isLoading = loading;
         store.fire('load', {items: store.items, ...event})
     }
+}
+
+/**
+ * @param {Neo.data.Store} store
+ * @param {Object[]} records
+ * @returns {Boolean} true if the store holds these records (by key, in this order), a filter ignored
+ */
+function holdsExactly(store, records) {
+    const items = (store.allItems || store).items;
+
+    return items.length === records.length && items.every((item, i) => store.getKey(item) === store.getKey(records[i]))
 }

@@ -2,4 +2,10 @@
 :where(.neo-theme-go) {
     --toolbar-background-color: transparent;
     --toolbar-padding         : #{go.dp(8)} #{go.dp(16)};
+
+    // neo 14 sizes toolbar buttons from these (toolbar/Base.css); keep GO's button size
+    --toolbar-button-height   : #{go.dp(48)};
+    --toolbar-button-min-width: 0;
+    --toolbar-button-padding  : 0 #{go.dp(18)};
+    --toolbar-button-font-size: #{go.sp(16)};
 }

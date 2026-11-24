@@ -103,4 +103,21 @@ class NeoTest extends TestCase
 		}
 		$this->assertContains('Bookmark', $apps['bookmarks']['entities'] ?? []);
 	}
+
+	/**
+	 * npm installs neo.mjs with a fixed file mtime: without its version in the shared worker
+	 * name, open tabs would keep running the old neo after an upgrade
+	 */
+	public function testBuildIdCarriesTheNeoVersion(): void
+	{
+		$package = GO::config()->root_path . 'views/neo/node_modules/neo.mjs/package.json';
+		if (!is_file($package)) {
+			$this->markTestSkipped('neo.mjs is not installed');
+		}
+		$version = json_decode(file_get_contents($package), true)['version'];
+
+		$buildId = (new \ReflectionMethod(Neo::class, 'buildId'))->invoke(Neo::get());
+
+		$this->assertStringStartsWith(go()->getVersion() . '-' . $version . '-', $buildId);
+	}
 }

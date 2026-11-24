@@ -74,8 +74,8 @@ DomEventManager.fire = function(event) {
               // a modal dialog blocks the ones below, also the one clicked before it opened
               dialog  = topmost?.modal ? topmost : (isOpen(clicked) ? clicked : null);
 
-        // Escape while dragging only cancels the drag
-        dialog && !dialog.isDragging && dialog.onKeyDownEscape()
+        // Escape while dragging only cancels the drag (onEscape())
+        dialog?.onEscape(data)
     }
 };
 
@@ -96,14 +96,12 @@ function dialogOnPath(path) {
 }
 
 /**
- * Base dialog for GO dialogs: close always destroys the dialog and removes the
- * modal mask.
+ * Base dialog for GO dialogs: close (button, Escape, hiding) always destroys the dialog
+ * and removes the modal mask at once (up to neo.mjs 13.4 Escape only hid a neo dialog and
+ * the mask could stay; GO dialogs ignore neo 14's closeAction).
  *
- * - neo's closeOrHide() destroys the dialog and only then awaits this.timeout(),
- *   which never resolves on a destroyed instance, so the mask stayed.
- * - Escape only hides a neo dialog (hidden = true) and leaves the mask; a hidden
- *   GO dialog is closed instead.
  * - Escape also works with the focus on body (after a click on non-focusable content).
+ * - Escape that cancels a header move or a resize does not close (onEscape()).
  *
  * Subclasses position themselves with wrapperStyle (left/top): without an
  * animateTarget, .neo-floating parks a dialog at -10000px.
@@ -116,11 +114,20 @@ class Dialog extends BaseDialog {
         className   : 'GO.view.Dialog',
         // GOUI window tools: flat buttons with Material icons
         headerConfig: headerTools('popout', 'maximize', 'close'),
+        // through onEscape(): Escape that cancels a drag does not close (subclasses override
+        // onKeyDownEscape())
+        keys        : {Escape: 'onEscape'},
         // resizing keeps working after the dialog was moved by its header
         resizablePluginConfig: {module: DialogResizable}
     }
 
     isClosing = false
+
+    /**
+     * timeStamp of the Escape keydown that cancelled a header move or a resize, see onEscape()
+     * @member {Number|null} cancelEscapeTimeStamp=null
+     */
+    cancelEscapeTimeStamp = null
 
     /**
      * Popup window of a popped out dialog: {name, openerWindowId}
@@ -192,8 +199,11 @@ class Dialog extends BaseDialog {
      * A dialog opened from a menu (avatar menu → My account) took the focus from a menu
      * item of a floating menu that unmounted on the click. Giving it back mounts the menu
      * again: it flashes at its button. Keep neo's focus return for everything else.
+     * neo 14 returns the focus through this method on close (revertFocus()) and on
+     * destroy / unmount (revertFocusOnDeparture()).
+     * @returns {Neo.component.Base|null}
      */
-    revertFocus() {
+    getFocusReturnTarget() {
         const target = this.focusEnterData?.relatedTarget,
               // a list item's id is "<list id>__<record id>"
               cmp    = target?.id && (Neo.getComponent(target.id) || Neo.getComponent(target.id.split('__')[0]));
@@ -202,10 +212,67 @@ class Dialog extends BaseDialog {
 
         // only a dismissed (unmounted) menu: an embedded or still open menu keeps its focus
         if (menu && (!menu.mounted || menu.hidden)) {
+            return null
+        }
+
+        return super.getFocusReturnTarget()
+    }
+
+    /**
+     * neo 14 picks the first visible field for the initial focus, but inactive cards of a card
+     * layout (FormWindow tabs) are neither hidden nor disabled: look in the active card only
+     * @param {Neo.component.Base} [component=this]
+     * @returns {Neo.form.field.Base|null}
+     */
+    getFirstField(component=this) {
+        const {layout} = component;
+
+        if (layout?.ntype === 'layout-card') {
+            const card = component.items?.[layout.activeIndex];
+
+            return card && !card.hidden && !card.disabled ? super.getFirstField({items: [card]}) : null
+        }
+
+        return super.getFirstField(component)
+    }
+
+    /**
+     * @param {Object} [data]
+     */
+    onDragCancel(data) {
+        this.isDragging && this.rememberCancelEscape(data);
+        super.onDragCancel(data)
+    }
+
+    /**
+     * neo 14 cancels a header move or a resize on Escape; remember that key (see onEscape())
+     * @param {Object} [data] drag:cancel data: the keydown's data when Escape cancelled
+     */
+    rememberCancelEscape(data) {
+        this.cancelEscapeTimeStamp = data?.key === 'Escape' ? data.timeStamp ?? null : null
+    }
+
+    /**
+     * Escape in or for this dialog. neo 14 cancels a header move or a resize on Escape: that
+     * Escape must not close the dialog as well. Its keydown and the drag:cancel reach the worker
+     * in either order: while dragging the cancel is still to come; after the cancel the keydown
+     * carries the timeStamp of the cancelling key.
+     * @param {Object} [data] keydown data
+     */
+    onEscape(data) {
+        const me      = this,
+              resizer = me.getPlugin('resizable');
+
+        if (me.isDragging || resizer?.isDragging) {
             return
         }
 
-        super.revertFocus()
+        if (data?.timeStamp != null && data.timeStamp === me.cancelEscapeTimeStamp) {
+            me.cancelEscapeTimeStamp = null;
+            return
+        }
+
+        me.onKeyDownEscape()
     }
 
     onKeyDownEscape() {
@@ -356,7 +423,8 @@ class Dialog extends BaseDialog {
             windowId,
             // wrapperStyle merges: drop a dialog's max size too (FormWindow maxHeight: 90vh), it
             // would leave a strip of the popup window empty
-            wrapperStyle: {height: '100%', left: 0, maxHeight: 'none', maxWidth: 'none', top: 0, width: '100%'}
+            // '0px': neo 14's initVnode() replaces a falsy left / top with 'initial'
+            wrapperStyle: {height: '100%', left: '0px', maxHeight: 'none', maxWidth: 'none', top: '0px', width: '100%'}
         });
 
         // the window manages size and position now

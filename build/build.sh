@@ -334,7 +334,7 @@ build_package() {
 
 	# neo webclient: own node_modules (see install-npm.sh); the generated theme sources are build input only
 	(cd "$PACKAGE_DIR/views/neo" && npm prune --omit=dev --ignore-scripts --audit=false --fund=false)
-	rm -rf "$PACKAGE_DIR/views/neo/resources/scss/theme-go"
+	rm -rf "$PACKAGE_DIR/views/neo/resources/css" "$PACKAGE_DIR/views/neo/resources/scss/theme-go"
 }
 
 build_tar() {

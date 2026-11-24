@@ -84,6 +84,7 @@ class InstancesMain extends Container {
             items : [{
                 module   : Button,
                 reference: 'showDisabled',
+                pressed  : false, // a toggle: neo 14 renders aria-pressed only for a boolean
                 icon     : 'block',
                 text     : t('Show disabled'),
                 handler  : () => me.toggleFilter('showDisabled')

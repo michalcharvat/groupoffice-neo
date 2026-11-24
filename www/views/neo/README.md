@@ -89,10 +89,14 @@ Module code imports neo and the shell with relative paths
 The reference is GO 26's GOUI module UI (e.g. Notes), not the ExtJS Paper theme.
 
 - **Theme**: `Neo.php` sets `themes: ['neo-theme-go']`. neo loads only the first theme's
-  class on `<body>` and scopes every value sheet to it, so there is no runtime inheritance:
-  `buildScripts/generateGoTheme.mjs` copies `theme-neo-light` to `resources/scss/theme-go`
-  (gitignored) re-scoped to `.neo-theme-go`, and appends `resources/scss/go/<same path>.scss`
-  to each file. Overlays get `go.dp()`/`go.sp()` (GOUI units) and may `@use` GO SCSS.
+  class on `<body>` and scopes every value sheet to it, so there is no runtime inheritance.
+  neo.mjs 14 ships plain CSS and its theme build reads only `.css`, so GO's SCSS is compiled
+  first: `buildScripts/generateGoTheme.mjs` copies neo's `resources/css/theme-neo-light` to
+  `resources/css/theme-go` (gitignored) re-scoped to `.neo-theme-go`, appends the compiled
+  `resources/scss/go/<same path>.scss` to each file (the token overlays
+  `go/design-tokens/Core.scss`, `Semantic.scss` go into `Global.css`: neo 14 declares its tokens
+  there), and compiles `resources/scss/src/**` to `resources/css/src/**`. Overlays get
+  `go.dp()`/`go.sp()` (GOUI units) and may `@use` GO SCSS.
 - **GO tokens**: `go/Global.scss` `@use`s `views/goui/groupoffice-core/style/_theme.scss`,
   so `--fg-main`, `--bg-mid`, `--density`, … are GO's own (incl. `body.dark`). neo tokens
   (`--purple-*`, `--sem-*`, `--button-*`, `--grid-*`, …) point at them. `<html>` font-size
@@ -110,7 +114,7 @@ The reference is GO 26's GOUI module UI (e.g. Notes), not the ExtJS Paper theme.
   sidebar buttons become "menu" / "close", `showCenterButton()` goes back from the east panel;
   the topbar shows only the open module's tab (switch with the apps menu); dialogs fill the screen.
 - **Rebuild** after any SCSS change (`npm run build-themes`, ~4 s); the browser reads
-  `dist/`, not the SCSS.
+  `dist/`, not the SCSS (nor the generated `resources/css`).
 
 Still different from GOUI notes: no "Input field" variable
 filters, filter conditions are text values only (no sub groups / pickers), comments are plain
@@ -179,13 +183,12 @@ text (no rich text editor, labels, attachments), no import/export menu. Dark mod
   `Cache-Control: no-cache` (ETag revalidation). Navigating to the same URL with only a
   different hash does not reload the page.
 - **Dialogs**: without an `animateTargetId` a dialog stays at `.neo-floating`'s
-  -10000px; set `left`/`top` in `wrapperStyle`. neo's `closeOrHide()` destroys the
-  dialog and then awaits `this.timeout()`, which never resolves on a destroyed
-  instance → modal mask stays. Escape only hides. `GO.view.Dialog` fixes both.
-  A dialog has no wrapper node, so its element gets `{...wrapperStyle, ...style}`: a
-  header drag stores left/top/width/height in `style`, neo's Resizable writes only
-  `wrapperStyle`, and a moved dialog no longer resized. `GO.view.Dialog` uses
-  `src/plugin/DialogResizable.mjs`, which writes the new geometry into both.
+  -10000px; set `left`/`top` in `wrapperStyle`. `GO.view.Dialog` closes (destroys) on
+  the close button, Escape and hiding, and removes the modal mask at once; Escape that
+  cancels a header move or a resize does not close (neo 14 cancels the gesture on Escape).
+  A dialog has no wrapper node, so its element gets `{...wrapperStyle, ...style}`; neo 14
+  resizes `style` (up to 13.4 GO's `DialogResizable` copied the size there). Its resizer
+  shows no handles on a maximized dialog.
   neo has no header double-click; `GO.view.Dialog` toggles maximize on it (only with a
   visible `maximize` tool, not on the tools themselves). It needs no drag guard: neo's
   pointer sensor starts a drag only after 5px of movement.
@@ -212,7 +215,8 @@ text (no rich text editor, labels, attachments), no import/export menu. Dark mod
 - **Submenus** of a neo menu are plain `Neo.menu.List`: `GO.menu.List#getSubMenuData()`
   adds `go-menu`. A `separator: true` item is a separator only (its text is not shown).
 - **Theme builds and the shared worker**: the worker reads `theme-map.json` once; `Neo.php`
-  includes its mtime in the build id, so `npm run build-themes` starts a new worker.
+  includes its mtime in the build id, so `npm run build-themes` starts a new worker. The
+  installed neo.mjs version is in the build id too (npm gives its files a fixed mtime).
 - **Selecting a grid row from code** right after a load is lost: the vnode gets the
   class, the DOM row does not. Use `src/grid/selectRow.mjs` (checks the DOM and retries).
 - **Never `hidden: true` a `PagingToolbar`**: its store load listener then throws (its

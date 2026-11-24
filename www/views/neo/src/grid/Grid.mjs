@@ -505,9 +505,18 @@ class Grid extends GridContainer {
         const createVdom = row.createVdom;
 
         row.createVdom = function(silent = false, recycle = true) {
+            // silent: the band goes in before the update. neo 14 marks the body dirty on a silent
+            // call; a row updated here right away leaves nothing for the body to update.
+            const body  = this.parent,
+                  dirty = body?.hasSilentVdomChanges;
+
             createVdom.call(this, true, recycle);
             me.decorateGroupRow(this);
-            !silent && this.update()
+
+            if (!silent) {
+                body && (body.hasSilentVdomChanges = dirty);
+                this.update()
+            }
         }
     }
 

@@ -2,4 +2,6 @@ node_modules/
 dist/
 resources/theme-map.json
 test/credentials.local
+resources/css/
+# generated up to neo.mjs 13.4
 resources/scss/theme-go/

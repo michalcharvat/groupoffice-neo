@@ -1,14 +1,10 @@
 import Resizable from '../../node_modules/neo.mjs/src/plugin/Resizable.mjs';
 
-const GEOMETRY = ['height', 'left', 'top', 'width'];
-
 /**
- * neo's Resizable for GO.view.Dialog: a resize also works after the dialog was moved.
+ * neo's Resizable for GO.view.Dialog: no resize handles on a maximized dialog.
  *
- * A dialog has no wrapper node, so its element gets {...wrapperStyle, ...style}. Moving a
- * dialog by its header (dialog/Base onDragEnd) writes left, top, width and height into
- * `style`; neo's Resizable writes the new size into `wrapperStyle` only, which `style`
- * then outranks: the dialog snapped back to its old size.
+ * (Up to neo 13.4 it also copied the new size from `wrapperStyle` into `style`, which a move
+ * by the header writes; neo 14's dialog resizes `style` itself (styleConfig: 'style').)
  */
 class DialogResizable extends Resizable {
     static config = {
@@ -29,25 +25,12 @@ class DialogResizable extends Resizable {
     }
 
     /**
-     * @param {Object} data
+     * Escape cancelled the resize: the dialog must not close on that key (Dialog.onEscape())
+     * @param {Object} [data]
      */
-    onDragEnd(data) {
-        let me      = this,
-            // read before super: dragEnd() destroys the proxy
-            proxy   = me.dragZone?.dragProxy?.wrapperStyle || {},
-            {owner} = me;
-
-        super.onDragEnd(data);
-
-        let style = owner.style;
-
-        if (GEOMETRY.some(key => style[key] != null)) {
-            GEOMETRY.forEach(key => {
-                proxy[key] != null && (style[key] = proxy[key])
-            });
-
-            owner.style = style
-        }
+    onDragCancel(data) {
+        this.isDragging && this.owner.rememberCancelEscape?.(data);
+        super.onDragCancel(data)
     }
 }
 

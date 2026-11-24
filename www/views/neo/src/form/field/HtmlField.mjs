@@ -484,11 +484,17 @@ class HtmlField extends Field {
 
     /**
      * Focuses the editor
+     * @param {String} [id] neo's focus() arguments: only restoreFrom is used
+     * @param {Boolean} [children]
+     * @param {Boolean} [preventScroll]
+     * @param {String} [modality]
+     * @param {String} [restoreFrom] a departing component hands the focus back (neo 14
+     *     revertFocusOnDeparture()): focus the editor only if the focus got lost meanwhile
      */
-    focus() {
+    focus(id, children, preventScroll, modality, restoreFrom) {
         let {windowId} = this;
 
-        this.#editorWindowId && this.addon.focus({id: this.id, windowId}).catch(() => {})
+        this.#editorWindowId && this.addon.focus({id: this.id, restoreFrom, windowId}).catch(() => {})
     }
 
     /**
