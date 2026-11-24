@@ -38,7 +38,8 @@ class History extends Base {
     replaceRoute({value}) {
         const oldURL = location.href;
 
-        history.replaceState(history.state, '', '#' + value);
+        // the page's own path: a bare "#..." resolves against <base href> (go/core/webclient/Neo.php)
+        history.replaceState(history.state, '', location.pathname + location.search + '#' + value);
         // neo's HashHistory listens to hashchange, which replaceState() doesn't fire
         window.dispatchEvent(new HashChangeEvent('hashchange', {oldURL, newURL: location.href}))
     }
