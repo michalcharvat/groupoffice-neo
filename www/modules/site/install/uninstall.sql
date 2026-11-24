@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS `site_content_custom_fields`;
+DROP TABLE IF EXISTS `site_sites_custom_fields`;
 DROP TABLE IF EXISTS `site_sites`;
 DROP TABLE IF EXISTS `site_content`;
 DROP TABLE IF EXISTS `cf_site_sites`;
