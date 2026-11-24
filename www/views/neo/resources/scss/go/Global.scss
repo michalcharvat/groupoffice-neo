@@ -1,6 +1,7 @@
 // GO tokens (--fg-main, --bg-low, ...) exactly as classic GO / GOUI declares them,
-// on html (density, font) and body (colours; body.dark = GO dark mode)
-@use "../../../../goui/groupoffice-core/style/theme" as goTheme;
+// on html (density, font) and body (colours; body.dark = GO dark mode); a copy of GOUI's
+// groupoffice-core/style/_theme.scss, so neo builds without views/goui
+@use "goui-theme/theme" as goTheme;
 // GO helper classes rendered by several GO.* classes
 @use "shared/common";
 @use "shared/layout";
