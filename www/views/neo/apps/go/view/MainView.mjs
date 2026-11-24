@@ -287,7 +287,8 @@ class MainView extends Container {
             onError    : e => notifyError(me, e),
             onDestroyed: id => String(id) === String(me.workspace?.id) && me.loadWorkspace(null),
             // a save was merged with another window's change: show the result
-            onMerged   : id => String(id) === String(me.workspace?.id) && me.reloadFromRemote(id)
+            // not while a load runs (a switch away from this workspace, or a reload that reads it anyway)
+            onMerged   : id => !me.loadsRunning && String(id) === String(me.workspace?.id) && me.reloadFromRemote(id)
         });
         me.removeStateListener = client.on?.('stateChange', ({changed}) => changed?.includes('Workspace') && me.onRemoteChange());
         client.watch?.(['Workspace']);
@@ -730,7 +731,22 @@ class MainView extends Container {
         let me  = this,
             // a later load (another switch, a push) supersedes this one
             seq = me.loadSeq = (me.loadSeq || 0) + 1,
-            stale = () => me.isDestroyed || seq !== me.loadSeq,
+            stale = () => me.isDestroyed || seq !== me.loadSeq;
+
+        me.loadsRunning = (me.loadsRunning || 0) + 1;
+
+        try {
+            return await me.doLoadWorkspace(id, keepModule, focusModule, seq, stale)
+        } finally {
+            me.loadsRunning--
+        }
+    }
+
+    /**
+     * @protected
+     */
+    async doLoadWorkspace(id, keepModule, focusModule, seq, stale) {
+        let me = this,
             response, workspace;
 
         // the window's last change reaches the server before it is read back
@@ -749,7 +765,7 @@ class MainView extends Container {
             return
         }
 
-        // an edit made while the workspace was read: saved first, then read again
+        // a copy read while no edit of this window waits: an edit made meanwhile is saved, then read again
         for (let attempt = 0; attempt < 3; attempt++) {
             response  = await client.call('Workspace/get', {ids: [meta.id]});
             workspace = response.list[0];
@@ -765,7 +781,7 @@ class MainView extends Container {
             return
         }
 
-        me.saveQueue.drop(workspace.id);
+        // a change still queued (a failed save) stays queued: it is sent with the next flush
         me.saveQueue.setBase(workspace, response.state);
 
         const panels = Array.isArray(workspace.panels) ? {} : JSON.parse(JSON.stringify(workspace.panels || {})),
@@ -989,14 +1005,15 @@ class MainView extends Container {
         me.updateEmpty(document);
 
         if (!me.loading) {
-            me.scheduleSave(document)
+            me.scheduleSave(document, true)
         }
     }
 
     /**
      * @param {Object} [document] the committed dock document
+     * @param {Boolean} [layoutEdited=false] the dock changed, not only a panel's route: the layout is written
      */
-    scheduleSave(document) {
+    scheduleSave(document, layoutEdited = false) {
         let me = this;
 
         if (!me.workspace || me.profile === 'narrow' || me.loading) {
@@ -1014,7 +1031,8 @@ class MainView extends Container {
             workspaceId: me.workspace.id,
             profile    : me.profile,
             panels,
-            layout     : doc
+            layout     : doc,
+            layoutEdited
         });
 
         // what this window now holds for the profile
@@ -1162,10 +1180,9 @@ class MainView extends Container {
             return
         }
 
-        if (!me.routeModule || !me.openModules[me.routeModule]) {
-            const focused = me.focusedModule();
-            focused ? me.routeToPanel(focused, true) : replaceRoute(me.windowId, '')
-        }
+        // the focused panel, its route as the other window left it
+        const focused = me.routeModule && me.openModules[me.routeModule] ? me.routeModule : me.focusedModule();
+        focused ? me.routeToPanel(focused, true) : replaceRoute(me.windowId, '')
     }
 
     // ---------------------------------------------------------------- switcher

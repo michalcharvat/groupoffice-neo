@@ -88,20 +88,32 @@ class SaveQueue {
     }
 
     /**
+     * Sequence of scheduled changes, the latest per target ("<workspaceId>/<profile>")
+     * @member {Object} latest={}
+     */
+    latest = {}
+    seq = 0
+
+    /**
      * Queues the current state of a workspace, sent after a quiet moment
-     * @param {Object} change {workspaceId, profile, panels, layout}
+     * @param {Object} change {workspaceId, profile, panels, layout, layoutEdited}
+     *   layoutEdited: the dock changed (not only a panel's route)
      */
     schedule(change) {
-        let me = this;
+        let me   = this,
+            prev = me.pending;
 
-        if (me.pending && (me.pending.workspaceId !== change.workspaceId || me.pending.profile !== change.profile)) {
-            me.flush()
+        if (prev && (prev.workspaceId !== change.workspaceId || prev.profile !== change.profile)) {
+            me.flush();
+            prev = null
         }
 
-        clearTimeout(me.pending?.timer);
-        me.pending = {...change, timer: setTimeout(() => me.flush(), DELAY)};
-        // what the change was made against: a conflict applies only the difference (resolveConflict())
-        me.pending.origin = me.origin(change)
+        clearTimeout(prev?.timer);
+        me.pending = {...change, seq: ++me.seq, timer: setTimeout(() => me.flush(), DELAY)};
+        me.latest[target(change)] = me.pending.seq;
+        // what the first unsent edit was made against: a conflict applies only the difference (resolveConflict())
+        me.pending.origin = prev?.origin || me.origin(change);
+        me.pending.origin.layoutChanged ||= !!change.layoutEdited
     }
 
     /**
@@ -131,8 +143,8 @@ class SaveQueue {
         me.pending = null;
 
         me.running = me.running.then(() => me.send(change)).catch(e => {
-            // a network failure: kept for the next flush, unless a newer change of the same target waits
-            if (!e.setError && e.type !== 'notFound' && !me.pending) {
+            // a network failure: kept for the next flush, unless a newer change of the target exists
+            if (!e.setError && e.type !== 'notFound' && !me.pending && me.latest[target(change)] === change.seq) {
                 me.pending = {...change, timer: null}
             }
             me.onError?.(e)
@@ -151,7 +163,7 @@ class SaveQueue {
 
         return {
             panels       : clone(base.panels || {}),
-            layoutChanged: !equal(change.layout, base.layouts?.[change.profile])
+            layoutChanged: !!change.layoutEdited
         }
     }
 
@@ -166,6 +178,10 @@ class SaveQueue {
             origin = change.origin ||= me.origin(change),
             patch  = {};
 
+        // this window's edit, applied to every fresh server copy on a conflict (resolveConflict())
+        change.ours      ??= clone(change.panels);
+        change.ourLayout ??= clone(change.layout);
+
         if (!equal(change.panels, base.panels)) {
             patch.panels = change.panels
         }
@@ -176,6 +192,8 @@ class SaveQueue {
         }
 
         if (!Object.keys(patch).length) {
+            // a merge adopted the server copy without a write: the window shows it
+            change.merged && me.onMerged?.(change.workspaceId);
             return
         }
 
@@ -230,12 +248,11 @@ class SaveQueue {
         try {
             const changes = await client.call('Workspace/changes', {sinceState: me.state});
 
-            changed = [...changes.created || [], ...changes.updated || [], ...changes.destroyed || []].map(String).includes(String(id));
-            me.state = changes.newState;
+            changed = changes.hasMoreChanges ||
+                [...changes.created || [], ...changes.updated || [], ...changes.destroyed || []].map(String).includes(String(id));
 
-            if (changes.hasMoreChanges) {
-                changed = true
-            }
+            // untouched: the new state is safe; otherwise it is taken with the copy it belongs to (below)
+            changed || (me.state = changes.newState)
         } catch (e) {
             // cannotCalculateChanges: read the workspace
             changed = true
@@ -253,18 +270,20 @@ class SaveQueue {
             throw Object.assign(new Error('Workspace deleted'), {type: 'notFound'})
         }
 
-        me.state = response.state;
-
         const origin = change.origin || me.origin(change),
               theirs = Array.isArray(remote.panels) ? {} : remote.panels || {};
 
-        change.panels = mergePanels(origin.panels, change.panels, theirs);
+        me.state = response.state;
+        // the same edit of this window on the fresh copy, each time (a second conflict starts over)
+        change.panels = mergePanels(origin.panels, change.ours || change.panels, theirs);
         // our layout refers only to panels that are left
-        change.layout = dropItems(change.layout, change.panels);
+        change.layout = dropItems(change.ourLayout || change.layout, change.panels);
         change.merged = true;
         me.base[id] = clone({panels: theirs, layouts: Array.isArray(remote.layouts) ? {} : remote.layouts || {}})
     }
 }
+
+const target = change => change.workspaceId + '/' + change.profile;
 
 /**
  * Applies our panel changes (origin → ours) to theirs: panels we added or changed are ours, panels
