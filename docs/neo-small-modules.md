@@ -87,3 +87,32 @@ refused without `serverclient_token`). Test data, module installs and config wer
   `reset(value)`, so it isn't dirty) and read what you need in the form's `beforesave`, not in `save`.
 - `console.log()` of the shared worker doesn't reach Playwright's page console; `console.error()` does.
 - `ConfirmDialog` shows `message` as text: don't HTML-escape it.
+
+## Website Manager (legacy `site`, card "neo-ui: site module in neo", 2026-11-24)
+
+The legacy module `www/modules/site` (status deprecated, not auto-installed, depends on files)
+had only an ExtJS UI. Its neo UI lives in `www/modules/site/views/neo`.
+
+### ExtJS inventory (`views/Extjs3`)
+
+Live (listed in `scripts.txt` and reachable from `MainPanel`):
+
+| ExtJS | What it does | Legacy routes |
+|---|---|---|
+| `MainPanel.js` | module "Website Manager": tree west, content editor center, "Cheat sheet" east (collapsible), Refresh in the toolbar | `site/site/cheatSheet` |
+| `SiteTreePanel.js` | tree of every readable site: site → "Content" (content items, nested) and "Menu's" (menus → menu items, nested); expanded nodes saved per user; drag and drop | `site/site/tree` (`node`), `site/site/saveTreeState` (`expandedNodes`), `site/site/treeSort` (`parent`, `sortOrder`) |
+| `treenodes/SiteNode.js` | site menu: View (opens `modules/site/index.php?site_id=`), Properties | — |
+| `treenodes/ContentNode.js` | "Content" root menu: Add content; item menu: Advanced options, View, Add content (child), Delete content (refused while it has children); click loads the editor; drop between content items sorts them, drop on a menu or menu item asks and creates a menu item from the content | `site/content/delete`, `site/menuItem/createFromContent` (`target`, `content`) |
+| `treenodes/MenuNode.js` | "Menu's" root menu: Add menu; menu menu: Properties, New item, Delete (refused while it has items) | `site/menu/delete` |
+| `treenodes/MenuItemNode.js` | menu item menu: Properties, New item (child), Delete (refused while it has children); drop between items sorts them | `site/menuItem/delete` |
+| `ContentPanel.js` | editor: Title (sets the slug), Slug (parent slug read-only + own part), Markdown text area; Save, Advanced options, View, Browse files (site folder); drop a content node → `[title](slug://slug)`, drop a file from the file browser → `[name](file://path)` | `site/content/update` (GET load, POST save), `site/content/create` (GET defaults, POST save), `site/content/redirect` |
+| `ContentDialog.js` | "Advanced options": Info tab (created, modified, user; template, default child template), Meta tab (meta title, keywords, description) | `site/content/update`, `site/content/templateStore` (`siteId`) |
+| `SiteDialog.js` | site properties (name, module read-only, domain, base path, language, SSL, mod rewrite, mod rewrite base path) + Permissions tab | `site/site/load`, `site/site/submit`, `core/aclGroup/*` |
+| `MenuDialog.js` | menu: label, slug | `site/menu/load|create|update` (`site_id`) |
+| `MenuitemDialog.js` + `Stores.js` | menu item: label, URL, display children, parent item, content, target (_blank, _self, _parent, _top) | `site/menuItem/load|create|update` (`menu_id`), `site/menuItem/parentStore`, `site/menu/contentStore` |
+
+Dead code, not ported: `ContextMenu.js` (older menus, replaced by `treenodes/`), the
+`HtmlEditor*` plugins (commented out in `ContentPanel.js`), `SelectFile.js`,
+`SelectMultiFile.js`, `MultifileDialog.js`, `MultifileView.js` (only for the custom field
+types, whose registration in `Customfield.js` is commented out), `ModuleSettingsDialog.js`
+(never opened). Routes: none besides the module tab (`#site`).
