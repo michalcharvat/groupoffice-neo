@@ -1851,6 +1851,12 @@ public function historyLog(): bool|array
 	 */
 	public function getDefaultWorkspaceId(): ?int
 	{
+		// a personal setting: not shown to other users who may read this user
+		$auth = go()->getAuthState();
+		if (!$auth || ((int) $auth->getUserId() !== (int) $this->id && !$auth->isAdmin())) {
+			return null;
+		}
+
 		return $this->defaultWorkspaceId;
 	}
 }

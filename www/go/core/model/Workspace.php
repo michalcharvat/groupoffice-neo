@@ -76,6 +76,13 @@ class Workspace extends AclOwnerEntity {
 	private array $refused = [];
 
 	/**
+	 * Layout properties set to something else than an object
+	 *
+	 * @var string[]
+	 */
+	private array $invalid = [];
+
+	/**
 	 * Owner for a workspace created by the server for another user than the authenticated one
 	 */
 	private ?int $ownerId = null;
@@ -151,10 +158,15 @@ class Workspace extends AclOwnerEntity {
 	}
 
 	/**
-	 * @param array|ArrayObject|null $panels
+	 * @param mixed $panels an object or null; anything else is a validation error, not a TypeError
 	 */
-	public function setPanels(array|ArrayObject|null $panels): void
+	public function setPanels(mixed $panels): void
 	{
+		if (!self::isMap($panels)) {
+			$this->invalid[] = 'panels';
+			return;
+		}
+
 		$this->panels = self::encodeMap($panels);
 	}
 
@@ -169,10 +181,15 @@ class Workspace extends AclOwnerEntity {
 	}
 
 	/**
-	 * @param array|ArrayObject|null $layouts
+	 * @param mixed $layouts an object or null; anything else is a validation error, not a TypeError
 	 */
-	public function setLayouts(array|ArrayObject|null $layouts): void
+	public function setLayouts(mixed $layouts): void
 	{
+		if (!self::isMap($layouts)) {
+			$this->invalid[] = 'layouts';
+			return;
+		}
+
 		$this->layouts = self::encodeMap($layouts);
 	}
 
@@ -187,10 +204,15 @@ class Workspace extends AclOwnerEntity {
 	}
 
 	/**
-	 * @param array|ArrayObject|null $panels
+	 * @param mixed $panels an object or null; anything else is a validation error, not a TypeError
 	 */
-	public function setSavedPanels(array|ArrayObject|null $panels): void
+	public function setSavedPanels(mixed $panels): void
 	{
+		if (!self::isMap($panels)) {
+			$this->invalid[] = 'savedPanels';
+			return;
+		}
+
 		$this->savedPanels = self::encodeMap($panels);
 	}
 
@@ -205,10 +227,15 @@ class Workspace extends AclOwnerEntity {
 	}
 
 	/**
-	 * @param array|ArrayObject|null $layouts
+	 * @param mixed $layouts an object or null; anything else is a validation error, not a TypeError
 	 */
-	public function setSavedLayouts(array|ArrayObject|null $layouts): void
+	public function setSavedLayouts(mixed $layouts): void
 	{
+		if (!self::isMap($layouts)) {
+			$this->invalid[] = 'savedLayouts';
+			return;
+		}
+
 		$this->savedLayouts = self::encodeMap($layouts);
 	}
 
@@ -261,6 +288,10 @@ class Workspace extends AclOwnerEntity {
 	{
 		foreach (array_unique($this->refused) as $propName) {
 			$this->setValidationError($propName, ErrorCode::FORBIDDEN, go()->t("This property can't be changed"));
+		}
+
+		foreach (array_unique($this->invalid) as $propName) {
+			$this->setValidationError($propName, ErrorCode::INVALID_INPUT, "must be an object");
 		}
 
 		$this->name = trim($this->name);
@@ -360,11 +391,11 @@ class Workspace extends AclOwnerEntity {
 				return "Invalid panel " . $panelId;
 			}
 
-			if (!isset($panel['module']) || !is_string($panel['module']) || !preg_match('/^[a-z0-9_]{1,100}$/i', $panel['module'])) {
+			if (!isset($panel['module']) || !is_string($panel['module']) || !preg_match('/^[a-z0-9_]{1,100}(-[0-9]{1,20})?$/i', $panel['module'])) {
 				return "Invalid module of panel " . $panelId;
 			}
 
-			if (isset($panel['route']) && (!is_string($panel['route']) || strlen($panel['route']) > self::MAX_ROUTE_LENGTH)) {
+			if (isset($panel['route']) && (!is_string($panel['route']) || mb_strlen($panel['route']) > self::MAX_ROUTE_LENGTH)) {
 				return "Invalid route of panel " . $panelId;
 			}
 
@@ -390,6 +421,9 @@ class Workspace extends AclOwnerEntity {
 	 */
 	private static function mayUseModule(string $name): bool
 	{
+		// "bookmarks-42": a bookmark opened as a module (bookmarks module, views/neo/Index.mjs)
+		$name = explode('-', $name, 2)[0];
+
 		$modules = Module::find(['id', 'package', 'name', 'enabled'])
 			->where(['name' => $name, 'enabled' => true])
 			->all();
@@ -401,6 +435,51 @@ class Workspace extends AclOwnerEntity {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Personal only: the owner (and an administrator) has access, whatever the ACL holds. A default grant
+	 * of the entity type applied to all ACLs (Acl controller, reset) must not share a workspace.
+	 *
+	 * @return int
+	 */
+	protected function internalGetPermissionLevel(): int
+	{
+		if ($this->isNew()) {
+			return parent::internalGetPermissionLevel();
+		}
+
+		$auth = go()->getAuthState();
+		if (!$auth || !$auth->isAuthenticated()) {
+			return 0;
+		}
+
+		if (!$auth->isAdmin() && (int) $this->createdBy !== (int) $auth->getUserId()) {
+			return 0;
+		}
+
+		return parent::internalGetPermissionLevel();
+	}
+
+	/**
+	 * The ACL, and the owner unless the user is an administrator (see internalGetPermissionLevel())
+	 *
+	 * @param Query $query
+	 * @param int $level
+	 * @param int|null $userId
+	 * @param array|null $groups
+	 * @return Query
+	 */
+	public static function applyAclToQuery(Query $query, int $level = Acl::LEVEL_READ, int|null $userId = null, array|null $groups = null): Query
+	{
+		parent::applyAclToQuery($query, $level, $userId, $groups);
+
+		$userId ??= go()->getAuthState()?->getUserId();
+		if (!$userId || !User::isAdminById($userId)) {
+			$query->andWhere('w.createdBy', '=', (int) $userId);
+		}
+
+		return $query;
 	}
 
 	protected function internalSave(): bool
@@ -568,6 +647,11 @@ class Workspace extends AclOwnerEntity {
 	 * @param array|ArrayObject|null $map
 	 * @return string|null
 	 */
+	private static function isMap(mixed $value): bool
+	{
+		return $value === null || $value instanceof ArrayObject || (is_array($value) && (empty($value) || !array_is_list($value)));
+	}
+
 	private static function encodeMap(array|ArrayObject|null $map): ?string
 	{
 		if ($map === null) {

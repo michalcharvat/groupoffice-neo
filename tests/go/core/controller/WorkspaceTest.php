@@ -210,6 +210,59 @@ class WorkspaceTest extends TestCase
 		$this->assertContains($id, array_map('intval', $get['notFound']));
 	}
 
+	public function testAGrantOnTheAclDoesNotShareAWorkspace()
+	{
+		$id = $this->createForA();
+		$aclId = go()->getDbConnection()->selectSingleValue('aclId')->from('core_workspace')->where('id', '=', $id)->single();
+
+		// like a default grant of the entity type applied to all its ACLs (Acl controller reset)
+		go()->getDbConnection()->insertIgnore('core_acl_group', ['aclId' => $aclId, 'groupId' => Group::findPersonalGroupID(self::$userB->id), 'level' => Acl::LEVEL_MANAGE])->execute();
+
+		self::actAs(self::$userB);
+		$query = (new Workspace())->query([])->getArray();
+		$this->assertNotContains($id, array_map('intval', $query['ids']));
+
+		$get = (new Workspace())->get(['ids' => [$id]])->getArray();
+		$this->assertEmpty($get['list']);
+
+		$result = $this->set(['update' => [$id => ['name' => 'Taken']]]);
+		$this->assertArrayHasKey($id, $result['notUpdated'] ?? []);
+	}
+
+	public function testAScalarLayoutValueIsAnErrorOfThatRecordOnly()
+	{
+		self::actAs(self::$userA);
+		$result = $this->set(['create' => [
+			'bad' => ['name' => 'Bad', 'panels' => 'notes', 'layouts' => 5],
+			'good' => ['name' => 'Good', 'panels' => self::panels(), 'layouts' => ['wide' => self::layout(['p1', 'p2'])]]
+		]]);
+
+		$errors = $result['notCreated']['bad']->validationErrors ?? [];
+		$this->assertArrayHasKey('panels', $errors);
+		$this->assertArrayHasKey('layouts', $errors);
+		$this->assertArrayHasKey('good', $result['created'] ?? []);
+	}
+
+	public function testABookmarkOpenedAsAModuleIsAPanel()
+	{
+		if (!\go\core\model\Module::findByName('community', 'bookmarks')?->enabled) {
+			$this->markTestSkipped('bookmarks module not installed');
+		}
+
+		$id = $this->createForA(['panels' => ['p1' => ['module' => 'bookmarks-42', 'route' => '']], 'layouts' => ['wide' => self::layout(['p1'])]]);
+		$this->assertGreaterThan(0, $id);
+	}
+
+	public function testDefaultWorkspaceIdIsHiddenFromOtherUsers()
+	{
+		self::actAs(self::$userA);
+		(new Workspace())->query([]);
+		$this->assertNotNull(UserModel::findById(self::$userA->id)->getDefaultWorkspaceId());
+
+		self::actAs(self::$userB);
+		$this->assertNull(UserModel::findById(self::$userA->id)->getDefaultWorkspaceId());
+	}
+
 	public function testOtherUserCantUpdate()
 	{
 		$id = $this->createForA();
@@ -332,7 +385,20 @@ class WorkspaceTest extends TestCase
 		$extraKey = $valid;
 		$extraKey['script'] = 'alert(1)';
 
+		// a detached branch the tree never reaches
+		$unreachable = $valid;
+		$unreachable['nodes']['loose'] = ['type' => 'split', 'orientation' => 'vertical', 'children' => ['loose'], 'sizes' => [1]];
+
+		$nullExtent = $valid;
+		$nullExtent['nodes']['root']['zones']['center']['extent'] = null;
+
+		$nullPinned = $valid;
+		$nullPinned['items']['p1']['pinned'] = null;
+
 		return [
+			'unreachable node' => [['wide' => $unreachable]],
+			'null extent' => [['wide' => $nullExtent]],
+			'null boolean' => [['wide' => $nullPinned]],
 			'schema' => [['wide' => $wrongSchema]],
 			'item is no panel' => [['wide' => $unknownItem]],
 			'sizes sum' => [['wide' => $badSizes]],

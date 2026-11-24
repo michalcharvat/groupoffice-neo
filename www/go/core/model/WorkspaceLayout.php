@@ -89,7 +89,17 @@ class WorkspaceLayout {
 		// tree walk from the root: no cycles, no node or item twice, bounded depth
 		$seenNodes = [];
 		$seenItems = [];
-		return self::walk($root, $nodes, 1, $seenNodes, $seenItems);
+		$error = self::walk($root, $nodes, 1, $seenNodes, $seenItems);
+		if ($error !== null) {
+			return $error;
+		}
+
+		// a node the tree doesn't reach (a detached branch, maybe a cycle) is refused, as the dock would never show it
+		if (count($seenNodes) !== count($nodes)) {
+			return "unreachable node";
+		}
+
+		return null;
 	}
 
 	private static function validateItem(string $itemId, mixed $item, array $panelIds): ?string
@@ -111,7 +121,7 @@ class WorkspaceLayout {
 		}
 
 		foreach (self::ITEM_BOOLEANS as $key) {
-			if (isset($item[$key]) && !is_bool($item[$key])) {
+			if (array_key_exists($key, $item) && !is_bool($item[$key])) {
 				return "item " . $itemId . ": " . $key . " must be a boolean";
 			}
 		}
@@ -120,11 +130,11 @@ class WorkspaceLayout {
 			return "item " . $itemId . " can't be pinned and auto hidden";
 		}
 
-		if (isset($item['title']) && (!is_string($item['title']) || mb_strlen($item['title']) > 190)) {
+		if (array_key_exists('title', $item) && (!is_string($item['title']) || mb_strlen($item['title']) > 190)) {
 			return "item " . $itemId . ": invalid title";
 		}
 
-		if (isset($item['reference']) && (!is_string($item['reference']) || !self::isId($item['reference']))) {
+		if (array_key_exists('reference', $item) && (!is_string($item['reference']) || !self::isId($item['reference']))) {
 			return "item " . $itemId . ": invalid reference";
 		}
 
@@ -204,10 +214,10 @@ class WorkspaceLayout {
 					if (!is_string($zone['nodeId'] ?? null) || !isset($nodes[$zone['nodeId']])) {
 						return "node " . $nodeId . ": zone node missing";
 					}
-					if (isset($zone['extent']) && ((!is_int($zone['extent']) && !is_float($zone['extent'])) || $zone['extent'] <= 0 || $zone['extent'] >= 1)) {
+					if (array_key_exists('extent', $zone) && ((!is_int($zone['extent']) && !is_float($zone['extent'])) || $zone['extent'] <= 0 || $zone['extent'] >= 1)) {
 						return "node " . $nodeId . ": extent must be between 0 and 1";
 					}
-					if (isset($zone['resizable']) && !is_bool($zone['resizable'])) {
+					if (array_key_exists('resizable', $zone) && !is_bool($zone['resizable'])) {
 						return "node " . $nodeId . ": resizable must be a boolean";
 					}
 				}
