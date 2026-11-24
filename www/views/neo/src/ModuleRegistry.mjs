@@ -9,6 +9,7 @@ import client from './jmap/Client.mjs';
  *     title     : 'Notes',
  *     iconCls   : 'fa fa-sticky-note',
  *     capability: 'go:community:notes',
+ *     available : () => client.isAdmin,                   // optional extra check after login
  *     icon      : 'sticky_note_2',                        // Material icon, header main menu
  *     iconUrl   : null,                                   // optional picture instead of icon in the main menu
  *     quickAdd  : {text: 'Note', icon: 'sticky_note_2'},  // header "+" menu → mainView.onQuickAdd()
@@ -148,7 +149,8 @@ class ModuleRegistry {
      * @returns {Object[]} registered modules the user has the capability of
      */
     #accessible() {
-        return [...this.#modules.values()].filter(m => !m.capability || client.hasCapability(m.capability))
+        return [...this.#modules.values()].filter(m => (!m.capability || client.hasCapability(m.capability))
+            && (!m.available || m.available()))
     }
 }
 
