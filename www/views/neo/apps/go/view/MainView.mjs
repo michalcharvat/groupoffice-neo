@@ -8,6 +8,7 @@ import {avatarColor, escapeHtml, initials} from '../../../src/Format.mjs';
 import {classicAppByRoute, classicUrl, getClassicApps} from '../../../src/classicApps.mjs';
 import {resolveRoute} from '../../../src/link/linkTypes.mjs';
 import client         from '../../../src/jmap/Client.mjs';
+import AppLauncher, {getMainMenuMode, moduleIconUrl} from '../../../src/view/AppLauncher.mjs';
 import GlobalSearch   from '../../../src/view/GlobalSearch.mjs';
 import ModuleRegistry from '../../../src/ModuleRegistry.mjs';
 import badges         from '../../../src/Badges.mjs';
@@ -50,6 +51,11 @@ class MainView extends Container {
             // go.Notifier's notification area, opened by the bell in the top bar
             module   : NotificationPanel,
             reference: 'notifications',
+            flex     : 'none'
+        }, {
+            // GO 6.8 start menu: the main menu button opens it (or a list, My account)
+            module   : AppLauncher,
+            reference: 'launcher',
             flex     : 'none'
         }, {
             ntype    : 'container',
@@ -155,13 +161,7 @@ class MainView extends Container {
             cls      : ['go-header-button', 'go-main-menu-button'],
             reference: 'mainMenuButton',
             tooltip  : t('Main menu'),
-            menu     : {align: RIGHT, items: [...available.map(m => ({
-                text   : m.title,
-                icon   : m.icon || 'apps',
-                image  : m.iconUrl || null,
-                badge  : badges.text(m.name) || null,
-                handler: () => Neo.Main.setRoute({value: m.name, windowId: me.windowId})
-            })), ...me.classicMenuItems()]}
+            handler  : () => me.openMainMenu()
         }, {
             // go.util.avatar(): initials on a colour from the name
             module : GoButton,
@@ -205,6 +205,9 @@ class MainView extends Container {
         });
 
         me.getReference('topbar').addDomListeners({contextmenu: me.onTabContextMenu, scope: me});
+
+        me.getReference('launcher').on('open', ({app}) => app.classic ? me.openClassic(app.route) :
+            Neo.Main.setRoute({value: app.name, windowId: me.windowId}));
 
         // one resolver for search, links, alerts and reminders: a neo route or "classic/<hash>"
         me.getReference('search').resolveRoute = resolveRoute;
@@ -371,6 +374,66 @@ class MainView extends Container {
         } catch (e) {
             notifyError(this, e)
         }
+    }
+
+    /**
+     * Header main menu button: the app launcher, or a list (My account → Look & feel)
+     */
+    async openMainMenu() {
+        let me       = this,
+            button   = me.getReference('mainMenuButton'),
+            launcher = me.getReference('launcher'),
+            apps     = ModuleRegistry.getAvailable();
+
+        if (launcher.isOpen()) {
+            launcher.close();
+            return
+        }
+
+        // a second click closes the list
+        if (me.mainMenuList && !me.mainMenuList.isDestroyed) {
+            me.mainMenuList.hidden = true;
+            me.mainMenuList = null;
+            return
+        }
+
+        const mode = await getMainMenuMode(me.windowId);
+
+        if (me.isDestroyed) {
+            return
+        }
+
+        if (mode === 'list') {
+            me.mainMenuList = MenuList.showAt({
+                appName : me.appName,
+                target  : button.id,
+                windowId: me.windowId,
+                items   : [...apps.map(m => ({
+                    text   : m.title,
+                    icon   : m.icon || 'apps',
+                    image  : m.iconUrl || null,
+                    badge  : badges.text(m.name) || null,
+                    handler: () => Neo.Main.setRoute({value: m.name, windowId: me.windowId})
+                })), ...me.classicMenuItems()]
+            });
+            return
+        }
+
+        launcher.setApps([...apps.map(m => ({
+            name   : m.name,
+            title  : m.title,
+            iconUrl: m.iconUrl || moduleIconUrl(m.package, m.name),
+            badge  : badges.text(m.name) || null
+        })), ...getClassicApps().map(app => ({
+            name   : app.name,
+            // server data; the launcher renders titles as HTML
+            title  : escapeHtml(app.title),
+            iconUrl: moduleIconUrl(app.package, app.name),
+            route  : app.route,
+            classic: true
+        }))]);
+
+        launcher.open(button.id)
     }
 
     /**
@@ -766,15 +829,13 @@ class MainView extends Container {
     }
 
     /**
-     * Shows a module's count (src/Badges.mjs) on its tab and main menu item
+     * Shows a module's count (src/Badges.mjs) on its tab and app launcher tile
      * @param {String} name module name
      */
-    async updateBadge(name) {
-        let me     = this,
-            text   = badges.text(name) || null,
-            tab    = me.getReference('module-' + name),
-            button = me.getReference('mainMenuButton'),
-            index  = ModuleRegistry.getAvailable().findIndex(m => m.name === name);
+    updateBadge(name) {
+        let me   = this,
+            text = badges.text(name) || null,
+            tab  = me.getReference('module-' + name);
 
         if (me.isDestroyed) {
             return
@@ -782,12 +843,12 @@ class MainView extends Container {
 
         tab && tab.badgeText !== text && (tab.badgeText = text);
         me.updateMainMenuDot();
+        me.getReference('launcher')?.setBadge(name, text);
 
-        if (index > -1 && button) {
-            // neo creates the menu list on demand
-            await button.menuListReady;
-            me.isDestroyed || button.menuList?.setItemBadge(index, text)
-        }
+        // an open list (main menu "list" mode): its items are the modules, in registry order
+        const index = ModuleRegistry.getAvailable().findIndex(m => m.name === name);
+
+        index > -1 && me.mainMenuList && !me.mainMenuList.isDestroyed && me.mainMenuList.setItemBadge(index, text)
     }
 
     /**
