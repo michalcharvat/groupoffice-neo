@@ -62,6 +62,32 @@
         font-size: calc(1.1rem * var(--font-scale));
     }
 
+    /* many module tabs on a medium screen: the tabs shrink and cut their title with an ellipsis (it
+       ran into the next tab); the close icons and the buttons on the right keep their size
+       (flex: 'none' in apps/go/view/MainView.mjs: the toolbar sets flex inline) */
+    .go-topbar .neo-button.go-module-button {
+        min-width: 0;
+        overflow : hidden;
+    }
+
+    /* below GO's medium breakpoint only the active tab shows its close icon (the others close from
+       their context menu): room for the titles */
+    @media (max-width: 1199px) {
+        .go-topbar .neo-button.go-module-button:not(.pressed) + .neo-button.go-module-close {
+            display: none;
+        }
+
+        .go-topbar .neo-button.go-module-button {
+            padding: 0 .6rem;
+        }
+    }
+
+    .go-topbar .go-module-button .neo-button-text {
+        overflow     : hidden;
+        text-overflow: ellipsis;
+        white-space  : nowrap;
+    }
+
     .go-topbar.neo-toolbar .neo-button:hover,
     .go-topbar.neo-toolbar .neo-button:focus-visible {
         /* neo's .neo-button:hover border (a teal frame) loads after this file */
