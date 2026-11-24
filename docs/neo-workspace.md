@@ -191,8 +191,11 @@ How it works:
 - Saving: every committed dock change (and a panel's route) is queued; 1.5 s debounce per workspace and
   profile; `Workspace/set` with `ifInState` and a patch of `panels` plus `layouts/<profile>`. On
   `stateMismatch` the queue reads `Workspace/changes`: when this workspace didn't change it only moves on to
-  the new state, otherwise it re-reads the workspace, merges the panels (theirs, minus the ones we closed,
-  plus ours) and retries; the layout of the profile is last write wins (up to 5 attempts).
+  the new state, otherwise it re-reads the workspace and applies only what this window changed against
+  the copy it edited: panels it added, changed or closed (all other panels, their routes included, are
+  the server's); the profile's layout only when this window changed it (then last write wins, items of
+  panels gone are dropped). Up to 5 attempts; after a merge the window reloads the workspace to show
+  the result. A save that fails otherwise (network) stays queued for the next flush.
 - Another window's save arrives as a `Workspace` state change: a window that shows the workspace reloads
   it when the panels or its own profile's layout changed (with the notice "This workspace was changed in
   another window."), otherwise it only takes the new base.
@@ -203,7 +206,13 @@ Deviations from the design above:
 
 - `ifInState` is compared with the global `Workspace` state (JMAP has no per-entity state), so any save
   of another workspace of the user is a mismatch too; `Workspace/changes` tells the two apart (above).
-- `defaultWorkspaceId` is read-only for the client and has no foreign key (a dangling id falls back to
+- Access is the owner's (and an administrator's) whatever the ACL holds (`internalGetPermissionLevel()`,
+  `applyAclToQuery()`): a default grant of the entity type applied to all ACLs must not share a workspace.
+- A bookmark opened as a module (`bookmarks-<id>`, bookmarks `views/neo/Index.mjs`) is a panel; the server
+  checks access to the bookmarks module, the client opens only bookmarks the user can see.
+- A malformed `panels` / `layouts` value (not an object) is a validation error of that record.
+- `defaultWorkspaceId` is read-only for the client, shown only to its user and administrators, and has no
+  foreign key (a dangling id falls back to
   the first workspace); choosing a default in the UI is phase 2.
 - The server validates only a profile layout that changed against the panels; a stale reference in
   another profile is reconciled by the client when that profile is shown ("Reconciling profiles").
@@ -212,7 +221,7 @@ Deviations from the design above:
 - PHP turns `{}` into `[]` on the JSON round trip; the client normalizes the document
   (`normalizeDocument()`).
 - The maximized panel is not kept in `sessionStorage`: a reload restores the layout, not the maximize.
-  The layout is captured with `getDocument()` (no tear-out in phase 1, so no `getPerspectiveDocument()`).
+  The layout is captured with `getDocument()`, a copy of `getPerspectiveDocument()`.
 - The dock's maximize button shows when the pointer is over the group header (neo's contextual actions);
   Esc restores.
 - The launcher's Shift+click "open beside" is left for phase 2.
