@@ -134,11 +134,11 @@ class SiteController extends \GO\Base\Controller\AbstractJsonController {
 			$menuId = $this->menuIdOfNode($extractedParentNode);
 			foreach($sortOrder as $sortItem) {
 				$child = SiteModule::extractTreeNode((string) $sortItem);
-				if(!is_array($child) || empty($child['modelId']) || (string) $this->siteIdOfNode($child) !== (string) $siteId) {
+				if(!is_array($child) || !ctype_digit((string) $child['modelId']) || (string) $this->siteIdOfNode($child) !== (string) $siteId) {
 					throw new AccessDenied();
 				}
 				// not below itself or one of its own children
-				if(in_array($child['type'] . '_' . $child['modelId'], $ancestors, true)) {
+				if(in_array($child['type'] . '_' . (int) $child['modelId'], $ancestors, true)) {
 					throw new AccessDenied();
 				}
 				// menu items stay in their menu
@@ -212,7 +212,7 @@ class SiteController extends \GO\Base\Controller\AbstractJsonController {
 	}
 
 	/**
-	 * The parent node and its ancestors as "<type>_<id>"
+	 * The parent node and its ancestors as "<type>_<id>" (ids of the loaded records, so "01" is 1)
 	 *
 	 * @param array $extractedNode SiteModule::extractTreeNode()
 	 * @return string[]
@@ -222,10 +222,14 @@ class SiteController extends \GO\Base\Controller\AbstractJsonController {
 		$ids = [];
 		$class = ['content' => Content::class, 'menuitem' => MenuItem::class][$extractedNode['type']] ?? null;
 		$id = $extractedNode['modelId'] ?? null;
-		while($class && !empty($id) && !in_array($extractedNode['type'] . '_' . $id, $ids, true)) {
-			$ids[] = $extractedNode['type'] . '_' . $id;
-			$model = $class::model()->findByPk($id);
-			$id = $model ? $model->parent_id : null;
+		// stops at a cycle that is already in the database
+		while($class && !empty($id) && ($model = $class::model()->findByPk($id))) {
+			$key = $extractedNode['type'] . '_' . (int) $model->id;
+			if(in_array($key, $ids, true)) {
+				break;
+			}
+			$ids[] = $key;
+			$id = $model->parent_id;
 		}
 		return $ids;
 	}

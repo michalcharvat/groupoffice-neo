@@ -352,10 +352,15 @@ class SitePermissionTest extends TestCase
 		\GO::$ignoreAclPermissions = false;
 
 		try {
-			$this->runAction(new SiteController(), 'actionTreeSort', [json_encode([self::$site->id . '_content_' . self::$content->id]), self::$site->id . '_content_' . $child->id], self::$writer, true);
-			$this->fail('Content may not be moved below its own child');
-		} catch (AccessDenied $e) {
-			$this->assertNull(go()->getDbConnection()->selectSingleValue('parent_id')->from('site_content')->where(['id' => self::$content->id])->single());
+			// also with a zero padded id, which finds the same record
+			foreach (['', '0'] as $pad) {
+				try {
+					$this->runAction(new SiteController(), 'actionTreeSort', [json_encode([self::$site->id . '_content_' . $pad . self::$content->id]), self::$site->id . '_content_' . $child->id], self::$writer, true);
+					$this->fail('Content may not be moved below its own child');
+				} catch (AccessDenied $e) {
+					$this->assertNull(go()->getDbConnection()->selectSingleValue('parent_id')->from('site_content')->where(['id' => self::$content->id])->single());
+				}
+			}
 		} finally {
 			\GO::$ignoreAclPermissions = true;
 			go()->getDbConnection()->delete('site_content', ['id' => $child->id])->execute();

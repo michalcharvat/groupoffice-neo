@@ -250,9 +250,11 @@ class MenuItemController extends \GO\Base\Controller\AbstractJsonController {
 			if(!$parent || (string) $parent->menu_id !== (string) $model->menu_id) {
 				throw new AccessDenied();
 			}
-			// not below itself or one of its own items
-			for($ancestor = $parent; $ancestor; $ancestor = empty($ancestor->parent_id) ? null : MenuItem::model()->findByPk($ancestor->parent_id)) {
-				if(!$isNew && (string) $ancestor->id === (string) $model->id) {
+			// not below itself or one of its own items; stops at a cycle already in the database
+			$seen = [];
+			for($ancestor = $parent; $ancestor && !isset($seen[(int) $ancestor->id]); $ancestor = empty($ancestor->parent_id) ? null : MenuItem::model()->findByPk($ancestor->parent_id)) {
+				$seen[(int) $ancestor->id] = true;
+				if(!$isNew && (int) $ancestor->id === (int) $model->id) {
 					throw new AccessDenied();
 				}
 			}
