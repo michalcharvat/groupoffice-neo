@@ -3,6 +3,7 @@ import DomEventManager         from '../../node_modules/neo.mjs/src/manager/DomE
 import Button                  from '../button/Button.mjs';
 import DialogResizable         from '../plugin/DialogResizable.mjs';
 import {closePopup, openPopup, popupsSupported} from '../Popup.mjs';
+import {focusWithoutTooltip}   from '../tooltip.mjs';
 import {t}                     from '../Translate.mjs';
 
 const TOOLS = {
@@ -230,6 +231,14 @@ class Dialog extends BaseDialog {
         }
 
         return super.getFocusReturnTarget()
+    }
+
+    /**
+     * Without a field neo focuses the first focusable node, the header's "Close" tool of a
+     * confirm dialog: it keeps the focus, but not its tooltip over the header
+     */
+    focusOnArrival() {
+        this.getFirstField() ? super.focusOnArrival() : focusWithoutTooltip(this, {id: this.id, children: true})
     }
 
     /**

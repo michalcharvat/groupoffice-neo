@@ -1,0 +1,27 @@
+/**
+ * Focus that code moves (a dialog opening, an overlay giving focus back) is not the user
+ * pointing at a button. neo's shared tooltip shows on every focusin of a target, so the
+ * header's "Close" tool of a dialog without fields, or the button an overlay returns focus to,
+ * would show its tooltip as if hovered.
+ */
+
+/**
+ * Moves the focus like Neo.main.DomAccess.focus() and hides the tooltip that the focus is
+ * about to show. The focusin reaches the App worker before the focus call answers, so the
+ * tooltip's pending show is cancelled (or the shown tooltip hidden) right after it.
+ * @param {Neo.component.Base} component a component of the window, for its windowId
+ * @param {Object} options DomAccess.focus() options: id, children, …
+ * @returns {Promise<void>}
+ */
+export async function focusWithoutTooltip(component, options) {
+    const {windowId} = component;
+
+    await Neo.main.DomAccess.focus({...options, windowId}).catch(() => {});
+
+    // Neo.apps is keyed by window id; the window's shared tooltip exists once a component of it used one
+    const app = Neo.apps?.[windowId];
+
+    if (!component.isDestroyed && app && Neo.tooltip?.Base) {
+        Neo.tooltip.Base.createSingleton(app, windowId).hide()
+    }
+}
