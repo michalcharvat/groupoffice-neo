@@ -1903,25 +1903,3 @@ $updates['202611131400'][] = "ALTER TABLE core_oauth_client ADD registration VAR
 
 // A client ID metadata document is fetched again a day after it was saved
 $updates['202611131500'][] = "ALTER TABLE core_oauth_client ADD modifiedAt DATETIME NULL DEFAULT NULL";
-
-// neo webclient: named workspaces (dock layouts) per user, docs/neo-workspace.md
-$updates['202611242100'][] = "CREATE TABLE IF NOT EXISTS `core_workspace` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `aclId` int(11) NOT NULL,
-  `createdBy` int(11) NOT NULL,
-  `name` varchar(190) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `icon` varchar(64) COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
-  `sortOrder` int(11) NOT NULL DEFAULT 0,
-  `panels` mediumtext COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
-  `layouts` mediumtext COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
-  `savedPanels` mediumtext COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
-  `savedLayouts` mediumtext COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
-  `modifiedAt` datetime NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `createdBy` (`createdBy`),
-  KEY `aclId` (`aclId`),
-  CONSTRAINT `core_workspace_core_user` FOREIGN KEY (`createdBy`) REFERENCES `core_user` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `core_workspace_core_acl` FOREIGN KEY (`aclId`) REFERENCES `core_acl` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
-
-$updates['202611242100'][] = "ALTER TABLE `core_user` ADD `defaultWorkspaceId` int(11) NULL DEFAULT NULL";
