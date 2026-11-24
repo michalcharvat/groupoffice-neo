@@ -183,7 +183,8 @@ class MarkdownEditor extends Base {
     insertText({id, text}) {
         const item = this.map[id];
 
-        if (item) {
+        // setRangeText() also writes into a read-only textarea
+        if (item && !item.editor.readOnly) {
             const {selectionStart, selectionEnd} = item.editor;
             this.replace(item, selectionStart, selectionEnd, text);
             this.sync(id)

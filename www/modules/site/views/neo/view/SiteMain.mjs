@@ -273,8 +273,13 @@ class SiteMain extends MainThreeColumnPanel {
 
         if (record) {
             tree.selectionModel.select(record);
-            Neo.main.DomAccess.scrollIntoView({id: tree.getItemId(record), behavior: 'auto', block: 'nearest', windowId: me.windowId})
-                .catch(() => {})
+
+            // the expanded rows reach the DOM with the tree's next update
+            await tree.promiseUpdate();
+
+            !me.isDestroyed && !tree.isDestroyed && tree.store.get(nodeId) &&
+                Neo.main.DomAccess.scrollIntoView({id: tree.getItemId(record), behavior: 'auto', block: 'nearest', windowId: me.windowId})
+                    .catch(() => {})
         }
     }
 

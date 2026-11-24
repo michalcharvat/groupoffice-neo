@@ -233,7 +233,8 @@ class ContentPanel extends Container {
             id   = source?.itemId && me.tree?.nodeIdOf(source.itemId),
             node = id && me.tree.getNode(id);
 
-        if (node?.site.type === 'content' && node.site.modelId && node.slug && me.current) {
+        // a reader can't change the text (the fields are read-only)
+        if (node?.site.type === 'content' && node.site.modelId && node.slug && me.current && me.mayWrite(me.current.siteId)) {
             me.getReference('editor').insertText(`[${node.text}](slug://${node.slug})`)
         }
     }
