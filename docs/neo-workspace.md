@@ -194,7 +194,8 @@ How it works:
   the new state, otherwise it re-reads the workspace and applies only what this window changed against
   the copy it edited: panels it added, changed or closed (all other panels, their routes included, are
   the server's); the profile's layout only when this window changed it (then last write wins, items of
-  panels gone are dropped). Up to 5 attempts; after a merge the window reloads the workspace to show
+  panels gone are dropped; "changed" means a dock edit, not only a route). The same local edit is applied
+  again to each fresh copy, and the type state is taken together with that copy. Up to 5 attempts; after a merge the window reloads the workspace to show
   the result. A save that fails otherwise (network) stays queued for the next flush.
 - Another window's save arrives as a `Workspace` state change: a window that shows the workspace reloads
   it when the panels or its own profile's layout changed (with the notice "This workspace was changed in
@@ -207,7 +208,8 @@ Deviations from the design above:
 - `ifInState` is compared with the global `Workspace` state (JMAP has no per-entity state), so any save
   of another workspace of the user is a mismatch too; `Workspace/changes` tells the two apart (above).
 - Access is the owner's (and an administrator's) whatever the ACL holds (`internalGetPermissionLevel()`,
-  `applyAclToQuery()`): a default grant of the entity type applied to all ACLs must not share a workspace.
+  `applyAclToQuery()`, `getChanges()`): a default grant of the entity type applied to all ACLs must not share a
+  workspace, nor report its changes to another user.
 - A bookmark opened as a module (`bookmarks-<id>`, bookmarks `views/neo/Index.mjs`) is a panel; the server
   checks access to the bookmarks module, the client opens only bookmarks the user can see.
 - A malformed `panels` / `layouts` value (not an object) is a validation error of that record.
@@ -224,6 +226,9 @@ Deviations from the design above:
   The layout is captured with `getDocument()`, a copy of `getPerspectiveDocument()`.
 - The dock's maximize button shows when the pointer is over the group header (neo's contextual actions);
   Esc restores.
+- Known neo warning: "Neo.tab.header.Button: 'cls' / 'maxWidth' was set after destroy()" can show once when
+  a profile change reloads the workspace (the tab Overflow plugin measures buttons the reconciler just
+  replaced; neo ignores the write). Not an error; check again after a neo.mjs upgrade.
 - The launcher's Shift+click "open beside" is left for phase 2.
 - Limits confirmed: 256 KB for `panels` + `layouts` + saved copies, 30 panels, 200 nodes, depth 16,
   route 1024 characters, item title 190.
