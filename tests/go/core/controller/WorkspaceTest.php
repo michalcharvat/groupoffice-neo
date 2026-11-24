@@ -229,6 +229,25 @@ class WorkspaceTest extends TestCase
 		$this->assertArrayHasKey($id, $result['notUpdated'] ?? []);
 	}
 
+	public function testChangesDontReportAnotherUsersWorkspaceWithAGrant()
+	{
+		$id = $this->createForA();
+		$aclId = go()->getDbConnection()->selectSingleValue('aclId')->from('core_workspace')->where('id', '=', $id)->single();
+		go()->getDbConnection()->insertIgnore('core_acl_group', ['aclId' => $aclId, 'groupId' => Group::findPersonalGroupID(self::$userB->id), 'level' => Acl::LEVEL_READ])->execute();
+
+		self::actAs(self::$userB);
+		$state = (new Workspace())->get(['ids' => []])->getArray()['state'];
+
+		self::actAs(self::$userA);
+		$result = $this->set(['update' => [$id => ['name' => 'Renamed']]]);
+		$this->assertArrayHasKey($id, $result['updated'] ?? []);
+
+		self::actAs(self::$userB);
+		$changes = (new Workspace())->changes(['sinceState' => $state])->getArray();
+		$this->assertNotContains($id, array_map('intval', $changes['updated'] ?? []));
+		$this->assertNotContains($id, array_map('intval', $changes['created'] ?? []));
+	}
+
 	public function testAScalarLayoutValueIsAnErrorOfThatRecordOnly()
 	{
 		self::actAs(self::$userA);

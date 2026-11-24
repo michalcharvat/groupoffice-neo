@@ -274,11 +274,11 @@ class Workspace extends AclOwnerEntity {
 	 * Creates a workspace for another user than the authenticated one (server side only)
 	 *
 	 * @param int $userId
-	 * @return static
+	 * @return self
 	 */
-	public static function newFor(int $userId): static
+	public static function newFor(int $userId): self
 	{
-		$workspace = new static();
+		$workspace = new self();
 		$workspace->ownerId = $userId;
 
 		return $workspace;
@@ -391,7 +391,7 @@ class Workspace extends AclOwnerEntity {
 				return "Invalid panel " . $panelId;
 			}
 
-			if (!isset($panel['module']) || !is_string($panel['module']) || !preg_match('/^[a-z0-9_]{1,100}(-[0-9]{1,20})?$/i', $panel['module'])) {
+			if (!isset($panel['module']) || !is_string($panel['module']) || !preg_match('/^([a-z0-9_]{1,100}|bookmarks-[0-9]{1,20})$/i', $panel['module'])) {
 				return "Invalid module of panel " . $panelId;
 			}
 
@@ -422,7 +422,9 @@ class Workspace extends AclOwnerEntity {
 	private static function mayUseModule(string $name): bool
 	{
 		// "bookmarks-42": a bookmark opened as a module (bookmarks module, views/neo/Index.mjs)
-		$name = explode('-', $name, 2)[0];
+		if (str_starts_with($name, 'bookmarks-')) {
+			$name = 'bookmarks';
+		}
 
 		$modules = Module::find(['id', 'package', 'name', 'enabled'])
 			->where(['name' => $name, 'enabled' => true])
@@ -480,6 +482,36 @@ class Workspace extends AclOwnerEntity {
 		}
 
 		return $query;
+	}
+
+	/**
+	 * Changes of the user's own workspaces only: the ACL part of the change log would also report a workspace of
+	 * another user whose ACL got a grant (see internalGetPermissionLevel())
+	 *
+	 * @param string $sinceState
+	 * @param int $maxChanges
+	 * @return array
+	 */
+	public static function getChanges(string $sinceState, int $maxChanges): array
+	{
+		$result = parent::getChanges($sinceState, $maxChanges);
+
+		$auth = go()->getAuthState();
+		if (empty($result['changed']) || ($auth && $auth->isAdmin())) {
+			return $result;
+		}
+
+		$own = go()->getDbConnection()
+			->selectSingleValue('id')
+			->from('core_workspace')
+			->where('createdBy', '=', (int) $auth?->getUserId())
+			->andWhere('id', 'IN', array_map('intval', $result['changed']))
+			->all();
+
+		$own = array_map('intval', $own);
+		$result['changed'] = array_values(array_filter($result['changed'], fn($id) => in_array((int) $id, $own, true)));
+
+		return $result;
 	}
 
 	protected function internalSave(): bool
@@ -642,16 +674,22 @@ class Workspace extends AclOwnerEntity {
 	}
 
 	/**
-	 * Encodes a map, leaving out keys set to null (JMAP patch "layouts/wide": null removes the profile)
+	 * Whether a value can be stored as a map: null, an object or an associative array
 	 *
-	 * @param array|ArrayObject|null $map
-	 * @return string|null
+	 * @param mixed $value
+	 * @return bool
 	 */
 	private static function isMap(mixed $value): bool
 	{
 		return $value === null || $value instanceof ArrayObject || (is_array($value) && (empty($value) || !array_is_list($value)));
 	}
 
+	/**
+	 * Encodes a map, leaving out keys set to null (JMAP patch "layouts/wide": null removes the profile)
+	 *
+	 * @param array|ArrayObject|null $map
+	 * @return string|null
+	 */
 	private static function encodeMap(array|ArrayObject|null $map): ?string
 	{
 		if ($map === null) {
