@@ -20,6 +20,8 @@ const FIELDS = ['name', 'domain', 'base_path', 'language', 'ssl', 'mod_rewrite',
 class SiteDialog extends LegacyFormWindow {
     static config = {
         className   : 'GO.site.view.SiteDialog',
+        // custom fields of the site (the legacy model has CustomFieldsTrait)
+        entityName  : 'Site',
         title       : t('Options'),
         generalHeader: {text: t('Options')},
         wrapperStyle: {height: 'min(640px, 90vh)', left: 'calc(50vw - 260px)', top: 'max(5vh, calc(50vh - 320px))', width: 'min(520px, 100vw)'},
@@ -61,7 +63,8 @@ class SiteDialog extends LegacyFormWindow {
                 language             : data.language || '',
                 ssl                  : !!+data.ssl,
                 mod_rewrite          : !!+data.mod_rewrite,
-                mod_rewrite_base_path: data.mod_rewrite_base_path || ''
+                mod_rewrite_base_path: data.mod_rewrite_base_path || '',
+                customFields         : data.customFields || {}
             }
         })
     }
@@ -86,10 +89,6 @@ class SiteDialog extends LegacyFormWindow {
             {module: BoolCheckBox, name: 'mod_rewrite', valueLabel: t('Mod rewrite')},
             text('mod_rewrite_base_path', t('Mod rewrite base path'), {required: true, maxLength: 50})
         ]
-    }
-
-    addCustomFields() {
-        // the site's custom fields are disabled in the module (customfieldsModel() commented out)
     }
 
     onConstructed() {
@@ -144,6 +143,9 @@ class SiteDialog extends LegacyFormWindow {
                 params[key] = typeof modified[key] === 'boolean' ? (modified[key] ? 1 : 0) : (modified[key] ?? '')
             }
         });
+
+        // the legacy model takes its custom fields as JSON
+        'customFields' in modified && (params.customFieldsJSON = JSON.stringify(values.customFields || {}));
 
         Object.keys(params).length > 1 && await client.legacy('site/site/submit', params);
 

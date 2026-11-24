@@ -69,7 +69,7 @@ class SiteTree extends Tree {
      * (siteId) => may the user change the site's content and menus; set by the main panel
      * @member {Function} mayChange
      */
-    mayChange = () => true
+    mayChange = () => false
 
     /**
      * Timer of the delayed saveState()
@@ -280,8 +280,20 @@ class SiteTree extends Tree {
             return
         }
 
+        let children = parent.children;
+
+        // a collapsed menu item loads its children on expand: the order needs all of them
+        if (!Array.isArray(children)) {
+            try {
+                children = await me.loadNodes(parent)
+            } catch (e) {
+                me.fire('error', {error: e});
+                return
+            }
+        }
+
         // the parent's children in their new order (the dragged node at its drop place)
-        const siblings = (parent.children || []).map(child => child.id).filter(id => id !== dragNode.id);
+        const siblings = children.map(child => child.id).filter(id => id !== dragNode.id);
 
         if (position === 'on') {
             siblings.push(dragNode.id)

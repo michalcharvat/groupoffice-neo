@@ -21,6 +21,8 @@ const FIELDS = ['template', 'default_child_template', 'meta_title', 'meta_keywor
 class ContentDialog extends LegacyFormWindow {
     static config = {
         className    : 'GO.site.view.ContentDialog',
+        // custom fields of the content item (the legacy model has CustomFieldsTrait)
+        entityName   : 'Content',
         title        : t('Content'),
         generalHeader: {text: t('Info')},
         wrapperStyle : {height: 'min(720px, 90vh)', left: 'calc(50vw - 300px)', top: 'max(5vh, calc(50vh - 360px))', width: 'min(600px, 100vw)'},
@@ -64,7 +66,8 @@ class ContentDialog extends LegacyFormWindow {
                 default_child_template: data.default_child_template || null,
                 meta_title            : data.meta_title || '',
                 meta_keywords         : data.meta_keywords || '',
-                meta_description      : data.meta_description || ''
+                meta_description      : data.meta_description || '',
+                customFields          : data.customFields || {}
             }
         })
     }
@@ -107,10 +110,6 @@ class ContentDialog extends LegacyFormWindow {
         }]
     }
 
-    addCustomFields() {
-        // the content's custom fields are disabled in the module (customfieldsModel() commented out)
-    }
-
     onConstructed() {
         const result = super.onConstructed();
 
@@ -150,10 +149,12 @@ class ContentDialog extends LegacyFormWindow {
         return result
     }
 
-    async save(modified) {
+    async save(modified, values) {
         const params = {id: this.contentId};
 
         FIELDS.forEach(key => key in modified && (params[key] = modified[key] ?? ''));
+        // the legacy model takes its custom fields as JSON
+        'customFields' in modified && (params.customFieldsJSON = JSON.stringify(values.customFields || {}));
 
         Object.keys(params).length > 1 && await client.legacy('site/content/update', params);
         return {id: this.contentId}

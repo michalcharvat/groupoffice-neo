@@ -126,4 +126,5 @@ return array (
   'Cheat sheet' => 'Tahák',
   'Insert file' => 'Vložit soubor',
   'Select a content item in the tree, or add one with its menu.' => 'Vyberte položku obsahu ve stromu nebo ji přidejte z jeho nabídky.',
+  'Discard the changes of this content item?' => 'Zahodit změny této položky obsahu?',
 );

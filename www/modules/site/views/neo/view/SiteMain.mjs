@@ -188,32 +188,39 @@ class SiteMain extends MainThreeColumnPanel {
      * @returns {Promise<void>}
      */
     async loadSiteLevels(nodes) {
-        let me = this;
+        let me    = this,
+            apply = () => {
+                if (!me.isDestroyed) {
+                    me.getReference('tree').mayChange = siteId => me.mayChange(siteId);
+                    me.getReference('content').setMayWrite(siteId => me.mayChange(siteId))
+                }
+            };
+
+        apply();
 
         await Promise.all(nodes.filter(node => node.site.type === 'site').map(async node => {
+            let level = 0;
+
             try {
                 const {data} = await client.legacy('site/site/load', {id: node.site.siteId}, {method: 'GET'});
-                me.siteLevels.set(String(node.site.siteId), +data.permission_level || 0)
+                level = +data.permission_level || 0
             } catch (e) {
                 // site/site/load (renderForm) refuses without write permission
-                me.siteLevels.set(String(node.site.siteId), 0)
             }
-        }));
 
-        if (!me.isDestroyed) {
-            me.getReference('tree').mayChange = siteId => me.mayChange(siteId);
-            me.getReference('content').setMayWrite(siteId => me.mayChange(siteId))
-        }
+            me.siteLevels.set(String(node.site.siteId), level);
+            apply()
+        }))
     }
 
     /**
      * @param {String|Number} siteId
      * @param {Number} [level]
-     * @returns {Boolean} the user has the level on the site (unknown: true, the server checks)
+     * @returns {Boolean} the user has the level on the site (not known yet: false)
      */
     mayChange(siteId, level=LEVEL_WRITE) {
         const known = this.siteLevels.get(String(siteId));
-        return known === undefined || known >= level
+        return known !== undefined && known >= level
     }
 
     reloadTree() {
@@ -224,9 +231,14 @@ class SiteMain extends MainThreeColumnPanel {
      * A click on a node: content items open in the editor
      * @param {Object} node
      */
-    onNodeSelect(node) {
-        if (node.site.type === 'content' && node.site.modelId) {
-            this.getReference('content').load(node.site.modelId);
+    async onNodeSelect(node) {
+        const content = this.getReference('content');
+
+        if (node.site.type === 'content' && node.site.modelId && String(content.current?.id) !== String(node.site.modelId)) {
+            if (!await content.confirmLeave()) {
+                return
+            }
+            content.load(node.site.modelId);
             this.activatePanel('center')
         }
     }
@@ -307,8 +319,13 @@ class SiteMain extends MainThreeColumnPanel {
      * @param {String|Number} siteId
      * @param {String|Number|null} parentId
      */
-    addContent(siteId, parentId=null) {
-        this.getReference('content').create(siteId, parentId);
+    async addContent(siteId, parentId=null) {
+        const content = this.getReference('content');
+
+        if (!await content.confirmLeave()) {
+            return
+        }
+        content.create(siteId, parentId);
         this.activatePanel('center')
     }
 

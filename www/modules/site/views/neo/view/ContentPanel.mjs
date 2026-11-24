@@ -5,6 +5,7 @@ import Button        from '../../../../../views/neo/src/button/Button.mjs';
 import {enableDragDrop} from '../../../../../views/neo/src/component/dragDrop.mjs';
 import MarkdownField from '../../../../../views/neo/src/form/field/MarkdownField.mjs';
 import client        from '../../../../../views/neo/src/jmap/Client.mjs';
+import ConfirmDialog from '../../../../../views/neo/src/view/ConfirmDialog.mjs';
 import ModuleRegistry from '../../../../../views/neo/src/ModuleRegistry.mjs';
 import {notify, notifyError} from '../../../../../views/neo/src/Notify.mjs';
 import {t as coreT, translator} from '../../../../../views/neo/src/Translate.mjs';
@@ -86,6 +87,12 @@ class ContentPanel extends Container {
      * @member {Number} loadCounter=0
      */
     loadCounter = 0
+
+    /**
+     * A save is running
+     * @member {Boolean} saving=false
+     */
+    saving = false
 
     construct(config) {
         super.construct(config);
@@ -202,7 +209,7 @@ class ContentPanel extends Container {
      * (siteId) => may the user change the site's content, set by the main panel
      * @member {Function} mayWrite
      */
-    mayWrite = () => true
+    mayWrite = () => false
 
     /**
      * @param {Function} fn (siteId) => Boolean
@@ -347,6 +354,27 @@ class ContentPanel extends Container {
     }
 
     /**
+     * Asks before another item replaces changes that weren't saved
+     * @returns {Promise<Boolean>} true: go on
+     */
+    async confirmLeave() {
+        let me = this;
+
+        if (!me.current || !me.isDirty() || !me.mayWrite(me.current.siteId)) {
+            return true
+        }
+
+        const yes = await ConfirmDialog.ask({
+            appName : me.appName,
+            windowId: me.windowId,
+            title   : t('Content'),
+            message : t('Discard the changes of this content item?')
+        });
+
+        return !!yes && !me.isDestroyed
+    }
+
+    /**
      * @returns {Boolean} a field differs from what was loaded or saved
      */
     isDirty() {
@@ -384,7 +412,7 @@ class ContentPanel extends Container {
             values  = me.getValues(),
             button  = me.getReference('saveButton');
 
-        if (!current) {
+        if (!current || me.saving) {
             return false
         }
 
@@ -394,13 +422,20 @@ class ContentPanel extends Container {
             return false
         }
 
-        // the editor sends its text after a short delay
-        await me.getReference('editor').flush?.();
-        Object.assign(values, me.getValues());
-
+        me.saving       = true;
         button.disabled = true;
 
         try {
+            // the editor sends its text after a short delay
+            await me.getReference('editor').flush?.();
+
+            // another item was opened meanwhile: its text isn't this item's
+            if (me.isDestroyed || me.current !== current) {
+                return false
+            }
+
+            Object.assign(values, me.getValues());
+
             let response;
 
             if (current.id) {
@@ -427,6 +462,7 @@ class ContentPanel extends Container {
             me.isDestroyed || notifyError(me, e);
             return false
         } finally {
+            me.saving = false;
             me.isDestroyed || me.syncButtons()
         }
     }
