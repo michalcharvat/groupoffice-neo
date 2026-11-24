@@ -241,10 +241,12 @@ class UserSettingsDialog extends FormWindow {
     }
 
     /**
+     * FormWindow.onFormSave() keeps this promise for submit() to wait on: no second save
+     * while the settings are applied
      * @param {Object} data {data, isNew}
      * @protected
      */
-    async onFormSave(data) {
+    async afterSave(data) {
         let me      = this,
             changed = me.saving,
             user    = Object.fromEntries(USER_PROPERTIES.filter(key => key in data.data).map(key => [key, data.data[key]]));
