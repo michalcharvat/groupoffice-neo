@@ -480,6 +480,9 @@ public function historyLog(): bool|array
 			throw new Forbidden();
 		}
 		$this->archive = $v;
+		if($v) {
+			$this->enabled = false;
+		}
 	}
 
 	protected function canCreate(): bool
@@ -1135,6 +1138,11 @@ public function historyLog(): bool|array
 		$modified = parent::internalGetModified($properties, $forIsModified);
 
 		if($forIsModified && $modified) {
+			return true;
+		}
+
+		// A pending archive must be saved, also when no other property changed
+		if($forIsModified && $this->archive && ($allProps || in_array('archive', $properties))) {
 			return true;
 		}
 

@@ -10,6 +10,7 @@ Write the product name as "GroupOffice" in new text (changelog, messages, commen
 | Writing PHPUnit tests | `docs/writing-tests.md` |
 | Converting ExtJS to GOUI, building and styling GOUI | `docs/goui-frontend.md` |
 | neo web client | `docs/neo-*.md` |
+| Merging GroupOffice master into neo (regular upstream sync) | `docs/neo-upstream-sync.md` |
 | Code outside a business module that touches its classes, `defineListeners()` | `docs/encoded-business-modules.md` |
 
 ## Reuse existing code
@@ -33,9 +34,14 @@ We are migrating away from legacy code. When writing new code or changing existi
 
 ## Running tests
 
+#### PHP
 Run phpunit as `www-data`, never as root. Use `tools/phpunit <path>` from the docker-groupoffice-development checkout (it runs as `www-data`; `-c <service>` picks another container than `groupoffice`, `-m install|upgrade|existing` the mode, default `install`, and `existing` runs against the existing database with Xdebug) or `docker compose exec -u www-data groupoffice ...`. Running as root creates root-owned files in `/tmp/phpunit`, `/tmp/groupoffice` and `/var/lib/groupoffice` and breaks the tooling. Tests live in `tests/` (`/usr/local/share/src/tests` in the container).
 
 - Suggest creating tests when they will benefit security and stability of the system
+
+#### Typescript (GOUI)
+
+Run mocha on the host from `www/views/goui/goui` with `npm test`, or `../../../node_modules/.bin/mocha` (mocha, tsx, chai and jsdom are installed in `www/node_modules`). `.mocharc.json` there sets up jsdom and always loads every file in `tests/`, so a path argument doesn't limit the run. Pick tests with `--grep <describe or it text>`. Running one file first fails with `Collection is not a constructor` because of the import order, also for existing tests.
 
 ## Environment
 
@@ -78,7 +84,7 @@ Why, and the check for `defineListeners()`: `docs/encoded-business-modules.md`.
 
 ## Static analysis
 
-- PHPStan (level 3, config `tests/phpstan.neon`, covers `www/api` and `www/go`): from `www/` run `composer go:analyse` (inside the container). New code should not add errors.
+- PHPStan (level 3, config `tests/phpstan.neon`, covers `www/api` and `www/go`): from `www/` run `composer go:analyse` (inside the container). New code should not add errors. It runs in GitHub Actions (`.github/workflows/phpstan.yml`); existing errors are in `tests/phpstan-baseline.neon`, so only new errors fail. Fix an error instead of adding it to the baseline. After fixing an old error, lower its count or remove its entry in the baseline by hand. Regenerate the baseline only with `scripts/phpstan-baseline.sh` (on the host), which analyses a copy without the modules of other repositories, like CI does; locally the business and customer modules add their own errors (see `tests/phpstan-baselines.php`). A module folder in its own repository has its own `phpstan-baseline.neon`; regenerate it in the container from `www/` with `php ../scripts/phpstan-module-baseline.php business`.
 - Semgrep (`scripts/semgrep.sh`, security rule sets for PHP, JS/TS and secrets) and Qodana (`qodana.yaml`) run on the codebase as well. Don't introduce findings such as SQL built from user input, and don't commit secrets.
 - Don't analyse or edit vendored code, `activesync` or Z-Push (excluded in the configs).
 

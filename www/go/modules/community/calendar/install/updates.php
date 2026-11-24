@@ -539,3 +539,51 @@ $updates['202611091200'][] = "delete from calendar_schedule_object;";
 $updates['202611121200'][] = "ALTER TABLE `calendar_preferences` ADD COLUMN showCategoryColor TINYINT(1) DEFAULT 0 NOT NULL AFTER `multiLine`;";
 
 $updates['202611181200'][] = "ALTER TABLE `calendar_preferences` ADD COLUMN printWeekInGrid TINYINT(1) DEFAULT 0 NOT NULL AFTER `showCategoryColor`;";
+
+// Subscribers of a calendar can choose to get the notifications that the creator of an event set #37829
+$updates['202611231200'][] = "ALTER TABLE `calendar_calendar_user` ADD COLUMN `useCreatorAlerts` TINYINT(1) NULL DEFAULT NULL AFTER `includeInAvailability`;";
+
+// The cached iCalendar data of a private event may contain the participants, which others may no longer see. The data
+// of the owners is kept, because it may be the original data of an invitation.
+$updates['202611231300'][] = "UPDATE calendar_event_user eu
+	JOIN calendar_event e ON e.eventId = eu.eventId
+	SET eu.veventBlobId = NULL
+	WHERE e.privacy != 'public'
+	AND NOT EXISTS (
+		SELECT 1 FROM calendar_calendar_event cce
+		JOIN calendar_calendar cal ON cal.id = cce.calendarId
+		WHERE cce.eventId = e.eventId AND cal.ownerId = eu.userId
+	);";
+
+// The web client saved the "until" of a recurrence as a date. For events with a time that left out the occurrence on
+// that day. Store it as the end of that day, like CalendarEvent does on save, and include that day in lastOccurrence.
+$updates['202611232200'][] = function() {
+	$db = go()->getDbConnection();
+	$stmt = $db->select('eventId, recurrenceRule, timeZone, duration, lastOccurrence')
+		->from('calendar_event')
+		->where('showWithoutTime', '=', 0)
+		->andWhere('recurrenceRule', 'LIKE', '%"until":"____-__-__"%');
+
+	foreach($stmt as $row) {
+		$rule = json_decode($row['recurrenceRule']);
+		if(empty($rule->until) || strlen($rule->until) != 10) {
+			continue;
+		}
+		$rule->until .= 'T23:59:59';
+
+		$tz = $row['timeZone'] ? new DateTimeZone($row['timeZone']) : null;
+		// a local date time in the time zone of the event
+		$lastOccurrence = (new DateTime($rule->until, $tz))->add(new DateInterval($row['duration']))->format('Y-m-d H:i:s');
+		if(isset($row['lastOccurrence']) && $row['lastOccurrence'] > $lastOccurrence) {
+			$lastOccurrence = $row['lastOccurrence']; // an override may be later
+		}
+
+		$db->update('calendar_event', [
+			'recurrenceRule' => json_encode($rule),
+			'lastOccurrence' => $lastOccurrence
+		], ['eventId' => $row['eventId']])->execute();
+
+		// the cached iCalendar data has the old UNTIL
+		$db->update('calendar_event_user', ['veventBlobId' => null], ['eventId' => $row['eventId']])->execute();
+	}
+};
