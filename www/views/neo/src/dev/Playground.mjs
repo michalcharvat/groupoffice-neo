@@ -33,7 +33,8 @@ function homeHtml() {
 }
 
 /**
- * Prototype only: Dev module, route "#dev/<id>" with ids from menu.mjs.
+ * Prototype only: Dev module, route "#dev/<id>" with ids from menu.mjs; "#dev/<id>/<sub path>"
+ * shows page <id> and calls its route(subPath) when it has one.
  * Pages are created on first visit; a demo that fails to load shows its info page.
  */
 class Playground extends Container {
@@ -92,29 +93,36 @@ class Playground extends Container {
         this.showPage(path || 'home').catch(e => console.error('Dev page', e))
     }
 
-    async showPage(id) {
+    async showPage(path) {
         let me    = this,
-            item  = MENU.find(entry => entry.id === id && !entry.header) || MENU[0],
+            // "router/hello" → page "router" with the sub path "hello" (longest matching id)
+            item  = MENU.filter(entry => !entry.header && (path === entry.id || path.startsWith(entry.id + '/')))
+                        .sort((a, b) => b.id.length - a.id.length)[0] || MENU[0],
+            sub   = path.length > item.id.length ? path.slice(item.id.length + 1) : '',
             cards = me.getReference('pages'),
             menu  = me.getReference('menu');
 
-        me.currentId = item.id;
+        me.currentId  = item.id;
+        me.currentSub = sub;
         // a string would be taken as a vdom id: pass the record
         menu.selectionModel.select(menu.store.get(item.id));
 
         if (!me.pages[item.id]) {
             const config = await me.createPageConfig(item);
 
-            // destroyed, or created by an earlier call meanwhile
-            if (me.isDestroyed || me.pages[item.id]) {
+            if (me.isDestroyed) {
                 return
             }
 
-            me.pages[item.id] = cards.add(config)
+            // another call may have created it meanwhile
+            me.pages[item.id] ||= cards.add(config)
         }
 
+        // only the latest route: a page created by an earlier call gets the latest sub path
         if (me.currentId === item.id) {
-            cards.layout.activeIndex = cards.indexOf(me.pages[item.id])
+            cards.layout.activeIndex = cards.indexOf(me.pages[item.id]);
+            // a page may handle its own sub path, see demo/Router.mjs
+            me.pages[item.id].route?.(me.currentSub)
         }
     }
 

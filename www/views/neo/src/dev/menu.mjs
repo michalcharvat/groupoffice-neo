@@ -11,15 +11,15 @@
  */
 export default [
     {id: 'home',        text: 'Home',          level: 0, status: 'done'},
-    {id: 'getstarted',  text: 'Get started',   level: 0, status: 'neo',  neo: 'views/neo/README.md',             goui: 'GetStarted.ts'},
-    {id: 'layout',      text: 'Layout',        level: 0, status: 'neo',  neo: 'neo layout/* (hbox, vbox, card)', goui: 'Layout.ts'},
-    {id: 'data',        text: 'Data',          level: 0, status: 'neo',  neo: 'GO.data.JmapStore',               goui: 'Data.ts'},
-    {id: 'router',      text: 'Router',        level: 0, status: 'neo',  neo: 'MainView + module route()',       goui: 'Router.ts'},
+    {id: 'getstarted',  text: 'Get started',   level: 0, status: 'done', demo: 'GetStarted',  neo: 'views/neo/README.md',             goui: 'GetStarted.ts'},
+    {id: 'layout',      text: 'Layout',        level: 0, status: 'done', demo: 'Layout',  neo: 'neo layout/* (hbox, vbox, card)', goui: 'Layout.ts'},
+    {id: 'data',        text: 'Data',          level: 0, status: 'done', demo: 'Data',  neo: 'GO.data.JmapStore',               goui: 'Data.ts'},
+    {id: 'router',      text: 'Router',        level: 0, status: 'done', demo: 'Router',  neo: 'MainView + module route()',       goui: 'Router.ts'},
     {id: 'draganddrop', text: 'Drag and drop', level: 0, status: 'done', demo: 'DragAndDrop', neo: 'GO.neo component/dragDrop.mjs enableDragDrop(), dropIndex() + addon WS/DragDrop; GO.tree.Tree dragNodes/dropOn/dropBetween',     goui: 'DragAndDrop.ts'},
 
     {id: 'component',     text: 'Components',     level: 0, header: true},
-    {id: 'buttons',       text: 'Buttons',        level: 1, status: 'neo',  neo: 'GO.button.Button, SearchButton', goui: 'Button.ts'},
-    {id: 'cardcontainer', text: 'Card container', level: 1, status: 'neo',  neo: 'neo layout card, tab/Container', goui: 'CardContainer.ts'},
+    {id: 'buttons',       text: 'Buttons',        level: 1, status: 'done', demo: 'Buttons',  neo: 'GO.button.Button, SearchButton', goui: 'Button.ts'},
+    {id: 'cardcontainer', text: 'Card container', level: 1, status: 'done', demo: 'CardContainer',  neo: 'neo layout card, tab/Container', goui: 'CardContainer.ts'},
     {id: 'datepicker',    text: 'DatePicker',     level: 1, status: 'done', demo: 'PeriodPickers', neo: 'neo component/DateSelector; GO.component.MonthPicker, WeekPicker', goui: 'DatePickerPage.ts'},
     {id: 'form',          text: 'Form',           level: 1, status: 'neo',  neo: 'GO.form.DataSourceForm',         goui: 'Form.ts'},
 
@@ -41,14 +41,14 @@ export default [
 
     {id: 'menu/ColorMenu', text: 'ColorMenu', level: 1, status: 'done', demo: 'ColorMenu', neo: 'GO.menu.ColorMenu', goui: 'goui/script/component/menu/ColorMenu.ts'},
     {id: 'descriptionlist', text: 'DescriptionList', level: 1, status: 'done', demo: 'DescriptionList', neo: 'GO.component.DescriptionList', goui: 'DescriptionList.ts'},
-    {id: 'list',     text: 'List',     level: 1, status: 'neo',  neo: 'GO.list.TextList, CheckList', goui: 'List.ts'},
-    {id: 'panel',    text: 'Panel',    level: 1, status: 'neo',  neo: 'neo container/Panel',         goui: 'Panel.ts'},
-    {id: 'patching', text: 'Patching', level: 1, status: 'neo',  neo: 'neo class overwrites (Neo.overwrites)', goui: 'Patching.ts'},
-    {id: 'table',    text: 'Table',    level: 1, status: 'neo',  neo: 'GO.grid.Grid',                goui: 'Table.ts'},
+    {id: 'list',     text: 'List',     level: 1, status: 'done', demo: 'List',  neo: 'GO.list.TextList, CheckList', goui: 'List.ts'},
+    {id: 'panel',    text: 'Panel',    level: 1, status: 'done', demo: 'Panel',  neo: 'neo container/Panel',         goui: 'Panel.ts'},
+    {id: 'patching', text: 'Patching', level: 1, status: 'done', demo: 'Patching',  neo: 'neo class overwrites (Neo.overwrites)', goui: 'Patching.ts'},
+    {id: 'table',    text: 'Table',    level: 1, status: 'done', demo: 'Table',  neo: 'GO.grid.Grid',                goui: 'Table.ts'},
     {id: 'table/MultiSelect', text: 'Multi select', level: 2, status: 'done', demo: 'MultiSelect', neo: 'GO.grid.Grid multiSelect, GO.grid.RowSelectionModel, MultiSelectToolbar', goui: 'table/MultiSelectToolbar.ts, RowSelect.ts'},
-    {id: 'tooltip',  text: 'Tooltip',  level: 1, status: 'neo',  neo: 'neo tooltip/Base',            goui: 'TooltipPage.ts'},
+    {id: 'tooltip',  text: 'Tooltip',  level: 1, status: 'done', demo: 'Tooltip',  neo: 'neo tooltip/Base',            goui: 'TooltipPage.ts'},
     {id: 'tree',     text: 'Tree',     level: 1, status: 'done', demo: 'Tree', neo: 'GO.tree.Tree', goui: 'Tree.ts'},
-    {id: 'window',   text: 'Window',   level: 1, status: 'neo',  neo: 'GO.view.Dialog, ConfirmDialog', goui: 'Window.ts'},
+    {id: 'window',   text: 'Window',   level: 1, status: 'done', demo: 'Window',  neo: 'GO.view.Dialog, ConfirmDialog', goui: 'Window.ts'},
 
     {id: 'core',              text: 'Group-Office core', level: 0, header: true},
     {id: 'core/FormWindow',   text: 'FormWindow',        level: 1, status: 'done', demo: 'FormWindow',   neo: 'GO.view.FormWindow',           goui: 'groupoffice-core/script/components/FormWindow.ts'},
