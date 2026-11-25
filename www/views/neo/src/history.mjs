@@ -36,10 +36,23 @@ export async function openTab(windowId, url) {
  * Open this page at another hash in a new browser window (a window of its own in the shared App worker)
  * @param {String} windowId the window the user clicked in
  * @param {String} hash without "#"
+ * @param {Object} [options]
+ * @param {String} [options.key] keep the window's handle under this key, for isWindowClosed()
+ * @param {Object} [options.items] sessionStorage items of the new window (src/windowStorage.mjs)
  * @returns {Promise<Boolean>} false: the popup blocker stopped it
  */
-export async function openWindow(windowId, hash) {
-    return (await addon(windowId)).openWindow({hash, windowId})
+export async function openWindow(windowId, hash, {key, items} = {}) {
+    return (await addon(windowId)).openWindow({hash, windowId, ...key && {key}, ...items && {items}})
+}
+
+/**
+ * Whether a window openWindow() opened was closed; a reloaded one is still open
+ * @param {String} windowId the window that opened it
+ * @param {String} key the key given to openWindow()
+ * @returns {Promise<Boolean|null>} null: unknown key (the opener was reloaded since)
+ */
+export async function isWindowClosed(windowId, key) {
+    return (await addon(windowId)).isWindowClosed({key, windowId})
 }
 
 /**

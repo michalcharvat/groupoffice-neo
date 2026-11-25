@@ -9,6 +9,7 @@ import Base from '../../../node_modules/neo.mjs/src/main/addon/Base.mjs';
  * - openTab(): a new browser tab without window.opener (the classic client, docs/neo-switch.md D3)
  * - openWindow(): this page at another hash in a new browser window of the size of this one, e.g. a
  *   workspace for a second monitor; it joins the shared App worker as a window of its own
+ * - isWindowClosed(): whether a window openWindow() opened was closed (a reload keeps it open)
  * - replaceLocation(): leave the page without a history entry (OAuth authorize after login)
  * - removeQuery(): drop parameters of the page's query, e.g. a mailto: link's ?r=&f= once its
  *   composer is open, so a reload doesn't run it again
@@ -21,8 +22,32 @@ class History extends Base {
         // no library files to load
         preloadFilesDelay: false,
         remote: {
-            app: ['openTab', 'openWindow', 'removeQuery', 'replaceLocation', 'replaceRoute']
+            app: ['isWindowClosed', 'openTab', 'openWindow', 'removeQuery', 'replaceLocation', 'replaceRoute']
         }
+    }
+
+    /**
+     * key → handle of the windows openWindow() opened with a key
+     * @member {Map} windows
+     */
+    windows = new Map()
+
+    /**
+     * Only this page holds the handle: the App worker can't tell a closed window from a reloaded one
+     * (both leave with a "disconnect", a reload comes back under a new window id)
+     * @param {Object} data
+     * @param {String} data.key the key given to openWindow()
+     * @returns {Boolean|null} null: not a window of this page (this page was reloaded since)
+     */
+    isWindowClosed({key}) {
+        const win = this.windows.get(key);
+
+        if (!win) {
+            return null
+        }
+
+        win.closed && this.windows.delete(key);
+        return win.closed
     }
 
     /**
@@ -39,9 +64,11 @@ class History extends Base {
     /**
      * @param {Object} data
      * @param {String} data.hash without "#"
+     * @param {String} [data.key] keep the window's handle under this key, for isWindowClosed()
+     * @param {Object} [data.items] sessionStorage items of the new window (it starts with none)
      * @returns {Boolean} false: the popup blocker stopped it
      */
-    openWindow({hash}) {
+    openWindow({hash, key, items}) {
         const url      = location.pathname + location.search + '#' + hash,
               // a window, not a tab: with a size; a little offset so it doesn't hide this one
               features = `width=${window.outerWidth},height=${window.outerHeight},left=${window.screenX + 40},top=${window.screenY + 40}`,
@@ -54,13 +81,21 @@ class History extends Base {
         // the browser copies this window's sessionStorage into the new one: it would restore this
         // window's tabs (src/windowStorage.mjs). Still about:blank of this origin, so reachable.
         try {
-            win.sessionStorage.clear()
+            win.sessionStorage.clear();
+            Object.entries(items || {}).forEach(([name, value]) => win.sessionStorage.setItem(name, value))
         } catch (e) {
             console.warn('openWindow: sessionStorage', e)
         }
 
         // the new window must not reach back into this one
         win.opener = null;
+
+        if (key) {
+            // windows closed without anyone asking
+            this.windows.forEach((other, k) => other.closed && this.windows.delete(k));
+            this.windows.set(key, win)
+        }
+
         return true
     }
 
