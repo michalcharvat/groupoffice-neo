@@ -15,6 +15,10 @@ import client from './jmap/Client.mjs';
  *     quickAdd  : {text: 'Note', icon: 'sticky_note_2'},  // header "+" menu → mainView.onQuickAdd()
  *     routes    : {Note: id => 'note/' + id},             // header search result → "#notes/note/5"
  *     mainView  : () => import('./view/NotesMain.mjs'),  // lazy, default export = neo class
+ *     // optional: the module's main view exists once per window (a standalone tab or one workspace panel,
+ *     // claimModuleView()); without it a workspace may hold several views of it, one per panel. For modules
+ *     // whose views share module-wide state (calendar, email, summary), docs/neo-workspace.md Phase 3 part 3.
+ *     singleInstance: true,
  *     // optional card in My account (src/usersettings/UserSettingsDialog.mjs)
  *     userSettings: {title: 'Notes', iconCls: 'fa fa-sticky-note', panel: () => import('./view/SettingsPanel.mjs')},
  *     // optional card(s) in System settings (src/systemsettings/SystemSettingsDialog.mjs)

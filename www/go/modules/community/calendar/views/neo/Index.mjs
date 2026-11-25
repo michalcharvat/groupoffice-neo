@@ -18,6 +18,9 @@ ModuleRegistry.register({
     routes    : {CalendarEvent: id => 'event/' + id},
     // count on the module tab and main menu item (src/Badges.mjs): open invitations (GOUI showBadge())
     badge     : {entities: ['CalendarEvent'], count: () => client.call('CalendarEvent/countMine')},
+    // one view per window (docs/neo-workspace.md, Phase 3 part 3): CalendarItem.ui, the clipboard and the item
+    // dialogs are module-wide
+    singleInstance: true,
     mainView  : () => import('./view/CalendarMain.mjs'),
     // "Add link" menu of other items' details: a new linked event
     linkWindows: [{title: t('Event'), icon: 'event', open: ctx => import('./linkWindow.mjs').then(m => m.default(ctx))}],

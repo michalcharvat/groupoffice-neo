@@ -20,6 +20,8 @@ ModuleRegistry.register({
     capability: CAPABILITY,
     // Material icon in the header's main menu
     icon      : 'home',
+    // one view per window (docs/neo-workspace.md, Phase 3 part 3): the start page's portlet layout is one state
+    singleInstance: true,
     mainView  : () => import('./view/StartPage.mjs'),
     // GO.summary.portlets of the summary module itself; other modules register theirs
     portlets  : [{

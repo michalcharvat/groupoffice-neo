@@ -1004,6 +1004,59 @@ Tests:
   with two Calendar panels shows the placeholder in the second; export and import of a workspace with two
   Notes panels; the module badge and the main menu dot with two panels.
 
+### Part 3: as built (2026-11-26)
+
+- **Code**:
+  - core (`www/views/neo`): `MainView.mjs` claim API with a key (`claimModuleView(name, owner, key)`,
+    `releaseModuleView(name, key)`, `unclaimModuleView(name, key)`, `claimed` by `name|key`, `openTokens`
+    by `name|key` for a claim being made and by the bare name for a standalone view being made), `claimsOf()`, `hasModuleView()`, `isSingleInstance()`, `standaloneRoute()`,
+    `showStandalone()` (the tab button and Move out), `quickAdd()` as one navigation with `expectedHash`,
+    `navCount`; `singleInstance: true` in the `Index.mjs` of calendar, email and summary. Hooks in
+    `docs/neo-small-modules.md`.
+  - sf-mono, branch `neo`, module `workspaces`: `views/neo/instances.mjs` (pure: `claimKey()`,
+    `chooseTarget()`, `pruneFocus()`, `duplicatePanel()`, `fitPanels()`, `planHosts()`, `MAX_PANELS`),
+    `OpenWorkspace.mjs` (hosts by panel id, lazy attach, Duplicate, popup routes), `Extension.mjs`
+    (`showModule()` / `targetOf()`, `routeOf()`, `lastFocus`, `showsBadge()`), `SaveQueue.mjs` (merge by id,
+    `fitPanels()`), `model/Workspace.php` (the one-panel-per-module rule removed).
+- **As designed**, with these details:
+  - A panel's view is attached when its tab is active (and for band panels) after the layout lands, and
+    on `panelActivate`; `attachShown()` also runs after a profile switch.
+  - The last focused panel is recorded on a user's focus and when the address takes a panel
+    (`focusedRoute()`), not on the focus a load chooses: otherwise a reload with the second panel focused
+    routed the next link to the first.
+  - The first address after a reload routes as if the workspace the window showed (`stored.active`) were
+    shown (`bootActiveId`), until a card or a standalone module shows.
+  - Move out of a panel whose view isn't made yet attaches it first, so the module leaves with its route.
+  - After a conflict merge over 30 panels, our added panels go first (newest first), then panels the
+    other window closed that our route change brought back; the notice says the limit.
+  - Badges go to every extension (`onBadge`); a workspace counts a module once however many panels it has
+    (a `singleInstance` module only where its view is). `showsBadge()` keeps the main menu dot off for a
+    count a workspace tab shows.
+- **Codex review** (2026-11-26, gpt-6.2-astra, eight findings, and nine in a second pass over the fixes:
+  more races of the same kinds, a standalone import that failed or lost to a claim, the main menu dot after
+  closing a workspace), all fixed: Move out of a lazy panel lost
+  the panel; the first address after a reload went to the standalone tab; a pending panel claim and a
+  standalone open could make two views of a `singleInstance` module; a conflict could still send 31
+  panels; a slow quick add or tab click could act after a newer navigation; a profile switch left a
+  shown panel empty; a failed module import left a claim token; a workspace badge went stale when all
+  panels of the module were lazy.
+- **Tests**:
+  - PHPUnit `tests/WorkspaceTest.php` (a module in two panels saved live and as checkpoint) and
+    `tests/WorkspaceExportTest.php` (two panels import as two): 68 tests.
+  - mocha `tests/js/instances.test.mjs`: claim keys, merge by id, `fitPanels()` (also the revived panel),
+    `chooseTarget()` steps 1-4, `pruneFocus()`, `duplicatePanel()`, `planHosts()`; 53 passing in all.
+  - Browser check (headless Playwright as neotest, a test container on its own port, 2026-11-26):
+    Duplicate in the panel menu; two Notes panels with different notes, kept after a reload also with the
+    second focused; focusing a panel changes the address; a typed `#notes/note/<id>` lands in the last
+    focused panel; Back; Move out to a standalone tab, Move out disabled while it is open, the standalone
+    tab shows its own view and route; the first address after a reload stays in the workspace; Move out of
+    a never-shown panel; two windows each changing their panel and each duplicating: all kept; a popped-out
+    panel routes there and keeps its route back docked; two Calendar panels: the second shows "Show here",
+    which moves the view; no Duplicate for calendar or the start page; the Tasks badge counted once with
+    three panels, one lazy; quick add of a note with two Notes panels.
+    Not checked in the browser: export/import with two panels (PHPUnit only), a conflict at 30 panels
+    (mocha only), a failed module import.
+
 ## Decisions taken (owner, 2026-11-24)
 
 - Workspaces are generic, several per user, not one fixed layout.

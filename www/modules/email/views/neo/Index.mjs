@@ -21,6 +21,9 @@ ModuleRegistry.register({
     // checked folders, checked every checker_interval also while the module is closed (ExtJS
     // GO.checker email/account/checkUnseen + GO.mainLayout.setNotification())
     badge     : {count: () => checker.count()},
+    // one view per window (docs/neo-workspace.md, Phase 3 part 3): MessagePanel.getHost() falls back to the
+    // first EmailMain of the window
+    singleInstance: true,
     mainView  : () => import('./view/EmailMain.mjs'),
     /**
      * Opens the composer (ExtJS go.showComposer / GO.email.showComposer), for core
