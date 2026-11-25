@@ -376,6 +376,96 @@ the shared worker comes back blank in headless Chromium, keep a second "anchor" 
 worker's console is read over CDP (shared worker target); Playwright's `dragTo()` sends one dragover, the
 dock needs a stepped mouse drag.
 
+## Phase 2: as built (2026-11-25)
+
+Phase 2 of "Phases" above, on model v2 (workspaces are top-bar tabs, several per window). The core keeps
+only generic extension points (`docs/neo-small-modules.md`, "Main view extensions": hooks
+`launcherItems`, `openBeside`, `searchResults`, `hotKeys`, `cardTitle`; `windowMenuItems()`,
+`openWindow()`, `WS/HotKeys`); everything about workspaces is in the module.
+
+Behaviour:
+
+- **Windows.** Workspace tab menu: "Open in new window" (the tab moves to a new browser window of the same
+  size; it closes here only when the browser opened the window, else "The browser blocked the new
+  window.") and "Move to window N: <what it shows>" for every other window of the session (the tab closes
+  here and opens there). A standalone module tab has "Move to window N" too (core), and so has a panel's
+  menu (the panel leaves the workspace and the module opens in the other window). A window opened on
+  `#ws/<id>` (new window, link) opens only that workspace.
+- **Save / Revert.** "Save layout" copies the workspace's panels and layouts to `savedPanels` /
+  `savedLayouts`; "Revert to saved layout" (disabled without a checkpoint) writes them back and reloads.
+  Both go through the write queue (`SaveQueue.checkpoint()` / `revert()`, `exclusive()`: after the
+  window's pending saves, with `ifInState` and up to 5 retries on a conflict), so another window's edit is
+  never overwritten silently.
+- **Undo / redo** of dock changes in this window (50 steps, per workspace): tab menu or Ctrl+Alt+Z, redo
+  Ctrl+Alt+Shift+Z / Ctrl+Alt+Y. Focus changes are no steps. A load (another window's change, revert)
+  clears the history. Undoing an added panel closes that module view; a snapshot's panel whose module is
+  live elsewhere gets its placeholder. Multi-step edits (open beside, undo, redo) run after a running load
+  and hold remote reloads until they end (`OpenWorkspace.editing()`); without that a Shift+click right
+  after a close was overwritten by the close's own push about every other time.
+- **Launcher.** A row above the module tiles: the workspaces (the shown one pressed) and "New workspace";
+  in list mode they head the menu. Shift+click / Shift+Enter on a tile opens the module right of the
+  focused panel of the shown workspace (else the one shown last, else the default one); into the empty
+  centre when there is one. Narrow, or without the module: the tile opens as usual.
+- **Shortcuts.** Ctrl+Alt+1…9 show the workspace tabs in their order; undo/redo above. They match
+  `KeyboardEvent.code`, so they work on every layout and macOS; AltGr never triggers them.
+- **Search.** The header search lists workspaces whose name contains the text (entity "Workspace"),
+  before the server results; a click opens the workspace.
+- **After login** (My account → Workspaces, `User.sfWorkspacesSettings.startMode` / `startWorkspaceId`):
+  "The workspaces open last" (default: the tabs and shown workspace of the window that changed them last
+  in this browser, `localStorage` `go-workspaces-last-<userId>` via `src/State.mjs`), "A given workspace"
+  (only that tab, shown), "The start module (Look & feel)" (the default workspace's tab, the start module
+  shows). Logout clears the windows' stored tabs, so the next login applies the preference. Validation in
+  `Module::onUserValidate()`: an unknown mode or another user's workspace is refused ("Invalid value");
+  other users read null.
+- **Empty centre** ("Keep an empty centre", per workspace, `keepCentre`): the dock projects an empty
+  centre as a drop well (neo `enableDockCenterWell`), a drop at an edge makes a band around it
+  (`Workspace.toBand()`, 25 %), and the first panel fills the centre. Existing layouts are not converted.
+  Without the option an emptied edge zone is dropped (`dropEmptyZones()`).
+
+Backend: `Workspace.keepCentre` (writable), `UserSettings.startMode` / `startWorkspaceId` (FK, `ON DELETE
+SET NULL`), update `202611251200`; tests in `tests/WorkspaceTest.php` (start preference of the own
+account, defaults hidden from other users, another user's workspace and an unknown mode refused,
+keepCentre, checkpoint and revert with `ifInState`). The "another user's workspace" test fails with the
+guard removed.
+
+Gotchas:
+
+- `window.open()` copies the opener's `sessionStorage`: the new window restored the old window's tabs.
+  `WS/History.openWindow()` clears the copy (the new window is still `about:blank` of the same origin).
+- The launcher closes without giving the focus back after Shift+click and after a row item, so the main
+  menu button's tooltip is hidden by hand (`hideTooltip()`).
+- After `openBeside` the address is set before the panel's own focus routes it, else the address stayed
+  on a module closed later (`Extension.openBeside()` sets `routeModule` first).
+- The neo theme has to be rebuilt (`npm run build-themes`) after the launcher SCSS change, or the row
+  shows unstyled buttons.
+
+Review fixes (Codex, 2026-11-25):
+
+- Only the user (or an administrator) sets the start preference: a user manager may update other
+  accounts through the core User controller (`Module::onUserValidate()`, test
+  `testAnotherUserCantSetTheStartPreference`).
+- A checkpoint or "Keep an empty centre" write doesn't move the window's base or `ifInState`: the next
+  edit meets another window's unseen change as a conflict and merges it, instead of overwriting it.
+- "Save layout" and "Revert" stop with "The layout could not be saved. Please try again." when a save
+  before them failed (`SaveQueue.exclusive()`, type `unsaved`); revert saves a pending edit first
+  instead of dropping it.
+- Checkpoint layouts are trimmed to the saved panels (an unchanged profile may still name a closed
+  panel, a new `savedLayouts` is validated); a saved empty workspace counts as a checkpoint
+  (`hasCheckpoint()`: saved panels or saved layouts).
+- A push updates the checkpoint marker and `keepCentre` of the other windows without a reload.
+- An edit waits at most 10 s for a running load and is skipped when it still runs.
+- Undo/redo bring a panel back with the route it had last (`lastRoutes`).
+- "Move to window" of an inactive standalone module keeps its deep link (`openModules[name].route`).
+- Logout also clears the phase 1 window key; the launcher unregisters its main-thread key
+  registrations (field, tiles, row) on destroy.
+
+Browser check (2026-11-25, Playwright, container with the module): neotest and neoadmin; 900, 1440, 1920
+and 390 px; launcher row and Shift+click, undo/redo, save/revert, search, Ctrl+Alt+1, new workspace from
+the row, keep an empty centre (well, close all panels, refill), open in new window, move a module and a
+workspace between windows, My account preference (saved, a new login opens the chosen workspace; module
+and last modes), without access and with the module disabled (no row, Shift+click opens as usual, no
+shortcuts); no console errors from this change.
+
 ## Decisions taken (owner, 2026-11-24)
 
 - Workspaces are generic, several per user, not one fixed layout.

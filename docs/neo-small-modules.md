@@ -215,6 +215,11 @@ Hooks, all optional, called on every extension (`MainView.callExtensions()`):
 | `onActiveCardChange(card)` | The shown card changed: an extension card, or null for a module. |
 | `fallbackRoute()` | The last standalone module closed: a route to go to, or null. |
 | `beforeLogout()` | Awaited before the logout request (flush pending saves). |
+| `launcherItems()` | The main menu opens: items `{text, iconCls, icon, pressed, handler}` for a row above the tiles of the launcher (`AppLauncher.setRow()`; `text` is HTML, escape user data) or, in list mode, at the top of the menu. |
+| `openBeside(name)` | Shift+click / Shift+Enter on a launcher tile. Return true when the extension opens the module itself (it then runs async); otherwise the module opens as usual. |
+| `searchResults(text)` | The header search: results `{entity, name, description, route}` listed before the server's (`GlobalSearch.extraResults`). |
+| `hotKeys()` | Boot: `{combo: handler}` window-wide shortcuts (`WS/HotKeys` below). |
+| `cardTitle(card)` | The window's shown card is the extension's: its title for a list of the windows ("Move to window N: …"). |
 | `destroy()` | The main view is destroyed. |
 
 An owner of a claimed module view (below) also gets `onBadge(name, text)` (the module's count badge;
@@ -234,6 +239,22 @@ API of the main view for extensions:
   destroyed the view.
 - `routeModule` / `activeHash`: the module and hash the window last routed; an extension that shows a
   module sets `routeModule` to null for its own route.
+- `windowMenuItems(handler, disabled)`: menu items "Move to window N: <what it shows>" for the other
+  windows of the shared worker (`getMainViews()`, exported by `MainView.mjs`, in the order they opened;
+  `describe()` is what a window shows). The core uses them for "Move to window" on a standalone module
+  tab (`sendModuleToWindow()`): the module closes here and the other window routes to it.
+
+Window pieces for extensions:
+
+- `openWindow(windowId, hash)` (`src/history.mjs`, addon `WS/History`): this page at another hash in a new
+  browser window of this one's size. Resolves to false when the popup blocker stopped it. The browser
+  copies sessionStorage into a window opened this way; the addon clears the copy, so the new window
+  starts without this window's state (`src/windowStorage.mjs`).
+- `WS/HotKeys` (`src/main/addon/HotKeys.mjs`): window-wide shortcuts in the capture phase, so they also
+  work in a field or on the page body. Combos are modifiers plus `KeyboardEvent.code`
+  (`'Ctrl+Alt+Digit1'`, `'Ctrl+Alt+Shift+KeyZ'`): Alt changes `key` on macOS and many layouts. AltGr
+  (Windows: Ctrl+Alt) never matches, it types characters (Czech AltGr+1 is `~`). A match is prevented and
+  sent as the DOM event `goHotKey {combo}` to the main view.
 
 Gotchas:
 
