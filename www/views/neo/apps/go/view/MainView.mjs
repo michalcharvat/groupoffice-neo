@@ -154,7 +154,7 @@ async function sendServerTabs(save) {
  * a dock, docs/neo-workspace.md): an extension adds cards (addCard(), showCard()) and top bar items
  * (insertTopbarItems()), takes module views over from their standalone tab (claimModuleView(),
  * releaseModuleView(), unclaimModuleView()) and answers hooks (start, onHashChange, showModule,
- * onActiveCardChange, onBadge, fallbackRoute, beforeLogout, destroy, launcherItems, openBeside, routeOf,
+ * onActiveCardChange, onBadge, showsBadge, fallbackRoute, beforeLogout, destroy, launcherItems, openBeside, routeOf,
  * searchResults, hotKeys, cardTitle), see docs/neo-small-modules.md.
  * Without an extension nothing of this runs.
  *
@@ -313,6 +313,13 @@ class MainView extends Container {
      * @member {Object} claimed={}
      */
     claimed = {}
+
+    /**
+     * Navigations started in this window (routeHash(), showStandalone(), quickAdd()): a slow one that was
+     * overtaken doesn't write the address or open a dialog afterwards
+     * @member {Number} navCount=0
+     */
+    navCount = 0
 
     /**
      * A hash quickAdd() set for the view it showed: its hash change is no second navigation (routeHash())
@@ -1018,6 +1025,7 @@ class MainView extends Container {
         // for start(): a hash other than the window's first one came meanwhile (while the extensions
         // started and the tabs were restored) and wins over it
         me.hashSeen = hashString || '';
+        me.navCount++;
 
         // quickAdd() showed the view already: the address only follows it
         if (me.expectedHash !== null && (hashString || '') === me.expectedHash) {
@@ -1136,6 +1144,12 @@ class MainView extends Container {
                 return
             }
 
+            // one view per window: an extension claimed it meanwhile (the address finds it there)
+            if (me.isSingleInstance(module.name) && me.claimsOf(module.name).length) {
+                delete me.openTokens[module.name];
+                return
+            }
+
             // another hash change may have opened it meanwhile
             entry = me.openModules[module.name] ??= {
                 view: cards.add({module: ViewClass, moduleName: module.name})
@@ -1173,9 +1187,11 @@ class MainView extends Container {
 
         // one navigation: the view the routing chooses (a workspace panel or the standalone tab), with
         // its route ("#notes/note/5" stays)
-        const view = await me.showModule(module, null);
+        const nav  = ++me.navCount,
+              view = await me.showModule(module, null);
 
-        if (!view || me.isDestroyed) {
+        // gone, or the user went elsewhere while the module loaded
+        if (!view || me.isDestroyed || nav !== me.navCount) {
             return
         }
 
@@ -1225,11 +1241,13 @@ class MainView extends Container {
         // a hash routed meanwhile (an extension still starting) doesn't show something else after this
         me.extensions.length && me.hashSeq++;
 
+        const nav = ++me.navCount;
+
         await me.openModule(module);
 
         const entry = me.openModules[name];
 
-        if (me.isDestroyed || !entry || me.activeModule !== name) {
+        if (me.isDestroyed || !entry || me.activeModule !== name || nav !== me.navCount) {
             return
         }
 
@@ -1661,8 +1679,8 @@ class MainView extends Container {
         }
 
         tab && tab.badgeText !== text && (tab.badgeText = text);
-        // every extension holding a view of the module (each of its workspaces)
-        new Set(me.claimsOf(name).map(c => c.owner)).forEach(owner => owner.onBadge?.(name, text));
+        // every extension: one may show the module without a view of it yet (a workspace panel not shown)
+        me.callExtensions('onBadge', name, text);
         me.updateMainMenuDot();
         me.getReference('launcher')?.setBadge(name, text);
 
@@ -1684,7 +1702,8 @@ class MainView extends Container {
         }
 
         // a module an extension holds shows its count there (onBadge())
-        const show = ModuleRegistry.getAvailable().some(m => badges.get(m.name) && !me.claimsOf(m.name).length && me.getReference('module-' + m.name)?.hidden !== false);
+        const show = ModuleRegistry.getAvailable().some(m => badges.get(m.name) && !me.claimsOf(m.name).length &&
+            !me.callExtensions('showsBadge', m.name).some(Boolean) && me.getReference('module-' + m.name)?.hidden !== false);
 
         button.toggleCls('go-badge-dot', show)
     }
@@ -1905,7 +1924,15 @@ class MainView extends Container {
         } else {
             const token = me.openTokens[id] = Symbol();
 
-            const {default: ViewClass} = await module.mainView();
+            let ViewClass;
+
+            try {
+                ({default: ViewClass} = await module.mainView())
+            } catch (e) {
+                // the module's code failed to load: no view is being made any more (hasModuleView())
+                me.openTokens[id] === token && delete me.openTokens[id];
+                throw e
+            }
 
             // unclaimed meanwhile (the place is gone), or the shell destroyed
             if (me.isDestroyed || me.openTokens[id] !== token) {

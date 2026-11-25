@@ -285,9 +285,10 @@ Hooks, all optional, called on every extension (`MainView.callExtensions()`):
 | `cardTitle(card)` | The window's shown card is the extension's: its title for a list of the windows ("Move to window N: …"). |
 | `destroy()` | The main view is destroyed. |
 
-An owner of a claimed module view (below) also gets `onBadge(name, text)` (the module's count badge, once
-per owner however many views it holds) and `onModuleViewReleased(name, view, key)` (a `singleInstance`
-view was claimed for another owner or key).
+Every extension gets `onBadge(name, text)` (a module's count badge changed; it may show the module without
+a view of it, e.g. a workspace panel not shown yet) and may answer `showsBadge(name)` (true: it shows that
+count, so the main menu button needs no dot for it). An owner of a claimed module view (below) also gets
+`onModuleViewReleased(name, view, key)` (a `singleInstance` view was claimed for another owner or key).
 
 API of the main view for extensions:
 
