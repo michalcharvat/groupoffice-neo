@@ -1,0 +1,11 @@
+# neo web client: neo.mjs imports ES modules without version query strings, so the browser must
+# revalidate them (ETag -> 304) or it runs a changed file from its heuristic cache. One rule for
+# core (views/neo) and every module (go/modules/*/*/views/neo, modules/*/views/neo, also modules
+# of other repositories), like the Debian Apache config, which skips .htaccess (AllowOverride None).
+# The file path, not the URL: an Alias to a views/neo folder is covered too. Needs AllowOverride
+# FileInfo for the install folder (else Apache answers 500 for every request below it).
+<IfModule mod_headers.c>
+	<If "%{REQUEST_FILENAME} =~ m#/views/neo/.+\.(mjs|js|css|json)$#">
+		Header set Cache-Control "no-cache"
+	</If>
+</IfModule>

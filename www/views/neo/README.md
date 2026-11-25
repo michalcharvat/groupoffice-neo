@@ -210,8 +210,9 @@ text (no rich text editor, labels, attachments), no import/export menu. Dark mod
   absolute (`Neo.config.goBaseUrl`).
 - **Worker output is invisible** to tools reading the page console. `app.mjs` mirrors
   `console.error/warn`, `error` and `unhandledrejection` to the main thread via `Neo.Main.log`.
-- **Caching**: ES modules load without version query strings; `.htaccess` sends
-  `Cache-Control: no-cache` (ETag revalidation). Navigating to the same URL with only a
+- **Caching**: ES modules load without version query strings; `www/.htaccess` sends
+  `Cache-Control: no-cache` (ETag revalidation) for every file under a `/views/neo/` folder,
+  core and modules; a module needs no `.htaccess` of its own. Navigating to the same URL with only a
   different hash does not reload the page.
 - **Dialogs**: without an `animateTargetId` a dialog stays at `.neo-floating`'s
   -10000px; set `left`/`top` in `wrapperStyle`. `GO.view.Dialog` closes (destroys) on
