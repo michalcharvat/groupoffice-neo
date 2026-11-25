@@ -129,8 +129,9 @@ no longer reads GOUI (own copies of the tokens and the iconfont since 2026-11-24
   `npm install` (dev) / `npm ci` (nodev, still with dev dependencies: the theme build needs
   `sass`, `postcss`), then `npm run build`. Doesn't need the GOUI submodules (neo has its own
   copies of the tokens and the iconfont since 2026-11-24). Document the Node version.
-- `build/build.sh` `build_package()`: after `install-npm.sh`, `npm prune --omit=dev` in
-  `views/neo` too, and remove the generated `resources/css` (build input only; up to neo.mjs
+- `build/build.sh` `build_package()`: after `install-npm.sh`, `views/neo/buildScripts/release.mjs
+  --in-place` (since 2026-11-25 instead of `npm prune --omit=dev` in `views/neo`, see "Release
+  build" below), and remove the generated `resources/css` (build input only; up to neo.mjs
   13.4 `resources/scss/theme-go`).
 - Debian Apache config: the revalidation header of `views/neo/.htaccess`
   (`Cache-Control: no-cache` for `.mjs/.js/.css/.json` under `views/neo` and module
@@ -146,9 +147,53 @@ no longer reads GOUI (own copies of the tokens and the iconfont since 2026-11-24
   `dist/development`, `resources/theme-map.json`, Material Symbols, the Paper Lato fonts.
 - Build without the classic client: `build/build.sh --test --webclient=neo` (section 8,
   "Building without the classic client").
-- Not in this task: neo's production build (`neo.mjs/buildScripts/build/esmodules.mjs`,
-  minified ESM in `dist/esm`). It changes how module code is resolved (relative imports into
-  `views/neo`) and needs its own card.
+- Release build: see below (2026-11-25).
+
+### Release build (2026-11-25)
+
+The release runs neo minified, from the same URLs as a checkout. `build/build.sh` runs
+`views/neo/buildScripts/release.mjs --in-place <package>` on the package after `install-npm.sh`.
+The script refuses to run in a git checkout (also through a symlink), because it overwrites
+the sources. It needs Node 20.12+ (`Dirent.parentPath`); the locked neo.mjs and cssnano need more anyway. It:
+
+1. minifies every `.mjs`/`.js` of `views/neo/apps`, `views/neo/src`, `node_modules/neo.mjs/src`
+   and of each module's `views/neo` (`modules/*`, `go/modules/*/*`, `promodules/*`) with
+   Terser. It uses the options of neo's own `dist/esm` build (`module`, `mangle.toplevel`), so
+   export names stay the same, plus `keep_classnames`: neo's `Main.mjs` registers main thread
+   addons by `constructor.name` (`Neo.Main.addon.Stylesheet`). 1137 files, 10.8 MB → 3.5 MB;
+2. minifies the theme CSS in `dist/development` with cssnano, deletes the source maps and
+   keeps only the folders GO loads (`theme-go`, `src`). Both theme maps (`resources/` and
+   `dist/development/resources/`) are cut down to match;
+3. keeps only the runtime `dependencies` of `package.json` in `node_modules` (neo.mjs,
+   marked, Font Awesome), and of those only what the page loads: neo.mjs `src`, Font Awesome
+   `css` and `webfonts`. It does this instead of `npm prune --omit=dev`, because npm
+   reinstalls a package whose files changed, and that brings back the full, unminified
+   neo.mjs. The script fails when a runtime package gets dependencies of its own.
+
+`views/neo` goes from 142 MB to 11 MB (node_modules 121 → 4.9 MB, dist 12 → 2.9 MB).
+
+Why not neo's own production builds:
+
+- `dist/esm` (`buildScripts/build/esmodules.mjs`) flattens the workspace and the engine into
+  one `dist/esm` tree and takes only sources inside `views/neo` ("ESM source is outside the
+  workspace"). GO's `src` and neo's `src` would both land in `dist/esm/src`.
+- The webpack builds (`dist/production`) bundle the app.
+- GO modules live outside `views/neo`, including modules installed later from other
+  repositories. They import `views/neo/src` and `views/neo/node_modules/neo.mjs/src` by
+  relative path. Such a module next to a `dist/esm` copy of the engine would start a second
+  engine with its own class registry. Import maps don't help, because the App worker runs the
+  module code and workers have no import maps.
+
+So `Neo.php` keeps `environment: 'development'` and its paths. neo derives the worker, theme
+CSS (`dist/<env>`) and app paths from the environment, and the `dist/*` values expect the
+flattened tree. In `development` neo also parses html templates at runtime (GO uses none),
+mirrors worker errors to the console and reports late config sets. That costs little.
+
+A module installed after the release (unminified) imports the same, now minified, engine
+files and works unchanged. Checked on a copy of the worktree with the release build applied
+(container with the business/amd/sf modules unminified): login, shell, overview, address
+book, tasks, calendar, e-mail and files render as on the dev build, with no console errors or
+failed requests. The tarball / Debian smoke test of the release gate is still open.
 
 ## 3. Choosing the client (entry point; needs D1/D2 approved)
 
@@ -324,7 +369,8 @@ deploy that changes only a module's `views/neo` files at the same GO version nee
 malformed percent escape there stops the classic recovery dialog (unchanged behaviour), neo ignores it.
 
 Later cards: `?r=&f=` external URL commands other than the mailto composer (only
-`links.openModelLink` of `CoreController` is left), neo's production build, the release smoke test of section 2, and
+`links.openModelLink` of `CoreController` is left), the release smoke test of section 2 (the release
+build is done, see "Release build"), and
 section 8's removal of classic and GOUI once the classic-apps list is empty for an admin.
 
 ## OAuth and external URLs in neo (2026-11-25)
