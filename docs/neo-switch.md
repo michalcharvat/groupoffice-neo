@@ -20,12 +20,12 @@ UI exist, and nothing a user, an e-mail or an OAuth client links to breaks.
 | Modules outside this repo | business and pro modules (fetched by `build.sh`) and customer modules (`go/modules/amd`, `sf`, `nuw`): not verified here; customer modules are ExtJS. They are why the classic client must stay reachable | `build/build.sh:158-175` |
 | Deep links the server sends | `#<entity>/<id>` by default from `Entity::url()` / `ActiveRecord::url()` (a module can change it with `EVENT_URL`; files `Folder` sends `#folder/<id>`), `#recover/<hash>-<urlencoded redirect>` (recovery mail) | `www/go/core/jmap/Entity.php:943-951`, `www/go/base/db/ActiveRecord.php:5434-5442`, `www/modules/files/model/Folder.php:274`, `www/go/core/model/User.php:1022-1032` |
 | Query entry links | `?oauthAuthorize=1` (OAuth login with a pending authorization) and `?oauthConsent=1` (consent dialog), handled by the classic `MainLayout.js`; `?r=&f=<base64 json>` external URLs from `GO::createExternalUrl()` (mailto composer, model links) dispatched by `Extjs3::drawScripts()` | `www/api/oauth.php:59-74`, `www/views/Extjs3/javascript/MainLayout.js:303,345`, `www/go/GO.php:871-886`, `www/go/core/webclient/Extjs3.php:364-380` |
-| Deep links in neo | `#<module>/<module path>` and `#systemsettings/<card>` only (`MainView.onHashChange()`). `#contact/5` opens nothing, `#recover/…` shows the normal login, the OAuth and `?r=` queries are ignored | `apps/go/view/MainView.mjs:356`, `apps/go/view/Viewport.mjs:31-81` |
+| Deep links in neo | `#<module>/<module path>` and `#systemsettings/<card>` only (`MainView.onHashChange()`). `#contact/5` opens nothing, `#recover/…` shows the normal login, the OAuth and `?r=` queries are ignored (since 2026-11-25 neo continues OAuth and the mailto composer, see "OAuth and external URLs in neo") | `apps/go/view/MainView.mjs:356`, `apps/go/view/Viewport.mjs:31-81` |
 | Route differences classic ↔ neo | classic `#tasks/<id>` vs neo `#tasks/task/<id>`; classic e-mail `#email/<account>/<raw mailbox>` vs neo's encoded mailbox (a nested raw mailbox splits on `/`); System settings card ids differ (classic `history`, neo `community-history`) | `tasks/views/goui/script/Index.ts:20`, `TasksMain.mjs:624`, `www/modules/email/EmailClient.js:1025`, `modules/email/views/neo/util.mjs:55`, `SystemSettingsDialog.mjs:197` |
 | Entity → route mapping | modules declare `routes: {Entity: id => path}`; GlobalSearch (`MainView.mjs:201`) and links / alerts / reminders (`src/link/linkTypes.mjs:60`) resolve them in two separate, case-sensitive places; items without a route say "Open it in the classic UI" but can't be clicked | `src/link/links.mjs:155`, `src/view/GlobalSearch.mjs:159`, `src/alerts/Alerts.mjs:207` |
 | Popouts | `?neoPopup=<id>&neoBuild=<build>`: the popup joins the opener's shared App worker and adopts the component. Without `SharedWorker` neo falls back to dedicated workers, so a popup cannot adopt; it fails after the 30 s adopt timeout | `Neo.php:76`, `src/Popup.mjs` |
-| Build | `scripts/install-npm.sh` installs the `www` npm workspace (views/goui, its submodules, module `views/goui`) and builds GOUI. `views/neo` is not in the workspace and nothing builds it: a release package has no `views/neo/node_modules` and no `dist/development` theme, so the neo page cannot start | `scripts/install-npm.sh`, `www/package.json` |
-| Release pruning | `build.sh` runs `npm prune --omit=dev` in the package root only. `@fortawesome/fontawesome-free` is a devDependency of views/neo but `Neo.php` links its CSS | `build/build.sh:332`, `www/views/neo/package.json` |
+| Build | `scripts/install-npm.sh` installs the `www` npm workspace (views/goui, its submodules, module `views/goui`) and builds GOUI. `views/neo` is not in the workspace and nothing builds it: a release package has no `views/neo/node_modules` and no `dist/development` theme, so the neo page cannot start (fixed since: see "Release build") | `scripts/install-npm.sh`, `www/package.json` |
+| Release pruning | `build.sh` runs `npm prune --omit=dev` in the package root only. `@fortawesome/fontawesome-free` is a devDependency of views/neo but `Neo.php` links its CSS (since: `build.sh` runs `buildScripts/release.mjs --in-place` instead, see "Release build") | `build/build.sh:332`, `www/views/neo/package.json` |
 | Caching | `views/neo/.htaccess` makes `.mjs/.js/.css/.json` revalidate (neo imports modules without version query strings); the Debian Apache config has `AllowOverride None`, so it doesn't apply there | `www/views/neo/.htaccess`, `build/debian/etc/apache2/conf-available/groupoffice.conf:52` |
 | neo runtime | `environment: 'development'`: the browser loads neo.mjs sources unbundled from `views/neo/node_modules/neo.mjs` (installed: 64 MB package, 7.4 MB `src`) | `Neo.php:236` |
 | Page load cost | `Neo::buildId()` walks every file under `views/neo/apps`, `views/neo/src` and each module's `views/neo` on every neo page load except popups (shared worker name) | `Neo.php:80-121` |
@@ -230,7 +230,8 @@ failed requests. The tarball / Debian smoke test of the release gate is still op
 - PHPUnit `tests/go/core/webclient/WebclientTest.php`: resolution order; invalid and
   non-string values at each level ignored; `extjs3` only in config; `webclientSwitch =
   false` ignores the cookie and the endpoint refuses; the endpoint refuses without CSRF
-  token and for guests; OAuth / `?r=` queries render classic.
+  token and for guests; OAuth / `?r=` queries render classic (since 2026-11-25: OAuth and the
+  mailto composer follow the chosen client, other `?r=&f=` commands render classic).
 - PHPUnit for the classic-apps method: a module with a neo main view is not listed, a
   module the user has no right to is not listed (proves the guard fires).
 - Recovery redirect: external, protocol-relative, `javascript:` and double-encoded
@@ -267,9 +268,9 @@ list (`CoreController::actionThemes()`), the Dev module's language scanner.
 `tests/go/core/webclient/PageTest.php` (`testNoNewReferencesToClassicFiles`) fails when PHP
 outside `views/` starts to name a classic path without joining that list.
 
-Not yet without classic (known limits): `?oauthAuthorize` / `?oauthConsent` (OAuth login with a
-pending authorization, the consent dialog) and `?r=&f=` external URLs render neo, which ignores
-them (neo ports are later cards); `index.php?r=external/index` (the classic `external.php`
+Not yet without classic (known limits): `?r=&f=` external URL commands other than the mailto
+composer (`links.openModelLink`) render classic (OAuth and the mailto composer continue in neo,
+see "OAuth and external URLs in neo"); `index.php?r=external/index` (the classic `external.php`
 launcher) redirects to the webclient. Code outside this repository that requires `views/Extjs3/...` files directly
 (e.g. `themes/Paper/pageHeader.php`) breaks in such a build: use `Page`.
 
