@@ -273,7 +273,8 @@ Hooks, all optional, called on every extension (`MainView.callExtensions()`):
 |---|---|
 | `start(current)` | Boot, before the window's address is routed. `current` is the window's first hash or null. May resolve to a route (`'ws/2'`) that is shown when the window has no hash. `MainView.ready` waits for all of them; `onHashChange` waits for `ready`. |
 | `onHashChange({name, rest, hashString})` | A hash whose first segment is no module. Resolve to true when handled. |
-| `showModule(module, route)` | A module is opened (launcher, search, deep link, link, alert, quick add). Resolve to the module's view when the extension showed it, null to let the main view open it standalone. |
+| `showModule(module, route)` | A module is opened (launcher, search, deep link, link, alert, quick add). Resolve to the module's view when the extension showed it, `false` when it handled the module but has no view to show (unavailable, e.g. in a popup window, or superseded by a newer navigation: nothing more happens), null to let the main view open it standalone. |
+| `routeOf(view)` | Quick add showed a view through `showModule`: the hash of that view (`'notes/note/5'`), or null when it isn't the extension's. The address follows it without a second navigation. |
 | `onActiveCardChange(card)` | The shown card changed: an extension card, or null for a module. |
 | `fallbackRoute()` | The last standalone module closed: a route to go to, or null. |
 | `beforeLogout()` | Awaited before the logout request (flush pending saves). |
@@ -284,8 +285,9 @@ Hooks, all optional, called on every extension (`MainView.callExtensions()`):
 | `cardTitle(card)` | The window's shown card is the extension's: its title for a list of the windows ("Move to window N: …"). |
 | `destroy()` | The main view is destroyed. |
 
-An owner of a claimed module view (below) also gets `onBadge(name, text)` (the module's count badge;
-its top-bar tab is hidden) and `onModuleViewReleased(name, view)` (another owner claimed the view).
+An owner of a claimed module view (below) also gets `onBadge(name, text)` (the module's count badge, once
+per owner however many views it holds) and `onModuleViewReleased(name, view, key)` (a `singleInstance`
+view was claimed for another owner or key).
 
 API of the main view for extensions:
 
@@ -293,12 +295,19 @@ API of the main view for extensions:
   menu button, otherwise before the spacer that precedes the notifications.
 - `addCard(config)`, `showCard(card)`, `removeCard(card)`: cards of the main card layout. `showCard()`
   unpresses the module tabs; `activeCard` is the shown card, `activeModule` is null meanwhile.
-- `claimModuleView(name, owner)`: takes a module's view for the owner (one view per module and window).
-  A standalone view is removed from its card without being destroyed, a module not open yet is created;
-  the module's top-bar tab is hidden. Returns null for a module shown in a popout window. A view held by
-  another owner is taken from it (`onModuleViewReleased`).
-- `releaseModuleView(name)`: the view becomes a standalone tab again. `unclaimModuleView(name)`: the owner
-  destroyed the view.
+- `claimModuleView(name, owner, key)`: a view of the module for the owner's place `key` (sf/workspaces:
+  `"<workspaceId>/<panelId>"`); `claimed` is keyed by `"<module>|<key>"`. A new key gets a new view, so a
+  module can have a standalone tab and several claimed views at once. Pending creations are tracked per
+  key (`openTokens`), the caller checks after the await that its place still exists. A module registered
+  with `singleInstance: true` (ModuleRegistry) keeps one view per window: its standalone view is removed
+  from its card without being destroyed (the top-bar tab is hidden), a view claimed for another key or
+  owner is taken from it (`onModuleViewReleased`), and a view in a popout window stays there (null).
+- `releaseModuleView(name, key)`: the view becomes the standalone tab; when the module has one already the
+  view is destroyed. `unclaimModuleView(name, key)`: the owner destroyed the view, or a pending claim of
+  that key is cancelled (it resolves to null). `claimsOf(name)`, `hasModuleView(name)`, `isSingleInstance(name)`.
+- `showStandalone(name, route)`: shows the module's standalone view (the click on its top-bar tab, Move
+  out of a workspace) and sets the address to its route, also when the address is unchanged; never through
+  the hash routing, which may choose a workspace panel of the module.
 - `routeModule` / `activeHash`: the module and hash the window last routed; an extension that shows a
   module sets `routeModule` to null for its own route.
 - `windowMenuItems(handler, disabled)`: menu items "Move to window N: <what it shows>" for the other
