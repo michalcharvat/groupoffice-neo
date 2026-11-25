@@ -87,6 +87,12 @@ refused without `serverclient_token`). Test data, module installs and config wer
   `reset(value)`, so it isn't dirty) and read what you need in the form's `beforesave`, not in `save`.
 - `console.log()` of the shared worker doesn't reach Playwright's page console; `console.error()` does.
 - `ConfirmDialog` shows `message` as text: don't HTML-escape it.
+- Module order (top-bar tabs, menus, everything from `ModuleRegistry.getAvailable()`): the entry points
+  (`Neo.config.goModules`, Neo.php lists them in GO's module `sort_order`) load in parallel and each
+  registers when it finishes loading, so `apps/go/app.mjs` reorders the registry afterwards with
+  `ModuleRegistry.sortByEntryPoints()`. A module matches its entry point by `package/name` (path
+  `go/modules/<package>/<name>/` or `modules/<name>/` = `legacy`); one registered under another name
+  (`community-dev`) or later (bookmarks in `onLogin`) comes after them.
 
 ## Website Manager (legacy `site`, card "neo-ui: site module in neo", 2026-11-24)
 

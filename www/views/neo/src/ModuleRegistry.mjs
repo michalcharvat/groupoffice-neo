@@ -58,11 +58,47 @@ import client from './jmap/Client.mjs';
  *
  * A module without a mainView only adds settings cards: it is not an app in the header.
  */
+/**
+ * 'package/name' of a module from the URL of a file in its views/neo, null for another URL (GO may
+ * itself live below a "go/" path)
+ * ('go/modules/community/notes/…' → 'community/notes', 'modules/email/…' → 'legacy/email')
+ * @param {String} url
+ * @returns {String|null}
+ */
+export function moduleKey(url) {
+    const path = String(url).split('?')[0],
+          go   = path.match(/(?:^|\/)go\/modules\/([^/]+)\/([^/]+)\/views\/neo\//);
+
+    if (go) {
+        return go[1] + '/' + go[2]
+    }
+
+    const legacy = path.match(/(?:^|\/)modules\/([^/]+)\/views\/neo\//);
+
+    return legacy ? 'legacy/' + legacy[1] : null
+}
+
 class ModuleRegistry {
     #modules = new Map()
 
     register(module) {
         this.#modules.set(module.name, module)
+    }
+
+    /**
+     * Puts the registered modules in the order of their entry points (Neo.config.goModules, which
+     * Neo.php lists in GO's module sort order, like the classic client's tabs). The entry points
+     * load in parallel and register when they finish loading, so the registration order changes
+     * with every page load. A module registered under another name than its folder follows the
+     * others, by name.
+     * @param {String[]} urls the entry points' URLs, e.g. 'go/modules/community/notes/views/neo/Index.mjs?v=1'
+     */
+    sortByEntryPoints(urls) {
+        const rank = new Map(urls.map((url, i) => [moduleKey(url), i])),
+              key  = m => rank.get(m.package + '/' + m.name) ?? urls.length;
+
+        this.#modules = new Map([...this.#modules.entries()].sort(([nameA, a], [nameB, b]) =>
+            key(a) - key(b) || (key(a) === urls.length ? nameA.localeCompare(nameB) : 0)))
     }
 
     /**
