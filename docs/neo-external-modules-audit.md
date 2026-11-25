@@ -1,7 +1,7 @@
 # neo: audit of the external modules (amd, sf, business, nuw), 2026-11-25
 
 What it takes to give the modules outside this repository a neo UI, and in which order. This is
-a decision document: nothing here is built yet. It covers the four packages in
+a decision document: nothing here is built yet (owner's answers and the current focus: end of section 3). It covers the four packages in
 `~/Projects/groupoffice26/www/go/modules/` (separate repositories, read only for this audit):
 `amd` (amd-mono, commit `d44029809`), `sf` (sf-mono, `ee842e7d9`), `business` (Intermesh,
 `ee9bf4ac`) and `nuw` (`b9f9c67`). Pro modules in `www/modules` (projects2, billing, tickets,
@@ -64,8 +64,8 @@ Findings:
    is a module addon, so the production-build card has to support module addons.
 
 Rough size: about 200 cards in total (scale below), of which ~20 for shared components and
-library modules, ~95 for amd, ~45 for sf, ~28 for business, ~10 for nuw. The order in section 4 makes the first
-installations neo-only long before that.
+library modules, ~95 for amd, ~45 for sf, ~28 for business, ~10 for nuw: the size of the full external port, for reference (see the owner's answers at the
+end of section 3).
 
 ## 1. Inventory per module
 
@@ -391,6 +391,16 @@ Questions for the owner:
 - **Q6** Is the CanvasJS licence valid for a new integration, or should the chart component use
   a free library (D-A)?
 
+### Owner's answers (2026-11-25)
+
+- **Focus now: the open-source (community) version.** External modules are not ported for now,
+  except the ones the owner names one by one; the phases in section 4 are a reference, not a plan.
+- **Q1** business: we will port it ourselves, later (not now).
+- **Q2** not applicable: no installation-wide switch to neo-only is planned.
+- **Q3, Q4** unanswered.
+- **Q5** amd replicas on vessels stay on the classic GroupOffice client; neo is not planned for them.
+- **Q6** the CanvasJS licence covers any number of projects. The library choice (D-A) stays open.
+
 ## 4. Proposed porting order
 
 Today neo is the default and a module without `views/neo` that has a classic **main panel** opens
@@ -429,7 +439,7 @@ shared components first.
 | 2. Shared library modules | sf canvasjs (the CanvasJS loader, only if D-A keeps CanvasJS), codemirror, editorjs, rtm, fontawesome (icon mapping), jobqueue; amd libs (PDF viewer, timeline), leaflet (the module's own main view and settings; the Map addon itself is phase 0) | dependencies of 4–11 modules each (table below) | ~6 cards |
 | 3. AMD chain | in dependency order: flags → fleet → vessels → ports → templates → suppliers → buoys → amdmaps → formbuilder → crew → portcall → diary → dms → links → pms; then the rest, each after what its `getDependencies()` lists (e.g. equipment after links and libs): certificates, chartering, emspilot, equipment, esbjobs, ihm, iot, maps, news, printers, resthours, stabilityvalidator, submarinecable, sync, tanks, tasks (registration decision, section 2), voip, windfarms, winmail, yards; invoices and catalog last (largest, most self-contained) | AMD's modules depend only on amd, sf and community modules (plus legacy files, done), so an AMD installation can become neo-only without anyone else's work | ~95 cards |
 | 4. sf applications | invoices, drivelog, chat + webrtc, aiassistant (+ aiemail, messenger, mcp), presenter + sqlmanager, czechdatabox, instances, ares, poi (Google Maps → Leaflet, geocoding), tours (D-E) and the other M modules | smartflows' own installations; aiassistant is used across installations | ~45 cards |
-| 5. business | after Q1, in dependency order: business → projects3 → registration → approval (and calendartimetracking); finance → contracts, payment providers (mollie, multisafepay, paypal); support → supportclient; forms (with its public participant page, finding 6), kanban, reports, catalog, newsletters, onlyoffice, privacy, automation, studio. The GOUI ones translate faster than ExtJS ones. How operators start the billing / projects2 / tickets migrations without the classic panels is a separate decision | Intermesh's repository | ~28 cards |
+| 5. business | ported by us, later (Q1), in dependency order: business → projects3 → registration → approval (and calendartimetracking); finance → contracts, payment providers (mollie, multisafepay, paypal); support → supportclient; forms (with its public participant page, finding 6), kanban, reports, catalog, newsletters, onlyoffice, privacy, automation, studio. The GOUI ones translate faster than ExtJS ones. How operators start the billing / projects2 / tickets migrations without the classic panels is a separate decision | Intermesh's repository | ~28 cards |
 | 6. nuw | after Q3: the eleven projects2 / timeregistration2 dependants once those have neo UIs or the customer moved; the rest (externaluploader, assigneecf, force2fa, …) can go with phase 1 | blocked outside our repositories | ~10 cards |
 
 Modules most others depend on (count of modules that list them in `getDependencies()`):
@@ -446,12 +456,12 @@ Modules most others depend on (count of modules that list them in `getDependenci
 | amd/formbuilder, sf/rtm, business/finance | 5 each |
 | sf/editorjs, sf/fontawesome, sf/mpdf (no UI), amd/pdfparser (no UI), community/tasks (has neo) | 4 each |
 
-Which installation becomes neo-only after which phase (to confirm with Q2):
+Which installation could become neo-only after which phase (hypothetical: Q2 is not applicable, nothing is planned):
 
 | Package set shipped (gate runs on the package, see above) | Needs | neo-only after |
 |---|---|---|
 | Only community modules + sf infrastructure (airouter, jobqueue, …) | phases 0–2 | phase 2 |
-| AMD (master and replicas) | phases 0–3 and the sf modules AMD installs (aiassistant, mcp, …) | phase 3 + those sf modules |
+| AMD master (replicas stay classic, Q5) | phases 0–3 and the sf modules AMD installs (aiassistant, mcp, …) | phase 3 + those sf modules |
 | smartflows' own instances | phases 0–2, 4 | phase 4 |
-| Installations with business modules | phase 5, Q1 | depends on Intermesh |
+| Installations with business modules | phase 5 | ported by us, later (Q1) |
 | nuw | phases 1, 6, Q3 and the pro modules | depends on projects2 / timeregistration2 |
