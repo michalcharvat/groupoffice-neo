@@ -12,14 +12,15 @@ use PHPUnit\Framework\TestCase;
 class NeoCacheHeadersTest extends TestCase
 {
 	/**
-	 * @return array<string, array{string}> views/neo folders of core and the modules in this repository
+	 * @return array<string, array{string}> views/neo folders of core and the installed modules (also those
+	 *     of other repositories mounted into go/modules, e.g. sf/workspaces)
 	 */
 	public static function neoFolders(): array
 	{
 		$root = go()->getEnvironment()->getInstallPath();
 		$folders = array_merge(
 			[$root . '/views/neo'],
-			glob($root . '/go/modules/community/*/views/neo', GLOB_ONLYDIR) ?: [],
+			glob($root . '/go/modules/*/*/views/neo', GLOB_ONLYDIR) ?: [],
 			glob($root . '/modules/*/views/neo', GLOB_ONLYDIR) ?: []
 		);
 
