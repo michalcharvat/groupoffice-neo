@@ -10,7 +10,7 @@ use go\core\jmap\Request;
 use go\core\model\Acl;
 use go\core\model\Module;
 use go\core\SingletonTrait;
-use http\Exception\InvalidArgumentException;
+use InvalidArgumentException;
 
 class Extjs3 {
 
