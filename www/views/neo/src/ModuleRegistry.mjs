@@ -46,6 +46,8 @@ import client from './jmap/Client.mjs';
  *     // per window. Only loaded for users with access to the module (sf/workspaces: workspace tabs).
  *     // The hooks are documented in docs/neo-small-modules.md, "Main view extensions".
  *     mainViewExtension: () => import('./Extension.mjs'),
+ *     // optional: panels of the OAuth consent dialog per scope (src/view/OAuthConsentDialog.mjs)
+ *     oauthConsentPanels: {mcp: async details => ({component: {module: Panel}, getData: () => ({}), validate: () => true})},
  *     // optional, called with each window's main view after login (e.g. a dialog to show then)
  *     onMainView: mainView => {},
  *     // optional, called with each new src/users/CreateUserDialog (e.g. an extra card)

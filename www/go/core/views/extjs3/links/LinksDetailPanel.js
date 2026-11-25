@@ -123,10 +123,13 @@ go.links.DetailPanel = Ext.extend(Ext.Panel, {
 				<tpl if="xindex === 1">\
 					<i class="label ' + this.link.iconCls + '" ext:qtip="{toEntity}"></i>\
 				</tpl>\
-				<tpl for="to">\
+				<tpl for="to" if="values.to">\
 					<a>{name} <tpl if="parent.data && parent.data.has_attachments "><i class="icon">attachment</i></tpl></a>\
 					<small class="go-top-right" title="{[go.util.Format.dateTime(values.modifiedAt)]}" style="cursor:pointer">{[go.util.Format.userDateTime(values.modifiedAt)]}</small>\
 					<label>{description}</label>\
+				</tpl>\
+				<tpl if="!values.to">\
+					<a>{toEntity:htmlEncode} #{toId}</a>\
 				</tpl>\
 				{[this.getLinkDescription(values)]}\
 				<a class="right show-on-hover"><i class="icon">more_vert</i></a>\

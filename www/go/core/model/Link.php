@@ -228,7 +228,10 @@ class Link extends AclItemEntity
 														->select("eFrom.clientName AS fromEntity, eTo.clientName AS toEntity, search.name as toName, search.description as toDescription, search.aclId, search.id as toSearchId")
 														->join('core_entity', 'eFrom', 'eFrom.id = l.fromEntityTypeId')
 														->join('core_entity', 'eTo', 'eTo.id = l.toEntityTypeId')
-														->join('core_search', 'search', 'search.entityId = l.toId AND search.entityTypeId = l.toEntityTypeId')
+														// LEFT, so a link to an item without a core_search row (search cache not built yet, failed rebuild) is not
+														// lost. Its name, description, aclId and toSearchId are null then. applyAclToQuery() still filters on
+														// search.aclId, so only admins see such a link in Link/query: the target's ACL is unknown in SQL.
+														->join('core_search', 'search', 'search.entityId = l.toId AND search.entityTypeId = l.toEntityTypeId', 'LEFT')
 		);
 	}
 
@@ -500,10 +503,67 @@ class Link extends AclItemEntity
 		}
 
 		if(!isset($this->permissionLevel)) {
-			$this->permissionLevel = Acl::getUserPermissionLevel($this->aclId, App::get()->getAuthState()->getUserId());
+			$this->permissionLevel = $this->findTargetPermissionLevel();
 		}
 		//Readable items may be linked!
 		return $this->permissionLevel ?  Acl::LEVEL_DELETE : false;
+	}
+
+	/**
+	 * The permission level of the current user on the item this link points to
+	 *
+	 * Uses the aclId of the target's core_search row. When the target has no search row, the ACL is taken from the
+	 * target itself, and a link to a target without an ACL is only accessible to admins. A level below read access,
+	 * like free/busy on a calendar, gives no access to the link.
+	 *
+	 * @return int
+	 * @throws Exception
+	 */
+	private function findTargetPermissionLevel(): int
+	{
+		$userId = App::get()->getAuthState()->getUserId();
+		$aclId = $this->aclId;
+		if(empty($aclId)) {
+			try {
+				$to = $this->findToEntity();
+				$aclId = $to ? $to->findAclId() : null;
+			} catch(\GO\Base\Exception\AccessDenied $e) {
+				// A legacy record checks read access on load
+				return 0;
+			} catch(Exception $e) {
+				// For example an AclItemEntity whose ACL owner is gone. Deny instead of failing a whole Link/get.
+				ErrorHandler::logException($e);
+				return 0;
+			}
+		}
+
+		if(empty($aclId)) {
+			return isset($userId) && User::isAdminById($userId) ? Acl::LEVEL_MANAGE : 0;
+		}
+
+		$level = Acl::getUserPermissionLevel($aclId, $userId);
+		return $level >= Acl::LEVEL_READ ? $level : 0;
+	}
+
+	/**
+	 * Joins core_search LEFT, like the mapping, so the change log also records links to items without a search row
+	 *
+	 * @param \go\core\db\Query $query
+	 * @param string|null $fromAlias The alias of core_link. Defaults to the table alias of the query.
+	 * @return string The aclId column
+	 */
+	public static function joinAclEntity(\go\core\db\Query $query, $fromAlias = null): string
+	{
+		if(!isset($fromAlias)) {
+			$fromAlias = $query->getTableAlias();
+		}
+
+		if(!$query->isJoined('core_search', 'search')) {
+			$query->join('core_search', 'search',
+				'search.entityId = ' . $fromAlias . '.toId AND search.entityTypeId = ' . $fromAlias . '.toEntityTypeId', 'LEFT');
+		}
+
+		return 'search.aclId';
 	}
 
 	protected static function defineFilters(): Filters

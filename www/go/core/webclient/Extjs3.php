@@ -10,7 +10,7 @@ use go\core\jmap\Request;
 use go\core\model\Acl;
 use go\core\model\Module;
 use go\core\SingletonTrait;
-use http\Exception\InvalidArgumentException;
+use InvalidArgumentException;
 
 class Extjs3 {
 
@@ -362,18 +362,14 @@ class Extjs3 {
 		}
 		echo '<script>';
 
-		//these parameter are passed by dialog.php. These are used to directly link to
-//a dialog.
+		// an external URL (GO::createExternalUrl()) launches a function of a module, like the e-mail composer
 		if (isset($_REQUEST['f'])) {
-			if (substr($_REQUEST['f'], 0, 9) == '{GOCRYPT}')
-				$fp = Crypt::decrypt($_REQUEST['f']);
-			else
-				$fp = json_decode(base64_decode($_REQUEST['f']), true);
+			$fp = Webclient::externalCommand($_REQUEST['f']);
 
 			GO::debug("External function parameters:");
 			GO::debug($fp);
 
-			if(preg_match("/[^a-z_]/", $fp['m']) || preg_match("/[^a-z]/i", $fp['f'])) {
+			if(!$fp) {
 				throw new InvalidArgumentException("Invalid function given");
 			}
 

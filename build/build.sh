@@ -370,8 +370,11 @@ build_package() {
 		(cd "$PACKAGE_DIR" && npm prune --omit=dev --ignore-scripts --audit=false --fund=false)
 	fi
 
-	# neo webclient: own node_modules (see install-npm.sh); the generated theme sources are build input only
-	(cd "$PACKAGE_DIR/views/neo" && npm prune --omit=dev --ignore-scripts --audit=false --fund=false)
+	# neo webclient: own node_modules (see install-npm.sh). release.mjs minifies its scripts (and those
+	# of the modules) and theme CSS in place and removes the build tools from node_modules, instead
+	# of npm prune, which would reinstall the trimmed neo.mjs (docs/neo-switch.md, "Release build").
+	# The generated theme sources are build input only.
+	(cd "$PACKAGE_DIR/views/neo" && node buildScripts/release.mjs --in-place "$PACKAGE_DIR")
 	rm -rf "$PACKAGE_DIR/views/neo/resources/css" "$PACKAGE_DIR/views/neo/resources/scss/theme-go"
 }
 
