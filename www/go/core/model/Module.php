@@ -83,7 +83,10 @@ class Module extends Entity {
 
 	protected static function internalRequiredProperties(): array
 	{
-		return array_merge(parent::internalRequiredProperties(), ['sort_order']);
+		// package and enabled are needed by isAvailable(), module() and getUserRights(), also when Module/get asks
+		// for only some properties. Without the package the module looks like a legacy module that isn't available,
+		// and getUserRights() caches "no access" for the rest of the request.
+		return array_merge(parent::internalRequiredProperties(), ['sort_order', 'package', 'enabled']);
 	}
 
 	protected function internalSave(): bool
