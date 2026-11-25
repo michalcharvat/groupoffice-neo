@@ -458,6 +458,13 @@ Review fixes (Codex, 2026-11-25):
 - "Move to window" of an inactive standalone module keeps its deep link (`openModules[name].route`).
 - Logout also clears the phase 1 window key; the launcher unregisters its main-thread key
   registrations (field, tiles, row) on destroy.
+- Second pass: a save the server refused also blocks Save/Revert (`SaveQueue.failed`, `isUnsaved()`);
+  edits made while a revert runs are not saved (`OpenWorkspace.reverting`, the reload shows the
+  checkpoint); "Move to window" of a panel stops when its removal wasn't saved and waits for the other
+  window's copy to reload (`reloadNow()`); a checkpoint or keepCentre write still moves `ifInState` on
+  when the window has seen the server copy (no needless merge, which would reload and clear undo);
+  "Save layout" writes the layout too, so an untouched empty workspace gets a checkpoint; a push that
+  comes while a save is pending is checked after it.
 
 Browser check (2026-11-25, Playwright, container with the module): neotest and neoadmin; 900, 1440, 1920
 and 390 px; launcher row and Shift+click, undo/redo, save/revert, search, Ctrl+Alt+1, new workspace from
