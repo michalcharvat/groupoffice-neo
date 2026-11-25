@@ -87,7 +87,8 @@ The merge usually brings database updates and a new `www/version.php`. Don't upg
   groupoffice_<name>`, grant it to user `groupoffice`), APFS-clone the data folder
   (`cp -Rc ~/Projects/docker/groupoffice26-neo/data <dir>/data`) and render a config with that `db_name`.
 - Run a container from the `groupoffice26-groupoffice26` image on network `groupoffice26_go26` with the worktree's
-  `www`, the module repos (amd, business, sf, nuw) from `~/Projects/groupoffice26/www/go/modules`, the config, the
+  `www`, the module repos (amd, business, nuw) from `~/Projects/groupoffice26/www/go/modules` and sf from
+  `~/Projects/groupoffice26-neo-sf` (see "sf modules for neo" below), the config, the
   data folder, and for PHPUnit `tests/` at `/usr/local/share/src/tests`, `www/` at `/usr/local/share/src/www` and
   `rendered/tests-config.go26.php` (from `~/Projects/go-docker`) over `tests/config.php`. Claim the cloned
   database, the container and `db26:groupoffice_phpunit` on the board: in the `install` and `upgrade` modes (the
@@ -116,3 +117,14 @@ The merge usually brings database updates and a new `www/version.php`. Don't upg
 - Codex review of the resolution: compare the merge with both parents (`git diff HEAD^1 HEAD -- <files>` and
   `git diff HEAD^2 HEAD -- <files>`), so a discarded upstream change shows too, and include uncommitted docs.
 - Clean up afterwards: remove the container, the cloned databases and the data copy.
+
+## sf modules for neo (2026-11-25)
+
+sf-mono has a branch **`neo`** for sf module work that needs the neo core (today `sf/workspaces`: it uses
+`openWindow(windowId, hash, {key, items})` / `isWindowClosed()` and the central no-cache rule in `www/.htaccess`). `26.0.x`
+must keep working with GroupOffice 26.x, so such commits go to `neo` only, never to `26.0.x`. The branch is
+checked out as the worktree `~/Projects/groupoffice26-neo-sf`, which the neo container (`groupoffice26-neo`,
+`~/Projects/go-docker/docker-compose.go26neo.yml`) mounts at `go/modules/sf`; `~/Projects/groupoffice26`
+(container `groupoffice26` and other sessions) stays on `26.0.x`. Merge `26.0.x` into `neo` to keep it current.
+The 13 workspaces commits up to `58a4ea577` are on `26.0.x` already (owner: leave them, the module is off by
+default).

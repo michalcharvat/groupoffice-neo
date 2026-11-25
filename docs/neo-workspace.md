@@ -6,7 +6,7 @@ implemented the same day, see "Model v2: workspaces as top-bar tabs")** replaces
 area and the one-workspace-per-window binding; where it differs, it wins over the sections before it.
 
 **Where it lives (owner decision 2026-11-24):** everything workspace-specific is the module
-**`sf/workspaces`** in the sf-mono repository (`go/modules/sf/workspaces`: entity, JMAP, tables, tests and
+**`sf/workspaces`** in the sf-mono repository, branch `neo` since 2026-11-25 (`docs/neo-upstream-sync.md`, "sf modules for neo"; `go/modules/sf/workspaces`: entity, JMAP, tables, tests and
 its neo frontend in `views/neo`). Workspaces are **off by default**: without the module installed, or for a
 user without access to it (standard module permissions, the module is shared with "Internal" on install),
 the neo `MainView` is today's one card per module and loads no dock code. neo core only has a generic
