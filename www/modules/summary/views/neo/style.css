@@ -2,6 +2,8 @@
    The .go-portlet-* list classes are shared by the portlets of other modules (tasks, address book). */
 .go-start-page {
     background-color: var(--bg-mid);
+    /* one column follows the page's own width (a narrow workspace panel too), see below */
+    container-type  : inline-size;
 }
 
 .go-start-page .go-start-page-tbar {
@@ -23,11 +25,16 @@
     display              : grid;
     gap                  : 1.6rem;
     grid-template-columns: 1fr 1fr;
+    /* rows as tall as their column: the grid has the page's height, and auto rows would share it,
+       so in one column the second column overlapped the end of the first (the columns' min-height
+       makes their minimum 4rem) */
+    grid-auto-rows       : max-content;
+    align-content        : start;
     overflow-y           : auto;
     padding              : 1.6rem;
 }
 
-@media (max-width: 800px) {
+@container (max-width: 800px) {
     .go-start-page .go-start-columns {
         grid-template-columns: 1fr;
     }
