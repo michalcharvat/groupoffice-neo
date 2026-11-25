@@ -3,19 +3,25 @@ import DomEvents from '../../../node_modules/neo.mjs/src/main/DomEvents.mjs';
 
 /** the module tabs of the top bar (GO.view.MainView), reference "module-<name>" in data-ref */
 const SOURCE = '.go-module-button[data-ref^="module-"]';
-/** the workspace root (GO.view.Workspace) */
+/** a dock (sf/workspaces GO.workspaces.Workspace) */
 const TARGET = '[data-go-dock-drop]';
+/** a top bar tab that takes modules (sf/workspaces: a workspace tab) */
+const TAB    = '[data-go-dock-tab]';
 const TYPE   = 'application/x-go-module';
+/** ms the pointer rests on a tab before it is opened (goDockDragHover), so the drag can go on into its dock */
+const HOVER_DELAY = 600;
 
 /**
- * Main thread side of dragging a module tab of the top bar into the workspace (docs/neo-workspace.md):
- * native HTML5 drag and drop, the dock only drags its own tabs.
+ * Main thread side of dragging a module tab of the top bar into a dock or onto a tab that takes
+ * modules (docs/neo-workspace.md): native HTML5 drag and drop, the dock only drags its own tabs.
+ * Module tabs are draggable only while the page has such a target (a main view extension added it).
  *
  * Sends custom DOM events to the components:
  * - goDockDragStart {module} to the top bar button
- * - goDockDragMove {clientX, clientY, module} to the workspace, once per frame while over it
- * - goDockDragLeave {module} to the workspace when the pointer leaves it
- * - goDockDrop {clientX, clientY, module} to the workspace
+ * - goDockDragMove {clientX, clientY, module} to the dock, once per frame while over it
+ * - goDockDragLeave {module} to the dock when the pointer leaves it
+ * - goDockDrop {clientX, clientY, module} to the dock or the tab (data-go-dock-tab) it was dropped on
+ * - goDockDragHover {module} to a tab the pointer rested on (HOVER_DELAY)
  * - goDockDragEnd {module, dropped} to the top bar button
  *
  * Loaded per window: await Neo.Main.importAddon({name: 'WS/DockDrag', windowId})
@@ -40,7 +46,8 @@ class DockDrag extends Base {
 
         document.addEventListener('pointerdown', e => me.onPointerDown(e), {capture: true, signal});
         document.addEventListener('dragstart',   e => me.onDragStart(e), {signal});
-        document.addEventListener('dragover',    e => me.onDragOver(e), {signal});
+        // capture: a module's own drop zone (an upload area) stops the bubbling dragover
+        document.addEventListener('dragover',    e => me.onDragOver(e), {capture: true, signal});
         document.addEventListener('drop',        e => me.onDrop(e), {capture: true, signal});
         document.addEventListener('dragend',     () => me.onDragEnd(), {signal})
     }
@@ -71,7 +78,10 @@ class DockDrag extends Base {
     onPointerDown(e) {
         const button = e.button === 0 && e.target?.closest?.(SOURCE);
 
-        button && !button.draggable && (button.draggable = true)
+        // no target on the page (no extension, logged out): a plain tab
+        if (button) {
+            button.draggable = !!document.querySelector(`${TARGET}, ${TAB}`)
+        }
     }
 
     onDragStart(e) {
@@ -99,7 +109,18 @@ class DockDrag extends Base {
             return
         }
 
-        const target = e.target?.closest?.(TARGET);
+        // the element under the pointer: a drag over a just re-parented view can report its old ancestor
+        const el  = document.elementFromPoint(e.clientX, e.clientY) || e.target,
+              tab = el?.closest?.(TAB);
+
+        me.hoverTab(tab);
+
+        if (tab) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move'
+        }
+
+        const target = !tab && el?.closest?.(TARGET);
 
         if (drag.over && drag.over !== target) {
             me.send(drag.over, 'goDockDragLeave', {module: drag.module});
@@ -121,10 +142,33 @@ class DockDrag extends Base {
         })
     }
 
+    /**
+     * The tab under the pointer while dragging: marked, and opened after HOVER_DELAY
+     * @param {HTMLElement|null} tab
+     */
+    hoverTab(tab) {
+        let me     = this,
+            {drag} = me;
+
+        if (drag.tab === tab) {
+            return
+        }
+
+        drag.tab?.classList.remove('go-dock-tab-over');
+        clearTimeout(drag.tabTimer);
+        drag.tab = tab;
+
+        if (tab) {
+            tab.classList.add('go-dock-tab-over');
+            drag.tabTimer = setTimeout(() => me.drag === drag && drag.tab === tab && me.send(tab, 'goDockDragHover', {module: drag.module}), HOVER_DELAY)
+        }
+    }
+
     onDrop(e) {
         let me     = this,
             {drag} = me,
-            target = drag && e.target?.closest?.(TARGET);
+            el     = drag && (document.elementFromPoint(e.clientX, e.clientY) || e.target),
+            target = el && (el.closest?.(TAB) || el.closest?.(TARGET));
 
         if (!target) {
             return
@@ -132,6 +176,7 @@ class DockDrag extends Base {
 
         e.preventDefault();
         e.stopPropagation();
+        me.hoverTab(null);
         drag.dropped = true;
         drag.frame && cancelAnimationFrame(drag.frame);
         drag.over = null;
@@ -146,6 +191,7 @@ class DockDrag extends Base {
             return
         }
 
+        me.hoverTab(null);
         me.drag = null;
         drag.frame && cancelAnimationFrame(drag.frame);
         drag.over && me.send(drag.over, 'goDockDragLeave', {module: drag.module});
