@@ -791,6 +791,63 @@ Tests:
   as another user (neotest, neoadmin) with a module the other doesn't have, import when narrow, a layout
   with an emptied tab group after the trim, revert after losing access to a module.
 
+### Part 2: as built (2026-11-25)
+
+- **Code** (sf-mono, branch `neo`, module `workspaces`): `convert/WorkspaceJson.php` (the converter),
+  `WorkspaceLayout::dropItems()` and `hasNoItems()`, `Workspace::converters()` and the public
+  `mayUseModule()`, `controller/Workspace.php` `export()` / `import()`; client: `views/neo/Extension.mjs`
+  (menus, `exportWorkspaces()`, `exportAll()`, `openImport()`, `afterImport()`), `views/neo/ImportDialog.mjs`
+  (a subclass of the core `ImportFileDialog`), `SaveQueue.mjs` `revertPatch()`.
+- **As designed**, with these details:
+  - The export limit of 50 ids is checked synchronously in `export()` (an `InvalidArguments` error) and again
+    in `WorkspaceJson::initExport()`; the byte limit of an import file (`WorkspaceJson::MAX_FILE_BYTES`) in
+    `import()` and again in `initImport()`.
+  - Item titles are removed on import too, not only on export.
+  - `leftOut` names only modules the user can't use. A `bookmarks-<id>` panel is dropped without a mention:
+    its id means nothing to the importing user.
+  - The finished alert's data also carry `errors` (one line per failed record); the body lists them and
+    `leftOut`, HTML-escaped (the notification area renders the body as HTML).
+  - Errors of single records are collected while the records run (`notifyError()` keeps the alert pending
+    then); an error before or after them (invalid JSON, 51 records) goes to core's `notifyError()`, which
+    finishes the alert as "Import error".
+  - `json_decode()` makes empty JSON objects empty arrays; the converter writes `items`, every item and
+    edge-zone `zones` as objects again (`jsonShape()`), on export and on import.
+  - Client: `ImportDialog` uploads the file and calls `SfWorkspacesWorkspace/import` inside
+    `runBackgroundJob()`; an error of the call (no blob, wrong extension, too large) stays in the dialog,
+    otherwise the dialog closes and the extension waits for the finished alert (`afterImport()`). The
+    imported workspace opens through its route `ws/<id>`; narrow, that route shows the workspace's module.
+  - Revert: `revertPatch(remote, isAvailable)` (pure, mocha) builds what Revert writes; the layouts are
+    always trimmed with `dropItems()`, as the checkpoint path does.
+- **Codex review** (2026-11-25, seven findings), fixed:
+  - an invalid JSON file put the whole file into the alert (core's `JSON::decode()` message) and could
+    overflow `core_alert.data` (TEXT), leaving the client waiting: `initImport()` replaces the message, and
+    fatal messages are escaped and cut to 300 characters;
+  - the finished alert could outgrow `core_alert.data`: at most 20 left-out modules and 20 record errors of
+    300 characters each (`MAX_DETAILS`, `MAX_DETAIL_LENGTH`); an error core counts without passing it on
+    (an exception of a save) shows as "…";
+  - the dialog stayed on "Uploading..." when the job failed before its start (`Alert/query`); a file that
+    isn't `.json` (the chooser's filter is advisory) would have opened the CSV mapping: the dialog refuses it;
+  - the client's `dropItems()` tested `id in panels`, so a panel id like `constructor` stayed in the layout
+    while PHP removed it: `Object.hasOwn()`, and `revertPatch()` builds the map with `Object.fromEntries()`.
+  Rejected: translating the record diagnostics ("name missing", the validator's messages); they stand
+  beside core's English import messages ("Validation error in item …").
+- **Tests**:
+  - PHPUnit `tests/WorkspaceExportTest.php`, 14 tests: the cases of the design. The import runs the
+    converter in the test process (`InProcessImportController` overrides `defaultImport()`; the real one
+    starts `cli.php` in the background, which would use the installation's database). A module the importer
+    can't use is a module name that doesn't exist there (`nosuchmodule`).
+  - mocha `tests/js/saveQueue.test.mjs`: `dropItems()` (the cases of the PHP test) and `revertPatch()`.
+  - Browser check (headless, :8027, 2026-11-25): "+" menu items; "Export all" as neotest and as neoadmin
+    (only their own workspaces); "Export" of a tab (no routes, no titles); export right after closing a
+    panel holds the edit; import as neotest of neoadmin's export with `news` (which neotest lacks): the first
+    imported workspace opens, "Vynecháno: news", the news panel is gone; import at 500 px; a layout with a
+    tab group emptied by the trim shows the remaining panel; Revert with `news` in the checkpoint (written
+    into the database to simulate the lost access) applies the checkpoint without it and keeps the
+    checkpoint. Not checked in the browser: an import with errors (PHPUnit only), 51 records.
+- **Dev instance**: `cli.php core/System/clearCache` calls the URL of the database's settings, which is
+  the classic instance (:8026) for `groupoffice_neo`; to flush the :8027 cache after a language change, call
+  `install/clearcache.php` inside the container with a token from `Crypt::createInternalToken('clearcache')`.
+
 ## Decisions taken (owner, 2026-11-24)
 
 - Workspaces are generic, several per user, not one fixed layout.
