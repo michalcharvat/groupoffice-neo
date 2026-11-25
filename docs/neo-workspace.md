@@ -510,6 +510,157 @@ workspace between windows, My account preference (saved, a new login opens the c
 and last modes), without access and with the module disabled (no row, Shift+click opens as usual, no
 shortcuts); no console errors from this change.
 
+## Phase 3: plan (owner, 2026-11-25)
+
+Phase 3 is split in four parts, each with its own design and card, in this order: 1. auto-hide and lock,
+2. export/import as JSON, 3. a module more than once in one window, 4. tear-out of single panels (after 3:
+it moves a panel's own view to another window, so it needs the per-panel view identity of part 3).
+
+### Part 1: auto-hide and lock (design)
+
+Scenario: workspace with Address book left (a third) and E-mail right. ⋮ on Address book → "Auto-hide" →
+"At the left edge": the panel leaves its split, a thin rail with its title stays at the left edge of the
+workspace and E-mail takes the whole width. A click on the rail slides the panel out over E-mail (E-mail
+keeps its size), a click elsewhere slides it back. The reveal pane's pin button keeps it open as a fixed
+band at the left edge, not back in its old split place (owner, 2026-11-25). Lock: a locked panel can't be
+dragged, closed, moved out or moved to another window, so a tuned layout isn't broken by accident; the
+module in it stays fully usable.
+
+What the dock already has: `setItemAutoHidden`, `setItemPinned`, `setItemLocked` (`model/Operations.mjs`),
+the rail and its reveal pane with a pin button (`interaction/Rail.mjs`, `RevealOverlay.mjs`; the pin clears
+`autoHidden` and keeps the band), lock refusing moves and closes. Reveal resolves our host through
+`Workspace.resolvePane()` (`hosts[panelId]`), so the live module view shows in the reveal pane. The server
+already accepts and validates `pinned`, `autoHidden`, `locked` per item and refuses `pinned` together with
+`autoHidden` (`sf/workspaces/model/WorkspaceLayout.php`): **no backend change, no migration** (verified by
+the Codex review, 2026-11-25). The limit: the dock auto-hides only an item owned by an edge band
+(`WorkspaceDocument.findOwningEdge`); before this part, bands existed only with "Keep an empty centre",
+ordinary layouts were splits in the root edge-zone's centre. An edge-zone root keeps its bands with keepCentre off
+(`dropEmptyZones()` skips the root).
+
+- **Profiles**: auto-hide and lock are edited and saved in the medium and wide profiles (each its own
+  layout). The narrow profile (576 px and below) shows a transient tab group without layout saves
+  (`OpenWorkspace.canChange()`), so the items are not offered there.
+- **Panel menu** (⋮ or right click on the panel's tab), items added:
+  - "Auto-hide" with a submenu "At the left edge / At the right edge / At the bottom edge" for a panel
+    outside a band; a panel already in a band gets plain "Auto-hide" (it stays at its edge; disabled in a
+    top band). No top edge: the workspace tab bar is there. A panel with `pinnable: false` can't be hidden.
+  - "Lock" / "Unlock".
+  - The ⋮ menu and its commands address the panel the tab group **shows**
+    (`getActiveDockItemId(tabContainer)`), not the model's `activeItemId`: when the active tab of a band is
+    railed, the dock shows the first remaining tab and the model's id would point at the hidden panel.
+  - No "Pin" in our menu: a railed panel has no ⋮ (the reveal pane has the dock's own header); its pin
+    button is the way back.
+- **Lock** protects against this window's panel commands:
+  - Close, Move out of the workspace, Move to window N, Open in new window and auto-hide at another edge are
+    disabled for a locked panel; dragging and the dock's close are refused by the dock.
+  - The commands themselves check the lock too, not only their menu items: `moveOut()`, `sendToWindow()`
+    and `popOut()` read the current item by panelId first. `sendToWindow()` stops on a refused close;
+    `moveOut()` detaches the view before the close and, when the panel is still in the document afterwards
+    (refused or failed), puts it back into the live host; `popOut()` keeps the panel placed and checks the
+    lock again when the popup adopts the view.
+  - The panel host gets a `dockLock(locked)` hook (`HeaderActionPolicy.syncLockItemPresentation()`), so
+    the dock's default lock presentation (an inert pane) doesn't apply: the module stays usable, docked and
+    revealed.
+  - A locked panel already in a band can still be hidden and pinned when it is otherwise eligible (it
+    doesn't move; verified against the dock).
+  - Not guarded, on purpose: closing the workspace tab, Undo/Redo, Revert and a reload after another
+    window's change replace the whole document. A concurrent save of the same profile from another window
+    can supersede a lock, and a close from another profile can remove a locked panel (the panel record is
+    shared by the profiles).
+- **Getting into a band**: a pure function `hideToEdge(doc, panelId, edge)` in its own file (no component
+  imports, unit-tested with mocha), separate from the drop path:
+  1. any root that is not an `edge-zone` (older layouts, also a multi-panel split) is wrapped: a new root
+     `edge-zone` with a fresh node id whose `zones.center` is `{nodeId: <old root>}`;
+  2. a locked panel is refused before anything moves (the detach bypasses the dock's own check);
+  3. the panel moves into the band at that edge: a new band when there is none (the new-band part of
+     `Workspace.toBand()` moves into a shared function), else as a tab of a deterministic tabs leaf of the
+     band (the first in tree order; a band can be a split). Ordinary edge drops keep `toBand()` as it is
+     (they split an occupied band);
+  4. `pinned: false` when it was pinned, then `autoHidden: true`.
+  All steps reduce on a candidate document, which is published once and only when every step succeeded,
+  so one Undo puts the panel back where it was (the dock's own pin action publishes unpin and hide
+  separately: two Undo steps; we don't use it).
+  The result stays within the server's limits (200 nodes, depth 16).
+- **Focus after hiding**: the focused panel becomes the shown tab of the group it left, else the shown
+  tab of the centre first, else a shown band tab. Opening a module that sits in a rail (launcher, search,
+  deep link, link) reveals its rail instead of focusing a hidden tab (before this part, `showPanel()` only
+  activated the tab).
+- **Centre**:
+  - "Centre is empty" is structural (the root edge-zone has no centre zone, or it holds no placed item,
+    inactive tabs included), independent of the visible well (`hasEmptyCentre()` required keepCentre
+    before this part).
+    Open and Open beside fill an empty centre first instead of a band's tabs node.
+  - The last panel left in the centre can't be hidden (the menu item is disabled). As built it counts
+    the centre's items, inactive tabs included, whose `autoHidden` isn't `true`.
+  - When the centre's last panel closes and bands remain: with keepCentre the well stays (as today);
+    without it a shown, unlocked panel of a band (the first in tree order) moves into the centre in the
+    same change as the close; its railed band siblings stay at their edge. When none qualifies the centre
+    stays empty and the next module opened fills it.
+- **Saving**: the flags are item properties of the dock document, per profile, through the SaveQueue;
+  undo/redo, Save/Revert and the other windows follow as for any document change.
+- **Reveal** by the user: click only (the dock default), no `autoHideRevealOnHover`: moving the mouse to the
+  window edge would open panels by accident. Opening a railed module (deep link, launcher) holds the reveal
+  open until Escape, its own tab or a dismissal; an outside click doesn't end that one. A module routing
+  inside a pane the user opened keeps the click reveal.
+- **Tests**:
+  - mocha for `hideToEdge` (split root, non-edge-zone root, an existing band as tabs and as a split,
+    locked panel, pinned panel, last centre panel, server limits) and for the centre-after-close rule;
+  - PHPUnit that a layout with `autoHidden` / `locked` saves and comes back;
+  - browser check on :8027 in medium and wide (hide, reveal, pin, lock with the module usable docked and
+    revealed, ⋮ in a band whose active tab is railed, a deep link to a railed module, a rail destroyed
+    while its reveal is open keeps the module view, reload, second window, undo).
+- **Translations**: en and cs.
+
+### Part 1: as built (2026-11-25)
+
+- **Code** (sf-mono, branch `neo`): the document work is in `workspaces/views/neo/bandOps.mjs`, pure
+  functions without component imports (`hideToEdge`, `canHideToEdge`, `promoteToCentre`, the centre and
+  band queries, `withinServerLimits`). `Workspace.mjs` uses them for the menu commands, the structural
+  `hasEmptyCentre()`, the centre refill after a close and `toBand()`; `OpenWorkspace.mjs` has the menu,
+  the lock guards and the hosts' `dockLock()`.
+- **Module JS tests on the host**: `workspaces/tests/js/run.sh` (mocha in a temporary mirror of the
+  mounted layout, because the module imports neo by relative paths that resolve only there).
+- **PHPUnit** (`tests/WorkspaceTest.php`): a layout with `autoHidden` and `locked` saves and comes back;
+  `pinned` together with `autoHidden` is refused with the validator's message.
+- **Beyond the design**:
+  - `hideToEdge()` refuses a band that has no tab group, and a layout over the server limits
+    (200 nodes, depth 16; `commit()` checks only the shape). A band leaf is the first tabs node in tree
+    order over all branches of the band.
+  - The projection options pass `retainRevealPane` for our hosts (the dock does it only for declared
+    panes): a rail rebuilt while its panel is revealed keeps the module view.
+  - `revealPanel()` doesn't reveal a panel that is out already. A module routing inside its revealed
+    pane (a contact clicked) goes through `showPanel()`; a second reveal would turn the user's reveal
+    into a held one, which an outside click no longer closes (found in the browser check).
+  - `popOut()` checks the lock again when the popup adopts the view; locked meanwhile, the empty popup
+    closes (also when the adoption came before the window name was known) and `backFromWindow()` leaves
+    the host alone, or destroys it when its panel closed meanwhile (`popup.refused` on that attempt).
+  - The dock's `splitNode` doesn't check the lock (`moveItem` and `addTab` do): `applyDockZoneOperation()`
+    refuses a split drop of a locked placed panel, `toBand()` included.
+  - `moveOut()` decides by the document after the close (refused, or failed before it landed: the view
+    goes back into the live host).
+  - Focus when the focused panel goes (close, load, Revert, Undo/Redo): a shown centre tab first, else a
+    shown band tab, never a railed one (`firstShownItem()`); after a hide, the shown tab of the group the
+    panel left comes before that (also when that group is a band); `shownItem()` treats only band items as railed,
+    as the projection does.
+  - The menu offers only what can land: an edge whose candidate would be refused is disabled, and Lock
+    is hidden for a panel with `lockable: false`.
+  - The last-centre-panel rule counts centre items (inactive tabs included) whose `autoHidden` isn't
+    `true`, so railed panels of a band nested in the centre don't count. A focused panel that a redo rails again loses the focus (`isShown()`).
+  - A popup whose panel closes before the window has a name is closed once the name is known.
+- **Codex review** of the implementation (2026-11-25): six findings, then three more at the commit gate,
+  all fixed (the items above from "splitNode" on). Commit `ff3ccfba7` on sf-mono `neo`.
+- **Browser check** (headless, :8027, neotest, wide and medium): hide into a new band (left, bottom), undo
+  and redo in one step each, reveal by click with the module usable, pin from the reveal pane, lock
+  (move, popup, window moves and close disabled, module usable, kept after reload), the last centre panel
+  can't be hidden, closing the centre promotes a shown band panel, only rails left gives an empty centre
+  that a dragged-in module fills, a deep link reveals a railed module, a rail rebuilt by undo during a
+  reveal keeps the view, narrow has no ⋮. Not checked in the browser: ⋮ of a band whose active tab is
+  railed (unit test of the rule), a lock set by another window between menu and click, a second window.
+- **Test database**: the module's PHPUnit needs a database with the current schema; an older
+  `workspaces_test_1` lacks the `202611251200` columns. Run against a fresh one:
+  `GO_TEST_DB=workspaces_test_2 GO_TEST_HOST=db26 GO_TEST_PORT=3306 GO_TEST_PASSWORD=root` (created with
+  `tests/setup-database.php`).
+
 ## Decisions taken (owner, 2026-11-24)
 
 - Workspaces are generic, several per user, not one fixed layout.
