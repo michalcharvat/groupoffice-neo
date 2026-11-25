@@ -308,6 +308,11 @@ Behaviour:
   adds it there; its top-bar tab disappears. Dragging a panel's dock tab onto the top bar, "Move out of the
   workspace" in the panel menu (the ⋮ header action or a right click on the panel's tab), makes it
   standalone again. The panel menu also has "Open in new window" (popout) and "Close".
+  Moving out a panel with its module view routes once, itself (`moveOut()`; a placeholder just closes): `onPanelClose()` and the focus moving to the next
+  panel (`onPanelActivate()`) leave the address alone meanwhile (`movingOut`), else their
+  `replaceRoute()` could land after it and leave the workspace tab pressed. When the address is the
+  panel's already, `moveOut()` calls `mainView.showModule()`: a `setRoute()` to the same hash fires no
+  hashchange (fixed 2026-11-25).
 - Several workspaces per window. `#ws/<id>` opens or activates a workspace tab (unknown id: reloads the
   list once, else "Not found"), then the address moves on to the focused panel. The window keeps
   `{open: [ids], active}` in `sessionStorage` (`go-workspaces`), so a reload restores the open tabs and the
