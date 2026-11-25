@@ -42,7 +42,8 @@ class History extends Base {
         const oldURL  = location.href,
               current = location.hash.replace(/^#/, '');
 
-        if (ifHash !== undefined && current !== ifHash && safeDecode(current) !== ifHash) {
+        // raw on both sides: neo's HashHistory hands the worker location.hash undecoded
+        if (ifHash !== undefined && current !== ifHash) {
             return false
         }
 
@@ -51,18 +52,6 @@ class History extends Base {
         // neo's HashHistory listens to hashchange, which replaceState() doesn't fire
         window.dispatchEvent(new HashChangeEvent('hashchange', {oldURL, newURL: location.href}));
         return true
-    }
-}
-
-/**
- * @param {String} value
- * @returns {String}
- */
-function safeDecode(value) {
-    try {
-        return decodeURIComponent(value)
-    } catch (e) {
-        return value
     }
 }
 

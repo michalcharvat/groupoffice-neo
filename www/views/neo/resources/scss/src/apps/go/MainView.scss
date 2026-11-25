@@ -65,9 +65,9 @@
     /* many module tabs on a medium screen: the tabs shrink and cut their title with an ellipsis (it
        ran into the next tab); the close icons and the buttons on the right keep their size
        (flex: 'none' in apps/go/view/MainView.mjs: the toolbar sets flex inline) */
+    /* not overflow: hidden on the tab: it would clip the count badge at its top right */
     .go-topbar .neo-button.go-module-button {
         min-width: 0;
-        overflow : hidden;
     }
 
     /* below GO's medium breakpoint only the active tab shows its close icon (the others close from
@@ -83,6 +83,7 @@
     }
 
     .go-topbar .go-module-button .neo-button-text {
+        min-width    : 0;
         overflow     : hidden;
         text-overflow: ellipsis;
         white-space  : nowrap;
