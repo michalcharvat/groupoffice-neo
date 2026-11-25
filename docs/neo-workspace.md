@@ -661,6 +661,136 @@ ordinary layouts were splits in the root edge-zone's centre. An edge-zone root k
   `GO_TEST_DB=workspaces_test_2 GO_TEST_HOST=db26 GO_TEST_PORT=3306 GO_TEST_PASSWORD=root` (created with
   `tests/setup-database.php`).
 
+### Part 2: export/import as JSON (design, owner 2026-11-25)
+
+Goal: a user saves the arrangement of a workspace to a file and creates workspaces from such a file later,
+on the same or another GroupOffice installation, as themselves or as another user (who signs in and
+imports). Through GO's standard export/import (owner: "import and export are a standard part of GO"),
+not a format of our own.
+
+- **What the file holds: the arrangement, not the open items.** A panel keeps only its module; the
+  `route` is cut off on export (owner decision). A route holds record ids (`note/5`), which mean nothing
+  to another user and a different record on another installation. For the same reason a bookmark opened
+  as a module (`bookmarks-<id>`, a record id in the module name) is left out of the export, with its
+  items. Selected records may come later through module state, and could then be put into the export
+  too. Dialogs are never part of a workspace: they don't change the address and float over the page or in
+  their own browser window. Window-only state (maximized panel, popups) is not on the server and not in
+  the file.
+- **Format**: the core JSON converter's file, an array of entities (`go\core\data\convert\Json`), one item
+  per workspace:
+  `[{"name", "icon", "keepCentre", "panels": {"<panelId>": {"module"}}, "layouts": {"medium"?, "wide"?}}]`.
+  Left out: `id`, `acl`, `createdBy`, `sortOrder`, `isDefault`, `modifiedAt`, the checkpoints
+  (`savedPanels`, `savedLayouts`), every panel's `route`, bookmark panels, and the items' `title` (the
+  client sets titles from the module, `reconcile()`; a title could carry a bookmark's name).
+
+Backend (sf/workspaces, no schema change, no migration):
+
+- `go\modules\sf\workspaces\convert\WorkspaceJson extends Json`; `Workspace::converters()` returns
+  `[WorkspaceJson::class]`.
+  - `entityToArray()`: only the properties above. Every profile's layout is trimmed to the exported
+    panels (`dropItems()`): a profile not shown since a panel closed may still name it, and a create
+    validates every profile.
+  - **Limits that every export meets**: at most 50 workspaces per file (`WorkspaceJson::MAX_RECORDS`) and
+    50 × `Workspace::MAX_BYTES` bytes. The export writes compact JSON (`exportEntity()` overridden; core
+    pretty-prints), so a stored workspace, which is within `MAX_BYTES` with its checkpoints, exports
+    within it without them; an export of more than 50 ids is refused ("Export at most 50 workspaces at a
+    time."). Import: the controller checks the byte limit before the job starts, `initImport()` refuses
+    more than 50 records (through the job's alert), and each record's raw `panels` / `layouts` are
+    checked against `Workspace::MAX_PANELS` / `MAX_BYTES` before module lookups and trimming.
+  - `importEntity()` builds the new entity from **one explicit projection** of the record: `name`,
+    `icon`, `keepCentre`, `panels` as `{module}` only, `layouts`. Everything else in the record
+    (`createdBy`, `sortOrder`, checkpoints, routes, ids) is ignored, so a hand-edited file neither fails
+    on a refused property nor sets one. The import's `values` parameter (core applies it after the record)
+    is ignored. Then:
+    1. the layouts' structure is validated against the record's own panel ids
+       (`WorkspaceLayout::validate()`): a broken document is an error of that record, also when the trim
+       below would hide the fault (an item listed twice);
+    2. panels of modules the importing user can't use (`Workspace::mayUseModule()`, made reusable) and
+       `bookmarks-*` panels are removed;
+    3. every profile's layout is trimmed against the final panel map (`dropItems()`), also when nothing
+       was removed (see above), and validated again against the surviving panels; a profile whose tab
+       groups are all empty loses its layout (it opens as tabs in one group, like `reconcile()`). Emptied tab groups are kept, as the
+       client's `dropItems()` keeps them (the server accepts `items: []`): removing them would change
+       split geometry or an intended empty centre.
+    A record that is not an object, a missing name or a layout the validator refuses is an import error of
+    that record (the core converter counts it); the other records are imported.
+  - `notifyEnd()` (overridden): the finished alert's data carry `workspaceIds` (created, in file order)
+    and `leftOut` (the module names removed in step 2), and its body names them, so the client gets them
+    from the alert `runBackgroundJob()` returns. `notifyError()` (overridden) keeps the alert pending
+    (`persistent: true`) after an error of one record; core marks it finished there, and
+    `runBackgroundJob()` could return before `notifyEnd()`. The core `/import` response has only `pid` and the
+    process output; the converter's `{count, errors}` result is discarded by `core/System/import`.
+  - The trim is `WorkspaceLayout::dropItems(array $document, array $panelIds): array`, the PHP twin of
+    `SaveQueue.mjs` `dropItems()` (items without a panel go, also from the tab groups, an active item falls
+    to the first remaining; tab groups stay). Server and client trim the same way.
+  - Import always **creates** workspaces: nothing is replaced, the name stays as it is (names are not
+    unique). The save goes through the create path as for any create: owner = the importing user, private
+    ACL, writable allowlist, size and panel limits, layout structure, module access.
+- Controller `SfWorkspacesWorkspace`:
+  - `export()` (`defaultExport()`), `@apiPermission` checked per id in `AbstractConverter::exportToBlob()`
+    (`LEVEL_READ`; `Workspace::internalGetPermissionLevel()` grants it to the owner and administrators). A
+    foreign id is skipped, the file holds the rest.
+  - `import()`: before starting the background job it checks synchronously that the blob exists, has the
+    `json` extension and is within the byte limit (an error now, else the client waits for an alert that never
+    comes: `core/System/import` fails before the converter creates its alert), and calls
+    `Workspace::ensureDefault()` for the user, so an import before the first query doesn't make the
+    imported workspace the default. Then `defaultImport()`. `@apiPermission` "Module access: creates only
+    workspaces of the user". The background process runs as the importing user (`cli.php`, the user id is
+    set server side), so `mayUseModule()` sees that user's rights. Access to sf/workspaces itself is
+    checked when the import is submitted, not again when the job runs.
+
+**Lost access** (owner 2026-11-25: trimming is needed anyway, e.g. when a user loses rights to a module):
+
+- On load this exists already: `OpenWorkspace.doLoad()` keeps the server copy as the save base and leaves
+  out panels whose module `ModuleRegistry.getAvailable()` doesn't offer; their items go in `reconcile()`.
+  They are removed for good by the next successful save of `panels` (not while narrow, which saves
+  nothing). Another profile's layout keeps its stale items until it is shown (as today).
+- Missing: **Revert.** `SaveQueue.revert()` copies the checkpoint into `panels` / `layouts` as it is; the
+  server refuses a checkpoint panel of a module the user can't use unless the same panel id holds that
+  module live. Revert filters the panels it writes by `ModuleRegistry.getAvailable()` and trims the layouts
+  with `dropItems()`, inside the existing conflict-retry callback. The checkpoint itself is not rewritten:
+  when access comes back, Revert brings the panel back.
+
+Client (neo, `views/neo`, the core helpers `exportEntities()`, `importFile()`, `runBackgroundJob()`):
+
+- Workspace tab menu: "Export" (this workspace, `SfWorkspacesWorkspace/export`, `extension: 'json'`, its
+  id); the finished alert's file is downloaded.
+- "+" menu: "Import workspaces…" (file choice, `.json`) and "Export all workspaces". "Export all" passes
+  the ids of the user's own workspaces (the list the window has, query `mine: true`), never an unfiltered
+  query: an administrator would export other users' workspaces. Also when narrow: neither touches a layout.
+- **Export flushes first**: the window's SaveQueue is flushed before the export (autosave is debounced),
+  then `isUnsaved(id)` is checked for every exported id (`flush()` resolves also after a failed save, as
+  in the checkpoint path); a failed save stops the export with "The layout could not be saved. Please try again."
+- After an import: the finished alert reports count and errors; the client opens the first of
+  `workspaceIds` as a tab (after the list has it: reload the list once when the push hasn't come yet) and
+  shows "Left out: …" from `leftOut`. Known limit of `runBackgroundJob()` (core): it takes the oldest
+  converter alert created after the job started, so a job another window starts at the same moment can
+  be taken for this one.
+- Translations en and cs.
+
+Tests:
+
+- PHPUnit (`tests/WorkspaceExportTest.php`):
+  - export as a **non-admin** with an own and a foreign id: the file holds exactly the own workspace
+    (fails with the read check removed);
+  - round trip export → import: same name, icon, keepCentre, panels (module only) and layouts, new id,
+    owned by the importer, private ACL, no checkpoints, no routes, no item titles;
+  - a record with `createdBy`, `acl`, `id`, `sortOrder`, `savedPanels`, a panel `route` and an import
+    `values` parameter: created, none of them taken;
+  - a panel of a module the importer can't use and a `bookmarks-<id>` panel are left out, their items
+    trimmed from both profiles, the rest of the layout kept, `leftOut` in the alert data; a profile with
+    every tab group emptied has no layout; a profile naming a panel closed earlier is trimmed;
+  - a broken record (not an object, no name, invalid layout) is an error of that record, the others are
+    imported; a missing blob, a wrong extension and a file over the byte limit are refused by `import()` at once,
+    a file with 51 records through the alert; an export of 51 ids is refused; a record listing an item
+    twice is an error even when that item's panel is removed;
+  - an import before the first query: the default workspace is not the imported one;
+  - `WorkspaceLayout::dropItems()` against the same cases as the mocha test of `dropItems()`.
+- mocha: revert drops panels of unavailable modules and trims the layouts.
+- Browser check on :8027: export one and all (as neoadmin: only their own workspaces), export right after a dock edit, import as the same user and
+  as another user (neotest, neoadmin) with a module the other doesn't have, import when narrow, a layout
+  with an emptied tab group after the trim, revert after losing access to a module.
+
 ## Decisions taken (owner, 2026-11-24)
 
 - Workspaces are generic, several per user, not one fixed layout.
