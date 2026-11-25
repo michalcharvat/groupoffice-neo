@@ -9,6 +9,8 @@
     // workspace panel (docs/neo-workspace.md) gets its narrow layout. The rules below are
     // @container queries on this element.
     container-type  : inline-size;
+    // medium: the west panel floats over the center (rules below)
+    position        : relative;
 
     > .go-west,
     > .go-center,
@@ -43,9 +45,68 @@
     display: none;
 }
 
-@container (min-width: 577px) {
+@container (width > 576px) {
     .go-main-3-col .go-for-small-device {
         display: none !important;
+    }
+}
+
+// Medium (GOUI .main-3-col .west up to $breakpointMedium, here the module's width: a tablet, a
+// small window or a half-width workspace panel): center and east stay side by side, the west
+// panel becomes a drawer over them, open while it is the active panel. The menu button
+// (showWestButton()) opens it, "close" (hideWestButton()), selecting a record (activatePanel('east'))
+// or activatePanel('center') closes it.
+@container (576px < width <= 1200px) {
+    .go-main-3-col.go-mobile-cards {
+        > .go-west {
+            position        : absolute;
+            top             : 0;
+            bottom          : 0;
+            left            : 0;
+            z-index         : 301;
+            max-width       : 100%;
+            background-color: var(--bg-mid);
+            transform       : translate3d(-100%, 0, 0);
+            visibility      : hidden;
+            transition      : transform 100ms cubic-bezier(0.32, 0, 0.67, 0), visibility 0s 100ms;
+
+            &.go-active {
+                border-right: 1px solid var(--fg-line);
+                box-shadow  : 0 4px 12px rgba(0, 0, 0, .16);
+                transform   : translate3d(0, 0, 0);
+                visibility  : visible;
+                transition  : transform 100ms cubic-bezier(0.32, 0, 0.67, 0);
+            }
+
+            // the west splitter sits next to the floating panel, it has nothing to resize
+            + .go-splitter {
+                display: none !important;
+            }
+        }
+
+        // the center keeps its (saved) width while there is room; below it shrinks to its
+        // minimum so the east panel stays inside the module
+        > .go-center {
+            flex-shrink: 1 !important;
+        }
+
+        .neo-button.go-show-west {
+            display: inline-flex;
+        }
+
+        .go-show-west .neo-button-glyph.go-icon,
+        .go-hide-west .neo-button-glyph.go-icon {
+            font-size: 0;
+
+            &::before {
+                content  : 'menu';
+                font-size: go.dp(18);
+            }
+        }
+
+        .go-hide-west .neo-button-glyph.go-icon::before {
+            content: 'close';
+        }
     }
 }
 

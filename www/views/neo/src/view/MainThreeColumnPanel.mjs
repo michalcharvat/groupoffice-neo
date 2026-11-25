@@ -16,6 +16,9 @@ import {t} from '../Translate.mjs';
  * Phone (GOUI "mobile-cards", CSS below $breakpointSmall): one panel at a time, the one
  * activatePanel() marked `go-active` (center at first). Subclasses activate the east panel
  * when they show a record there; showCenterButton() goes back.
+ *
+ * Medium (CSS up to GOUI's $breakpointMedium, 1200px of the module's width): center and east side
+ * by side, the west panel is a drawer over them while it is the active panel.
  */
 class MainThreeColumnPanel extends Container {
     static config = {
@@ -61,8 +64,13 @@ class MainThreeColumnPanel extends Container {
             icon   : 'left_panel_close',
             cls    : ['small', 'go-hide-west'],
             tooltip: t('Close sidebar'),
-            handler: () => {
-                this.setWestHidden(true);
+            handler: async () => {
+                // medium and phone (CSS up to $breakpointMedium of the module's width): the west
+                // is a drawer or a card, closing it only shows the center; the wide sidebar stays
+                // hidden until showWestButton()
+                const rect = await this.getDomRect();
+
+                rect?.width > 1200 && this.setWestHidden(true);
                 this.activatePanel('center')
             }
         }
