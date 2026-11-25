@@ -848,6 +848,162 @@ Tests:
   the classic instance (:8026) for `groupoffice_neo`; to flush the :8027 cache after a language change, call
   `install/clearcache.php` inside the container with a token from `Crypt::createInternalToken('clearcache')`.
 
+### Part 3: a module more than once in one window (design, owner 2026-11-25)
+
+Goal: two panels of the same module side by side in a workspace (two note books, two task lists), each
+with its own open record. Part 4 (tear-out of a single panel) builds on the per-panel view identity made
+here.
+
+Owner decisions:
+
+- **Only inside workspaces.** The standalone top-bar tab stays one per module; a second instance exists
+  only as a workspace panel.
+- **Created by "Duplicate"** in the panel menu (⋮ header action, right click on the panel's tab). Dragging
+  a module into a workspace that has it already keeps focusing the existing panel, as today.
+- **Every panel has its own view** (except `singleInstance` modules, below). The placeholder
+  "{module} is open elsewhere in this window." with "Show here" goes for them: a standalone tab and every
+  panel of every open workspace hold their own view of the module.
+- **Routing: the last focused panel.** The address keeps today's form (`#notes/note/5`, no panel id). A
+  hash for a module goes to the panel of that module that had the focus last in this window.
+- **View state is shared for now.** Column widths and splitters (`State.mjs`, by `stateId`) and the
+  "last selected" settings on the server (`lastNoteBookIds`, `lastTasklistIds`, `lastAddressBookId`) are
+  per module, not per view: both panels read and write them, the last change wins. Each panel keeps only
+  its own `route`. Per-panel state may come later through module state (see Part 2).
+- **Opt-out for modules that are not safe twice**: `singleInstance: true` in the module's
+  `ModuleRegistry` entry. Now: calendar (`CalendarItem.ui` and `clipboard` are module-wide, the item
+  dialogs and errors go through the last created view; calendar visibility is shared live), email
+  (`MessagePanel.getHost()` falls back to the first `EmailMain` of the window), summary (the start page's
+  portlet layout is one state). They are fixed module by module later.
+
+Identity (Codex review of the design):
+
+- A panel id is unique only within its workspace (import keeps the file's ids, so two imported copies
+  both have `notes/p1`). The **claim identity of a panel is `workspaceId + '/' + panelId`**; the
+  standalone tab is `name` alone. Everything below that says "panel" means this pair.
+
+`singleInstance` modules keep today's rule, enforced at view creation, not only by hiding Duplicate:
+
+- One view per window for the module, as now: a standalone tab or one panel; any other panel of it (a
+  second one in the same workspace, from an import, JMAP or another window's Duplicate before the flag
+  existed, or a panel in another workspace tab) shows the placeholder with "Show here". The claim API
+  refuses a second key for such a module and returns the existing claim as today.
+- The server does not need to know the flag: it accepts duplicates of any module (see Server).
+
+Core (`www/views/neo`, `MainView`):
+
+- The claim API takes an instance key: `claimModuleView(name, owner, key)`,
+  `releaseModuleView(name, key)`, `unclaimModuleView(name, key)`; `claimed` is keyed by `name + '|' + key`.
+  A claim with a new key creates a new view, unless the module is `singleInstance` (then as today:
+  it takes the one view over, `onModuleViewReleased` to the previous owner). Pending creations are tracked
+  per key (`openTokens` by the same identity, the standalone one stays `openTokens[name]`), so two
+  panels opening at once don't cancel each other; after the await the caller checks that its host still
+  exists (closed, undone or reloaded meanwhile: the new view is destroyed).
+- **Standalone actions activate the standalone view directly**, never through the hash resolver: a click
+  on the module's top-bar tab, Move out of the workspace (after the release) and the end of a drag onto the
+  top bar show `openModules[name]` and then set its route, also when the hash is unchanged. "Send to
+  window" of the standalone tab uses that view's own route, not the active hash. "Move out" (and the drag
+  onto the top bar) is disabled while the module has a standalone tab: there is one standalone view per
+  module. The checks that hide or skip a module's top-bar tab because it is claimed (`addTab()`,
+  `saveTabs()`, `claimModuleView()` removing the tab) apply only to `singleInstance` modules now; for the
+  others a claimed panel and a standalone tab coexist.
+- **Badges and the main menu dot** iterate all claims of a module (`updateBadge()`,
+  `updateMainMenuDot()`); a workspace counts a module once per workspace however many panels it has,
+  including panels whose view isn't created yet; every workspace holding the module is notified.
+- Logout: unchanged, `beforeLogout()` already flushes each window's save queue.
+- `ModuleRegistry` documents `singleInstance`.
+
+sf/workspaces client:
+
+- Panel hosts are bound by **panel id**, not module name: `hostOf()`, `doLoad()` / `applySnapshot()` (no
+  `byModule` reuse), `attach()` / `detachView()`, `panelRoute()`, `focusedRoute()`, `routeToPanel()` and
+  the saved `panel.route` go by the host.
+- `isFree()`, `liveWorkspace()`, `takeView()`, the "open elsewhere" placeholder and "Show here" stay only
+  for `singleInstance` modules. The popup placeholder ("open in another window") stays for all.
+- **Lazy views**: load, undo/redo and remote reload no longer attach every panel before the layout is
+  applied. After the projection, every panel shown in a split pane (the active tab of each group, a
+  revealed rail panel) is attached; a tab shown later (tab click, reveal, focus by routing) is attached
+  then. On its first attachment a view gets its panel's saved `route`.
+- **Saving and conflicts**: `mergePanels()` merges by panel id only; the rule "one module in one panel:
+  the one we opened wins" (`SaveQueue.mjs` `mergePanels()`) goes, so a route change of one Notes panel
+  no longer deletes its sibling on a conflict.
+- **Last focused panel**: per window, module name → claim identity of the panel focused last (window-wide
+  recency, to choose across workspaces), and per open workspace, module name → its last focused panel
+  id. The per-workspace map is kept in the window's `sessionStorage` state (`go-workspaces`) next to the
+  open tabs, so a reload with the second Notes panel focused routes `#notes/…` there again; ids that are
+  gone (closed, undone, reloaded from the server) are dropped when read. Widening and a remote reload
+  keep the focus by panel id, not module name.
+- **Navigation without races**: `showModule(name, route)` takes a navigation number before its first
+  await; a focus it makes is programmatic and doesn't publish the panel's old route; it then applies the
+  incoming route to that panel, unless a newer navigation started meanwhile. `onPanelActivate()` by the
+  user publishes the focused panel's route also when the module is the same (`routeModule === name` no
+  longer skips it), as a replace, not a new history entry. Back/forward replay `#module/path` and land in
+  the last focused panel at that moment: the address alone cannot tell which panel it was.
+- **Opening a module** (launcher, search, link, alert, deep link, quick add) goes to, in this order:
+  1. the last focused panel of the module in the shown workspace (the first in layout order when none was
+     focused);
+  2. the module's standalone tab when it is open;
+  3. the last focused panel of the module in another open workspace tab (that tab is activated);
+  4. otherwise a new standalone tab, as today.
+- **Popups**: a panel's view popped out into its own window routes there (`PopupView`); its route
+  changes are sent to the owning panel by claim identity, so the panel's saved `route` follows; back in
+  the page (redock), after an undo or with the workspace closed while a sibling stays open, the view goes
+  to its own panel only.
+- **Duplicate** (panel menu): a new panel id with the same module and the panel's current route, added as
+  a tab next to the panel (same tab group), focused; one undo step. Not offered for a `singleInstance`
+  module, disabled at `MAX_PANELS`, not offered when narrow (nothing is saved there). A locked panel can
+  be duplicated: the lock blocks moving and closing that panel, not adding a tab to its group.
+- The drop of a module that is in the workspace already focuses its last focused panel without
+  `dropExternal()` (which could move it).
+
+Edge cases (second Codex review of the design):
+
+- **`showModule()` outcomes**: the extension's `showModule()` hook tells apart "no workspace handles this
+  module" (only then the core falls back to a standalone tab), "handled but unavailable" (e.g. the
+  `singleInstance` view is in a popup: the placeholder's panel is focused, no standalone view is made) and
+  "superseded by a newer navigation" (nothing happens).
+- **Rollback of a refused drop or add** (`removeNewPanel()`) unclaims and destroys a view created for the
+  new panel; it releases a view to standalone only when the operation borrowed the standalone view
+  (`singleInstance`). A release never overwrites an existing `openModules[name]`.
+- **Host reuse** on load, undo/redo and remote reload needs the same panel id **and** module; a panel id
+  whose module changed (allowed by JMAP) retires the old host, unclaims its view and invalidates its
+  pending attachment before a new host is made.
+- **Route of a reused view**: when a load, remote reload or widening brings a different saved `route` for a
+  panel whose view exists, the view gets it (`route()`), without publishing the window's hash unless that
+  panel is focused; lazy, not yet created views get it on first attachment.
+- **Panel limit after a merge**: two windows each adding a panel (Duplicate) at `MAX_PANELS - 1` merge to
+  one too many; the server refuses. The queue then takes the server copy as base, drops our added panels
+  that don't fit (the newest first) with the message "A workspace can have at most {max} panels." and
+  saves the rest, so later edits save again.
+- **Standalone presence** is `tabs.has(name)` (a restored tab may have no view yet), for the opening order
+  and for disabling Move out. Tab restore maps claims back to module names only for `singleInstance`
+  modules when it filters restored tabs.
+- **Quick add** is one navigation: it awaits the view that the routing chose and calls `onQuickAdd()` on it
+  once (no separate `setRoute()` racing a second `showModule()`).
+
+Server (`Workspace.php`): the rule "Module X is in more than one panel" goes, for live and checkpoint
+panels; `MAX_PANELS`, the size limit, the layout structure and module access stay. The tests that expect
+the refusal (`WorkspaceTest`, `WorkspaceExportTest`) change to expect acceptance. Export/import need no
+change: a file with two panels of one module imports as such (routes are not exported anyway).
+
+Tests:
+
+- PHPUnit: a workspace with two panels of one module saves and comes back, live and as checkpoint; an
+  import of such a file creates both panels.
+- mocha: `mergePanels()` keeps a sibling of the same module (route change on one side, Duplicate on the
+  other); the target choice of "opening a module" (the four steps); the last focused maps (per window, per
+  workspace, pruning); Duplicate adds a panel with a new id, the same module and route, next to the
+  source; two merged Duplicates over `MAX_PANELS` drop the newest and save the rest; a refused drop
+  keeps an open standalone view; host reuse with a changed module makes a new host.
+- Browser check on :8027 (neotest): Duplicate Notes, a different note in each panel, both kept after a
+  reload, also with the second panel focused before the reload; a link, a search result and a typed
+  `#notes/note/<id>` land in the last focused Notes panel; focusing the other panel changes the address;
+  Back; a standalone Notes tab and a Notes panel open at once, clicking the standalone tab shows it (not
+  the panel); Move out disabled while the standalone tab is open; two windows editing different Notes
+  panels of one workspace (conflict merge keeps both); a popped out second Notes panel routes and its
+  panel keeps the route; Calendar, Email and the start page have no Duplicate, and a workspace imported
+  with two Calendar panels shows the placeholder in the second; export and import of a workspace with two
+  Notes panels; the module badge and the main menu dot with two panels.
+
 ## Decisions taken (owner, 2026-11-24)
 
 - Workspaces are generic, several per user, not one fixed layout.
