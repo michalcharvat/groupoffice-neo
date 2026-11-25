@@ -122,6 +122,13 @@ activates the center there and hides the sidebar (`setWestHidden(true)`) only ab
 closing the drawer doesn't leave the wide layout without its sidebar. Selecting a record
 (`activatePanel('east')`) closes the drawer too.
 
+## CSS grid in a flex-filled panel (2026-11-25)
+
+A grid that gets its height from the layout (`flex: 1` in a vbox) shares that height among its
+implicit `auto` rows when the items' minimum is small (an explicit `min-height`). The rows then end
+shorter than their content and the next row overlaps the previous one (the summary start page in one
+column). Give such a grid `grid-auto-rows: max-content; align-content: start`.
+
 ## neo.mjs upgrades
 
 `neo.mjs` is pinned in `views/neo/package.json` (14.0.0 since 2026-11-24; read the release
