@@ -1,28 +1,32 @@
 import Base      from '../../../node_modules/neo.mjs/src/main/addon/Base.mjs';
 import DomEvents from '../../../node_modules/neo.mjs/src/main/DomEvents.mjs';
 
-/** the module tabs of the top bar (GO.view.MainView), reference "module-<name>" in data-ref */
-const SOURCE = '.go-module-button[data-ref^="module-"]';
+/**
+ * the module tabs of the top bar (GO.view.MainView), reference "module-<name>" in data-ref, and the
+ * app launcher's tiles (GO.view.AppLauncher), module name in data-go-module
+ */
+const SOURCE = '.go-module-button[data-ref^="module-"], [data-go-module]';
 /** a dock (sf/workspaces GO.workspaces.Workspace) */
 const TARGET = '[data-go-dock-drop]';
-/** a top bar tab that takes modules (sf/workspaces: a workspace tab) */
+/** a top bar tab or a launcher row button that takes modules (sf/workspaces: a workspace) */
 const TAB    = '[data-go-dock-tab]';
 const TYPE   = 'application/x-go-module';
 /** ms the pointer rests on a tab before it is opened (goDockDragHover), so the drag can go on into its dock */
 const HOVER_DELAY = 600;
 
 /**
- * Main thread side of dragging a module tab of the top bar into a dock or onto a tab that takes
- * modules (docs/neo-workspace.md): native HTML5 drag and drop, the dock only drags its own tabs.
+ * Main thread side of dragging a module tab of the top bar or a launcher tile into a dock or onto a
+ * tab that takes modules (docs/neo-workspace.md): native HTML5 drag and drop, the dock only drags its
+ * own tabs.
  * Module tabs are draggable only while the page has such a target (a main view extension added it).
  *
  * Sends custom DOM events to the components:
- * - goDockDragStart {module} to the top bar button
+ * - goDockDragStart {module} to the top bar button or launcher tile
  * - goDockDragMove {clientX, clientY, module} to the dock, once per frame while over it
  * - goDockDragLeave {module} to the dock when the pointer leaves it
  * - goDockDrop {clientX, clientY, module} to the dock or the tab (data-go-dock-tab) it was dropped on
  * - goDockDragHover {module} to a tab the pointer rested on (HOVER_DELAY)
- * - goDockDragEnd {module, dropped} to the top bar button
+ * - goDockDragEnd {module, dropped} to the top bar button or launcher tile
  *
  * Loaded per window: await Neo.Main.importAddon({name: 'WS/DockDrag', windowId})
  */
@@ -91,7 +95,7 @@ class DockDrag extends Base {
             return
         }
 
-        const module = button.dataset.ref.slice(7);
+        const module = button.dataset.goModule || button.dataset.ref.slice(7);
 
         this.drag = {button, module, over: null, frame: null, dropped: false};
         e.dataTransfer.effectAllowed = 'move';

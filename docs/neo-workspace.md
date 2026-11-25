@@ -434,6 +434,15 @@ Behaviour:
   in list mode they head the menu. Shift+click / Shift+Enter on a tile opens the module right of the
   focused panel of the shown workspace (else the one shown last, else the default one); into the empty
   centre when there is one. Narrow, or without the module: the tile opens as usual.
+  A tile dragged onto a workspace of the row becomes a panel there (its tab opens and shows below, the
+  launcher stays open for the next one); resting on it 600 ms shows that workspace and makes the
+  launcher see-through (`go-drag-through`), so the drag goes on into its dock with the drop indicators,
+  and the launcher closes when the drag ends. Not when narrow (the row items get no `onDrop`).
+  Classic tiles can't be dragged. Each drag is its own object (`Extension.drag`, `AppLauncher.tileDrag`):
+  a hover whose workspace finishes opening after the drag ended does nothing, and the launcher turns
+  see-through only once the workspace shows (`showCard()` before the route), else a quick release
+  landed in the workspace shown before. A drop waits for a tab that is still loading (`ws.editing()`),
+  else a second quick drop onto a just opened workspace was lost.
 - **Shortcuts.** Ctrl+Alt+1…9 show the workspace tabs in their order; undo/redo above. They match
   `KeyboardEvent.code`, so they work on every layout and macOS; AltGr never triggers them.
 - **Search.** The header search lists workspaces whose name contains the text (entity "Workspace"),

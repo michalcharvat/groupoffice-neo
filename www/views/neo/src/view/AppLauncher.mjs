@@ -77,9 +77,15 @@ function stateId() {
  *   to the element given to `open(returnFocusId)`.
  * - `setBadge(name, text)` updates the count on a tile (src/Badges.mjs).
  * - `setRow(items)` shows a row of buttons above the tiles (a main view extension's entries, e.g. the
- *   workspaces of sf/workspaces): [{text, iconCls, pressed, title}], `text` is HTML. A click, Enter
- *   or Space closes the launcher and fires `rowItem` {index, item}. Tab goes search field → row →
- *   tiles, ArrowLeft / ArrowRight move within the row.
+ *   workspaces of sf/workspaces): [{text, iconCls, pressed, title, onDrop, onDragHover}], `text` is
+ *   HTML. A click, Enter or Space closes the launcher and fires `rowItem` {index, item}. Tab goes
+ *   search field → row → tiles, ArrowLeft / ArrowRight move within the row.
+ * - Tiles of neo apps can be dragged (main thread addon WS/DockDrag, only while the page has a drop
+ *   target) onto a row button with `onDrop`: `rowDrop` {index, item, module} fires and the launcher
+ *   stays open. Resting on a row button with `onDragHover` fires `rowDragHover` {index, item, module,
+ *   seeThrough()}; once what it shows is ready a listener calls seeThrough(): the launcher turns
+ *   see-through for the rest of that drag, so it goes on into what shows below (a workspace's
+ *   dock), and closes when the drag ends.
  *
  * 6.8 shows the modules of its sub-menus (inSubmenu) in the grid as well, with the others; neo
  * has no sub-menus, so every app is a tile.
@@ -178,7 +184,12 @@ class AppLauncher extends Container {
 
         me.addDomListeners([
             {click  : me.onClick,   scope: me},
-            {keydown: me.onKeyDown, scope: me}
+            {keydown: me.onKeyDown, scope: me},
+            // dragging a tile (WS/DockDrag)
+            {goDockDragStart: me.onTileDragStart, scope: me},
+            {goDockDrop     : me.onRowDrop,      scope: me},
+            {goDockDragHover: me.onRowDragHover, scope: me},
+            {goDockDragEnd  : me.onTileDragEnd,  scope: me}
         ])
     }
 
@@ -197,6 +208,18 @@ class AppLauncher extends Container {
      * @member {Object[]} rowItems=[]
      */
     rowItems = []
+
+    /**
+     * A tile is dragged on past a row button (rowDragHover): the launcher is see-through until the drag ends
+     * @member {Boolean} dragThrough=false
+     */
+    dragThrough = false
+
+    /**
+     * The tile drag running now, a new object per drag (onTileDragStart())
+     * @member {Object|null} tileDrag=null
+     */
+    tileDrag = null
 
     /**
      * Row buttons whose keys are registered, see setRow()
@@ -219,6 +242,8 @@ class AppLauncher extends Container {
             id      : me.rowId(index),
             cls     : ['go-app-launcher-row-item', ...item.pressed ? ['go-pressed'] : []],
             type    : 'button',
+            // a tile can be dropped on it (WS/DockDrag)
+            ...item.onDrop ? {'data-go-dock-tab': 'true'} : {},
             title   : item.title || null,
             tabIndex: index === 0 ? 0 : -1,
             cn      : [...item.iconCls ? [{tag: 'i', cls: [...item.iconCls.split(' '), 'go-app-launcher-row-icon']}] : [], {
@@ -278,6 +303,72 @@ class AppLauncher extends Container {
     }
 
     /**
+     * A tile dropped on a row button
+     * @param {Object} data {module, path}
+     * @protected
+     */
+    onRowDrop(data) {
+        let me    = this,
+            index = me.rowIndexOf(data.path || []),
+            item  = me.rowItems[index];
+
+        item?.onDrop && me.fire('rowDrop', {index, item, module: data.module})
+    }
+
+    /**
+     * A tile drag starts: a new object per drag, see onRowDragHover()
+     * @protected
+     */
+    onTileDragStart() {
+        this.tileDrag = {}
+    }
+
+    /**
+     * The pointer rested on a row button while dragging a tile: what shows below takes the drag on
+     * (seeThrough(), called by the listener once it shows)
+     * @param {Object} data {module, path}
+     * @protected
+     */
+    onRowDragHover(data) {
+        let me    = this,
+            drag  = me.tileDrag,
+            index = me.rowIndexOf(data.path || []),
+            item  = me.rowItems[index];
+
+        if (!drag || !item?.onDragHover || !me.isOpen()) {
+            return
+        }
+
+        me.fire('rowDragHover', {index, item, module: data.module, seeThrough: () => {
+            // the drag ended (or another one began) meanwhile
+            if (me.tileDrag === drag && me.isOpen() && !me.dragThrough) {
+                me.dragThrough = true;
+                me.addCls('go-drag-through')
+            }
+        }})
+    }
+
+    /**
+     * A tile drag ended: a see-through launcher goes, without an animation (it is invisible already)
+     * @protected
+     */
+    onTileDragEnd() {
+        let me = this;
+
+        me.tileDrag = null;
+
+        if (!me.dragThrough) {
+            return
+        }
+
+        me.dragThrough = false;
+        clearTimeout(me.closeTimer);
+        me.closing = false;
+        me.removeCls('go-drag-through');
+        me.hidden = true
+    }
+
+    /**
      * Count on a tile (src/Badges.mjs)
      * @param {String} name app name
      * @param {String|null} text
@@ -305,10 +396,11 @@ class AppLauncher extends Container {
 
         clearTimeout(me.closeTimer);
         me.closing       = false;
+        me.dragThrough   = false;
         me.returnFocusId = returnFocusId;
         me.returnFocusModality = modality;
         me.activeIndex   = -1;
-        me.removeCls('go-closing');
+        me.removeCls(['go-closing', 'go-drag-through']);
         me.getReference('field').value = '';
         me.filter('');
         me.hidden = false;
@@ -415,14 +507,18 @@ class AppLauncher extends Container {
             id      : me.tileId(index),
             cls     : ['go-app-launcher-tile', ...app.classic ? ['go-classic'] : []],
             role    : 'option',
+            // a neo app can be dragged into a workspace (WS/DockDrag)
+            ...app.classic ? {} : {'data-go-module': app.name},
             tabIndex: index === Math.max(me.activeIndex, 0) ? 0 : -1,
             title   : app.classic ? t('Opens the classic UI in a new tab') : null,
             cn      : [{
                 cls: ['go-app-launcher-icon'],
                 cn : [app.iconUrl ? {
-                    tag: 'img',
-                    src: app.iconUrl,
-                    alt: ''
+                    tag      : 'img',
+                    src      : app.iconUrl,
+                    alt      : '',
+                    // the tile is dragged (WS/DockDrag), not its image
+                    draggable: 'false'
                 } : {
                     tag : 'i',
                     cls : ['go-icon'],

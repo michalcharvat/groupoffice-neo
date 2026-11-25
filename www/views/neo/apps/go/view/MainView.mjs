@@ -467,6 +467,15 @@ class MainView extends Container {
             rowItem   : ({index}) => {
                 hideTooltip(me);
                 me.launcherItems[index]?.handler?.()
+            },
+            // a tile dropped on a row entry (sf/workspaces: into that workspace); the launcher stays open
+            rowDrop   : async ({item, module}) => {
+                await item.onDrop(module);
+                me.updateLauncherRow()
+            },
+            // ... or the pointer rested on it: once it shows, the launcher is see-through and the drag goes on below
+            rowDragHover: async ({item, module, seeThrough}) => {
+                await item.onDragHover(module) && seeThrough()
             }
         });
 
@@ -800,6 +809,19 @@ class MainView extends Container {
     }
 
     /**
+     * The open launcher's row again (its entries changed, e.g. the workspace shown)
+     */
+    updateLauncherRow() {
+        let me       = this,
+            launcher = me.getReference('launcher');
+
+        if (!me.isDestroyed && launcher?.isOpen()) {
+            me.launcherItems = me.callExtensions('launcherItems').flat().filter(Boolean);
+            launcher.setRow(me.launcherItems)
+        }
+    }
+
+    /**
      * Header main menu button: the app launcher, or a list (My account → Look & feel)
      * @param {Object} [data] the button's click: detail 0 is a click by the keyboard (Enter, Space)
      */
@@ -830,7 +852,8 @@ class MainView extends Container {
         // the button gets the focus back on close: with a focus ring only when opened by the keyboard
         const modality = data?.detail === 0 ? 'keyboard' : 'pointer';
 
-        // the extensions' entries (launcherItems hook): {text (HTML), iconCls, icon, pressed, title, handler}
+        // the extensions' entries (launcherItems hook): {text (HTML), iconCls, icon, pressed, title, handler,
+        // onDrop(module), onDragHover(module)} (AppLauncher.setRow())
         me.launcherItems = me.callExtensions('launcherItems').flat().filter(Boolean);
 
         if (mode === 'list') {

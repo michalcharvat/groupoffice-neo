@@ -277,7 +277,7 @@ Hooks, all optional, called on every extension (`MainView.callExtensions()`):
 | `onActiveCardChange(card)` | The shown card changed: an extension card, or null for a module. |
 | `fallbackRoute()` | The last standalone module closed: a route to go to, or null. |
 | `beforeLogout()` | Awaited before the logout request (flush pending saves). |
-| `launcherItems()` | The main menu opens: items `{text, iconCls, icon, pressed, handler}` for a row above the tiles of the launcher (`AppLauncher.setRow()`; `text` is HTML, escape user data) or, in list mode, at the top of the menu. |
+| `launcherItems()` | The main menu opens: items `{text, iconCls, icon, pressed, handler, onDrop, onDragHover}` for a row above the tiles of the launcher (`AppLauncher.setRow()`; `text` is HTML, escape user data) or, in list mode, at the top of the menu. `onDrop(module)`: a tile dropped on the item (the launcher stays open, its row is rebuilt after); `onDragHover(module)`: the pointer rested on it while dragging a tile; when it resolves to true (what it shows is ready, the same drag still runs) the launcher turns see-through until the drag ends. Tiles are dragged by `WS/DockDrag` (`data-go-module`), so only while the page has a drop target. |
 | `openBeside(name)` | Shift+click / Shift+Enter on a launcher tile. Return true when the extension opens the module itself (it then runs async); otherwise the module opens as usual. |
 | `searchResults(text)` | The header search: results `{entity, name, description, route}` listed before the server's (`GlobalSearch.extraResults`). |
 | `hotKeys()` | Boot: `{combo: handler}` window-wide shortcuts (`WS/HotKeys` below). |
