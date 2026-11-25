@@ -350,6 +350,10 @@ Notes and gotchas:
 - The profile is measured on the main view; before it is mounted its rect is empty, so the window's
   `innerWidth` (`Neo.Main.getWindowData()`) counts until the ResizeObserver reports.
 - The default workspace is created as "Workspace" (`go()->t("Workspace", "sf", "workspaces")`).
+- Module tabs show only the modules open in the window (`docs/neo-small-modules.md`, "Module tabs"). A tab
+  restored after a reload has no view until it is shown, so it counts as closed for `isFree()`: the first
+  workspace that has the module and loads takes it and the tab goes, which keeps modules in a workspace off
+  the top bar. A standalone tab with a live view keeps the old behaviour (the panel shows the placeholder).
 - The dock's header actions show only while the group has the focus or the pointer; the right click on a
   panel tab is the stable way into the panel menu.
 - Logout flushes the save queues of all windows of the worker first (`beforeLogout`; the session is

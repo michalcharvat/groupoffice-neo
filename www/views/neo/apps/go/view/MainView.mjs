@@ -24,6 +24,9 @@ import {closePopup, openPopup, popupsSupported} from '../../../src/Popup.mjs';
 import {applyTheme}            from '../../../src/Preferences.mjs';
 import {fmt, t} from '../../../src/Translate.mjs';
 import {hideTooltip} from '../../../src/tooltip.mjs';
+import {getState, setState} from '../../../src/State.mjs';
+import {getWindowItem, setWindowItem} from '../../../src/windowStorage.mjs';
+import {LAST_STATE, WINDOW_KEY, parseWindowTabs, restoredTabs, serializeWindowTabs} from '../../../src/moduleTabs.mjs';
 
 // header menus open below their button, right edges aligned (they sit at the right)
 const RIGHT = {edgeAlign: 't100-b100'};
@@ -47,6 +50,7 @@ export function getMainViews() {
 
 /**
  * Top bar with the module menu and the user, below it one card per opened module.
+ * Only the modules open in this window have a tab (src/moduleTabs.mjs).
  *
  * Modules may extend it (ModuleRegistry `mainViewExtension`, e.g. sf/workspaces: workspace tabs with
  * a dock, docs/neo-workspace.md): an extension adds cards (addCard(), showCard()) and top bar items
@@ -102,6 +106,38 @@ class MainView extends Container {
      * module name → {index, view}
      */
     openModules = {}
+
+    /**
+     * Modules with a tab in the top bar (src/moduleTabs.mjs): opened in this window, restored after a
+     * reload (their view is created when shown). Not the modules an extension holds.
+     * @member {Set<String>} tabs
+     */
+    tabs = new Set()
+
+    /**
+     * The window's tabs are restored (restoreTabs()): changes are stored from then on
+     * @member {Boolean} tabsRestored=false
+     */
+    tabsRestored = false
+
+    /**
+     * Tabs closed while restoreTabs() ran: the stored set doesn't bring them back
+     * @member {Set<String>} tabsClosedEarly
+     */
+    tabsClosedEarly = new Set()
+
+    /**
+     * The user this window's tabs belong to (the user logged in when it was built): nothing is stored
+     * for another one (an account switch before the windows reload)
+     * @member {Number|null} tabsUserId=null
+     */
+    tabsUserId = null
+
+    /**
+     * Logout is clearing the stored tabs: nothing is stored meanwhile
+     * @member {Boolean} tabsLoggingOut=false
+     */
+    tabsLoggingOut = false
 
     /**
      * Pending openModule() per module name: closeModule() cancels it
@@ -177,6 +213,7 @@ class MainView extends Container {
             available = ModuleRegistry.getAvailable();
 
         mainViews.add(me);
+        me.tabsUserId = client.user?.id ?? null;
 
         const userName = client.user?.displayName || client.user?.username || '';
 
@@ -187,9 +224,11 @@ class MainView extends Container {
             role : 'img',
             title: Neo.config.goTitle || 'GroupOffice'
         },
+        // hidden until opened (tabs), in GO's module order
         ...available.flatMap(m => [{
             module   : Button,
             cls      : ['go-module-button'],
+            hidden   : true,
             iconCls  : m.iconCls,
             reference: 'module-' + m.name,
             // the module's count (src/Badges.mjs), GO.mainLayout.setNotification()
@@ -202,6 +241,7 @@ class MainView extends Container {
             module   : Button,
             cls      : ['go-module-close'],
             flex     : 'none',
+            hidden   : true,
             iconCls  : 'fa fa-xmark',
             reference: 'close-' + m.name,
             tooltip  : t('Close'),
@@ -335,8 +375,11 @@ class MainView extends Container {
         // a page rendered for the login screen has no user theme yet (Neo.php)
         applyTheme({theme: client.user?.theme, colorScheme: client.user?.themeColorScheme}, [me.windowId]);
 
-        // the extensions start first (restore what the window showed), then the address is routed
-        me.ready = me.startExtensions(current).then(() => me.isDestroyed || me.start(current));
+        // the extensions start first (restore what the window showed, take module views), then the
+        // window's module tabs come back, then the address is routed
+        me.ready = me.startExtensions(current)
+            .then(() => me.isDestroyed || me.restoreTabs())
+            .then(() => me.isDestroyed || me.start(current));
 
         // notifications: core alerts and popup reminders of the user, desktop notifications through this window
         notificationCenter.attach(me.windowId);
@@ -582,7 +625,20 @@ class MainView extends Container {
 
         await Promise.all(me.callExtensions('beforeLogout').map(p => Promise.resolve(p).catch(e => console.warn('beforeLogout', e))));
 
-        client.logout().catch(e => notifyError(me, e))
+        // the next login of this browser opens the user's last tabs (also in the other windows of the session)
+        const views = getMainViews();
+
+        views.forEach(mv => mv.tabsLoggingOut = true);
+        await Promise.all(views.map(mv => setWindowItem(mv.windowId, WINDOW_KEY, null)));
+
+        client.logout().catch(e => {
+            // still logged in: the windows store their tabs again
+            views.forEach(mv => {
+                mv.tabsLoggingOut = false;
+                mv.saveTabs()
+            });
+            notifyError(me, e)
+        })
     }
 
     /**
@@ -762,11 +818,12 @@ class MainView extends Container {
             [name, ...rest] = (hashString || '').split('/'),
             module          = ModuleRegistry.getAvailable().find(m => m.name === name);
 
+        // for start(): a hash other than the window's first one came meanwhile (while the extensions
+        // started and the tabs were restored) and wins over it
+        me.hashSeen = hashString || '';
+
         if (me.extensions.length) {
             const seq = ++me.hashSeq;
-
-            // for start(): a hash other than the window's first one came meanwhile and wins over it
-            me.hashSeen = hashString || '';
 
             // what the extensions restored comes first (startExtensions())
             await me.ready;
@@ -873,7 +930,7 @@ class MainView extends Container {
         // a popped out module keeps its placeholder card here
         cards.layout.activeIndex = cards.indexOf(entry.placeholder || entry.view);
 
-        me.setTabVisible(module.name, true);
+        me.addTab(module.name);
 
         me.activeModule = module.name;
 
@@ -1063,7 +1120,7 @@ class MainView extends Container {
                 cards.remove(entry.view)
             }
 
-            me.setTabVisible(name, false);
+            me.removeTab(name);
 
             if (me.activeModule === name) {
                 me.activeModule = null;
@@ -1177,6 +1234,106 @@ class MainView extends Container {
             module: htmlToText(ModuleRegistry.get(name)?.title || name),
             number: getMainViews().indexOf(target) + 1
         }))
+    }
+
+    /**
+     * The modules with a tab, in tab order
+     * @returns {String[]}
+     */
+    getTabs() {
+        return ModuleRegistry.getAvailable().map(m => m.name).filter(name => this.tabs.has(name))
+    }
+
+    /**
+     * Gives a module a tab (opened in this window). A module an extension holds has none.
+     * @param {String} name
+     */
+    addTab(name) {
+        let me = this;
+
+        if (me.claimed[name]) {
+            return
+        }
+
+        me.setTabVisible(name, true);
+        me.tabsClosedEarly.delete(name);
+
+        if (!me.tabs.has(name)) {
+            me.tabs.add(name);
+            me.saveTabs()
+        }
+    }
+
+    /**
+     * Removes a module's tab (closed, or taken by an extension)
+     * @param {String} name
+     */
+    removeTab(name) {
+        let me = this;
+
+        me.setTabVisible(name, false);
+        me.tabsRestored || me.tabsClosedEarly.add(name);
+
+        if (me.tabs.delete(name)) {
+            me.saveTabs()
+        }
+    }
+
+    /**
+     * Stores the tabs for this window (reload) and as the user's last ones (a new window, the next login)
+     * @protected
+     */
+    saveTabs() {
+        let me     = this,
+            userId = me.tabsUserId;
+
+        if (!me.tabsRestored || me.tabsLoggingOut || me.isDestroyed || !userId || client.user?.id !== userId) {
+            return
+        }
+
+        const tabs = me.getTabs();
+
+        setWindowItem(me.windowId, WINDOW_KEY, serializeWindowTabs(tabs, userId));
+        setState(LAST_STATE + userId, {tabs}, me.windowId)
+    }
+
+    /**
+     * Boot: the tabs this window had (reload), else the user's last ones. Their views
+     * are created when shown. Modules an extension holds (workspace panels) get none.
+     * @returns {Promise<void>}
+     * @protected
+     */
+    async restoreTabs() {
+        let me     = this,
+            userId = me.tabsUserId;
+
+        try {
+            const windowTabs = userId ? parseWindowTabs(await getWindowItem(me.windowId, WINDOW_KEY), userId) : null,
+                  lastTabs   = !userId || windowTabs ? null : (await getState(LAST_STATE + userId, me.windowId)).tabs;
+
+            if (me.isDestroyed) {
+                return
+            }
+
+            restoredTabs({
+                windowTabs,
+                lastTabs : Array.isArray(lastTabs) ? lastTabs : null,
+                available: ModuleRegistry.getAvailable().map(m => m.name),
+                // and closed meanwhile: not brought back
+                claimed  : [...Object.keys(me.claimed), ...me.tabsClosedEarly],
+                // the address opened them while this ran (without extensions it is routed right away)
+                open     : [...me.tabs]
+            }).forEach(name => {
+                me.tabs.add(name);
+                me.setTabVisible(name, true)
+            })
+        } catch (e) {
+            console.warn('GO.view.MainView: module tabs not restored', e)
+        }
+
+        me.tabsRestored = true;
+        me.tabsClosedEarly.clear();
+        me.saveTabs()
     }
 
     /**
@@ -1359,7 +1516,7 @@ class MainView extends Container {
             delete me.openTokens[name];
             me.getReference('modules').remove(entry.view, false);
             view = entry.view;
-            me.setTabVisible(name, false);
+            me.removeTab(name);
             me.activeModule === name && (me.activeModule = null);
             me.syncActiveCard()
         } else {
@@ -1382,8 +1539,8 @@ class MainView extends Container {
         }
 
         me.claimed[name] = {view, owner};
-        // also a tab of a module that was not open yet: the module shows in the extension now
-        me.setTabVisible(name, false);
+        // also a tab of a module whose view wasn't created yet (restored): the module shows in the extension now
+        me.removeTab(name);
 
         return view
     }
@@ -1411,7 +1568,7 @@ class MainView extends Container {
 
         claim.view.set({appName: me.appName, windowId: me.windowId});
         me.openModules[name] = {view: cards.add(claim.view)};
-        me.setTabVisible(name, true);
+        me.addTab(name);
         me.syncActiveCard()
     }
 
