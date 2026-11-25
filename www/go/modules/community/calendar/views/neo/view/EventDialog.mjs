@@ -578,9 +578,28 @@ class EventDialog extends FormWindow {
     }
 
     /**
-     * Saves through CalendarItem (GOUI onBeforeSubmit())
+     * Saves through CalendarItem (GOUI onBeforeSubmit()), one save at a time: a second
+     * Enter or click while the first one validates does not create the event twice
      */
     async submit() {
+        if (this.isSubmitting) {
+            return false
+        }
+
+        this.isSubmitting = true;
+
+        try {
+            return await this.saveItem()
+        } finally {
+            this.isSubmitting = false
+        }
+    }
+
+    /**
+     * @returns {Promise<false>}
+     * @protected
+     */
+    async saveItem() {
         let me     = this,
             form   = me.form,
             button = me.getReference('saveButton'),
