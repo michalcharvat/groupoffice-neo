@@ -15,6 +15,13 @@ dbc_go groupoffice "$@"
 
 if [ -f "/usr/share/apache2/apache2-maintscript-helper" ]; then
   . /usr/share/apache2/apache2-maintscript-helper
+  # groupoffice.conf sets Cache-Control: no-cache on the neo webclient files with mod_headers,
+  # which Debian doesn't enable by default. Without it browsers keep running cached neo
+  # modules after an upgrade. Only while it isn't enabled: apache2_invoke restarts Apache even
+  # for an enabled module, and it leaves a module the admin disabled alone.
+  if ! a2query -q -m headers; then
+    apache2_invoke enmod headers
+  fi
   apache2_invoke enconf groupoffice
 fi
 
