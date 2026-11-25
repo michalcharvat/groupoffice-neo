@@ -102,7 +102,7 @@ refused without `serverclient_token`). Test data, module installs and config wer
   view would keep its stores and listeners). Every tab can be closed, the Start page too. After the
   extensions start, `restoreTabs()` brings back the window's set (sessionStorage `go-module-tabs`, with the
   user id, so another user logging in to the same window gets nothing), else the user's last set of any
-  window (`src/State.mjs` id `go-module-tabs-last-<userId>`); restored tabs have no view until shown, and
+  window (on the server, see below; local copy `src/State.mjs` id `go-module-tabs-last-<userId>`); restored tabs have no view until shown, and
   modules an extension holds get no tab. Logout clears the window sets of the session. Pure logic in
   `src/moduleTabs.mjs`, tests in `tests/moduleTabs.test.mjs` (mocha from `www/views/neo`, e.g. the main
   checkout's `../../node_modules/.bin/mocha tests/`). A count of a module without a tab shows as a dot on
@@ -114,6 +114,30 @@ refused without `serverclient_token`). Test data, module installs and config wer
   switch); nothing is stored while logout clears the sets (`tabsLoggingOut`), and a failed logout stores
   them again. Left as is: two windows writing the user's last set at the same moment (last write wins),
   and an inactivity logout keeping the window's set for the same user.
+  On the server (owner 2026-11-25: "remembered everywhere, like in GO 6.8/26"): the user's last set is the
+  client state `open-modules` (table `go_state`) that the classic client keeps too (`MainLayout.js`
+  `saveState()`, Ext `HttpProvider` on desktop), in the Ext.state encoding (`escape('a:' + escape('s:' +
+  name) joined by '^')`), so a new browser, the next login and a switch between classic and neo open the
+  same modules. Read from the session (`state['open-modules']`, also loaded for classic by
+  `go/core/views/extjs3/User.js`), written with `core/Webclient/saveOpenModules` {modules}
+  (`go\core\webclient\OpenModules`: current user only, names `[A-Za-z0-9_-]` (bookmarks as modules are `bookmarks-<id>`), at most 200; test
+  `tests/go/core/webclient/OpenModulesTest.php`), changes of a second in one request (`queueServerTabs()`),
+  sent at once on logout, skipped when the session already holds the same set (a reload). The localStorage
+  copy `{tabs, pending}` stays: while `pending` (the request failed, offline) it wins over the server at the
+  next boot of that browser, which sends it again (`pickLastTabs()`). A module that a workspace holds gets
+  no tab also when the server set names it. Playwright's `setOffline()` doesn't stop neo's shared
+  worker's requests; a failed save was tested by killing the container meanwhile.
+  Codex review fixes (2026-11-25): saves go one at a time (`serverTabsSending`), so an older set never
+  overwrites a newer one; nothing is sent once the session belongs to another account (the session changes
+  before `client.user`); after a failed save the session's copy isn't trusted (`serverTabsUnsure`); the
+  local copy is marked as sent through another window when the saving one closed; stored modules that neo
+  has no view of (classic only) are kept (`withClassicOnly()`); logout waits for a save at most 3 s; the
+  server's name check uses `$/D` (no trailing newline). Second pass: names may hold `-` (bookmarks), a
+  stored item that is no module name is dropped alone; while a request is on its way a change is always
+  sent (`serverTabsFlying`); only the success of the last queued save marks the local copy as sent
+  (`serverTabsLatest`); the restore reads the local copy before the session's. Left as is: classic and neo
+  open at the same time each keep the stored set they loaded (classic-only modules kept by neo come from
+  its session), so the last client to save wins, as between two classic windows.
 
 ## Website Manager (legacy `site`, card "neo-ui: site module in neo", 2026-11-24)
 
