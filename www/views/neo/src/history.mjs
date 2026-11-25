@@ -31,3 +31,23 @@ export async function replaceRoute(windowId, value, {ifHash} = {}) {
 export async function openTab(windowId, url) {
     return (await addon(windowId)).openTab({url, windowId})
 }
+
+/**
+ * Go to a URL without a history entry: Back doesn't return to the page that sent the user on
+ * @param {String} windowId
+ * @param {String} url
+ * @returns {Promise<void>}
+ */
+export async function replaceLocation(windowId, url) {
+    await (await addon(windowId)).replaceLocation({url, windowId})
+}
+
+/**
+ * Remove parameters from a window's query (the others, path and hash stay), without a history entry
+ * @param {String} windowId
+ * @param {String[]} names
+ * @returns {Promise<void>}
+ */
+export async function removeQuery(windowId, names) {
+    await (await addon(windowId)).removeQuery({names, windowId})
+}

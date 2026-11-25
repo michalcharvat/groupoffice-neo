@@ -57,9 +57,14 @@ class WebclientTest extends TestCase
 			'invalid cookie ignored' => [['webclient' => 'classic'], [], ['GO_WEBCLIENT' => 'x'], 'classic'],
 			'switch off ignores cookie' => [['webclientSwitch' => false], [], ['GO_WEBCLIENT' => 'classic'], 'neo'],
 			'switch off keeps query' => [['webclientSwitch' => false], ['webclient' => 'classic'], [], 'classic'],
-			'oauth authorize is classic' => [[], ['oauthAuthorize' => '1', 'webclient' => 'neo'], [], 'classic'],
-			'oauth consent is classic' => [[], ['oauthConsent' => '1'], ['GO_WEBCLIENT' => 'neo'], 'classic'],
-			'external url is classic' => [[], ['r' => '', 'f' => 'eyJ9'], [], 'classic'],
+			'oauth authorize in neo' => [[], ['oauthAuthorize' => '1'], [], 'neo'],
+			'oauth consent in neo' => [[], ['oauthConsent' => '1'], ['GO_WEBCLIENT' => 'neo'], 'neo'],
+			'oauth consent keeps the choice' => [[], ['oauthConsent' => '1'], ['GO_WEBCLIENT' => 'classic'], 'classic'],
+			'mailto composer in neo' => [[], ['r' => '', 'f' => self::external('email', 'showComposer', ['values' => ['to' => 'a@example.com']])], [], 'neo'],
+			'mailto composer keeps the choice' => [['webclient' => 'classic'], ['r' => '', 'f' => self::external('email', 'showComposer', [])], [], 'classic'],
+			'other external url is classic' => [[], ['r' => '', 'f' => self::external('links', 'openModelLink', ['model' => 'x'])], ['GO_WEBCLIENT' => 'neo'], 'classic'],
+			'invalid external url is classic' => [[], ['r' => '', 'f' => 'eyJ9'], [], 'classic'],
+			'array external url is classic' => [[], ['f' => ['x']], [], 'classic'],
 		];
 	}
 
@@ -105,8 +110,6 @@ class WebclientTest extends TestCase
 			'config extjs3 alias' => [['webclient' => 'extjs3'], [], []],
 			'query classic' => [[], ['webclient' => 'classic'], []],
 			'cookie classic' => [[], [], ['GO_WEBCLIENT' => 'classic']],
-			'oauth authorize' => [[], ['oauthAuthorize' => '1'], []],
-			'oauth consent' => [[], ['oauthConsent' => '1'], []],
 			'external url' => [[], ['r' => '', 'f' => 'eyJ9'], []],
 		];
 	}
@@ -149,5 +152,100 @@ class WebclientTest extends TestCase
 	{
 		$this->expectException(\InvalidArgumentException::class);
 		Webclient::setPreference('<script>');
+	}
+
+	/**
+	 * The `f` parameter of GO::createExternalUrl()
+	 */
+	private static function external(string $module, string $function, $params): string
+	{
+		return base64_encode(json_encode(['m' => $module, 'f' => $function, 'p' => $params]));
+	}
+
+	public function testExternalCommand(): void
+	{
+		$this->assertSame(
+			['m' => 'links', 'f' => 'openModelLink', 'p' => ['model' => 'x', 'id' => 1]],
+			Webclient::externalCommand(self::external('links', 'openModelLink', ['model' => 'x', 'id' => 1]))
+		);
+	}
+
+	/**
+	 * Both clients get only the mail fields of a composer link: the classic client passes `p` to GO.email.showComposer()
+	 */
+	public function testExternalComposerCommandKeepsOnlyMailFields(): void
+	{
+		$command = Webclient::externalCommand(self::external('email', 'showComposer', [
+			'values' => ['to' => 'a@example.com', 'body' => '<b>x</b>', 'extra' => 'y'],
+			'loadUrl' => 'email/message/openDraft',
+			'loadParams' => ['uid' => 1]
+		]));
+
+		$this->assertSame(['values' => [
+			'to' => 'a@example.com',
+			'cc' => '',
+			'bcc' => '',
+			'subject' => '',
+			'body' => '&lt;b&gt;x&lt;/b&gt;'
+		]], $command['p']);
+	}
+
+	public static function invalidExternalCommandProvider(): array
+	{
+		return [
+			'not a string' => [['x']],
+			'empty' => [''],
+			'not json' => [base64_encode('nope')],
+			'no function' => [base64_encode(json_encode(['m' => 'email']))],
+			// the classic client calls GO.<m>.<f>() with them
+			'script in module' => [self::external('email;alert(1)//', 'showComposer', [])],
+			'script in function' => [self::external('email', 'x(1);y', [])],
+			'array module' => [base64_encode(json_encode(['m' => ['email'], 'f' => 'showComposer']))],
+		];
+	}
+
+	/**
+	 * @dataProvider invalidExternalCommandProvider
+	 */
+	public function testInvalidExternalCommand($f): void
+	{
+		$this->assertNull(Webclient::externalCommand($f));
+	}
+
+	public function testNeoEntryOauth(): void
+	{
+		$this->assertSame(['oauth' => 'authorize'], Webclient::neoEntry(['oauthAuthorize' => '1']));
+		$this->assertSame(['oauth' => 'consent'], Webclient::neoEntry(['oauthConsent' => '1']));
+		$this->assertSame([], Webclient::neoEntry([]));
+		$this->assertSame([], Webclient::neoEntry(['f' => self::external('links', 'openModelLink', [])]));
+	}
+
+	public function testNeoEntryMailtoComposer(): void
+	{
+		// what email/message/mailto (MessageController::actionMailto()) redirects to
+		$entry = Webclient::neoEntry(['r' => '', 'f' => self::external('email', 'showComposer', ['values' => [
+			'to' => 'a@example.com',
+			'cc' => ['not', 'a', 'string'],
+			'subject' => 'Hello <b>you</b>',
+			'body' => nl2br("Line 1\n<img src=x onerror=alert(1)>\nA <br /> in the text & more")
+		]])]);
+
+		$this->assertSame([
+			'to' => 'a@example.com',
+			'cc' => '',
+			'bcc' => '',
+			// text: the composer puts it in a text field
+			'subject' => 'Hello <b>you</b>',
+			// HTML: no markup of the link survives, only its line breaks
+			'body' => "Line 1<br />\n&lt;img src=x onerror=alert(1)&gt;<br />\nA &lt;br /&gt; in the text &amp; more"
+		], $entry['compose']);
+	}
+
+	public function testNeoEntryComposerWithoutValues(): void
+	{
+		$this->assertSame(
+			['to' => '', 'cc' => '', 'bcc' => '', 'subject' => '', 'body' => ''],
+			Webclient::neoEntry(['f' => self::external('email', 'showComposer', 'x')])['compose']
+		);
 	}
 }
