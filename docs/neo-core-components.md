@@ -184,12 +184,26 @@ was below 0.1 % of its pixels after the fixes.
   neo's `desktop/WindowDragZone.mjs`): a dialog with a visible popout tool (`canPopOut()`) may be dragged
   past the page edge (`allowOverdrag`). Once under half of it is inside and the drag keeps moving out,
   `popOut(rect)` opens its window at that point and the main `DragDrop.startWindowDrag()` moves the
-  window with the pointer until release. One way: no return by dragging back, not even from the popup.
+  window with the pointer until release. Dragged back in the same drag until over 60% of it covers the
+  page, `returnDuringDrag()` closes the window (`Dialog.cancelPopOut()`: not adopted yet) and turns the
+  window drag back into the proxy drag (`setConfigs({isWindowDragging: false})`).
   The popup adopts the dialog only after release (`pendingAdopt`, `endPopOutDrag()`): adopting during
   the drag moves the drag zone to the popup's `windowId` (`afterSetWindowId`), and the proxy's
   `removeNode` then goes to the wrong window, leaving a transparent proxy in the opener. `window.open()`
   needs the user activation of the pointerdown: a drag held for longer (Chrome: ~5 s) gets the popup
   blocked, and the dialog stops at the edge again (`keepInPage()`).
+- Return to the page (`Dialog.returnToPage()`, the "popin" header tool that `headerTools('popout')` adds
+  hidden and a popped out dialog shows): reverse of `adoptWindow()`, which saves what it changes in
+  `pageState`. The dialog lands where its window is, in its window's size, kept inside the page. Every
+  `popOut()` makes a new `popup` object with its own id (`<dialog id>-<n>`: window name, `?neoPopup=`,
+  pending entry) and its callbacks check `me.popup === popup`: the closing window
+  (`PopupView.destroy()` → `onClose`) must not close a dialog that went back, and a cancelled attempt
+  still opening must not close or take over the next. The landing rect inverts `openPopup()`: neo's
+  `windowOpen()` (`useTotalHeight`) makes the dialog size the window's outer size. When the page window
+  goes away, the dialog stays in its window and the tool hides. Dragging back counts the coverage of
+  the area that fits into the page (a dialog wider than the page can return). `style` and `wrapperStyle`
+  merge shallowly: a key goes away only when set to `null`. Dragging the popup window itself back cannot
+  return it (the browser owns its title bar).
 - `src/form/field/HtmlField.mjs` `focus()` forwards neo 14's `restoreFrom` to the editor addons
   (`HtmlEditor`, `MarkdownEditor`), which focus only if the focus got lost meanwhile.
 - `resources/scss/go/dialog/Base.scss`: keeps a `.neo-floating` dialog `position: fixed` against neo's

@@ -2353,4 +2353,5 @@ Sollten Sie kein neues Kennwort angefordert haben, können Sie diese Nachricht e
   'Every key may only be used once' => 'Jeder Schlüssel darf nur einmal verwendet werden',
   'Switch to the classic UI' => 'Zur klassischen Oberfläche wechseln',
   'Switch to the new UI' => 'Zur neuen Oberfläche wechseln',
+  'Return to page' => 'Zurück in die Seite',
 );

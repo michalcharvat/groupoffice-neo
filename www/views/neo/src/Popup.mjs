@@ -25,7 +25,7 @@ const ADOPT_TIMEOUT = 30000;
 
 /**
  * @param {Object}   options
- * @param {String}   options.id             unique id (the component id)
+ * @param {String}   options.id             unique id per popup window (GO.view.Dialog: its id and an attempt number)
  * @param {String}   options.windowId       opener window
  * @param {Object}   options.rect           screen area in the opener: {x, y, width, height} (page CSS px)
  * @param {Function} options.onAdopt        (popupView) => void, move the component into popupView's window
@@ -92,6 +92,16 @@ export function adopt(id, popupView) {
     entry?.onAdopt(popupView);
 
     return entry || null
+}
+
+/**
+ * Forgets a popup that has not adopted its component yet: a window that boots later shows
+ * "no longer in use" (GO.view.PopupView), and the adopt timeout does not fire
+ * @param {String} id
+ */
+export function cancelPopup(id) {
+    clearTimeout(pending.get(id)?.timer);
+    pending.delete(id)
 }
 
 /**

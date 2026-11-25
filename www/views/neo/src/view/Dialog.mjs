@@ -3,11 +3,12 @@ import DomEventManager         from '../../node_modules/neo.mjs/src/manager/DomE
 import Button                  from '../button/Button.mjs';
 import DialogDragZone          from './DialogDragZone.mjs';
 import DialogResizable         from '../plugin/DialogResizable.mjs';
-import {closePopup, openPopup, popupsSupported} from '../Popup.mjs';
+import {cancelPopup, closePopup, openPopup, popupsSupported} from '../Popup.mjs';
 import {focusWithoutTooltip}   from '../tooltip.mjs';
 import {t}                     from '../Translate.mjs';
 
 const TOOLS = {
+    popin   : {icon: 'open_in_browser', text: 'Return to page'},
     popout  : {icon: 'open_in_new', text: 'Open in new window'},
     maximize: {icon: 'fullscreen',  text: 'Maximize'},
     close   : {icon: 'close',       text: 'Close'}
@@ -16,15 +17,24 @@ const TOOLS = {
 /**
  * Header config with GOUI window tools (flat buttons, Material icons) instead of
  * neo's Font Awesome actions: headerConfig: headerTools('close')
+ * 'popout' comes with a hidden 'popin' tool ("Return to page"), which a popped out dialog shows.
  * @param {...String} names 'popout', 'maximize', 'close'
  * @returns {Object}
  */
 export function headerTools(...names) {
+    const tool = (action, hidden = false) => {
+        const label = t(TOOLS[action].text);
+        return {action, hidden, icon: TOOLS[action].icon, tooltip: label, vdom: {'aria-label': label}}
+    };
+
     return {
         actionDefaults: {module: Button},
-        actions       : names.filter(action => action !== 'popout' || popupsSupported()).map(action => {
-            const label = t(TOOLS[action].text);
-            return {action, icon: TOOLS[action].icon, tooltip: label, vdom: {'aria-label': label}}
+        actions       : names.flatMap(action => {
+            if (action !== 'popout') {
+                return [tool(action)]
+            }
+
+            return popupsSupported() ? [tool('popin', true), tool(action)] : []
         })
     }
 }
@@ -43,6 +53,19 @@ function removeOpenDialog(dialog) {
 
     index > -1 && openDialogs.splice(index, 1)
 }
+
+/**
+ * popOut() attempts: each gets its own popup id and window name, so a cancelled attempt whose
+ * window is still opening cannot close or take over the next one
+ * @type {Number}
+ */
+let popOutCount = 0;
+
+/**
+ * @param {String} windowId
+ * @returns {Boolean} whether the window is still connected to the shared worker
+ */
+const windowConnected = windowId => Neo.currentWorker.ports.some(port => port.windowId === windowId);
 
 /**
  * Per window: the GO dialog the last mousedown was in (null: outside any GO dialog)
@@ -110,7 +133,8 @@ function dialogOnPath(path) {
  *
  * The "popout" header action moves the dialog, with its form state, into its
  * own browser window (src/Popup.mjs). Dragging such a dialog past the edge of the page does
- * the same (GO.view.DialogDragZone).
+ * the same (GO.view.DialogDragZone). The "popin" tool of a popped out dialog (returnToPage()) and
+ * dragging it back over the page during that drag move it back.
  */
 class Dialog extends BaseDialog {
     static config = {
@@ -142,10 +166,23 @@ class Dialog extends BaseDialog {
     cancelEscapeTimeStamp = null
 
     /**
-     * Popup window of a popped out dialog: {name, openerWindowId}
+     * Popup window of a popped out dialog: {id, name, openerWindowId}. A new object for every
+     * popOut(): callbacks of a window the dialog left (returnToPage()) find another one or none.
      * @member {Object|null} popup=null
      */
     popup = null
+
+    /**
+     * What adoptWindow() changed, to restore in returnToPage()
+     * @member {Object|null} pageState=null
+     */
+    pageState = null
+
+    /**
+     * Whether returnToPage() is moving the dialog back into the page
+     * @member {Boolean} returning=false
+     */
+    returning = false
 
     close(...args) {
         const me                           = this,
@@ -203,9 +240,14 @@ class Dialog extends BaseDialog {
         // Removed by event id: neo's un() with a function also matches by fn.name, and an
         // anonymous handler would remove app.mjs's (no popup window would get cleaned up).
         me.disconnectListenerId = Neo.currentWorker.on('disconnect', ({windowId}) => {
-            if (windowId === me.windowId) {
+            // a window the dialog is leaving (returnToPage()) does not take it along
+            if (windowId === me.windowId && !me.returning) {
                 me.popup = null; // gone already
                 me.close()
+            } else if (windowId === me.pageState?.windowId && !me.returning) {
+                // the page is gone: the dialog stays in its window, without "Return to page"
+                me.pageState = null;
+                me.headerToolbar?.items.forEach(item => item.action === 'popin' && (item.hidden = true))
             }
         })
     }
@@ -433,7 +475,15 @@ class Dialog extends BaseDialog {
     }
 
     executeHeaderAction(data) {
-        data.action === 'popout' ? this.popOut() : super.executeHeaderAction(data)
+        const {action} = data;
+
+        if (action === 'popout') {
+            this.popOut()
+        } else if (action === 'popin') {
+            this.returnToPage()
+        } else {
+            super.executeHeaderAction(data)
+        }
     }
 
     /**
@@ -461,26 +511,37 @@ class Dialog extends BaseDialog {
             return null
         }
 
-        me.popup = {name: null, openerWindowId: windowId};
+        const popup = me.popup = {id: `${id}-${++popOutCount}`, name: null, openerWindowId: windowId};
 
         let name = null;
 
         try {
             name = await openPopup({
-                id,
+                id      : popup.id,
                 windowId,
                 rect    : rect || await me.getDomRect(),
                 // a drag out of the page adopts once released (endPopOutDrag()): moving the dialog
                 // to the popup's windowId would move its drag zone too, and the proxy left in the
                 // opener would never be removed
-                onAdopt : popupView => me.dragZone?.poppedOut ? me.pendingAdopt = popupView : me.adoptWindow(popupView),
-                // the window is gone already: cancel the dialog
+                // (not after cancelPopOut(): the window is closing)
+                onAdopt : popupView => {
+                    if (me.popup === popup) {
+                        me.dragZone?.poppedOut ? me.pendingAdopt = popupView : me.adoptWindow(popupView)
+                    }
+                },
+                // the window is gone already: cancel the dialog (not one that went back to the page)
                 onClose : () => {
-                    me.popup = null;
-                    me.close()
+                    if (me.popup === popup) {
+                        me.popup = null;
+                        me.close()
+                    }
                 },
                 // the dialog stays where it is (and shows again after a drag out of the page)
                 onFailed: () => {
+                    if (me.popup !== popup) {
+                        return
+                    }
+
                     me.popup = null;
                     me.isDestroyed || (me.style = {...me.style, opacity: null})
                 }
@@ -489,20 +550,44 @@ class Dialog extends BaseDialog {
             console.error(e)
         }
 
-        // closed while the window was opening: close() could not close a window without a name yet
-        if (name && (me.isClosing || me.isDestroyed)) {
+        // closed or cancelled (cancelPopOut()) while the window was opening: close() could not close
+        // a window without a name yet
+        if (name && (me.isClosing || me.isDestroyed || me.popup !== popup)) {
             closePopup(name, windowId);
             return null
         }
 
         if (name) {
-            me.popup.name = name
-        } else {
+            popup.name = name
+        } else if (me.popup === popup) {
             me.popup = null;
             console.warn('GO.view.Dialog: popup window was blocked')
         }
 
         return name
+    }
+
+    /**
+     * Stops a pop out whose window has not adopted the dialog yet (a drag that came back over the
+     * page, DialogDragZone): the window closes, the dialog stays in the page
+     * @returns {Boolean} false when there is nothing to stop (no window, or adopted already)
+     */
+    cancelPopOut() {
+        const me      = this,
+              {popup} = me;
+
+        if (!popup || me.pageState) {
+            return false
+        }
+
+        me.popup        = null;
+        me.pendingAdopt = null;
+        cancelPopup(popup.id);
+
+        // without a name the window is still opening: popOut() closes it
+        popup.name && closePopup(popup.name, popup.openerWindowId);
+
+        return true
     }
 
     /**
@@ -516,6 +601,24 @@ class Dialog extends BaseDialog {
             return
         }
 
+        // a dragged dialog keeps its position in style (dialog/Base.mjs onDragEnd)
+        // (a drag out of the page left it transparent in the opener: DialogDragZone)
+        const {height, left, opacity, top, transform, width, ...style} = me.style || {},
+              resizer   = me.getPlugin('resizable'),
+              popupTools = me.headerToolbar.items.filter(item => item.action && !['close', 'popin'].includes(item.action) && !item.hidden);
+
+        me.pageState = {
+            appName              : me.appName,
+            // a plugin whose import is still pending has none yet: neo's dialog default
+            delegationCls        : resizer?.delegationCls || me.resizablePluginConfig?.delegationCls || 'neo-dialog',
+            draggable            : me.draggable,
+            hiddenTools          : popupTools,
+            modal                : me.modal,
+            resizablePluginConfig: me.resizablePluginConfig,
+            windowId             : openerWindowId,
+            wrapperStyle         : {...me.wrapperStyle}
+        };
+
         me.modal = false;
         me.unmount();
 
@@ -528,8 +631,6 @@ class Dialog extends BaseDialog {
         // the popup window sizes the dialog: no resizing. neo cannot drop the resizable plugin
         // (its DOM listeners stay): no element carries its delegation class any more. The
         // config covers a plugin whose import (afterSetResizable) is still pending
-        const resizer = me.getPlugin('resizable');
-
         me.resizablePluginConfig = {...me.resizablePluginConfig, delegationCls: 'go-no-resize'};
 
         if (resizer) {
@@ -537,10 +638,6 @@ class Dialog extends BaseDialog {
             resizer.removeAllNodes();
             resizer.delegationCls = 'go-no-resize'
         }
-
-        // a dragged dialog keeps its position in style (dialog/Base.mjs onDragEnd)
-        // (a drag out of the page left it transparent in the opener: DialogDragZone)
-        const {height, left, opacity, top, transform, width, ...style} = me.style || {};
 
         me.set({
             appName,
@@ -555,15 +652,143 @@ class Dialog extends BaseDialog {
             wrapperStyle: {height: '100%', left: '0px', maxHeight: 'none', maxWidth: 'none', top: '0px', width: '100%'}
         });
 
-        // the window manages size and position now
-        me.headerToolbar.items.forEach(item => {
-            if (item.action && item.action !== 'close') {
-                item.hidden = true
-            }
-        });
+        // the window manages size and position now; "Return to page" instead
+        popupTools.forEach(item => item.hidden = true);
+        me.headerToolbar.items.forEach(item => item.action === 'popin' && (item.hidden = false));
 
         me.addCls('go-dialog-popup');
         me.mount()
+    }
+
+    /**
+     * Moves a popped out dialog back into the page it came from, where its window is (kept inside
+     * the page), and closes the window. Reverse of adoptWindow().
+     * @returns {Promise<void>}
+     */
+    async returnToPage() {
+        const me                  = this,
+              {pageState, popup}  = me,
+              {windowId}          = me;
+
+        if (!pageState || !popup || me.returning || me.isClosing || me.isDestroyed || !windowConnected(pageState.windowId)) {
+            return
+        }
+
+        me.returning = true;
+
+        let rect = null;
+
+        try {
+            rect = await me.getReturnRect(windowId, pageState.windowId)
+        } catch (e) {
+            // the page (or the popup) is going away: the dialog stays where it is
+        }
+
+        if (!rect || me.isClosing || me.isDestroyed || !windowConnected(pageState.windowId)) {
+            me.returning = false;
+            return
+        }
+
+        me.unmount();
+
+        // let pending deltas for the popup finish (adoptWindow())
+        await me.timeout(70);
+
+        if (me.isDestroyed) {
+            return
+        }
+
+        // the page went away meanwhile: back into the popup, edits intact
+        if (!windowConnected(pageState.windowId)) {
+            me.returning = false;
+            me.pageState = null;
+            me.headerToolbar.items.forEach(item => item.action === 'popin' && (item.hidden = true));
+            windowConnected(windowId) ? me.mount() : me.close();
+            return
+        }
+
+        const resizer = me.getPlugin('resizable'),
+              // wrapperStyle merges: every key the popup set goes back to its page value or away
+              wrapperStyle = {...pageState.wrapperStyle};
+
+        Object.keys(me.wrapperStyle || {}).forEach(key => key in wrapperStyle || (wrapperStyle[key] = null));
+
+        me.resizablePluginConfig = pageState.resizablePluginConfig;
+        resizer && (resizer.delegationCls = pageState.delegationCls);
+
+        // before modal: a cls change rebuilds the classes and drops the neo-modal that afterSetModal() adds
+        me.removeCls('go-dialog-popup');
+
+        me.set({
+            appName  : pageState.appName,
+            draggable: pageState.draggable,
+            modal    : pageState.modal,
+            // style merges too: null removes a key
+            style    : {
+                height   : `${rect.height}px`,
+                left     : `${rect.left}px`,
+                opacity  : null,
+                top      : `${rect.top}px`,
+                transform: 'none',
+                width    : `${rect.width}px`
+            },
+            windowId : pageState.windowId,
+            wrapperStyle
+        });
+
+        me.headerToolbar.items.forEach(item => {
+            if (item.action === 'popin') {
+                item.hidden = true
+            } else if (item.action === 'maximize') {
+                // adoptWindow() restored a maximized dialog
+                item.set({icon: 'fullscreen', tooltip: t('Maximize')})
+            }
+        });
+        pageState.hiddenTools.forEach(item => item.isDestroyed || (item.hidden = false));
+
+        me.pageState = null;
+        me.popup     = null;
+
+        me.mount();
+
+        // the page was in the background: the popup asks its opener to take the focus (no windowName)
+        Neo.Main.windowFocus({windowId}).catch(() => {}).then(() => {
+            // the window goes, the dialog stays: popOut()'s onClose skips a popup that is not me.popup
+            closePopup(popup.name, popup.openerWindowId);
+            // the first field, as on opening (not a header tool: its tooltip would show)
+            me.isDestroyed || me.focusOnArrival()
+        });
+
+        me.returning = false
+    }
+
+    /**
+     * Where a popped out dialog lands in the page: at its window's place on the screen and in its
+     * window's size, kept inside the page. Inverse of src/Popup.mjs openPopup(): the dialog's
+     * size became the window's outer size (neo windowOpen() useTotalHeight), and the window's
+     * top edge sat at the dialog's top in the page.
+     * @param {String} popupWindowId
+     * @param {String} pageWindowId
+     * @returns {Promise<Object>} {left, top, width, height} in page CSS px
+     */
+    async getReturnRect(popupWindowId, pageWindowId) {
+        const [popupWin, pageWin] = await Promise.all([
+                  Neo.Main.getWindowData({windowId: popupWindowId}),
+                  Neo.Main.getWindowData({windowId: pageWindowId})
+              ]),
+              // browser chrome above the page (as in src/Popup.mjs openPopup())
+              pageChrome = pageWin.outerHeight - pageWin.innerHeight,
+              width      = Math.min(popupWin.outerWidth, pageWin.innerWidth),
+              height     = Math.min(popupWin.outerHeight, pageWin.innerHeight),
+              left       = popupWin.screenLeft - pageWin.screenLeft,
+              top        = popupWin.screenTop - pageWin.screenTop - pageChrome;
+
+        return {
+            height,
+            left: Math.max(0, Math.min(left, pageWin.innerWidth - width)),
+            top : Math.max(0, Math.min(top, pageWin.innerHeight - height)),
+            width
+        }
     }
 }
 

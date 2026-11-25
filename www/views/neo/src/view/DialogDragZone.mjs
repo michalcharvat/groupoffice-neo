@@ -4,8 +4,10 @@ import DragZone from '../../node_modules/neo.mjs/src/draggable/DragZone.mjs';
  * Header drag of a GO dialog that can leave the browser window: when less than half of the dialog
  * is still inside the page and the drag keeps moving it out, the dialog moves into its own browser
  * window (GO.view.Dialog.popOut()) at the point where it left, and that window follows the pointer
- * until the button is released (neo's main DragDrop addon, startWindowDrag()). One way only: the
- * window does not return into the page when dragged back.
+ * until the button is released (neo's main DragDrop addon, startWindowDrag()). Dragged back during
+ * the same drag until more than 60% of it covers the page, the window closes and the dialog follows the
+ * pointer in the page again (returnDuringDrag()). After release, the popup's "Return to page" tool brings
+ * it back (GO.view.Dialog.returnToPage()).
  *
  * Only for a dialog with the "Open in new window" tool (one shared App worker, src/Popup.mjs);
  * any other dialog stops at the edge of the page as before.
@@ -26,12 +28,16 @@ class DialogDragZone extends DragZone {
      * @param {Number} x dialog left (client coordinates)
      * @param {Number} y dialog top (client coordinates)
      * @param {Object} size {width, height} of the dialog
+     * @param {Boolean} [returning=false] of the area that fits into the page: a dialog larger than the
+     *                                    page can return too
      * @returns {Number} 0..1
      */
-    static coverage(boundary, x, y, {width, height}) {
+    static coverage(boundary, x, y, {width, height}, returning = false) {
         const overlapWidth  = Math.max(0, Math.min(x + width, boundary.right) - Math.max(x, boundary.left)),
               overlapHeight = Math.max(0, Math.min(y + height, boundary.bottom) - Math.max(y, boundary.top)),
-              area          = width * height;
+              area          = returning
+                  ? Math.min(width, boundary.right - boundary.left) * Math.min(height, boundary.bottom - boundary.top)
+                  : width * height;
 
         return area > 0 ? overlapWidth * overlapHeight / area : 0
     }
@@ -97,20 +103,29 @@ class DialogDragZone extends DragZone {
 
         super.dragMove(data);
 
-        if (!gesture?.canPopOut || !boundary || me.poppedOut) {
+        if (!gesture?.canPopOut || !boundary) {
             return
         }
 
-        const x      = data.clientX - gesture.offsetX,
-              y      = data.clientY - gesture.offsetY,
-              before = DialogDragZone.coverage(boundary, gesture.x, gesture.y, gesture.rect),
-              after  = DialogDragZone.coverage(boundary, x, y, gesture.rect);
+        // the pointer in the page's client coordinates, also while it moves the window
+        const x         = data.clientX - gesture.offsetX,
+              y         = data.clientY - gesture.offsetY,
+              returning = me.poppedOut,
+              before    = DialogDragZone.coverage(boundary, gesture.x, gesture.y, gesture.rect, returning),
+              after     = DialogDragZone.coverage(boundary, x, y, gesture.rect, returning);
+
+        if (x === gesture.x && y === gesture.y) {
+            return
+        }
 
         gesture.x = x;
         gesture.y = y;
 
-        // moving out (not a jitter back in) with less than half of the dialog left in the page
-        if (after < 0.5 && after < before) {
+        if (returning) {
+            // moving in with more than 60% of the window over the page (a gap against flapping at 50%)
+            after > 0.6 && after > before && me.returnDuringDrag(gesture)
+        } else if (after < 0.5 && after < before) {
+            // moving out (not a jitter back in) with less than half of the dialog left in the page
             me.popOutDuringDrag(gesture)
         }
     }
@@ -162,6 +177,33 @@ class DialogDragZone extends DragZone {
         } catch (e) {
             // the window stays where it opened
         }
+    }
+
+    /**
+     * The window has not adopted the dialog yet (that waits for the release): close it and let the
+     * proxy follow the pointer in the page again
+     * @param {Object} gesture
+     */
+    returnDuringDrag(gesture) {
+        const me      = this,
+              {owner} = me;
+
+        if (!owner.cancelPopOut()) {
+            return
+        }
+
+        // popOutDuringDrag() ignores a window that opens after this
+        gesture.opening   = null;
+        gesture.popupName = null;
+
+        Neo.main.addon.DragDrop.setConfigs({gestureId: gesture.id, isWindowDragging: false, windowId: me.windowId});
+
+        if (me.dragProxy) {
+            me.dragProxy.style = {...me.dragProxy.style, left: `${gesture.x}px`, opacity: 1, top: `${gesture.y}px`}
+        }
+
+        // as during any header drag (dialog/Base.mjs onDragStart())
+        owner.style = {...owner.style, opacity: 0.7}
     }
 
     /**
