@@ -180,6 +180,16 @@ was below 0.1 % of its pixels after the fixes.
   in either order). `DialogResizable` no longer copies the size into `style`: 14 resizes `style`
   itself (`styleConfig: 'style'`). Popout `wrapperStyle` uses `'0px'`: 14's `initVnode()` turns a
   falsy `left`/`top` into `'initial'`.
+- Drag out of the page (`src/view/DialogDragZone.mjs`, `dragZoneConfig` of `GO.view.Dialog`, modelled on
+  neo's `desktop/WindowDragZone.mjs`): a dialog with a visible popout tool (`canPopOut()`) may be dragged
+  past the page edge (`allowOverdrag`). Once under half of it is inside and the drag keeps moving out,
+  `popOut(rect)` opens its window at that point and the main `DragDrop.startWindowDrag()` moves the
+  window with the pointer until release. One way: no return by dragging back, not even from the popup.
+  The popup adopts the dialog only after release (`pendingAdopt`, `endPopOutDrag()`): adopting during
+  the drag moves the drag zone to the popup's `windowId` (`afterSetWindowId`), and the proxy's
+  `removeNode` then goes to the wrong window, leaving a transparent proxy in the opener. `window.open()`
+  needs the user activation of the pointerdown: a drag held for longer (Chrome: ~5 s) gets the popup
+  blocked, and the dialog stops at the edge again (`keepInPage()`).
 - `src/form/field/HtmlField.mjs` `focus()` forwards neo 14's `restoreFrom` to the editor addons
   (`HtmlEditor`, `MarkdownEditor`), which focus only if the focus got lost meanwhile.
 - `resources/scss/go/dialog/Base.scss`: keeps a `.neo-floating` dialog `position: fixed` against neo's

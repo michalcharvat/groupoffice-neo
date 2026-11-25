@@ -1,6 +1,7 @@
 import BaseDialog              from '../../node_modules/neo.mjs/src/dialog/Base.mjs';
 import DomEventManager         from '../../node_modules/neo.mjs/src/manager/DomEvent.mjs';
 import Button                  from '../button/Button.mjs';
+import DialogDragZone          from './DialogDragZone.mjs';
 import DialogResizable         from '../plugin/DialogResizable.mjs';
 import {closePopup, openPopup, popupsSupported} from '../Popup.mjs';
 import {focusWithoutTooltip}   from '../tooltip.mjs';
@@ -108,7 +109,8 @@ function dialogOnPath(path) {
  * animateTarget, .neo-floating parks a dialog at -10000px.
  *
  * The "popout" header action moves the dialog, with its form state, into its
- * own browser window (src/Popup.mjs).
+ * own browser window (src/Popup.mjs). Dragging such a dialog past the edge of the page does
+ * the same (GO.view.DialogDragZone).
  */
 class Dialog extends BaseDialog {
     static config = {
@@ -119,10 +121,19 @@ class Dialog extends BaseDialog {
         // onKeyDownEscape())
         keys        : {Escape: 'onEscape'},
         // resizing keeps working after the dialog was moved by its header
-        resizablePluginConfig: {module: DialogResizable}
+        resizablePluginConfig: {module: DialogResizable},
+        // dragged past the edge of the page, a dialog with the popout tool moves into a window
+        dragZoneConfig: {module: DialogDragZone, alwaysFireDragMove: true}
     }
 
     isClosing = false
+
+    /**
+     * The popup window that is waiting for a drag out of the page to end before it adopts the
+     * dialog (popOut(), endPopOutDrag())
+     * @member {GO.view.PopupView|null} pendingAdopt=null
+     */
+    pendingAdopt = null
 
     /**
      * timeStamp of the Escape keydown that cancelled a header move or a resize, see onEscape()
@@ -263,8 +274,68 @@ class Dialog extends BaseDialog {
      * @param {Object} [data]
      */
     onDragCancel(data) {
+        // Escape after the dialog left the page: the window it moved into stays
+        if (this.dragZone?.poppedOut) {
+            this.rememberCancelEscape(data);
+            this.endPopOutDrag(data, true);
+            return
+        }
+
         this.isDragging && this.rememberCancelEscape(data);
         super.onDragCancel(data)
+    }
+
+    /**
+     * A dialog whose window is opening (popout tool) cannot be dragged: the window adopts it any moment
+     * @param {Object} data
+     */
+    onDragStart(data) {
+        this.popup || super.onDragStart(data)
+    }
+
+    /**
+     * Every GO dialog gets drag:move (alwaysFireDragMove, for DialogDragZone); a header drag that
+     * did not start (maximized, window opening) has no zone or an idle one
+     * @param {Object} data
+     */
+    onDragMove(data) {
+        this.isDragging && this.dragZone && super.onDragMove(data)
+    }
+
+    /**
+     * A drag that moved the dialog into a window ends where the window is: the dialog keeps its
+     * place (and stays hidden) in the page until the window adopts it
+     * @param {Object} data
+     */
+    onDragEnd(data) {
+        this.dragZone?.poppedOut ? this.endPopOutDrag(data) : super.onDragEnd(data)
+    }
+
+    /**
+     * @param {Object} data
+     * @param {Boolean} [cancelled]
+     */
+    endPopOutDrag(data, cancelled = false) {
+        const me = this;
+
+        me.dragStartAbortController?.abort();
+        me.dragStartAbortController = null;
+        me.dragStartOpacity         = undefined;
+        me.isDragging               = false;
+
+        // the zone ends a cancel it handles itself (dialog/Base.mjs onDragCancel())
+        if (!cancelled || !data?.dragZoneId || Neo.get(data.dragZoneId) !== me.dragZone) {
+            me.dragZone.dragEnd(data)
+        }
+
+        me.dragZone.boundaryContainerId = null;
+
+        if (me.pendingAdopt) {
+            const popupView = me.pendingAdopt;
+
+            me.pendingAdopt = null;
+            me.adoptWindow(popupView)
+        }
     }
 
     /**
@@ -366,33 +437,63 @@ class Dialog extends BaseDialog {
     }
 
     /**
-     * Moves the dialog into a browser window at its screen position
+     * Whether the dialog can move into its own browser window now: it shows the popout tool
+     * (one shared App worker, src/Popup.mjs) and is not in a window of its own already
+     * @returns {Boolean}
      */
-    async popOut() {
+    canPopOut() {
+        const me = this;
+
+        return !me.popup && !me.isClosing && !me.maximized && popupsSupported() &&
+            Boolean(me.headerToolbar?.items.some(item => item.action === 'popout' && !item.hidden))
+    }
+
+    /**
+     * Moves the dialog into a browser window at its screen position
+     * @param {Object} [rect] {x, y, width, height} in page CSS px, default: where the dialog is
+     * @returns {Promise<String|null>} the window's name, null when nothing was opened
+     */
+    async popOut(rect) {
         const me             = this,
               {id, windowId} = me;
 
         if (me.popup || me.isClosing) {
-            return
+            return null
         }
 
         me.popup = {name: null, openerWindowId: windowId};
 
-        const name = await openPopup({
-            id,
-            windowId,
-            rect    : await me.getDomRect(),
-            onAdopt : popupView => me.adoptWindow(popupView),
-            // the window is gone already: cancel the dialog
-            onClose : () => {
-                me.popup = null;
-                me.close()
-            },
-            // the dialog stays where it is
-            onFailed: () => {
-                me.popup = null
-            }
-        });
+        let name = null;
+
+        try {
+            name = await openPopup({
+                id,
+                windowId,
+                rect    : rect || await me.getDomRect(),
+                // a drag out of the page adopts once released (endPopOutDrag()): moving the dialog
+                // to the popup's windowId would move its drag zone too, and the proxy left in the
+                // opener would never be removed
+                onAdopt : popupView => me.dragZone?.poppedOut ? me.pendingAdopt = popupView : me.adoptWindow(popupView),
+                // the window is gone already: cancel the dialog
+                onClose : () => {
+                    me.popup = null;
+                    me.close()
+                },
+                // the dialog stays where it is (and shows again after a drag out of the page)
+                onFailed: () => {
+                    me.popup = null;
+                    me.isDestroyed || (me.style = {...me.style, opacity: null})
+                }
+            });
+        } catch (e) {
+            console.error(e)
+        }
+
+        // closed while the window was opening: close() could not close a window without a name yet
+        if (name && (me.isClosing || me.isDestroyed)) {
+            closePopup(name, windowId);
+            return null
+        }
 
         if (name) {
             me.popup.name = name
@@ -400,6 +501,8 @@ class Dialog extends BaseDialog {
             me.popup = null;
             console.warn('GO.view.Dialog: popup window was blocked')
         }
+
+        return name
     }
 
     /**
@@ -436,13 +539,15 @@ class Dialog extends BaseDialog {
         }
 
         // a dragged dialog keeps its position in style (dialog/Base.mjs onDragEnd)
-        const {height, left, top, transform, width, ...style} = me.style || {};
+        // (a drag out of the page left it transparent in the opener: DialogDragZone)
+        const {height, left, opacity, top, transform, width, ...style} = me.style || {};
 
         me.set({
             appName,
             draggable   : false,
             maximized   : false,
-            style,
+            // null removes the opacity a drag out of the page set
+            style       : {...style, opacity: null},
             windowId,
             // wrapperStyle merges: drop a dialog's max size too (FormWindow maxHeight: 90vh), it
             // would leave a strip of the popup window empty
