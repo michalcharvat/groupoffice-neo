@@ -492,4 +492,6 @@ If you did not request a new password please delete this mail.',
   'Close others' => 'Close others',
   'Close all' => 'Close all',
   'Select a module from the menu.' => 'Select a module from the menu.',
+  'Move to window {number}: {title}' => 'Move to window {number}: {title}',
+  '{module} moved to window {number}.' => '{module} moved to window {number}.',
 );

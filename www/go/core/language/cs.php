@@ -2329,4 +2329,6 @@ Pokud jste o nové heslo nežádali, tento e-mail prosím smažte.',
   'Bring it back' => 'Vrátit zpět',
   'Close others' => 'Zavřít ostatní',
   'Close all' => 'Zavřít vše',
+  'Move to window {number}: {title}' => 'Přesunout do okna {number}: {title}',
+  '{module} moved to window {number}.' => 'Modul {module} byl přesunut do okna {number}.',
 );

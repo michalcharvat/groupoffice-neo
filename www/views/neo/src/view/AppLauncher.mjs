@@ -76,6 +76,10 @@ function stateId() {
  *   search field. Escape, a click outside the tiles and opening an app close it; focus goes back
  *   to the element given to `open(returnFocusId)`.
  * - `setBadge(name, text)` updates the count on a tile (src/Badges.mjs).
+ * - `setRow(items)` shows a row of buttons above the tiles (a main view extension's entries, e.g. the
+ *   workspaces of sf/workspaces): [{text, iconCls, pressed, title}], `text` is HTML. A click, Enter
+ *   or Space closes the launcher and fires `rowItem` {index, item}. Tab goes search field → row →
+ *   tiles, ArrowLeft / ArrowRight move within the row.
  *
  * 6.8 shows the modules of its sub-menus (inSubmenu) in the grid as well, with the others; neo
  * has no sub-menus, so every app is a tile.
@@ -106,6 +110,15 @@ class AppLauncher extends Container {
                 autoComplete   : false,
                 placeholderText: t('Module name') + '...'
             }]
+        }, {
+            // setRow(): entries of main view extensions
+            module   : Component,
+            reference: 'row',
+            cls      : ['go-app-launcher-row'],
+            flex     : 'none',
+            hidden   : true,
+            role     : 'toolbar',
+            vdom     : {cn: []}
         }, {
             module   : Component,
             reference: 'grid',
@@ -177,6 +190,91 @@ class AppLauncher extends Container {
 
         me.apps = apps.map(app => ({...app, text: htmlText(app.title)})).sort((a, b) => a.text.localeCompare(b.text));
         me.filter(me.getReference('field').value)
+    }
+
+    /**
+     * Buttons of the row above the tiles, see setRow()
+     * @member {Object[]} rowItems=[]
+     */
+    rowItems = []
+
+    /**
+     * Row buttons whose keys are registered, see setRow()
+     * @member {Number} registeredRow=0
+     */
+    registeredRow = 0
+
+    /**
+     * The row of buttons above the tiles: [{text, iconCls, pressed, title}], text is HTML (escape user data)
+     * @param {Object[]} items
+     */
+    setRow(items) {
+        let me  = this,
+            row = me.getReference('row');
+
+        me.rowItems = items || [];
+
+        row.vdom.cn = me.rowItems.map((item, index) => ({
+            tag     : 'button',
+            id      : me.rowId(index),
+            cls     : ['go-app-launcher-row-item', ...item.pressed ? ['go-pressed'] : []],
+            type    : 'button',
+            title   : item.title || null,
+            tabIndex: index === 0 ? 0 : -1,
+            cn      : [...item.iconCls ? [{tag: 'i', cls: [...item.iconCls.split(' '), 'go-app-launcher-row-icon']}] : [], {
+                tag : 'span',
+                // HTML, see above
+                html: String(item.text)
+            }]
+        }));
+
+        row.hidden = !me.rowItems.length;
+        row.update();
+
+        // Tab and the arrow keys move the focus (registered once per position, like the tiles)
+        for (; me.registeredRow < me.rowItems.length; me.registeredRow++) {
+            Neo.main.DomEvents.registerPreventDefaultKeys({
+                id      : me.rowId(me.registeredRow),
+                keys    : ['ArrowLeft', 'ArrowRight', 'Tab'],
+                windowId: me.windowId
+            })
+        }
+    }
+
+    /**
+     * @param {Number} index
+     * @returns {String} DOM id of a row button
+     */
+    rowId(index) {
+        return `${this.id}__row-${index}`
+    }
+
+    /**
+     * @param {Object[]} path a dom event's path
+     * @returns {Number} index of the row button in it, -1
+     * @protected
+     */
+    rowIndexOf(path) {
+        const node = path.find(node => node.cls?.includes('go-app-launcher-row-item'));
+
+        return node ? Number(node.id.split('__row-')[1]) : -1
+    }
+
+    /**
+     * A row button: the launcher closes, `rowItem` fires
+     * @param {Number} index
+     * @protected
+     */
+    launchRowItem(index) {
+        let me   = this,
+            item = me.rowItems[index];
+
+        if (!item || !me.isOpen()) {
+            return
+        }
+
+        me.close(false);
+        me.fire('rowItem', {index, item})
     }
 
     /**
@@ -259,7 +357,25 @@ class AppLauncher extends Container {
     }
 
     destroy(...args) {
-        clearTimeout(this.closeTimer);
+        let me       = this,
+            windowId = me.windowId,
+            // the main thread keeps a registration per id (a new launcher after a login adds its own)
+            ids      = [me.getReference('field')?.getInputElId()];
+
+        for (let i = 0; i < me.registeredTiles; i++) {
+            ids.push(me.tileId(i))
+        }
+
+        for (let i = 0; i < me.registeredRow; i++) {
+            ids.push(me.rowId(i))
+        }
+
+        clearTimeout(me.closeTimer);
+
+        ids.filter(Boolean).forEach(id => {
+            Promise.resolve(Neo.main.DomEvents.unregisterPreventDefaultKeys({id, windowId})).catch(() => {})
+        });
+
         super.destroy(...args)
     }
 
@@ -355,10 +471,16 @@ class AppLauncher extends Container {
     onClick(data) {
         let me   = this,
             path = data.path || [],
-            tile = path.find(node => node.cls?.includes('go-app-launcher-tile'));
+            tile = path.find(node => node.cls?.includes('go-app-launcher-tile')),
+            row  = me.rowIndexOf(path);
 
         if (tile) {
             me.launch(Number(tile.id.split('__tile-')[1]), !!data.shiftKey);
+            return
+        }
+
+        if (row > -1) {
+            me.launchRowItem(row);
             return
         }
 
@@ -375,16 +497,24 @@ class AppLauncher extends Container {
             key   = data.key,
             path  = data.path || [],
             tile  = path.find(node => node.cls?.includes('go-app-launcher-tile')),
-            index = tile ? Number(tile.id.split('__tile-')[1]) : -1;
+            index = tile ? Number(tile.id.split('__tile-')[1]) : -1,
+            row   = me.rowIndexOf(path);
 
         if (key === 'Escape') {
             me.close();
             return
         }
 
-        // focus stays in the overlay: search field ↔ tiles
+        if (row > -1) {
+            me.onRowKeyDown(row, key);
+            return
+        }
+
+        // focus stays in the overlay: search field → row → tiles → search field
         if (key === 'Tab') {
-            if (index < 0 && me.shown.length) {
+            if (index < 0 && me.rowItems.length) {
+                me.focusRow(0)
+            } else if (index < 0 && me.shown.length) {
                 me.focusTile(Math.max(me.activeIndex, 0))
             } else if (index >= 0) {
                 me.getReference('field').focus()
@@ -429,6 +559,33 @@ class AppLauncher extends Container {
                 me.moveRow(index, key === 'ArrowDown' ? 1 : -1);
                 break;
         }
+    }
+
+    /**
+     * A key on a row button. Enter and Space click it (a native button).
+     * @param {Number} index
+     * @param {String} key
+     * @protected
+     */
+    onRowKeyDown(index, key) {
+        let me   = this,
+            last = me.rowItems.length - 1;
+
+        if (key === 'Tab') {
+            me.shown.length ? me.focusTile(Math.max(me.activeIndex, 0)) : me.getReference('field').focus()
+        } else if (key === 'ArrowLeft') {
+            me.focusRow(Math.max(0, index - 1))
+        } else if (key === 'ArrowRight') {
+            me.focusRow(Math.min(last, index + 1))
+        }
+    }
+
+    /**
+     * @param {Number} index
+     * @protected
+     */
+    focusRow(index) {
+        Neo.main.DomAccess.focus({id: this.rowId(index), windowId: this.windowId})
     }
 
     /**

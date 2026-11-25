@@ -11,6 +11,10 @@ import {t} from '../Translate.mjs';
  *
  * A result opens through `resolveRoute(entity, entityId)` (set by the shell): a hash
  * for entities that have a neo module, null for the rest (shown, not clickable).
+ *
+ * `extraResults(text)` (set by the shell, from main view extensions) may add results of its own,
+ * shown above the server's: Promise<[{entity, name, description, route}]>; `entity` is the label
+ * on the left, `route` the hash a click opens.
  */
 class GlobalSearch extends Container {
     static config = {
@@ -22,6 +26,11 @@ class GlobalSearch extends Container {
          * @member {Function|null} resolveRoute=null
          */
         resolveRoute: null,
+        /**
+         * (text) => Promise<Object[]> results of the main view's extensions, see above
+         * @member {Function|null} extraResults=null
+         */
+        extraResults: null,
         items: [{
             ntype : 'container',
             cls   : ['go-global-search-bar'],
@@ -112,15 +121,21 @@ class GlobalSearch extends Container {
             return
         }
 
+        // the extensions' results never hold up or break the server's
+        const extra = Promise.resolve(me.extraResults?.(text)).catch(e => {
+            console.warn('GlobalSearch: extraResults', e);
+            return []
+        });
+
         try {
-            const {list} = await client.queryGet('Search', {
+            const [{list}, own] = await Promise.all([client.queryGet('Search', {
                 filter    : {text},
                 sort      : [{property: 'modifiedAt', isAscending: false}],
                 limit     : 20,
                 properties: ['id', 'name', 'description', 'entity', 'entityId', 'modifiedAt']
-            });
+            }), extra]);
 
-            generation === me.searchGeneration && !me.isDestroyed && me.showResults(list)
+            generation === me.searchGeneration && !me.isDestroyed && me.showResults([...own || [], ...list])
         } catch (e) {
             generation === me.searchGeneration && !me.isDestroyed && me.showResults(null, e.message)
         }
@@ -154,14 +169,23 @@ class GlobalSearch extends Container {
         }
 
         results.html = list.map((r, i) => {
-            const route = me.resolveRoute?.(r.entity, r.entityId);
+            const route = me.routeOf(r);
 
             return `<div class="go-search-result${route ? '' : ' go-disabled'}" data-index="${i}" title="${route ? '' : escapeHtml(t('Open it in the classic UI'))}">
                 <span class="go-search-entity">${escapeHtml(r.entity)}</span>
                 <span class="go-search-text"><b>${escapeHtml(r.name)}</b><small>${escapeHtml(r.description || '')}</small></span>
-                <span class="go-search-date">${smartDateTime(r.modifiedAt)}</span>
+                <span class="go-search-date">${r.modifiedAt ? smartDateTime(r.modifiedAt) : ''}</span>
             </div>`
         }).join('')
+    }
+
+    /**
+     * @param {Object} record a result
+     * @returns {String|null} the hash it opens
+     * @protected
+     */
+    routeOf(record) {
+        return record.route ?? this.resolveRoute?.(record.entity, record.entityId) ?? null
     }
 
     onResultClick({path}) {
@@ -170,7 +194,7 @@ class GlobalSearch extends Container {
             index = path.find(n => n.cls?.includes('go-search-result'))?.data?.index;
 
         const record = me.records[Number(index)],
-              route  = record && me.resolveRoute?.(record.entity, record.entityId);
+              route  = record && me.routeOf(record);
 
         if (route) {
             me.close();

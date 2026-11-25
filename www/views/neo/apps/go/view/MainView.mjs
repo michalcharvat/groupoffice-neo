@@ -4,7 +4,8 @@ import HashHistory    from '../../../node_modules/neo.mjs/src/util/HashHistory.m
 import Toolbar        from '../../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import GoButton       from '../../../src/button/Button.mjs';
 import MenuList       from '../../../src/menu/List.mjs';
-import {avatarColor, escapeHtml, initials} from '../../../src/Format.mjs';
+import {avatarColor, decodeEntities, escapeHtml, initials} from '../../../src/Format.mjs';
+
 import {classicAppByRoute, classicUrl, getClassicApps} from '../../../src/classicApps.mjs';
 import {resolveRoute} from '../../../src/link/linkTypes.mjs';
 import client         from '../../../src/jmap/Client.mjs';
@@ -22,9 +23,27 @@ import {openTab, replaceRoute}  from '../../../src/history.mjs';
 import {closePopup, openPopup, popupsSupported} from '../../../src/Popup.mjs';
 import {applyTheme}            from '../../../src/Preferences.mjs';
 import {fmt, t} from '../../../src/Translate.mjs';
+import {hideTooltip} from '../../../src/tooltip.mjs';
 
 // header menus open below their button, right edges aligned (they sit at the right)
 const RIGHT = {edgeAlign: 't100-b100'};
+
+/**
+ * Text of a module title given as HTML
+ * @param {String} html
+ * @returns {String}
+ */
+const htmlToText = html => decodeEntities(String(html).replace(/<[^>]*>/g, ''));
+
+// the main views of the App worker's windows, in the order they opened (moving a module to another window)
+const mainViews = new Set();
+
+/**
+ * @returns {GO.view.MainView[]} the main views of all windows of this App worker
+ */
+export function getMainViews() {
+    return [...mainViews].filter(mv => !mv.isDestroyed)
+}
 
 /**
  * Top bar with the module menu and the user, below it one card per opened module.
@@ -33,7 +52,8 @@ const RIGHT = {edgeAlign: 't100-b100'};
  * a dock, docs/neo-workspace.md): an extension adds cards (addCard(), showCard()) and top bar items
  * (insertTopbarItems()), takes module views over from their standalone tab (claimModuleView(),
  * releaseModuleView(), unclaimModuleView()) and answers hooks (start, onHashChange, showModule,
- * onActiveCardChange, onBadge, fallbackRoute, beforeLogout, destroy), see docs/neo-small-modules.md.
+ * onActiveCardChange, onBadge, fallbackRoute, beforeLogout, destroy, launcherItems, openBeside,
+ * searchResults, hotKeys, cardTitle), see docs/neo-small-modules.md.
  * Without an extension nothing of this runs.
  *
  * Routing: "#<module>" opens a module, everything after the first "/" is passed
@@ -138,11 +158,25 @@ class MainView extends Container {
      */
     activeCard = null
 
+    /**
+     * Window-wide key combinations of the extensions (hotKeys hook): combo → handler
+     * @member {Object} hotKeys={}
+     */
+    hotKeys = {}
+
+    /**
+     * The launcher row's entries of the extensions (launcherItems hook), shown last
+     * @member {Object[]} launcherItems=[]
+     */
+    launcherItems = []
+
     onConstructed() {
         super.onConstructed();
 
         let me        = this,
             available = ModuleRegistry.getAvailable();
+
+        mainViews.add(me);
 
         const userName = client.user?.displayName || client.user?.username || '';
 
@@ -258,11 +292,33 @@ class MainView extends Container {
 
         me.initExtensions();
 
-        me.getReference('launcher').on('open', ({app}) => app.classic ? me.openClassic(app.route) :
-            Neo.Main.setRoute({value: app.name, windowId: me.windowId}));
+        me.getReference('launcher').on({
+            open      : ({app}) => app.classic ? me.openClassic(app.route) : Neo.Main.setRoute({value: app.name, windowId: me.windowId}),
+            // Shift+click or Shift+Enter on a tile: an extension may open it beside (sf/workspaces: split right)
+            openBeside: ({app, preventDefault}) => {
+                if (!app.classic && me.callExtensions('openBeside', app.name).some(Boolean)) {
+                    preventDefault();
+                    // the launcher closes without giving the focus back: the button's tooltip would stay
+                    hideTooltip(me)
+                }
+            },
+            rowItem   : ({index}) => {
+                hideTooltip(me);
+                me.launcherItems[index]?.handler?.()
+            }
+        });
 
         // one resolver for search, links, alerts and reminders: a neo route or "classic/<hash>"
         me.getReference('search').resolveRoute = resolveRoute;
+
+        // results of the extensions (searchResults hook) above the server's
+        me.extensions.length && (me.getReference('search').extraResults = text =>
+            Promise.all(me.callExtensions('searchResults', text).map(p => Promise.resolve(p).catch(e => {
+                console.warn('Main view extension searchResults', e);
+                return []
+            }))).then(results => results.flat().filter(Boolean)));
+
+        me.initHotKeys();
 
         // load the module code now: a popout click must reach window.open() while the
         // browser still counts it as user activation
@@ -415,6 +471,31 @@ class MainView extends Container {
     }
 
     /**
+     * Window-wide key combinations of the extensions (hotKeys hook, main-thread addon WS/HotKeys)
+     * @protected
+     */
+    async initHotKeys() {
+        let me = this;
+
+        me.callExtensions('hotKeys').forEach(keys => keys && Object.assign(me.hotKeys, keys));
+
+        const combos = Object.keys(me.hotKeys);
+
+        if (!combos.length) {
+            return
+        }
+
+        me.addDomListeners({goHotKey: ({combo}) => me.hotKeys[combo]?.(), scope: me});
+
+        try {
+            await Neo.Main.importAddon({name: 'WS/HotKeys', windowId: me.windowId});
+            me.isDestroyed || Neo.ns('GO.main.addon.HotKeys').register({id: me.id, combos, windowId: me.windowId})
+        } catch (e) {
+            console.warn('GO.view.MainView: no hot keys', e)
+        }
+    }
+
+    /**
      * Calls a hook of every extension
      * @param {String} name
      * @param {...*} args
@@ -481,6 +562,9 @@ class MainView extends Container {
     }
 
     destroy(...args) {
+        mainViews.delete(this);
+        // the window may be gone already
+        Object.keys(this.hotKeys).length && Promise.resolve(Neo.ns('GO.main.addon.HotKeys')?.unregister?.({id: this.id, windowId: this.windowId})).catch(() => {});
         HashHistory.un('change', this.hashListenerId);
         this.removeNotificationListener?.();
         this.removeBadgeListener?.();
@@ -546,12 +630,19 @@ class MainView extends Container {
         // the button gets the focus back on close: with a focus ring only when opened by the keyboard
         const modality = data?.detail === 0 ? 'keyboard' : 'pointer';
 
+        // the extensions' entries (launcherItems hook): {text (HTML), iconCls, icon, pressed, title, handler}
+        me.launcherItems = me.callExtensions('launcherItems').flat().filter(Boolean);
+
         if (mode === 'list') {
             me.mainMenuList = MenuList.showAt({
                 appName : me.appName,
                 target  : button.id,
                 windowId: me.windowId,
-                items   : [...apps.map(m => ({
+                items   : [...me.launcherItems.map(item => ({
+                    text   : item.text,
+                    icon   : item.icon || 'dashboard',
+                    handler: item.handler
+                })), ...me.launcherItems.length ? [{separator: true}] : [], ...apps.map(m => ({
                     text   : m.title,
                     icon   : m.icon || 'apps',
                     image  : m.iconUrl || null,
@@ -562,6 +653,8 @@ class MainView extends Container {
             me.mainMenuList.returnFocusModality = modality;
             return
         }
+
+        launcher.setRow(me.launcherItems);
 
         launcher.setApps([...apps.map(m => ({
             name   : m.name,
@@ -747,7 +840,11 @@ class MainView extends Container {
         // undefined when the module was closed while its code loaded
         const view = me.openModules[module.name]?.view || null;
 
-        route !== null && view?.route?.(route);
+        if (route !== null && view) {
+            view.route?.(route);
+            // its deep link when the module moves to another window while another one shows
+            me.openModules[module.name].route = route
+        }
 
         return view
     }
@@ -1009,7 +1106,7 @@ class MainView extends Container {
                 // already in its own window
                 disabled: !!me.openModules[name]?.popup,
                 handler : () => me.popOutModule(name)
-            }] : [], {
+            }] : [], ...me.windowMenuItems(target => me.sendModuleToWindow(name, target), !!me.openModules[name]?.popup), {
                 text   : t('Close'),
                 icon   : 'close',
                 handler: () => me.closeModule(name)
@@ -1023,6 +1120,63 @@ class MainView extends Container {
                 handler: () => me.closeModules()
             }]
         })
+    }
+
+    /**
+     * "Move to window N: …" menu items, one per other window of this App worker
+     * @param {Function} handler (mainView) the target window's main view
+     * @param {Boolean} [disabled=false]
+     * @returns {Object[]}
+     */
+    windowMenuItems(handler, disabled = false) {
+        const views = getMainViews();
+
+        return views.filter(mv => mv !== this).map(mv => ({
+            // the title may be user data (a workspace name): the menu renders text as HTML
+            text    : escapeHtml(fmt(t('Move to window {number}: {title}'), {number: views.indexOf(mv) + 1, title: mv.describe()})),
+            icon    : 'move_group',
+            disabled,
+            handler : () => handler(mv)
+        }))
+    }
+
+    /**
+     * What this window shows, for a menu of the windows: the shown module, or an extension's card
+     * (cardTitle hook)
+     * @returns {String}
+     */
+    describe() {
+        let me = this;
+
+        if (me.activeCard) {
+            return me.callExtensions('cardTitle', me.activeCard).find(Boolean) || ''
+        }
+
+        return htmlToText(ModuleRegistry.get(me.activeModule)?.title || '') || t('Select a module from the menu.')
+    }
+
+    /**
+     * Moves a standalone module to another window: it closes here and opens there with its route
+     * (a new view there; an extension of that window may show it in one of its cards)
+     * @param {String} name
+     * @param {GO.view.MainView} target
+     */
+    sendModuleToWindow(name, target) {
+        let me    = this,
+            hash  = me.activeHash || '',
+            last  = me.openModules[name]?.route,
+            route = hash === name || hash.startsWith(name + '/') ? hash : last ? name + '/' + last : name;
+
+        if (!target || target.isDestroyed || target === me || me.openModules[name]?.popup) {
+            return
+        }
+
+        me.closeModule(name);
+        Neo.Main.setRoute({value: route, windowId: target.windowId});
+        notify(me, fmt(t('{module} moved to window {number}.'), {
+            module: htmlToText(ModuleRegistry.get(name)?.title || name),
+            number: getMainViews().indexOf(target) + 1
+        }))
     }
 
     /**
