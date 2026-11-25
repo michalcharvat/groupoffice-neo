@@ -93,6 +93,27 @@ refused without `serverclient_token`). Test data, module installs and config wer
   `ModuleRegistry.sortByEntryPoints()`. A module matches its entry point by `package/name` (path
   `go/modules/<package>/<name>/` or `modules/<name>/` = `legacy`); one registered under another name
   (`community-dev`) or later (bookmarks in `onLogin`) comes after them.
+- Module tabs (owner decision 2026-11-25: "the top bar is the last opened modules that are not in any
+  workspace; a module cannot be open twice"): `MainView` creates every module's tab hidden and shows only
+  the modules open in the window (`MainView.tabs`, `addTab()` / `removeTab()` around `setTabVisible()`),
+  in GO's module order, so the order stays the same after a reload. Opening a module by any route (launcher,
+  search, deep link, link, alert, quick add) adds its tab; the close icon, "Close", "Close others" and
+  "Close all" remove it and destroy the view (re-opening costs one module load, the code is cached; a hidden
+  view would keep its stores and listeners). Every tab can be closed, the Start page too. After the
+  extensions start, `restoreTabs()` brings back the window's set (sessionStorage `go-module-tabs`, with the
+  user id, so another user logging in to the same window gets nothing), else the user's last set of any
+  window (`src/State.mjs` id `go-module-tabs-last-<userId>`); restored tabs have no view until shown, and
+  modules an extension holds get no tab. Logout clears the window sets of the session. Pure logic in
+  `src/moduleTabs.mjs`, tests in `tests/moduleTabs.test.mjs` (mocha from `www/views/neo`, e.g. the main
+  checkout's `../../node_modules/.bin/mocha tests/`). A count of a module without a tab shows as a dot on
+  the main menu button and on its launcher tile (`updateMainMenuDot()`). Neo renders a hidden component not
+  at all: a Playwright check finds only the shown tabs' `data-ref`.
+  Codex review fixes (2026-11-25): a tab closed while the restore read storage stays closed
+  (`tabsClosedEarly`); a hash that comes meanwhile wins over the window's first hash also without
+  extensions (`hashSeen`); a window stores tabs only for the user it was built for (`tabsUserId`, account
+  switch); nothing is stored while logout clears the sets (`tabsLoggingOut`), and a failed logout stores
+  them again. Left as is: two windows writing the user's last set at the same moment (last write wins),
+  and an inactivity logout keeping the window's set for the same user.
 
 ## Website Manager (legacy `site`, card "neo-ui: site module in neo", 2026-11-24)
 
