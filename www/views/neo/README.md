@@ -13,8 +13,10 @@ Small modules, 2FA login, module hooks: `docs/neo-small-modules.md`.
   `$config['webclient']` (`'classic'` opts an installation out). `$config['webclientSwitch'] =
   false` hides the switch. OAuth `?oauthAuthorize` / `?oauthConsent` and `?r=&f=` external URLs
   always get classic. Plan and decisions: `docs/neo-switch.md`.
-- Built by `scripts/install-npm.sh` (and so the release, `build/build.sh` prunes the dev
-  dependencies afterwards); by hand: `npm install && npm run build` (= `build-themes`) in this folder: generates the `theme-go` neo theme
+- Built by `scripts/install-npm.sh` (and so the release: `build/build.sh` then runs
+  `buildScripts/release.mjs --in-place`, which minifies the scripts of the shell, neo.mjs and
+  the modules and the theme CSS in place and keeps only the runtime packages; never in a
+  checkout, see `docs/neo-switch.md`, "Release build"); by hand: `npm install && npm run build` (= `build-themes`) in this folder: generates the `theme-go` neo theme
   and builds it with neo's workspace theme build into `dist/development` +
   `resources/theme-map.json` (see [GO look](#go-look-theme-go)). Doesn't need `views/goui`: the GO
   tokens and the icon font are copies in `resources/` (refresh: `docs/neo-upstream-sync.md`).
