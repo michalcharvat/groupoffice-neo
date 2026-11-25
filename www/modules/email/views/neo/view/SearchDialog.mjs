@@ -5,6 +5,7 @@ import SelectField   from '../../../../../views/neo/src/form/field/SelectField.m
 import FormContainer from '../../../../../views/neo/node_modules/neo.mjs/src/form/Container.mjs';
 import TextField     from '../../../../../views/neo/node_modules/neo.mjs/src/form/field/Text.mjs';
 import Toolbar       from '../../../../../views/neo/node_modules/neo.mjs/src/toolbar/Base.mjs';
+import {submitOnEnter} from '../../../../../views/neo/src/form/submitOnEnter.mjs';
 import {t as coreT}  from '../../../../../views/neo/src/Translate.mjs';
 import {imapDate, imapText, t} from '../util.mjs';
 
@@ -62,7 +63,7 @@ class SearchDialog extends Dialog {
             reference: 'form',
             cls      : ['go-email-search-form', 'go-scroll'],
             flex     : 1,
-            keys     : {Enter: 'up.onSearch'},
+            keys     : {Enter: submitOnEnter('up.onSearch')},
             items    : [
                 text('subject', t('Subject')),
                 text('from', t('Sender')),

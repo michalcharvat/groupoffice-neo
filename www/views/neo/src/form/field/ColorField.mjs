@@ -123,6 +123,16 @@ class ColorField extends Field {
         return value && !HEX.test(value) ? t('Enter six hexadecimal digits, e.g. 1652A1') : super.getError()
     }
 
+    /**
+     * Enter on the colour input opens its chooser and does not submit the form; Enter in the
+     * hex input does (form/submitOnEnter.mjs)
+     * @param {Object} data keydown event data
+     * @returns {Boolean}
+     */
+    ownsEnterKey({target}) {
+        return !!target?.cls?.includes('go-colorfield-picker')
+    }
+
     createControl() {
         let me     = this,
             color  = me.color,

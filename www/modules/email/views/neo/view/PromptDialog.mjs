@@ -3,6 +3,7 @@ import Dialog, {headerTools} from '../../../../../views/neo/src/view/Dialog.mjs'
 import FormContainer from '../../../../../views/neo/node_modules/neo.mjs/src/form/Container.mjs';
 import TextField     from '../../../../../views/neo/node_modules/neo.mjs/src/form/field/Text.mjs';
 import Toolbar       from '../../../../../views/neo/node_modules/neo.mjs/src/toolbar/Base.mjs';
+import {submitOnEnter} from '../../../../../views/neo/src/form/submitOnEnter.mjs';
 import {t as coreT}  from '../../../../../views/neo/src/Translate.mjs';
 
 /**
@@ -46,7 +47,7 @@ class PromptDialog extends Dialog {
         me.items = [{
             module   : FormContainer,
             reference: 'form',
-            keys     : {Enter: 'up.onOk'},
+            keys     : {Enter: submitOnEnter('up.onOk')},
             items    : [{
                 module       : TextField,
                 name         : 'text',

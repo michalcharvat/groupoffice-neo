@@ -9,6 +9,7 @@ import TabContainer   from '../../node_modules/neo.mjs/src/tab/Container.mjs';
 import Toolbar        from '../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import {addCustomFieldsTo} from '../customfields/form.mjs';
 import {notifyError}  from '../Notify.mjs';
+import {submitOnEnter} from '../form/submitOnEnter.mjs';
 import {createLinks}  from '../link/links.mjs';
 import {t}            from '../Translate.mjs';
 
@@ -46,6 +47,8 @@ class FormWindow extends Dialog {
     static config = {
         className: 'GO.view.FormWindow',
         cls      : ['go-form-window'],
+        // Enter in a field saves (ExtJS go.form.Dialog: hidden submit button), Escape as in Dialog
+        keys     : {Enter: submitOnEnter('submit'), Escape: 'onEscape'},
         modal    : true,
         resizable: true,
         // no animateTarget: position explicitly, .neo-floating parks it off-screen

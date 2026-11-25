@@ -267,6 +267,14 @@ class AutocompleteField extends Field {
         me.bufferTimer = setTimeout(() => me.showMenu(), BUFFER)
     }
 
+    /**
+     * Enter turns the typed text into a value: it never submits the form (form/submitOnEnter.mjs)
+     * @returns {Boolean}
+     */
+    ownsEnterKey() {
+        return true
+    }
+
     onKeyDown({key}) {
         let me = this;
 

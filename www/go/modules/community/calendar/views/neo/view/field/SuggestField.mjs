@@ -149,6 +149,15 @@ class SuggestField extends Field {
         me.renderControl()
     }
 
+    /**
+     * Enter picks a suggestion or takes the typed text: it never submits the form
+     * (views/neo/src/form/submitOnEnter.mjs)
+     * @returns {Boolean}
+     */
+    ownsEnterKey() {
+        return true
+    }
+
     onKeyDown(data) {
         let me = this;
 

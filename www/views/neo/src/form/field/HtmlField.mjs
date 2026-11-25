@@ -186,6 +186,14 @@ class HtmlField extends Field {
      * Translated texts the addon shows itself
      * @returns {Object}
      */
+    /**
+     * Enter in the editor's link bar applies the link: it never submits the form (form/submitOnEnter.mjs)
+     * @returns {Boolean}
+     */
+    ownsEnterKey() {
+        return true
+    }
+
     getEditorLabels() {
         return {
             cancel   : t('Cancel'),

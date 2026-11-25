@@ -182,6 +182,14 @@ class ChipsField extends Field {
         }
     }
 
+    /**
+     * Enter turns the typed text into a value: it never submits the form (form/submitOnEnter.mjs)
+     * @returns {Boolean}
+     */
+    ownsEnterKey() {
+        return true
+    }
+
     onKeyDown({key}) {
         let me = this;
 

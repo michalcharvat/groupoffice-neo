@@ -82,6 +82,15 @@ class DurationField extends Field {
     }
 
     /**
+     * Enter never submits the form: the field takes the typed time on `change`, which arrives
+     * after the keydown, so the form would be saved with the old value (form/submitOnEnter.mjs)
+     * @returns {Boolean}
+     */
+    ownsEnterKey() {
+        return true
+    }
+
+    /**
      * @param {Number|null} minutes
      * @returns {String|Number|null} in outputFormat
      */

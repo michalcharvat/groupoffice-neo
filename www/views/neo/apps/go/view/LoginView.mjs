@@ -8,6 +8,7 @@ import Toolbar       from '../../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import Button        from '../../../src/button/Button.mjs';
 import client        from '../../../src/jmap/Client.mjs';
 import ModuleRegistry from '../../../src/ModuleRegistry.mjs';
+import {submitOnEnter} from '../../../src/form/submitOnEnter.mjs';
 import {fmt, t} from '../../../src/Translate.mjs';
 
 /**
@@ -59,7 +60,7 @@ class LoginView extends Container {
                 items    : [{
                     module   : FormContainer,
                     reference: 'loginForm',
-                    keys     : {Enter: 'up.onLogin'},
+                    keys     : {Enter: submitOnEnter('up.onLogin')},
                     layout   : {ntype: 'vbox', align: 'stretch'},
                     items    : [{
                         ntype : 'container',
@@ -123,7 +124,7 @@ class LoginView extends Container {
                     // go.login.ForgotDialog
                     module   : FormContainer,
                     reference: 'forgotForm',
-                    keys     : {Enter: 'up.onSendForgot'},
+                    keys     : {Enter: submitOnEnter('up.onSendForgot')},
                     layout   : {ntype: 'vbox', align: 'stretch'},
                     items    : [{
                         ntype : 'container',
@@ -166,7 +167,7 @@ class LoginView extends Container {
                     // go.login.RecoveryDialog: "#recover/<hash>-<redirect>" of the recovery mail
                     module   : FormContainer,
                     reference: 'recoverForm',
-                    keys     : {Enter: 'up.onSaveRecover'},
+                    keys     : {Enter: submitOnEnter('up.onSaveRecover')},
                     layout   : {ntype: 'vbox', align: 'stretch'},
                     items    : [{
                         ntype    : 'container',

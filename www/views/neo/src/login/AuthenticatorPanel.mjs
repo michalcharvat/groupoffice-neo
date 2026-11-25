@@ -1,6 +1,7 @@
 import FormContainer from '../../node_modules/neo.mjs/src/form/Container.mjs';
 import Toolbar       from '../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import Button        from '../button/Button.mjs';
+import {submitOnEnter} from '../form/submitOnEnter.mjs';
 import {t}           from '../Translate.mjs';
 
 /**
@@ -22,7 +23,7 @@ class AuthenticatorPanel extends FormContainer {
     static config = {
         className: 'GO.login.AuthenticatorPanel',
         baseCls  : ['go-login-authenticator', 'neo-container'],
-        keys     : {Enter: 'onNext'},
+        keys     : {Enter: submitOnEnter('onNext')},
         layout   : {ntype: 'vbox', align: 'stretch'},
         /**
          * Server id of the authenticator, set by the login view
