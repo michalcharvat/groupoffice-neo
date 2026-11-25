@@ -404,7 +404,21 @@ Behaviour:
   window.") and "Move to window N: <what it shows>" for every other window of the session (the tab closes
   here and opens there). A standalone module tab has "Move to window N" too (core), and so has a panel's
   menu (the panel leaves the workspace and the module opens in the other window). A window opened on
-  `#ws/<id>` (new window, link) opens only that workspace.
+  `#ws/<id>` (new window, link) opens only that workspace. Closing a window opened by "Open in new
+  window" brings its open workspaces back to the window that opened it (shown there), unless another
+  window has them open (2026-11-25; before, they were only gone from both); a reload keeps them there.
+  `Extension.returnToOpener()`: the App worker can't tell a closed window from a reloaded one (both
+  leave with a "disconnect", a reload comes back under a new window id). So each window has a tag in
+  its sessionStorage (`go-workspaces-window`, survives a reload) and the new window gets the opener's
+  tag and a key (`go-workspaces-opener`, written into its sessionStorage by `WS/History`
+  `openWindow({key, items})`). The opener's page keeps the window handle under the key;
+  `isWindowClosed()` reads `window.closed` (checked a few times within 2.5 s, pagehide comes before
+  `closed`); the handle goes first, since a duplicated browser tab shares the tag. When the opener
+  reloaded since (no handle) or is reloading, the window counts as closed when no window with its tag
+  is back within 8 s. Known limits of that fallback (Codex review 2026-11-25, left as they are): a
+  reload of the new window slower than 8 s restores its tabs in both windows, and a reload whose tabs
+  change and which is closed again within the 8 s brings back the tabs from before. A window closed
+  while it starts returns the workspace it was opened for (`ws` in `go-workspaces-opener`).
 - **Save / Revert.** "Save layout" copies the workspace's panels and layouts to `savedPanels` /
   `savedLayouts`; "Revert to saved layout" (disabled without a checkpoint) writes them back and reloads.
   Both go through the write queue (`SaveQueue.checkpoint()` / `revert()`, `exclusive()`: after the
