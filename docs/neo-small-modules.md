@@ -242,6 +242,17 @@ cards in the main card layout, items in the top bar, routes of its own, and modu
 from their standalone tab. sf/workspaces uses it for its workspace tabs (`docs/neo-workspace.md`, "Model
 v2"). Without such a module the main view is the plain one card per module and loads no extension code.
 
+Boot: with extensions the main area shows a "Loading..." card (`showLoadingCard()`) from the construction
+until another card shows: every place that sets the card layout's `activeIndex` calls
+`replaceLoadingCard()`, and `syncActiveCard()` falls back to it while nothing else is active. The first
+route can arrive after the boot (`setRoute()` of the start module, `replaceRoute()` of an entity deep
+link, a newer hash), so it is not removed when `ready` resolves; only `LOADING_GRACE` (5 s) after `ready`
+and `startRouting` (what `start()` routed; not part of `ready`, `onHashChange()` awaits `ready`) a card
+still shown goes (`loadingExpired`; a route still running, counted by `onHashChange()` in
+`routesRunning`, removes it when it ends), so a route that shows nothing does not leave it for good. `removeLoadingCard()` keeps
+the shown card (removing a card shifts the indexes). A new `activeIndex` assignment must call
+`replaceLoadingCard()` too.
+
 Registration (`src/ModuleRegistry.mjs`):
 
 ```js

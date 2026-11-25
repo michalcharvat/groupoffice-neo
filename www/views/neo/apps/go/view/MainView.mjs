@@ -32,6 +32,13 @@ import {LAST_STATE, SERVER_STATE, WINDOW_KEY, decodeServerTabs, encodeServerTabs
 // header menus open below their button, right edges aligned (they sit at the right)
 const RIGHT = {edgeAlign: 't100-b100'};
 
+
+/**
+ * ms the boot's "Loading..." card waits after the first route for a card to show (MainView construct())
+ * @type {Number}
+ */
+const LOADING_GRACE = 5000;
+
 /**
  * Text of a module title given as HTML
  * @param {String} html
@@ -247,6 +254,30 @@ class MainView extends Container {
      * @member {String|null} hashSeen=null
      */
     hashSeen = null
+
+    /**
+     * The boot's "Loading..." card (showLoadingCard()), until the first route has shown
+     * @member {Neo.component.Base|null} loadingCard=null
+     */
+    loadingCard = null
+
+    /**
+     * The boot's grace for the "Loading..." card is over: it goes once no route is running
+     * @member {Boolean} loadingExpired=false
+     */
+    loadingExpired = false
+
+    /**
+     * onHashChange() calls that have not finished
+     * @member {Number} routesRunning=0
+     */
+    routesRunning = 0
+
+    /**
+     * The routing of the window's first address (start()), see construct()
+     * @member {Promise|null} startRouting=null
+     */
+    startRouting = null
 
     /**
      * Module named by this window's current hash
@@ -466,11 +497,28 @@ class MainView extends Container {
         // a page rendered for the login screen has no user theme yet (Neo.php)
         applyTheme({theme: client.user?.theme, colorScheme: client.user?.themeColorScheme}, [me.windowId]);
 
+        // an extension's start can take seconds on the first load (sf/workspaces loads the window's
+        // workspaces): "Loading..." instead of an empty main area until the window has routed
+        me.extensions.length && me.showLoadingCard();
+
         // the extensions start first (restore what the window showed, take module views), then the
         // window's module tabs come back, then the address is routed
         me.ready = me.startExtensions(current)
             .then(() => me.isDestroyed || me.restoreTabs())
             .then(() => me.isDestroyed || me.start(current));
+
+        // it goes when another card shows (replaceLoadingCard()). The first route may still be on its way
+        // after the boot (a hash set by setRoute() or replaceRoute(), a newer hash), so it stays a moment
+        // longer; a route that shows nothing must not leave it for good (startRouting: not part of
+        // ready, onHashChange() awaits ready)
+        me.loadingCard && me.ready
+            .then(() => me.startRouting)
+            .catch(e => e === Neo.isDestroyed || console.error('GO.view.MainView: start', e))
+            .finally(() => me.isDestroyed || me.timeout(LOADING_GRACE).then(() => {
+                // a route still loading (a slow workspace) removes it when it ends (onHashChange())
+                me.loadingExpired = true;
+                me.isDestroyed || me.routesRunning || me.removeLoadingCard()
+            }));
 
         // notifications: core alerts and popup reminders of the user, desktop notifications through this window
         notificationCenter.attach(me.windowId);
@@ -680,18 +728,19 @@ class MainView extends Container {
         }
 
         if (current?.hashString) {
-            me.onHashChange(current)
+            me.startRouting = me.onHashChange(current)
         } else if (me.extensionStartRoute) {
             // routed here too: the address may already be this route (a later window of the shared
             // worker can start without its first hash), then setRoute() fires no hashchange
-            me.onHashChange({hashString: me.extensionStartRoute, windowId: me.windowId});
+            me.startRouting = me.onHashChange({hashString: me.extensionStartRoute, windowId: me.windowId});
             Neo.Main.setRoute({value: me.extensionStartRoute, windowId: me.windowId})
         } else if (current) {
-            me.onHashChange(current)
+            me.startRouting = me.onHashChange(current)
         } else if (start) {
             Neo.Main.setRoute({value: start.name, windowId: me.windowId})
         } else {
-            me.getReference('modules').layout.activeIndex = 0
+            me.getReference('modules').layout.activeIndex = 0;
+            me.replaceLoadingCard()
         }
     }
 
@@ -909,6 +958,26 @@ class MainView extends Container {
             return
         }
 
+        const me = this;
+
+        // the boot's "Loading..." card waits for the routes that are running
+        me.routesRunning++;
+
+        try {
+            return await me.routeHash(hashString)
+        } finally {
+            me.routesRunning--;
+            me.loadingExpired && !me.routesRunning && !me.isDestroyed && me.removeLoadingCard()
+        }
+    }
+
+    /**
+     * Shows what a hash of this window points to (onHashChange())
+     * @param {String} hashString
+     * @returns {Promise<void>}
+     * @protected
+     */
+    async routeHash(hashString) {
         let me              = this,
             [name, ...rest] = (hashString || '').split('/'),
             module          = ModuleRegistry.getAvailable().find(m => m.name === name);
@@ -1024,6 +1093,7 @@ class MainView extends Container {
 
         // a popped out module keeps its placeholder card here
         cards.layout.activeIndex = cards.indexOf(entry.placeholder || entry.view);
+        me.replaceLoadingCard();
 
         me.addTab(module.name);
 
@@ -1499,6 +1569,43 @@ class MainView extends Container {
     }
 
     /**
+     * Shows "Loading..." in the main area while the window boots (see construct())
+     * @returns {Neo.component.Base} the card
+     * @protected
+     */
+    showLoadingCard() {
+        const cards = this.getReference('modules'),
+              card  = this.loadingCard = cards.add({ntype: 'component', cls: ['go-loading'], text: t('Loading...')});
+
+        cards.layout.activeIndex = cards.indexOf(card);
+
+        return card
+    }
+
+    /**
+     * Removes the boot's "Loading..." card (when still shown: an empty main area); the card shown instead keeps showing (removing a card
+     * shifts the indexes of the cards after it)
+     * @protected
+     */
+    removeLoadingCard() {
+        const me     = this,
+              card   = me.loadingCard,
+              cards  = me.getReference('modules'),
+              active = cards.items[cards.layout.activeIndex];
+
+        if (!card) {
+            return
+        }
+
+        me.loadingCard = null;
+
+        cards.remove(card);
+        cards.layout.activeIndex = null;
+
+        active && active !== card && (cards.layout.activeIndex = cards.indexOf(active))
+    }
+
+    /**
      * Shows the active module's card (its view, or its placeholder while popped out)
      */
     syncActiveCard() {
@@ -1514,7 +1621,23 @@ class MainView extends Container {
             cards.layout.activeIndex = cards.indexOf(entry.placeholder || entry.view)
         } else if (me.activeCard && !me.activeCard.isDestroyed) {
             cards.layout.activeIndex = cards.indexOf(me.activeCard)
+        } else if (me.loadingCard) {
+            // still booting: nothing to show yet
+            cards.layout.activeIndex = cards.indexOf(me.loadingCard)
         }
+
+        me.replaceLoadingCard()
+    }
+
+    /**
+     * Removes the boot's "Loading..." card once another card shows
+     * @protected
+     */
+    replaceLoadingCard() {
+        const {loadingCard} = this,
+              cards         = this.getReference('modules');
+
+        loadingCard && cards.layout.activeIndex !== cards.indexOf(loadingCard) && this.removeLoadingCard()
     }
 
     // ------------------------------------------------------------ extension API (docs/neo-small-modules.md)
