@@ -152,7 +152,9 @@ item, so those are not repeated elsewhere.
 - `MainThreeColumnPanel` switches its layout on the viewport width (`@media` in
   `resources/scss/src/apps/go/MainThreeColumnPanel.scss`). In a panel it must follow the panel width:
   container queries (`container-type: inline-size` on the panel, `@container` rules). This touches every
-  module that uses it and is the biggest part outside the dock itself.
+  module that uses it and is the biggest part outside the dock itself. Done: wide (three columns), medium
+  577–1200px of the module's width (center and east, the west a drawer, like GOUI's `.main-3-col .west`)
+  and narrow (one card); the medium step was missing until 2026-11-25.
 - Badges, module popout, global keyboard shortcuts and dialogs relate to the focused panel. The module
   popout (`MainView` placeholder card + `GO.view.PopupView`, `src/Popup.mjs`, shared App worker only) is
   replaced by the dock tear-out in phase 3; until then it pops out a panel's module the same way.
@@ -209,8 +211,11 @@ How it works:
 - Window binding precedence: `#ws/<id>` > the window's `sessionStorage` (`go-workspace-id`) > the user's
   default. `#ws/<id>` loads the workspace, then the address moves on to its focused panel.
 - Profile from a `ResizeObserver` on MainView: ≤ 576px narrow, < 1200px medium, otherwise wide. Narrow
-  shows the panels as one tab group with the dock header hidden (CSS `go-workspace-narrow`), the top bar
-  switches modules, nothing is saved; widening reloads the workspace from the server plus the module the
+  shows the panels as one tab group (CSS `go-workspace-narrow`), nothing is saved. Its tab strip switches
+  between the panels: the top bar shows only the pressed tab when narrow, so it can't (the strip was hidden
+  until 2026-11-25 and the other panels were unreachable on a phone); tabs that don't fit go to its "More
+  tabs" menu, the dock actions (panel menu, maximize, close) are hidden (`style.css`), and the right click
+  menu and "move out" (a tab dropped on the top bar) do nothing (`OpenWorkspace` checks the profile); widening reloads the workspace from the server plus the module the
   user switched to. When that module was not a panel of the workspace yet, it is saved as a new panel
   right after widening (the first save after the narrow time; before 2026-11-25 only with the next
   change, so a reload lost it).

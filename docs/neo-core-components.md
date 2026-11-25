@@ -111,6 +111,17 @@ theme overlay, for example `resources/scss/go/form/field/CheckBox.scss` draws th
 A component that restyles its checkboxes (CheckboxGroup shows them as buttons) overrides that in its
 own sheet. The select-all boxes of Notes and Calendar are `GO.component.CheckBox`, a separate component.
 
+## MainThreeColumnPanel widths (2026-11-25)
+
+`GO.view.MainThreeColumnPanel` follows the module's own width (`container-type: inline-size`,
+`@container` rules in `MainThreeColumnPanel.scss`), with GOUI's breakpoints: above 1200px west,
+center and east; 577–1200px center and east with the west as a drawer over them (GOUI
+`.main-3-col .west` below `$breakpointMedium`), open while it is the `go-active` panel; up to 576px
+one card (`go-mobile-cards`). `showWestButton()` shows in medium and narrow; `hideWestButton()` only
+activates the center there and hides the sidebar (`setWestHidden(true)`) only above 1200px, so
+closing the drawer doesn't leave the wide layout without its sidebar. Selecting a record
+(`activatePanel('east')`) closes the drawer too.
+
 ## neo.mjs upgrades
 
 `neo.mjs` is pinned in `views/neo/package.json` (14.0.0 since 2026-11-24; read the release
