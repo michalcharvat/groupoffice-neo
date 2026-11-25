@@ -209,7 +209,9 @@ How it works:
 - Profile from a `ResizeObserver` on MainView: ≤ 576px narrow, < 1200px medium, otherwise wide. Narrow
   shows the panels as one tab group with the dock header hidden (CSS `go-workspace-narrow`), the top bar
   switches modules, nothing is saved; widening reloads the workspace from the server plus the module the
-  user switched to.
+  user switched to. When that module was not a panel of the workspace yet, it is saved as a new panel
+  right after widening (the first save after the narrow time; before 2026-11-25 only with the next
+  change, so a reload lost it).
 - Saving: every committed dock change (and a panel's route) is queued; 1.5 s debounce per workspace and
   profile; `SfWorkspacesWorkspace/set` with `ifInState` and a patch of `panels` plus `layouts/<profile>`. On
   `stateMismatch` the queue reads `Workspace/changes`: when this workspace didn't change it only moves on to
@@ -260,6 +262,25 @@ Deviations from the design above:
   through `getReference('launcher')`).
 - Limits confirmed: 256 KB for `panels` + `layouts` + saved copies, 30 panels, 200 nodes, depth 16,
   route 1024 characters, item title 190.
+
+### Fixes after the first browser check (2026-11-25)
+
+- Focusing a panel replaces the address with the panel's route only while the window's hash is still the
+  one the App worker last handled (`replaceRoute(windowId, value, {ifHash})`, `src/history.mjs`): the
+  click that focused the panel may set the module's own route (a grid row), and that route wins.
+- Tab groups, splits and tab bodies of the dock get `min-height: 0` / `min-width: 0` (module
+  `style.css`): a group that is no split child kept `min-height: auto` and grew to its module's content.
+- A native drag of a top-bar tab sends no mouseleave: the window's shared tooltip is hidden when the drag
+  starts and ends (`hideTooltip()`, `src/tooltip.mjs`). A click on a dock header action hides it too, so a
+  toggle (maximize ⇄ restore) shows its new text on the next hover; the actions use the core translations
+  (`dockActionTooltips`).
+- Header buttons are a pill (`border-radius: 999px`), round for an icon; the switcher and the other header
+  buttons have `flex: 'none'` (the toolbar sets `flex` inline, CSS can't override it), the module tabs
+  shrink and cut their titles with an ellipsis; below 1200px only the active tab shows its close icon.
+- Not fixed here: a module deep link with an empty route (`#notes`) keeps the selection the panel's stored
+  route made, so the address and the selected row can differ until the next click (module routing).
+- Planned as its own card (owner, 2026-11-25): workspaces as their own tabs in the top bar next to the
+  standalone module tabs, instead of the dock being the whole main area.
 
 ## Decisions taken (owner, 2026-11-24)
 
