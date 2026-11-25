@@ -193,7 +193,45 @@ A module installed after the release (unminified) imports the same, now minified
 files and works unchanged. Checked on a copy of the worktree with the release build applied
 (container with the business/amd/sf modules unminified): login, shell, overview, address
 book, tasks, calendar, e-mail and files render as on the dev build, with no console errors or
-failed requests. The tarball / Debian smoke test of the release gate is still open.
+failed requests.
+
+### Tarball and Debian smoke test (2026-11-25)
+
+The release gate was run on a package built like `build_package` + `build_tar` + `build_deb`
+(`--webclient=all`) from neo-ui `ae76cb3dd`, with the business repository unencoded (no
+SourceGuardian locally) and without the pro modules:
+
+- Tarball: extracted and served by the GO 26 docker image (php:apache, Debian trixie,
+  `AllowOverride All`) with MariaDB 11.8, installed through `install/install.php`.
+- Debian: the `.deb` built with `debuild` in `debian:12`, installed with `apt` next to
+  `mariadb-server`, `apache2` and `libapache2-mod-php` (PHP 8.2), dbconfig-common preseeded,
+  then installed through the browser installer. Also upgraded in place to a second build.
+
+Checked on both: every module `Index.mjs`, the neo.mjs workers, `apps/go/app.mjs` and
+`marked` are served as `text/javascript`; Font Awesome CSS and webfonts, `dist/development`
+theme CSS, both `theme-map.json`, Material Symbols and the Lato fonts load (200); `.mjs`,
+`.js`, `.css` and `.json` get `Cache-Control: no-cache`, and an `If-None-Match` request gets
+a 304. A headless browser logged in and opened the start page, address book, tasks, calendar,
+e-mail, files and notes: no failed requests, no HTTP errors, no console errors or warnings.
+The SharedWorker's own requests (modules, `marked`, theme map) aren't visible to Playwright,
+so they were checked with curl.
+
+Found and fixed:
+
+- `www/package-lock.json` lacked the syncfusion GOUI workspace (`go/modules/community/syncfusion/views/goui`,
+  added on neo-ui without updating the lock), so `npm ci` in `install-npm.sh` failed and
+  `build.sh` stopped after the neo build, before the classic SASS/GOUI build and the neo release minification. The lock was regenerated with
+  `npm install --package-lock-only` against stub `package.json` files for the business and
+  pro workspaces, so their entries stay; the diff only adds syncfusion.
+- Debian doesn't enable `mod_headers`, so the `<IfModule mod_headers.c>` block of
+  `groupoffice.conf` was skipped and neo files had no `Cache-Control` at all (browsers
+  could keep running cached modules after an upgrade). `postinst` now runs
+  `apache2_invoke enmod headers` while `a2query -m headers` says it isn't enabled (on a new
+  install and on the first upgrade; the helper would restart Apache on every upgrade
+  otherwise, and it skips a module the admin disabled), and `groupoffice.conf` declares
+  `# Depends: headers`, so `a2enconf` warns when it's off. In a docker container
+  `policy-rc.d` blocks the restart that `apache2_invoke` asks for; on a host it restarts
+  Apache.
 
 ## 3. Choosing the client (entry point; needs D1/D2 approved)
 
@@ -356,7 +394,7 @@ in D5 has a neo equivalent, and the classic-apps method returns nothing for an a
 
 | Section | Where | Notes |
 |---|---|---|
-| 2 Build and release | `scripts/install-npm.sh` ("Building neo webclient"), `build/build.sh` `build_package()`, Debian `groupoffice.conf` (`.mjs` type, `Cache-Control: no-cache` under `/views/neo/`), `views/neo/package.json` (Font Awesome a dependency, `build` script), `Neo::cached()` for `buildId()` / `moduleFiles()` / the classic routes | `install-npm.sh nodev` checked end to end; `npm prune --omit=dev` keeps neo.mjs, marked, Font Awesome. Tarball / Debian smoke test not run here (needs a release build) |
+| 2 Build and release | `scripts/install-npm.sh` ("Building neo webclient"), `build/build.sh` `build_package()`, Debian `groupoffice.conf` (`.mjs` type, `Cache-Control: no-cache` under `/views/neo/`), `views/neo/package.json` (Font Awesome a dependency, `build` script), `Neo::cached()` for `buildId()` / `moduleFiles()` / the classic routes | `install-npm.sh nodev` checked end to end; `npm prune --omit=dev` keeps neo.mjs, marked, Font Awesome. Tarball / Debian smoke test: see "Tarball and Debian smoke test (2026-11-25)" |
 | 3 Choosing the client | `go\core\webclient\Webclient`, `go\core\controller\Webclient::setPreference()` (JMAP `core/Webclient/setPreference`, CSRF via JMAP), `Neo::enabled()`; menu items in neo (`MainView.switchToClassic()`) and classic (`MainLayout.js`); `GO.settings.config.webclientSwitch`, `Neo.config.goWebclientSwitch` | cookie host-only with the installation's path, `HttpOnly`, `SameSite=Lax`, `Secure` on HTTPS |
 | 4 Classic-only apps | `Extjs3::classicMainPanel()` (ExtJS scripts + GOUI bundle without comments: `go.Modules.register(…{mainPanel})`, `addPanel(<class>)` → the class's `id`, GOUI `addMainPanel(pkg, module, id)`, legacy `addModule('<route>', <class>)`; `requiredPermissionLevel`), `Neo::classicApps()` (cached per module id, permission per user at that level with `Module::isAvailableFor()`, entity names per module), JMAP `core/Webclient/classicApps` (`@apiReadOnly`), `src/classicApps.mjs` (menu list without neo main views; entity routes from all apps; cleared on logout, stale answers dropped), `MainView.classicMenuItems()` / `routeUnknownHash()`, `linkTypes.resolveRoute()` | opens through the `WS/History` addon (`src/history.mjs` `openTab()`: new tab with `noopener`); rewritten hashes (`#classic/…`, entity aliases, unknown hashes → "Not found") replace their history entry (`replaceRoute()`), so Back doesn't run them again |
 | 5 Deep links | `LoginView` recovery card (`showRecover()`, `onSaveRecover()`, `safeRedirect()`; a rejected redirect leaves the user on the success card), `Viewport` (before session restore, and on a later hash change in an open tab), classic `go.Router.safeRedirect()`; aliases: `TasksMain.route()` (`#tasks/<id>`), e-mail `parseRoutePath()` (raw mailbox), `SystemSettingsDialog.showCard()` (`history` → `community-history`) | |
@@ -370,9 +408,8 @@ deploy that changes only a module's `views/neo` files at the same GO version nee
 malformed percent escape there stops the classic recovery dialog (unchanged behaviour), neo ignores it.
 
 Later cards: `?r=&f=` external URL commands other than the mailto composer (only
-`links.openModelLink` of `CoreController` is left), the release smoke test of section 2 (the release
-build is done, see "Release build"), and
-section 8's removal of classic and GOUI once the classic-apps list is empty for an admin.
+`links.openModelLink` of `CoreController` is left), and section 8's removal of classic and GOUI
+once the classic-apps list is empty for an admin.
 
 ## OAuth and external URLs in neo (2026-11-25)
 
