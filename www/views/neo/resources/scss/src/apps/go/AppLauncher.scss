@@ -85,6 +85,45 @@
         width                : 100%;
     }
 
+    /* setRow(): a main view extension's entries above the tiles (sf/workspaces: the workspaces) */
+    .go-app-launcher .go-app-launcher-row {
+        display        : flex;
+        flex-wrap      : wrap;
+        gap            : go.dp(8);
+        justify-content: center;
+        padding        : go.dp(24) 5% 0;
+    }
+
+    .go-app-launcher .go-app-launcher-row-item {
+        align-items     : center;
+        background-color: rgba(255, 255, 255, .1);
+        border          : 1px solid rgba(255, 255, 255, .2);
+        border-radius   : 999px;
+        color           : #fff;
+        cursor          : pointer;
+        display         : inline-flex;
+        font            : inherit;
+        gap             : go.dp(8);
+        max-width       : go.dp(240);
+        outline         : none;
+        padding         : go.dp(6) go.dp(14);
+    }
+
+    .go-app-launcher .go-app-launcher-row-item span {
+        overflow     : hidden;
+        text-overflow: ellipsis;
+        white-space  : nowrap;
+    }
+
+    .go-app-launcher .go-app-launcher-row-item:hover,
+    .go-app-launcher .go-app-launcher-row-item.go-pressed {
+        background-color: rgba(255, 255, 255, .2);
+    }
+
+    .go-app-launcher .go-app-launcher-row-item:focus-visible {
+        box-shadow: 0 0 0 2px var(--c-primary);
+    }
+
     .go-app-launcher .go-app-launcher-tile {
         align-items   : center;
         border-radius : go.dp(8);

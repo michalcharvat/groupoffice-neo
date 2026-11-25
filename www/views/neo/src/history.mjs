@@ -33,6 +33,16 @@ export async function openTab(windowId, url) {
 }
 
 /**
+ * Open this page at another hash in a new browser window (a window of its own in the shared App worker)
+ * @param {String} windowId the window the user clicked in
+ * @param {String} hash without "#"
+ * @returns {Promise<Boolean>} false: the popup blocker stopped it
+ */
+export async function openWindow(windowId, hash) {
+    return (await addon(windowId)).openWindow({hash, windowId})
+}
+
+/**
  * Go to a URL without a history entry: Back doesn't return to the page that sent the user on
  * @param {String} windowId
  * @param {String} url
