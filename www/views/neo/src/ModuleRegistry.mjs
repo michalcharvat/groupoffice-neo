@@ -46,6 +46,8 @@ import client from './jmap/Client.mjs';
  *     // closeModules(), removeModules() (sf/workspaces: the dock). The first module the user has
  *     // access to wins; without one MainView shows one card per module and loads nothing more.
  *     mainArea: () => import('./MainArea.mjs'),
+ *     // optional: panels of the OAuth consent dialog per scope (src/view/OAuthConsentDialog.mjs)
+ *     oauthConsentPanels: {mcp: async details => ({component: {module: Panel}, getData: () => ({}), validate: () => true})},
  *     // optional, called with each window's main view after login (e.g. a dialog to show then)
  *     onMainView: mainView => {},
  *     // optional, called with each new src/users/CreateUserDialog (e.g. an extra card)

@@ -7,6 +7,9 @@ import Base from '../../../node_modules/neo.mjs/src/main/addon/Base.mjs';
  *   location.hash, which adds one: a hash that is only rewritten (an entity alias, the
  *   "classic/…" hash of a link) would then come back on Back and run again.
  * - openTab(): a new browser tab without window.opener (the classic client, docs/neo-switch.md D3)
+ * - replaceLocation(): leave the page without a history entry (OAuth authorize after login)
+ * - removeQuery(): drop parameters of the page's query, e.g. a mailto: link's ?r=&f= once its
+ *   composer is open, so a reload doesn't run it again
  *
  * Loaded per window: await Neo.Main.importAddon({name: 'WS/History', windowId})
  */
@@ -16,7 +19,7 @@ class History extends Base {
         // no library files to load
         preloadFilesDelay: false,
         remote: {
-            app: ['openTab', 'replaceRoute']
+            app: ['openTab', 'removeQuery', 'replaceLocation', 'replaceRoute']
         }
     }
 
@@ -29,6 +32,27 @@ class History extends Base {
         // with noopener window.open() always answers null, so it can't tell a blocked tab
         window.open(url, '_blank', 'noopener');
         return true
+    }
+
+    /**
+     * @param {Object} data
+     * @param {String} data.url
+     */
+    replaceLocation({url}) {
+        location.replace(url)
+    }
+
+    /**
+     * Removes parameters from the page's query, keeps the others, the path and the hash
+     * @param {Object} data
+     * @param {String[]} data.names
+     */
+    removeQuery({names}) {
+        const url = new URL(location.href);
+
+        (names || []).forEach(name => url.searchParams.delete(name));
+
+        url.href !== location.href && history.replaceState(history.state, '', url.pathname + url.search + url.hash)
     }
 
     /**

@@ -1,0 +1,21 @@
+// GO.view.OAuthConsentDialog: approve an application that registered itself (?oauthConsent=1)
+.neo-theme-go .go-oauth-consent-dialog {
+    .go-oauth-consent-body {
+        min-height: 0;
+        overflow-y: auto;
+    }
+
+    .go-oauth-consent-message {
+        p, ul {
+            margin: 0 0 .8rem;
+        }
+    }
+
+    .go-oauth-consent-warning {
+        color: var(--fg-warning);
+    }
+
+    .go-dialog-buttons {
+        border-top: 1px solid var(--fg-line);
+    }
+}
