@@ -1,4 +1,5 @@
 import client from '../../src/jmap/Client.mjs';
+import ModuleRegistry from '../../src/ModuleRegistry.mjs';
 import {load}  from '../../src/Translate.mjs';
 import '../../src/form/field/textAutoComplete.mjs';
 import '../../src/form/field/textReadOnly.mjs';
@@ -89,6 +90,9 @@ results.forEach((result, i) => {
         console.error('Failed to load neo module', Neo.config.goModules[i], result.reason)
     }
 });
+
+// the modules registered in the order they finished loading: GO's module order instead (tabs, menus)
+ModuleRegistry.sortByEntryPoints(Neo.config.goModules || []);
 
 Neo.currentWorker.on('disconnect', ({windowId}) => {
     destroyApp(windowId);
