@@ -141,6 +141,19 @@ was below 0.1 % of its pixels after the fixes.
   `aria-pressed`).
 
 - `src/form/field/textAutoComplete.mjs`: replaces `Text.afterSetAutoComplete` (string values).
+- Enter submits a form (ExtJS `go.form.Dialog` hidden submit button, GOUI `<form>`): neo forms
+  don't submit natively (`onsubmit="return false;"`, app in a worker), so a form binds
+  `keys: {Enter: submitOnEnter('submit' | 'up.onLogin')}` (`src/form/submitOnEnter.mjs`); FormWindow
+  does it for every entity dialog. A plain `keys: {Enter: 'up.x'}` does nothing: 14's
+  `KeyNavigation` looks the string up on the component itself and has no `up.` search (only
+  `handler` does). Enter submits only from an `<input>` without modifiers and outside an IME
+  composition (keyCode 229), not when a component between the input and the form binds Enter in
+  `keys` (pickers open their list) or returns true from `ownsEnterKey(data)`: ChipsField,
+  AutocompleteField, calendar SuggestField, HtmlField (link bar), ColorField (colour input only),
+  DurationField (takes its value on `change`, which arrives after the keydown). A field that uses
+  Enter through a DOM keydown listener, or commits its value only on `change`, must add
+  `ownsEnterKey()`. A `submit()` override must refuse a second call before its first `await`
+  (Enter repeats; see calendar `EventDialog.submit()`). Tests `tests/submitOnEnter.test.mjs`.
 - `src/view/Dialog.mjs`: overrides `close`, `closeOrHide`, `getFocusReturnTarget` (14 returns the
   focus through it on close and on destroy; 13.4 only via `revertFocus`), `onKeyDownEscape`,
   `afterSetHidden`, `getFirstField` (14 focuses the first field on open; skip inactive cards).
