@@ -1,3 +1,31 @@
+- Core: the new web client's files of every module are revalidated by one rule in www/.htaccess, so a browser no longer runs an old module script from its cache after an update when a module lacks its own rule (installations that use .htaccess; the Debian package already had a central rule).
+- Core: in the new web client, a module can tell whether a window it opened with openWindow() was closed or reloaded.
+- Summary: in the new web client, start page portlets no longer overlap on phones and narrow screens; the page switches to one column by its own width, also in a workspace panel.
+- Core: in the new web client, modules with a sidebar, list and detail (address book, notes, tasks and others) show the list and the detail side by side on tablets and in smaller windows, and these modules and the calendar open the sidebar as a drawer, like the classic client, instead of switching to the phone layout.
+- Core, Email: in the new web client, Enter submits the login screen (logs in, and also sends the forgotten password request, saves the new password and confirms the two-factor code) and saves item dialogs like in the classic client; Enter also runs the e-mail search and confirms e-mail prompts.
+- Core: the new web client stores the last open module tabs on the server like the classic client, so they follow the user to any browser and are shared between the classic and the new client.
+- Core: in the new web client, the top bar shows only the modules opened in the window and keeps them after a reload.
+- Core: in the new web client, module tabs keep GroupOffice's module order after a reload instead of the order in which the modules finished loading.
+- Core: in the new web client, modules can add items to the apps menu, results to the header search, window-wide shortcuts and "Move to window" for module tabs, and open a module beside another (Shift+click in the apps menu).
+- Core: in the new web client, modules can extend the main view with their own tabs, top-bar items and routes, and take over module views; this replaces the mainArea hook. With sf/workspaces installed, workspaces are tabs next to the module tabs.
+- Core: the Debian package enables the Apache headers module, so browsers check the new web client's files for changes after an update.
+- Core: OAuth authorization and consent and mailto: links continue in the new web client; security: a crafted mailto: link could change the content and the options of the classic composer when a user opened it; it no longer can. No configuration change is needed.
+- Build: the release package contains a minified build of the new web client (scripts of the client and its modules, theme CSS) with only the runtime packages, which makes it much smaller (views/neo from 142 MB to 11 MB).
+- Core: links to items that are missing from the search index no longer disappear: administrators see them in the links panel, and deleting such a link reaches other devices. A link no longer gives more access than the linked item: a permission below read (for example free/busy) gives no access to the link.
+- Core: Module/get with only some properties returned no settings and denied access to the module for the rest of the request.
+- Core: in the new web client, header module tabs shorten their labels instead of overlapping on narrow screens, header buttons are pill-shaped, the main menu button shows no focus ring after a mouse click, and the tab menu and the "open in a separate window" placeholder are translated.
+- Core: in the new web client, module pages follow the width of their panel instead of the window.
+- Core: in the new web client, the permissions of an item show its existing user shares when opened, and the All / Users / Groups filter works everywhere, also in the Website Manager.
+- Site: in the new web client, users without write access see the content editor read-only, and a new first content item is shown in the tree.
+- Core: in the new web client, links in rendered content are readable in dark mode, avatar initials ignore brackets and other characters that are not letters or digits, the Dev module is for administrators only, and no tooltip stays on a button after a dialog or the app launcher closes.
+- Core: in the new web client, the "Main menu" choice in My account applies when saved, not when the dialog is cancelled.
+- Build: build.sh --webclient=neo builds a package without the classic client (ExtJS, GOUI); for now only together with --test; it fails when a module has a classic UI but no neo UI, unless allowed with --allow-without-neo.
+- Core: the installer, upgrade, maintenance, licence, security warning, error and calendar invitation pages have the look of the new web client, light and dark. A build without the classic web client (views/Extjs3, views/goui) now installs and runs the new web client.
+- Core: in the new web client, the main menu opens a full-screen app launcher like in GroupOffice 6.8 (search, module tiles with counts, keyboard navigation). My account → Look & feel can switch back to the list.
+- Site: the Website Manager is available in the new web client.
+- Site: security: content, menus and menu items now check the permissions of their website. Users who could only read a website, or had no access to it, could change and delete its content and menus, and on a public website whose theme shows search results, a visitor could delete its pages through the search. No configuration change is needed.
+- Core: the new web client styles each part of the screen the same way wherever it appears: dialogs have padding, checkboxes look like in the rest of GroupOffice, and the History filters, user column and row height are fixed.
+- Core: the new web client runs on neo.mjs 14. Pressing Escape while moving a dialog now only cancels the move, and a toggle button shows its state to screen readers.
 - Core: in the new web client, a person field with an avatar (for example the attendees in the event dialog) no longer shows a stray dropdown arrow.
 - Files, Email: in the new web client, an empty folder, search or trash shows a text ("Drop files here", "No items found", "No items to display") instead of nothing.
 - Core: in the new web client, grids and lists show "No items found" (or the text of the classic client) when they have no items.
