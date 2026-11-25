@@ -1008,8 +1008,8 @@ Tests:
 
 - **Code**:
   - core (`www/views/neo`): `MainView.mjs` claim API with a key (`claimModuleView(name, owner, key)`,
-    `releaseModuleView(name, key)`, `unclaimModuleView(name, key)`, `claimed` and `openTokens` by
-    `name|key`), `claimsOf()`, `hasModuleView()`, `isSingleInstance()`, `standaloneRoute()`,
+    `releaseModuleView(name, key)`, `unclaimModuleView(name, key)`, `claimed` by `name|key`, `openTokens`
+    by `name|key` for a claim being made and by the bare name for a standalone view being made), `claimsOf()`, `hasModuleView()`, `isSingleInstance()`, `standaloneRoute()`,
     `showStandalone()` (the tab button and Move out), `quickAdd()` as one navigation with `expectedHash`,
     `navCount`; `singleInstance: true` in the `Index.mjs` of calendar, email and summary. Hooks in
     `docs/neo-small-modules.md`.
@@ -1025,14 +1025,16 @@ Tests:
     (`focusedRoute()`), not on the focus a load chooses: otherwise a reload with the second panel focused
     routed the next link to the first.
   - The first address after a reload routes as if the workspace the window showed (`stored.active`) were
-    shown (`bootActiveId`), until a card shows.
+    shown (`bootActiveId`), until a card or a standalone module shows.
   - Move out of a panel whose view isn't made yet attaches it first, so the module leaves with its route.
   - After a conflict merge over 30 panels, our added panels go first (newest first), then panels the
     other window closed that our route change brought back; the notice says the limit.
   - Badges go to every extension (`onBadge`); a workspace counts a module once however many panels it has
     (a `singleInstance` module only where its view is). `showsBadge()` keeps the main menu dot off for a
     count a workspace tab shows.
-- **Codex review** (2026-11-26, gpt-6.2-astra, eight findings), all fixed: Move out of a lazy panel lost
+- **Codex review** (2026-11-26, gpt-6.2-astra, eight findings, and nine in a second pass over the fixes:
+  more races of the same kinds, a standalone import that failed or lost to a claim, the main menu dot after
+  closing a workspace), all fixed: Move out of a lazy panel lost
   the panel; the first address after a reload went to the standalone tab; a pending panel claim and a
   standalone open could make two views of a `singleInstance` module; a conflict could still send 31
   panels; a slow quick add or tab click could act after a newer navigation; a profile switch left a

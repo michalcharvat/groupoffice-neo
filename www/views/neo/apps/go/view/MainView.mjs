@@ -1025,7 +1025,6 @@ class MainView extends Container {
         // for start(): a hash other than the window's first one came meanwhile (while the extensions
         // started and the tabs were restored) and wins over it
         me.hashSeen = hashString || '';
-        me.navCount++;
 
         // quickAdd() showed the view already: the address only follows it
         if (me.expectedHash !== null && (hashString || '') === me.expectedHash) {
@@ -1037,6 +1036,7 @@ class MainView extends Container {
         }
 
         me.expectedHash = null;
+        me.navCount++;
 
         if (me.extensions.length) {
             const seq = ++me.hashSeq;
@@ -1092,9 +1092,10 @@ class MainView extends Container {
      * to null when it doesn't handle the module (then it opens standalone).
      * @param {Object} module ModuleRegistry entry
      * @param {String|null} route passed to the view's route(), null: the view keeps its route
+     * @param {Number} [nav] the navigation (navCount) it belongs to, see openModule()
      * @returns {Promise<Neo.component.Base|null>} the module's view
      */
-    async showModule(module, route) {
+    async showModule(module, route, nav) {
         let me = this;
 
         for (const extension of me.extensions) {
@@ -1115,7 +1116,7 @@ class MainView extends Container {
             }
         }
 
-        await me.openModule(module);
+        await me.openModule(module, nav);
 
         // undefined when the module was closed while its code loaded
         const view = me.openModules[module.name]?.view || null;
@@ -1129,7 +1130,13 @@ class MainView extends Container {
         return view
     }
 
-    async openModule(module) {
+    /**
+     * @param {Object} module ModuleRegistry entry
+     * @param {Number} [nav] the navigation (navCount) it belongs to: overtaken by a newer one while the
+     *     code loaded, the module is made but not shown
+     * @returns {Promise<void>}
+     */
+    async openModule(module, nav) {
         let me      = this,
             cards   = me.getReference('modules'),
             entry   = me.openModules[module.name];
@@ -1137,7 +1144,15 @@ class MainView extends Container {
         if (!entry) {
             const token = me.openTokens[module.name] = Symbol();
 
-            const {default: ViewClass} = await module.mainView();
+            let ViewClass;
+
+            try {
+                ({default: ViewClass} = await module.mainView())
+            } catch (e) {
+                // the module's code failed to load: no view is being made any more (hasModuleView())
+                me.openTokens[module.name] === token && delete me.openTokens[module.name];
+                throw e
+            }
 
             // closed (closeModule) or the shell destroyed while the code loaded
             if (me.isDestroyed || me.openTokens[module.name] !== token) {
@@ -1154,6 +1169,10 @@ class MainView extends Container {
             entry = me.openModules[module.name] ??= {
                 view: cards.add({module: ViewClass, moduleName: module.name})
             };
+        }
+
+        if (nav !== undefined && nav !== me.navCount) {
+            return
         }
 
         // a popped out module keeps its placeholder card here
@@ -1187,8 +1206,14 @@ class MainView extends Container {
 
         // one navigation: the view the routing chooses (a workspace panel or the standalone tab), with
         // its route ("#notes/note/5" stays)
-        const nav  = ++me.navCount,
-              view = await me.showModule(module, null);
+        const nav = ++me.navCount;
+
+        let view = await me.showModule(module, null, nav);
+
+        // one view per window: a workspace claimed it while its code loaded; the routing finds it there now
+        if (!view && nav === me.navCount && me.isSingleInstance(module.name) && me.claimsOf(module.name).length) {
+            view = await me.showModule(module, null, nav)
+        }
 
         // gone, or the user went elsewhere while the module loaded
         if (!view || me.isDestroyed || nav !== me.navCount) {
@@ -1243,9 +1268,15 @@ class MainView extends Container {
 
         const nav = ++me.navCount;
 
-        await me.openModule(module);
+        await me.openModule(module, nav);
 
         const entry = me.openModules[name];
+
+        // one view per window: a workspace claimed it while its code loaded; the address finds it there
+        if (!entry && !me.isDestroyed && nav === me.navCount && me.isSingleInstance(name) && me.claimsOf(name).length) {
+            Neo.Main.setRoute({value: route ? name + '/' + route : name, windowId: me.windowId});
+            return
+        }
 
         if (me.isDestroyed || !entry || me.activeModule !== name || nav !== me.navCount) {
             return
