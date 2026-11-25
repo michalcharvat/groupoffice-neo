@@ -358,6 +358,8 @@ class Neo {
 			'goLoginButtons' => $this->loginButtons(),
 			// set in a popup window opened by GO.view.Dialog: id of the dialog to adopt
 			'goPopup' => $this->popupId(),
+			// what the Viewport continues with after login: OAuth authorize / consent, the composer of a mailto: link
+			'goEntry' => Webclient::neoEntry($_GET) ?: null,
 			// the Dev module (component demos) loads only for developers
 			// the installation's setting, not the debugger (debug_usernames): the Dev module registers in the shared worker
 			'goDebug' => !empty(go()->getConfig()['debug']),

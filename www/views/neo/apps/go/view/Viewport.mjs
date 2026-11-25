@@ -4,7 +4,10 @@ import HashHistory  from '../../../node_modules/neo.mjs/src/util/HashHistory.mjs
 import client       from '../../../src/jmap/Client.mjs';
 import LoginView    from './LoginView.mjs';
 import MainView     from './MainView.mjs';
+import OAuthConsentDialog from '../../../src/view/OAuthConsentDialog.mjs';
 import ModuleRegistry from '../../../src/ModuleRegistry.mjs';
+import {notifyError} from '../../../src/Notify.mjs';
+import {removeQuery, replaceLocation} from '../../../src/history.mjs';
 import {t} from '../../../src/Translate.mjs';
 
 /** "#recover/<hash>-<redirect>" of the password recovery mail (User::sendRecoveryMail()) */
@@ -44,6 +47,10 @@ class Viewport extends BaseViewport {
         // browser has a session: like go.Router's "recover" route (docs/neo-switch.md, D5)
         const hash    = (HashHistory.first(me.windowId) || Neo.windowConfigs?.[me.windowId]?.hash)?.hashString || '',
               recover = hash.match(RECOVER);
+
+        // what this page continues with after login: OAuth authorize / consent, a mailto: link's
+        // composer (go\core\webclient\Webclient::neoEntry(), docs/neo-switch.md D5)
+        me.entry = Neo.windowConfigs?.[me.windowId]?.goEntry || null;
 
         // shown in onConstructed(): the login card does not exist yet
         me.recoverMatch = recover;
@@ -95,6 +102,7 @@ class Viewport extends BaseViewport {
         let me = this;
 
         me.showToken = null;
+        me.closeConsentDialog();
 
         if (me.mainView) {
             me.remove(me.mainView);
@@ -125,6 +133,14 @@ class Viewport extends BaseViewport {
             return
         }
 
+        // api/oauth.php sent the user to the login with a pending authorization: it continues
+        // there and sends the browser on to the application (MainLayout.js onAuthentication())
+        if (me.entry?.oauth === 'authorize') {
+            me.entry = null;
+            await replaceLocation(me.windowId, client.apiUrl + 'oauth.php/authorize');
+            return
+        }
+
         if (!me.mainView) {
             // modules may add modules for this user (ModuleRegistry onLogin)
             await ModuleRegistry.init();
@@ -147,7 +163,72 @@ class Viewport extends BaseViewport {
             me.mainView = me.add({module: ViewClass})
         }
 
-        me.layout.activeIndex = 2
+        me.layout.activeIndex = 2;
+
+        me.continueEntry()
+    }
+
+    /**
+     * Once, after the main view is shown: the consent dialog of an OAuth request
+     * (MainLayout.js, after the "authenticated" listeners) and the composer of a mailto: link
+     * (Extjs3::drawScripts() runs GO.email.showComposer() of the ?r=&f= external URL)
+     */
+    async continueEntry() {
+        const me    = this,
+              entry = me.entry,
+              owner = {appName: me.appName, windowId: me.windowId};
+
+        if (!entry) {
+            return
+        }
+
+        me.entry = null;
+
+        if (entry.oauth === 'consent') {
+            const dialog = await OAuthConsentDialog.open(owner);
+
+            if (me.isDestroyed || me.layout.activeIndex !== 2) {
+                // the session ended meanwhile (showLogin()): ask again after the next login
+                dialog?.close();
+                me.entry = entry;
+                return
+            }
+
+            me.consentDialog = dialog || null;
+            // only a request that no longer waits: after a failed load a reload asks again
+            dialog === null && await removeQuery(me.windowId, ['oauthConsent'])
+        }
+
+        if (entry.compose) {
+            // a reload must not open another composer
+            await removeQuery(me.windowId, ['r', 'f']);
+
+            // the e-mail module's composer, not src/Mail.mjs showComposer(): its desktop composer
+            // would hand the link back to the mail program, which may be GroupOffice again.
+            // Without the module nothing opens, like GO.email missing in the classic client.
+            const compose = ModuleRegistry.getConfigs('showComposer')[0];
+
+            try {
+                compose && await compose({...owner, values: entry.compose})
+            } catch (e) {
+                notifyError(owner, e)
+            }
+        }
+    }
+
+    /**
+     * The consent dialog can't be decided without a session: it closes and comes back after the next login
+     */
+    closeConsentDialog() {
+        const me     = this,
+              dialog = me.consentDialog;
+
+        me.consentDialog = null;
+
+        if (dialog && !dialog.isDestroyed) {
+            dialog.close();
+            me.entry = {...me.entry, oauth: 'consent'}
+        }
     }
 }
 
