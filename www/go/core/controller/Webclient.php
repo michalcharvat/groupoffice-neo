@@ -6,6 +6,7 @@ use go\core\Controller;
 use go\core\exception\Forbidden;
 use go\core\jmap\exception\InvalidArguments;
 use go\core\webclient\Neo;
+use go\core\webclient\OpenModules;
 use go\core\webclient\Webclient as WebclientChooser;
 
 /**
@@ -51,5 +52,22 @@ class Webclient extends Controller {
 	public function classicApps(): array
 	{
 		return ['list' => Neo::get()->classicApps()];
+	}
+
+	/**
+	 * Store the logged-in user's last open modules (the module tabs), which the classic and the
+	 * neo client open at the next login. The session returns them in 'state' ('open-modules').
+	 *
+	 * @apiPermission Module access: any logged-in user may store the open modules of their own account; only go_state 'open-modules' of the current user is written, the names are validated and their number limited, and both clients show only modules the user may access.
+	 * @param array $params ['modules' => string[]]
+	 * @return array ['modules' => string[]]
+	 * @throws InvalidArguments
+	 */
+	public function saveOpenModules(array $params): array
+	{
+		$modules = OpenModules::validate($params['modules'] ?? null);
+		OpenModules::save($modules);
+
+		return ['modules' => $modules];
 	}
 }

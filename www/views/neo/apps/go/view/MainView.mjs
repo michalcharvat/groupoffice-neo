@@ -26,7 +26,8 @@ import {fmt, t} from '../../../src/Translate.mjs';
 import {hideTooltip} from '../../../src/tooltip.mjs';
 import {getState, setState} from '../../../src/State.mjs';
 import {getWindowItem, setWindowItem} from '../../../src/windowStorage.mjs';
-import {LAST_STATE, WINDOW_KEY, parseWindowTabs, restoredTabs, serializeWindowTabs} from '../../../src/moduleTabs.mjs';
+import {LAST_STATE, SERVER_STATE, WINDOW_KEY, decodeServerTabs, encodeServerTabs, parseWindowTabs, pickLastTabs, restoredTabs,
+    serializeWindowTabs, withClassicOnly} from '../../../src/moduleTabs.mjs';
 
 // header menus open below their button, right edges aligned (they sit at the right)
 const RIGHT = {edgeAlign: 't100-b100'};
@@ -46,6 +47,96 @@ const mainViews = new Set();
  */
 export function getMainViews() {
     return [...mainViews].filter(mv => !mv.isDestroyed)
+}
+
+// the user's last tabs on their way to the server (src/moduleTabs.mjs): changes of a second are sent at once
+const SERVER_TABS_DELAY = 1000,
+      // logout waits for a pending save at most this long
+      SERVER_TABS_LOGOUT_WAIT = 3000;
+let serverTabs        = null, // the queued save {userId, tabs, windowId}
+    serverTabsLatest  = null, // the last save queued: only its success marks the local copy as sent
+    serverTabsFlying  = 0,    // requests on their way: the session's copy is not yet what the server holds
+    serverTabsTimer   = null,
+    // the request on its way: one at a time, so an older set never overwrites a newer one
+    serverTabsSending = Promise.resolve(),
+    // a save failed: the session's copy may not be what the server holds, always send
+    serverTabsUnsure  = false;
+
+/**
+ * The session's copy of the server's client state value (a new window reads it)
+ * @param {Object} session
+ * @param {String} value
+ */
+function setSessionServerTabs(session, value) {
+    session.state = {...(Array.isArray(session.state) ? {} : session.state), [SERVER_STATE]: value}
+}
+
+/**
+ * Sends the user's last tabs to the server after SERVER_TABS_DELAY
+ * @param {Number} userId
+ * @param {String[]} tabs
+ * @param {String} windowId the window whose localStorage is marked as sent afterwards
+ */
+function queueServerTabs(userId, tabs, windowId) {
+    serverTabs = serverTabsLatest = {userId, tabs, windowId};
+    clearTimeout(serverTabsTimer);
+    serverTabsTimer = setTimeout(flushServerTabs, SERVER_TABS_DELAY)
+}
+
+/**
+ * Sends the queued tabs now, after the request on its way. When it fails, the localStorage copy stays
+ * marked as pending and wins at the next boot of this browser, which sends it again.
+ * @returns {Promise<void>}
+ */
+function flushServerTabs() {
+    const save = serverTabs;
+
+    clearTimeout(serverTabsTimer);
+    serverTabsTimer = null;
+    serverTabs      = null;
+
+    if (save) {
+        serverTabsFlying++;
+        serverTabsSending = serverTabsSending.then(() => sendServerTabs(save)).finally(() => serverTabsFlying--)
+    }
+
+    return serverTabsSending
+}
+
+/**
+ * @param {Object} save {userId, tabs, windowId}
+ * @returns {Promise<void>}
+ */
+async function sendServerTabs(save) {
+    const session = client.session;
+
+    // another account meanwhile (the session changes before client.user)
+    if (!session || session.userId !== save.userId || client.user?.id !== save.userId) {
+        return
+    }
+
+    try {
+        const {modules} = await client.call('core/Webclient/saveOpenModules', {modules: save.tabs});
+
+        if (client.session !== session) {
+            return
+        }
+
+        setSessionServerTabs(session, encodeServerTabs(modules));
+
+        // nothing newer queued or on its way: the local copy is on the server (another window's storage when
+        // this one closed)
+        if (serverTabsLatest === save) {
+            serverTabsUnsure = false;
+
+            const windowId = getMainViews().some(mv => mv.windowId === save.windowId) ? save.windowId : getMainViews()[0]?.windowId;
+
+            windowId && await setState(LAST_STATE + save.userId, {tabs: save.tabs, pending: false}, windowId)
+        }
+    } catch (e) {
+        serverTabsUnsure = true;
+        console.warn('GO.view.MainView: module tabs not stored on the server', e)
+    }
 }
 
 /**
@@ -629,7 +720,11 @@ class MainView extends Container {
         const views = getMainViews();
 
         views.forEach(mv => mv.tabsLoggingOut = true);
-        await Promise.all(views.map(mv => setWindowItem(mv.windowId, WINDOW_KEY, null)));
+        await Promise.all([
+            // a hanging request doesn't keep the user logged in
+            Promise.race([flushServerTabs(), new Promise(resolve => setTimeout(resolve, SERVER_TABS_LOGOUT_WAIT))]),
+            ...views.map(mv => setWindowItem(mv.windowId, WINDOW_KEY, null))
+        ]);
 
         client.logout().catch(e => {
             // still logged in: the windows store their tabs again
@@ -1280,7 +1375,8 @@ class MainView extends Container {
     }
 
     /**
-     * Stores the tabs for this window (reload) and as the user's last ones (a new window, the next login)
+     * Stores the tabs for this window (reload) and as the user's last ones (a new window, the next login,
+     * on the server and as a local copy until the server has them)
      * @protected
      */
     saveTabs() {
@@ -1291,10 +1387,16 @@ class MainView extends Container {
             return
         }
 
-        const tabs = me.getTabs();
+        const tabs   = me.getTabs(),
+              stored = client.session?.state?.[SERVER_STATE],
+              // the classic client's tabs of modules neo doesn't have stay for the classic client
+              last   = withClassicOnly(tabs, decodeServerTabs(stored), name => !!ModuleRegistry.get(name)?.mainView),
+              // unchanged on the server (a reload) and nothing else on its way: no request
+              sent   = !serverTabs && !serverTabsFlying && !serverTabsUnsure && encodeServerTabs(last) === stored;
 
         setWindowItem(me.windowId, WINDOW_KEY, serializeWindowTabs(tabs, userId));
-        setState(LAST_STATE + userId, {tabs}, me.windowId)
+        setState(LAST_STATE + userId, {tabs, pending: !sent}, me.windowId);
+        sent || queueServerTabs(userId, last, me.windowId)
     }
 
     /**
@@ -1309,7 +1411,9 @@ class MainView extends Container {
 
         try {
             const windowTabs = userId ? parseWindowTabs(await getWindowItem(me.windowId, WINDOW_KEY), userId) : null,
-                  lastTabs   = !userId || windowTabs ? null : (await getState(LAST_STATE + userId, me.windowId)).tabs;
+                  local      = !userId || windowTabs ? null : await getState(LAST_STATE + userId, me.windowId),
+                  // the session's copy after the local one: a save acknowledged meanwhile updated both
+                  lastTabs   = local && pickLastTabs({server: decodeServerTabs(client.session?.state?.[SERVER_STATE]), local});
 
             if (me.isDestroyed) {
                 return
