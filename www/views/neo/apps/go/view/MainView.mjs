@@ -21,7 +21,7 @@ import {notify, notifyError}   from '../../../src/Notify.mjs';
 import {openTab, replaceRoute}  from '../../../src/history.mjs';
 import {closePopup, openPopup, popupsSupported} from '../../../src/Popup.mjs';
 import {applyTheme}            from '../../../src/Preferences.mjs';
-import {t} from '../../../src/Translate.mjs';
+import {fmt, t} from '../../../src/Translate.mjs';
 
 // header menus open below their button, right edges aligned (they sit at the right)
 const RIGHT = {edgeAlign: 't100-b100'};
@@ -126,6 +126,7 @@ class MainView extends Container {
         }, {
             module   : Button,
             cls      : ['go-module-close'],
+            flex     : 'none',
             iconCls  : 'fa fa-xmark',
             reference: 'close-' + m.name,
             tooltip  : t('Close'),
@@ -136,6 +137,7 @@ class MainView extends Container {
             module   : GoButton,
             icon     : 'notifications',
             cls      : ['go-header-button', 'go-notification-button'],
+            flex     : 'none',
             reference: 'notificationButton',
             tooltip  : t('Notifications'),
             hidden   : true,
@@ -145,12 +147,14 @@ class MainView extends Container {
             module : GoButton,
             icon   : 'search',
             cls    : ['go-header-button'],
+            flex   : 'none',
             tooltip: t('Search'),
             handler: () => me.getReference('search').open()
         }, {
             module : GoButton,
             icon   : 'add',
             cls    : ['go-header-button'],
+            flex   : 'none',
             tooltip: t('Add'),
             hidden : !available.some(m => m.quickAdd),
             menu   : {align: RIGHT, items: available.filter(m => m.quickAdd).map(m => ({
@@ -162,13 +166,15 @@ class MainView extends Container {
             module   : GoButton,
             icon     : 'apps',
             cls      : ['go-header-button', 'go-main-menu-button'],
+            flex     : 'none',
             reference: 'mainMenuButton',
             tooltip  : t('Main menu'),
-            handler  : () => me.openMainMenu()
+            handler  : data => me.openMainMenu(data)
         }, {
             // go.util.avatar(): initials on a colour from the name
             module : GoButton,
             cls    : ['go-header-avatar'],
+            flex   : 'none',
             text   : initials(userName),
             style  : {backgroundColor: avatarColor(userName)},
             menu   : {align: RIGHT, items: [{
@@ -401,8 +407,9 @@ class MainView extends Container {
 
     /**
      * Header main menu button: the app launcher, or a list (My account → Look & feel)
+     * @param {Object} [data] the button's click: detail 0 is a click by the keyboard (Enter, Space)
      */
-    async openMainMenu() {
+    async openMainMenu(data) {
         let me       = this,
             button   = me.getReference('mainMenuButton'),
             launcher = me.getReference('launcher'),
@@ -426,6 +433,9 @@ class MainView extends Container {
             return
         }
 
+        // the button gets the focus back on close: with a focus ring only when opened by the keyboard
+        const modality = data?.detail === 0 ? 'keyboard' : 'pointer';
+
         if (mode === 'list') {
             me.mainMenuList = MenuList.showAt({
                 appName : me.appName,
@@ -439,6 +449,7 @@ class MainView extends Container {
                     handler: () => Neo.Main.setRoute({value: m.name, windowId: me.windowId})
                 })), ...me.classicMenuItems()]
             });
+            me.mainMenuList.returnFocusModality = modality;
             return
         }
 
@@ -456,7 +467,7 @@ class MainView extends Container {
             classic: true
         }))]);
 
-        launcher.open(button.id)
+        launcher.open(button.id, modality)
     }
 
     /**
@@ -680,7 +691,7 @@ class MainView extends Container {
             items : [{
                 ntype: 'component',
                 cls  : ['go-empty'],
-                text : t('{module} is open in a separate window.').replace('{module}', module?.title || name)
+                text : fmt(t('{module} is open in a separate window.'), {module: module?.title || name})
             }, {
                 module : Button,
                 iconCls: 'fa fa-down-left-and-up-right-to-center',

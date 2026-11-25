@@ -62,6 +62,33 @@
         font-size: calc(1.1rem * var(--font-scale));
     }
 
+    /* many module tabs on a medium screen: the tabs shrink and cut their title with an ellipsis (it
+       ran into the next tab); the close icons and the buttons on the right keep their size
+       (flex: 'none' in apps/go/view/MainView.mjs: the toolbar sets flex inline) */
+    /* not overflow: hidden on the tab: it would clip the count badge at its top right */
+    .go-topbar .neo-button.go-module-button {
+        min-width: 0;
+    }
+
+    /* below GO's medium breakpoint only the active tab shows its close icon (the others close from
+       their context menu): room for the titles */
+    @media (max-width: 1199px) {
+        .go-topbar .neo-button.go-module-button:not(.pressed) + .neo-button.go-module-close {
+            display: none;
+        }
+
+        .go-topbar .neo-button.go-module-button {
+            padding: 0 .6rem;
+        }
+    }
+
+    .go-topbar .go-module-button .neo-button-text {
+        min-width    : 0;
+        overflow     : hidden;
+        text-overflow: ellipsis;
+        white-space  : nowrap;
+    }
+
     .go-topbar.neo-toolbar .neo-button:hover,
     .go-topbar.neo-toolbar .neo-button:focus-visible {
         /* neo's .neo-button:hover border (a teal frame) loads after this file */
@@ -78,9 +105,10 @@
     }
 
     /* GO #secondary-menu: white Material icons, dp(40) round hover */
+    /* round for an icon, a pill for a wider button (count, the workspace switcher): 50% made those an ellipse */
     .go-topbar.neo-toolbar .neo-button.go-header-button {
         border       : none;
-        border-radius: 50%;
+        border-radius: 999px;
         color        : #fff;
         height       : 4rem;
         margin       : 0 .4rem;

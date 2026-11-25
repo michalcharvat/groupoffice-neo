@@ -2325,4 +2325,8 @@ Pokud jste o nové heslo nežádali, tento e-mail prosím smažte.',
   'Switch to the new UI' => 'Přepnout na nové rozhraní',
   'Launcher' => 'Spouštěč',
   'Opens the classic UI in a new tab' => 'Otevře klasické rozhraní na nové kartě',
+  '{module} is open in a separate window.' => 'Modul {module} je otevřen v samostatném okně.',
+  'Bring it back' => 'Vrátit zpět',
+  'Close others' => 'Zavřít ostatní',
+  'Close all' => 'Zavřít vše',
 );

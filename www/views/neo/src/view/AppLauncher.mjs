@@ -139,6 +139,11 @@ class AppLauncher extends Container {
      * @member {String|null} returnFocusId=null
      */
     returnFocusId = null
+    /**
+     * How the launcher was opened ('pointer' | 'keyboard'), for the focus it gives back
+     * @member {String|undefined} returnFocusModality=undefined
+     */
+    returnFocusModality = undefined
 
     onConstructed() {
         super.onConstructed();
@@ -190,8 +195,10 @@ class AppLauncher extends Container {
 
     /**
      * @param {String|null} [returnFocusId] DOM id that gets the focus back on close
+     * @param {String} [modality] 'pointer' | 'keyboard': how the launcher was opened; a pointer
+     *     open gives the focus back without a focus ring (Neo.main.DomAccess.focus() modality)
      */
-    open(returnFocusId = null) {
+    open(returnFocusId = null, modality = undefined) {
         let me = this;
 
         if (!me.hidden && !me.closing) {
@@ -201,6 +208,7 @@ class AppLauncher extends Container {
         clearTimeout(me.closeTimer);
         me.closing       = false;
         me.returnFocusId = returnFocusId;
+        me.returnFocusModality = modality;
         me.activeIndex   = -1;
         me.removeCls('go-closing');
         me.getReference('field').value = '';
@@ -240,7 +248,7 @@ class AppLauncher extends Container {
         }, CLOSE_MS);
 
         // the button gets the focus back, its tooltip doesn't show ("Main menu" stayed after Escape)
-        restoreFocus && me.returnFocusId && focusWithoutTooltip(me, {id: me.returnFocusId})
+        restoreFocus && me.returnFocusId && focusWithoutTooltip(me, {id: me.returnFocusId, modality: me.returnFocusModality})
     }
 
     /**

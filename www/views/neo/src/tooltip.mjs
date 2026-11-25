@@ -30,6 +30,21 @@ export async function focusWithoutTooltip(component, options) {
 }
 
 /**
+ * Hides the window's shared tooltip, whatever its target. For a native drag and drop (a top-bar tab
+ * dragged into the workspace dock): the pointer leaves the target without a mouseleave, and the
+ * mousedown focused the dragged button, so its tooltip ("Close") would stay after the drop.
+ * @param {Neo.component.Base} component a component of the window, for its windowId
+ */
+export function hideTooltip(component) {
+    const {windowId} = component,
+          app        = Neo.apps?.[windowId];
+
+    if (app && Neo.tooltip?.Base) {
+        Neo.tooltip.Base.createSingleton(app, windowId).hide()
+    }
+}
+
+/**
  * @param {String|null} targetId the tooltip's target, a component id
  * @param {String} id the focused node, or the component whose first focusable node got the focus
  * @returns {Boolean}

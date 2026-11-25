@@ -13,10 +13,13 @@ async function addon(windowId) {
  * Set the hash of a window without a new history entry
  * @param {String} windowId
  * @param {String} value hash without "#"
- * @returns {Promise<void>}
+ * @param {Object} [options]
+ * @param {String} [options.ifHash] replace only while the window's hash (without "#") is still this one:
+ *     a route the window got meanwhile (e.g. a click in a module) wins over a decision made on an older hash
+ * @returns {Promise<Boolean>} false: skipped because of ifHash
  */
-export async function replaceRoute(windowId, value) {
-    return (await addon(windowId)).replaceRoute({value, windowId})
+export async function replaceRoute(windowId, value, {ifHash} = {}) {
+    return (await addon(windowId)).replaceRoute({value, windowId, ...ifHash !== undefined && {ifHash}})
 }
 
 /**

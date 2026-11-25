@@ -34,14 +34,24 @@ class History extends Base {
     /**
      * @param {Object} data
      * @param {String} data.value hash without "#"
+     * @param {String} [data.ifHash] only when the window's hash (without "#") is still this one: the
+     *     App worker decided on an older hash, a route set meanwhile (a click in the module) wins
+     * @returns {Boolean} false: not replaced because the hash changed meanwhile
      */
-    replaceRoute({value}) {
-        const oldURL = location.href;
+    replaceRoute({value, ifHash}) {
+        const oldURL  = location.href,
+              current = location.hash.replace(/^#/, '');
+
+        // raw on both sides: neo's HashHistory hands the worker location.hash undecoded
+        if (ifHash !== undefined && current !== ifHash) {
+            return false
+        }
 
         // the page's own path: a bare "#..." resolves against <base href> (go/core/webclient/Neo.php)
         history.replaceState(history.state, '', location.pathname + location.search + '#' + value);
         // neo's HashHistory listens to hashchange, which replaceState() doesn't fire
-        window.dispatchEvent(new HashChangeEvent('hashchange', {oldURL, newURL: location.href}))
+        window.dispatchEvent(new HashChangeEvent('hashchange', {oldURL, newURL: location.href}));
+        return true
     }
 }
 

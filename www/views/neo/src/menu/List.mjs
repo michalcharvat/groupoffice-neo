@@ -92,6 +92,27 @@ class List extends MenuList {
      */
     destroyOnUnmount = false
 
+    /**
+     * How the menu was opened ('pointer' | 'keyboard'): the focus it hands back on close (Escape) shows a
+     * focus ring only after a keyboard open. undefined: neo's default (the browser decides).
+     * @member {String|undefined} returnFocusModality=undefined
+     */
+    returnFocusModality = undefined
+
+    /**
+     * neo's hand-back with the modality of the open (Neo.main.DomAccess.focus() modality)
+     */
+    revertFocusOnDeparture() {
+        let me = this;
+
+        if (me.returnFocusModality === undefined) {
+            super.revertFocusOnDeparture();
+            return
+        }
+
+        me.containsFocus && me.getFocusReturnTarget()?.focus(undefined, false, undefined, me.returnFocusModality, me.id)
+    }
+
     afterSetMounted(value, oldValue) {
         super.afterSetMounted(value, oldValue);
 
