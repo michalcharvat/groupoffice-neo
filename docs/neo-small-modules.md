@@ -183,3 +183,67 @@ and menu items, content dropped on a menu, sorting, tree node dropped into the e
 file, Browse files, View, cheat sheet) and as neotest with read access to the site (only View,
 Save disabled, drags ignored); no console errors. Done on `localhost` with a fresh browser
 context, not `127.0.0.1`: on 127.0.0.1 the license host check serves the classic client.
+
+## Main view extensions (`mainViewExtension`, 2026-11-25)
+
+A module can extend every window's main view (`apps/go/view/MainView.mjs`) without subclassing it: extra
+cards in the main card layout, items in the top bar, routes of its own, and module views it takes over
+from their standalone tab. sf/workspaces uses it for its workspace tabs (`docs/neo-workspace.md`, "Model
+v2"). Without such a module the main view is the plain one card per module and loads no extension code.
+
+Registration (`src/ModuleRegistry.mjs`):
+
+```js
+ModuleRegistry.register({
+    package: 'sf', name: 'workspaces', capability: 'go:sf:workspaces',
+    mainViewExtension: () => import('./Extension.mjs')   // default export: a class
+});
+```
+
+`Viewport.showMain()` loads the classes of the modules the user has access to
+(`ModuleRegistry.loadMainViewExtensions()`, a failing import is logged and left out) and passes them to
+`MainView`, which creates `new Extension({mainView})` per window. A constructor that throws is logged and
+left out.
+
+Hooks, all optional, called on every extension (`MainView.callExtensions()`):
+
+| Hook | When, what it returns |
+|---|---|
+| `start(current)` | Boot, before the window's address is routed. `current` is the window's first hash or null. May resolve to a route (`'ws/2'`) that is shown when the window has no hash. `MainView.ready` waits for all of them; `onHashChange` waits for `ready`. |
+| `onHashChange({name, rest, hashString})` | A hash whose first segment is no module. Resolve to true when handled. |
+| `showModule(module, route)` | A module is opened (launcher, search, deep link, link, alert, quick add). Resolve to the module's view when the extension showed it, null to let the main view open it standalone. |
+| `onActiveCardChange(card)` | The shown card changed: an extension card, or null for a module. |
+| `fallbackRoute()` | The last standalone module closed: a route to go to, or null. |
+| `beforeLogout()` | Awaited before the logout request (flush pending saves). |
+| `destroy()` | The main view is destroyed. |
+
+An owner of a claimed module view (below) also gets `onBadge(name, text)` (the module's count badge;
+its top-bar tab is hidden) and `onModuleViewReleased(name, view)` (another owner claimed the view).
+
+API of the main view for extensions:
+
+- `insertTopbarItems(items, {start})`: adds items to the top bar; `start: true` right after the main
+  menu button, otherwise before the spacer that precedes the notifications.
+- `addCard(config)`, `showCard(card)`, `removeCard(card)`: cards of the main card layout. `showCard()`
+  unpresses the module tabs; `activeCard` is the shown card, `activeModule` is null meanwhile.
+- `claimModuleView(name, owner)`: takes a module's view for the owner (one view per module and window).
+  A standalone view is removed from its card without being destroyed, a module not open yet is created;
+  the module's top-bar tab is hidden. Returns null for a module shown in a popout window. A view held by
+  another owner is taken from it (`onModuleViewReleased`).
+- `releaseModuleView(name)`: the view becomes a standalone tab again. `unclaimModuleView(name)`: the owner
+  destroyed the view.
+- `routeModule` / `activeHash`: the module and hash the window last routed; an extension that shows a
+  module sets `routeModule` to null for its own route.
+
+Gotchas:
+
+- With extensions, only the last hash that reached `onHashChange()` while they started is shown; the
+  window's first hash (`start()`) is skipped when another one came meanwhile.
+- A later window of the shared App worker can start without its first hash. A start route the extension
+  returns is routed directly too, because `setRoute()` to the address the window already has fires no
+  hashchange.
+- A window closing meanwhile rejects pending neo calls with `Neo.isDestroyed`: catch it without an error
+  message.
+- The top-bar drag source (`WS/DockDrag`) is generic: tabs are draggable only while the page has a drop
+  target (`[data-go-dock-drop]`) or a drop tab (`[data-go-dock-tab]`, a hover of 600 ms sends
+  `goDockDragHover`, a drop `goDockDrop`).

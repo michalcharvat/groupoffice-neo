@@ -1,14 +1,16 @@
 # neo workspaces (design, 2026-11-24)
 
 Status: design agreed with the owner in chat, reviewed by Codex (2026-11-24). Phase 1 implemented
-(2026-11-24, see "Phase 1: as built"); phases 2 and 3 open.
+(2026-11-24, see "Phase 1: as built"); phases 2 and 3 open. **Model v2 (owner decision 2026-11-25,
+implemented the same day, see "Model v2: workspaces as top-bar tabs")** replaces the dock as the whole main
+area and the one-workspace-per-window binding; where it differs, it wins over the sections before it.
 
 **Where it lives (owner decision 2026-11-24):** everything workspace-specific is the module
 **`sf/workspaces`** in the sf-mono repository (`go/modules/sf/workspaces`: entity, JMAP, tables, tests and
 its neo frontend in `views/neo`). Workspaces are **off by default**: without the module installed, or for a
 user without access to it (standard module permissions, the module is shared with "Internal" on install),
 the neo `MainView` is today's one card per module and loads no dock code. neo core only has a generic
-extension point (ModuleRegistry `mainArea`, below) and the generic pieces (top-bar drag source, per-window
+extension point (ModuleRegistry `mainViewExtension`, `docs/neo-small-modules.md` "Main view extensions") and the generic pieces (top-bar drag source, per-window
 storage, container queries). neo adds no database updates to core (`docs/neo-upstream-sync.md`).
 
 ## Goal
@@ -49,12 +51,12 @@ in its own browser window, for example one per monitor.
   server side on the first `SfWorkspacesWorkspace/query` that finds none (one transaction, unique per user, so two
   windows opening at once create one). The default workspace id is a user property (`sfWorkspacesSettings.defaultWorkspaceId`);
   deleting the default makes the first remaining one the default, deleting the last one is refused.
-- **One workspace per browser window.** Each window runs its own `Viewport` / `MainView`
+- **One workspace per browser window** (phase 1; model v2 opens several workspace tabs per window). Each window runs its own `Viewport` / `MainView`
   (`apps/go/app.mjs` `onStart`), so every window has its own module views. The same module can be open in
   two windows, each with its own view (e-mail in window 1 and window 2 is fine). Within one window a module
   is in at most one panel (`MainView.openModules` is keyed by module name). A module twice in one window
   (two note books side by side) needs module views that can exist more than once: phase 3 or later.
-- **Window binding.** The window keeps its workspace id in `sessionStorage` (per window, survives a reload;
+- **Window binding** (phase 1; model v2 keeps the open workspace tabs instead). The window keeps its workspace id in `sessionStorage` (per window, survives a reload;
   through the main thread, like `State.mjs` reaches `localStorage`; `State.mjs` itself is origin-wide and
   can't be used for this). Precedence on start: `#ws/<id>` in the URL > the id in `sessionStorage` > the
   default workspace. A module deep link (`#notes/note/5`) opens in the window's workspace, in the focused
@@ -182,8 +184,8 @@ Module `sf/workspaces` (sf-mono, paths below `go/modules/sf/workspaces/`):
 | JMAP | `controller/Workspace.php` (`SfWorkspacesWorkspace/*`); `User.sfWorkspacesSettings.defaultWorkspaceId` (read-only) |
 | Tables | `install/install.sql` (`sf_workspaces_workspace`, `sf_workspaces_user_settings`) |
 | Tests | `tests/WorkspaceTest.php` (+ `tests/ensure-default.php`, a child process for the concurrent first open; `tests/setup-database.php` creates the `GO_TEST_DB`, see the go:tests skill) |
-| Registration | `views/neo/Index.mjs` (no app; `mainArea`) |
-| Main area, profiles, switcher | `views/neo/MainArea.mjs` (`GO.workspaces.MainView`, a subclass of `GO.view.MainView`) |
+| Registration | `views/neo/Index.mjs` (no app; `mainArea`, model v2: `mainViewExtension`) |
+| Main area, profiles, switcher | `views/neo/MainArea.mjs` (`GO.workspaces.MainView`, a subclass of `GO.view.MainView`; removed in model v2) |
 | Dock wrapper | `views/neo/Workspace.mjs` (`GO.workspaces.Workspace`) |
 | Write queue | `views/neo/SaveQueue.mjs` |
 | Styles | `views/neo/style.css` |
@@ -192,7 +194,7 @@ neo core (groupoffice26-neo), generic:
 
 | Part | File |
 |---|---|
-| Extension point | `src/ModuleRegistry.mjs`: a module's `mainArea: () => import(...)` resolves to a subclass of `GO.view.MainView`; `loadMainView()` picks the first one the user has access to, `apps/go/view/Viewport.mjs` builds it. `MainView` hooks: `initModulesArea()` (set up the area below the top bar), `start(current)` (boot), plus the module methods a subclass overrides (`onHashChange`, `openModule`, `quickAdd`, `popOutModule`, `moveModuleToWindow`, `dockModule`, `closeModules`, `removeModules`). The top bar, launcher (`getReference('launcher')`, its `openBeside` event), badges and popout stay in `MainView`. |
+| Extension point (phase 1, replaced in model v2) | `src/ModuleRegistry.mjs`: a module's `mainArea: () => import(...)` resolves to a subclass of `GO.view.MainView`; `loadMainView()` picks the first one the user has access to, `apps/go/view/Viewport.mjs` builds it. `MainView` hooks: `initModulesArea()` (set up the area below the top bar), `start(current)` (boot), plus the module methods a subclass overrides (`onHashChange`, `openModule`, `quickAdd`, `popOutModule`, `moveModuleToWindow`, `dockModule`, `closeModules`, `removeModules`). The top bar, launcher (`getReference('launcher')`, its `openBeside` event), badges and popout stay in `MainView`. |
 | Window binding | `views/neo/src/windowStorage.mjs` + main-thread addon `src/main/addon/WindowStorage.mjs` (`sessionStorage`) |
 | Drag from the top bar | main-thread addon `src/main/addon/DockDrag.mjs` (native drag and drop of the module tabs, custom DOM events `goDockDragStart` / `goDockDragEnd` / `goDockDrop` to the App worker); loaded by the main area that wants it |
 | Container queries | `MainThreeColumnPanel.scss`, calendar and bookmarks follow their panel width |
@@ -280,7 +282,99 @@ Deviations from the design above:
 - Not fixed here: a module deep link with an empty route (`#notes`) keeps the selection the panel's stored
   route made, so the address and the selected row can differ until the next click (module routing).
 - Planned as its own card (owner, 2026-11-25): workspaces as their own tabs in the top bar next to the
-  standalone module tabs, instead of the dock being the whole main area.
+  standalone module tabs, instead of the dock being the whole main area. Done: "Model v2" below.
+
+## Model v2: workspaces as top-bar tabs (owner decision and implementation, 2026-11-25)
+
+Why: with the dock as the whole main area, the open module tabs vanished when a workspace opened and a
+launcher click landed in a dock tab. Now workspaces are tabs next to the module tabs.
+
+Behaviour:
+
+- The top bar keeps its module tabs exactly as without workspaces, plus a tab per open workspace (after the
+  main menu button, then the "+"). The default workspace is called "Workspace" (translated; also a default
+  still named "Default"/its translation is shown so), the others by their name, each with its icon
+  (`fa fa-table-columns` when it has none). "+" lists the closed workspaces and "New workspace"; when
+  narrow (where the core hides every tab that is not pressed) it lists all workspaces but the shown one. Right click on a workspace tab: Rename, Close, Delete (confirm; the last one can't
+  be deleted).
+- A workspace tab shows its dock; a module tab shows the module alone.
+- A module view exists once per window: a standalone tab or a panel in one workspace. Opening a module
+  (launcher, search, deep link, link, alert) that is live in a workspace activates that workspace and
+  focuses its panel; a module that is a panel of the shown workspace (or of an open one) but live
+  nowhere opens there. Otherwise it opens standalone. A panel whose module is live elsewhere in the
+  window shows a placeholder: "{module} is open elsewhere in this window." with "Show here" (takes the
+  view over; it leaves the other place).
+- Dragging a module's top-bar tab onto a workspace tab (hover 600 ms activates it) or into the shown dock
+  adds it there; its top-bar tab disappears. Dragging a panel's dock tab onto the top bar, "Move out of the
+  workspace" in the panel menu (the ⋮ header action or a right click on the panel's tab), makes it
+  standalone again. The panel menu also has "Open in new window" (popout) and "Close".
+- Several workspaces per window. `#ws/<id>` opens or activates a workspace tab (unknown id: reloads the
+  list once, else "Not found"), then the address moves on to the focused panel. The window keeps
+  `{open: [ids], active}` in `sessionStorage` (`go-workspaces`), so a reload restores the open tabs and the
+  shown workspace. A window without stored state opens the default workspace's tab; a window bound by
+  phase 1 (`go-workspace-id`) opens that workspace's tab once.
+- Saving per workspace and screen profile, conflicts and the narrow behaviour stay. Narrow: a workspace tab
+  shows its panels as tabs the narrow way and nothing is saved; leaving narrow reloads the open workspaces
+  from the server (a panel route changed while narrow is not kept).
+
+Where it lives:
+
+| Part | File |
+|---|---|
+| Core extension point | `src/ModuleRegistry.mjs` (`mainViewExtension`, `loadMainViewExtensions()`), `apps/go/view/Viewport.mjs`, `apps/go/view/MainView.mjs` (hooks and API: `docs/neo-small-modules.md`, "Main view extensions") |
+| Top-bar drag, drop on a tab | `src/main/addon/DockDrag.mjs` (`[data-go-dock-tab]`, `goDockDragHover`) |
+| Extension (one per window) | module `views/neo/Extension.mjs` (`WorkspacesExtension`): the "+", tab context menu, routes `ws/<id>`, `showModule`, profile, `sessionStorage`, the shared `SaveQueue` |
+| One open workspace tab | module `views/neo/OpenWorkspace.mjs`: its dock card and tab, load, layout per profile, panels and their module views (claimed from MainView), panel menu, move out, drop, popout, remote changes, badge (sum of its live modules) |
+| Dock | module `views/neo/Workspace.mjs`: header action `go-panel-menu`, a panel dragged above the dock fires `panelDragOut` / `panelMoveOut` |
+
+Notes and gotchas:
+
+- `MainArea.mjs` and the `mainArea` hook are gone; MainView without an extension is the plain card per
+  module and loads no dock code (a user without access, or the module disabled: only the module's
+  `style.css` is requested, which Neo.php links for every installed module).
+- Boot order: the extension's `start()` opens the stored tabs and loads the shown workspace first (it gets
+  the module views it shares with another one), then MainView routes the address.
+- Boot of a second window: the dock's first projection could stay pending in neo for good when it was set
+  before or right at the dock's mount, so the load, `MainView.ready` and the window's routing never ended
+  (about every third boot in headless Chromium; the stall point moved with timing, and logging hid it). Now
+  `OpenWorkspace.dockMounted()` waits for the dock and its host to be mounted plus 100 ms, the first load
+  skips clearing an empty dock, and the extension gets the `DockFlip` addon of the window first
+  (`Neo.currentWorker.getAddon()`; `Neo.Main.importAddon({name: 'DockFlip'})` never resolved). 15 of 15
+  boots after that. Diagnose such a stall with a state field read over CDP `Runtime.evaluate` in the
+  shared worker, not with logs.
+- The profile is measured on the main view; before it is mounted its rect is empty, so the window's
+  `innerWidth` (`Neo.Main.getWindowData()`) counts until the ResizeObserver reports.
+- The default workspace is created as "Workspace" (`go()->t("Workspace", "sf", "workspaces")`).
+- The dock's header actions show only while the group has the focus or the pointer; the right click on a
+  panel tab is the stable way into the panel menu.
+- Logout flushes the save queues of all windows of the worker first (`beforeLogout`; the session is
+  theirs too), which fixes the open item "Logout destroys the main view after `client.logout()`" below.
+- `SaveQueue` keeps `ifInState` per workspace (the state its copy was read or saved at): with several
+  workspaces in a window, a newer state taken with one of them let a save of another skip the conflict
+  check (Codex review 2026-11-25).
+- Review fixes (Codex, 2026-11-25): a workspace whose first load failed loads again when shown and takes no
+  drop meanwhile; a module dropped on an inactive workspace tab shows that workspace; a slow workspace open
+  doesn't win over an address the window went to meanwhile; a remote change during a load is checked again
+  after it; a delete saves a queued edit first instead of dropping it; MainView keeps the address before a
+  classic link or an unknown hash, a hash that comes while the extensions start wins over the window's
+  first hash, and a claimed standalone view leaves no open token (it read as "open elsewhere").
+- Second Codex pass (2026-11-25): "loaded" means the whole load finished (`OpenWorkspace.loaded`), and a
+  click on the tab of a failed one loads it again; a module shown in a workspace doesn't take the card
+  back when the address moved on meanwhile; an unknown `#ws/<id>` doesn't replace a newer address; a
+  quick resize back doesn't leave a dock in the wrong profile; leaving narrow also puts the saved route
+  in the address; a push during the first load is checked after it; a closing window stays in the
+  logout flush until its own flush ended; each boot load holds up the window's routing for at most
+  20 s. Still open (from phase 1, below): `SaveQueue` has one pending slot, so a failed save of one
+  workspace is lost when another workspace's edit is pending. The `WS/DockDrag` leak after logout is fixed too: tabs are draggable
+  only while a drop target exists.
+
+Browser check (2026-11-25, Playwright against a container with the module): neotest and neoadmin; 900,
+1440, 1920 and 390 px; drag into the dock and onto a workspace tab, split, move out by menu and by drag,
+new/rename/close/reopen/delete, two windows ("Show here" across windows), popout and back, reload restore,
+without access and with the module disabled; no console errors. Harness notes: reloading the only page of
+the shared worker comes back blank in headless Chromium, keep a second "anchor" page open; the App
+worker's console is read over CDP (shared worker target); Playwright's `dragTo()` sends one dragover, the
+dock needs a stepped mouse drag.
 
 ## Decisions taken (owner, 2026-11-24)
 
@@ -296,12 +390,12 @@ Deviations from the design above:
 
 - Found by the review of the module move (2026-11-24), not fixed in phase 1:
   - Logout destroys the main view after `client.logout()`, so a layout edit made in the last 1.5 s before
-    logging out is not saved. Fix: flush the save queue before the logout request.
+    logging out is not saved. Fix: flush the save queue before the logout request. Fixed in model v2.
   - `SaveQueue` keeps one failed write per workspace; a failed save of one profile can be replaced by a
     newer edit of the other profile. Fix: keep failed writes per workspace and profile.
   - The core addon `WS/DockDrag` stays active in a tab after logout; a user without the module who logs in
     there gets draggable module tabs (dropping does nothing). Fix: register and unregister it with the
-    workspace main view.
+    workspace main view. Fixed in model v2 (draggable only while a drop target exists).
   - `SfWorkspacesWorkspace/changes` filters `changed` to the user's own workspaces, not `removed`: when an
     administrator grants another user rights on someone's workspace ACL by hand, that user can see the id
     of the workspace once it is deleted (an id only, no data).

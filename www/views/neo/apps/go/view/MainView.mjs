@@ -27,10 +27,14 @@ import {fmt, t} from '../../../src/Translate.mjs';
 const RIGHT = {edgeAlign: 't100-b100'};
 
 /**
- * Top bar with the module menu and the user, below it one card per opened module. A module may
- * provide another main area with a subclass (ModuleRegistry `mainArea`, e.g. sf/workspaces: a
- * dock, docs/neo-workspace.md); the hooks are initModulesArea() and start() plus the module
- * methods it overrides.
+ * Top bar with the module menu and the user, below it one card per opened module.
+ *
+ * Modules may extend it (ModuleRegistry `mainViewExtension`, e.g. sf/workspaces: workspace tabs with
+ * a dock, docs/neo-workspace.md): an extension adds cards (addCard(), showCard()) and top bar items
+ * (insertTopbarItems()), takes module views over from their standalone tab (claimModuleView(),
+ * releaseModuleView(), unclaimModuleView()) and answers hooks (start, onHashChange, showModule,
+ * onActiveCardChange, onBadge, fallbackRoute, beforeLogout, destroy), see docs/neo-small-modules.md.
+ * Without an extension nothing of this runs.
  *
  * Routing: "#<module>" opens a module, everything after the first "/" is passed
  * to the module's main view as route(path), e.g. "#notes/note/5".
@@ -86,6 +90,18 @@ class MainView extends Container {
     openTokens = {}
 
     /**
+     * Hashes this window started to handle (with extensions: the last one wins, see onHashChange())
+     * @member {Number} hashSeq=0
+     */
+    hashSeq = 0
+
+    /**
+     * The last hash that reached onHashChange() (with extensions), null before
+     * @member {String|null} hashSeen=null
+     */
+    hashSeen = null
+
+    /**
      * Module named by this window's current hash
      * @member {String|null} routeModule=null
      */
@@ -96,6 +112,31 @@ class MainView extends Container {
      * @member {GO.systemsettings.SystemSettingsDialog|null} systemSettings=null
      */
     systemSettings = null
+
+    /**
+     * Classes of the modules' main view extensions (ModuleRegistry `mainViewExtension`), set by the Viewport
+     * @member {Function[]} extensionClasses=[]
+     */
+    extensionClasses = []
+
+    /**
+     * The extensions of this window, created in onConstructed()
+     * @member {Object[]} extensions=[]
+     */
+    extensions = []
+
+    /**
+     * Module views an extension took over (claimModuleView()): module name → {view, owner}.
+     * Such a module has no standalone card or tab.
+     * @member {Object} claimed={}
+     */
+    claimed = {}
+
+    /**
+     * An extension's card shown instead of a module (showCard())
+     * @member {Neo.component.Base|null} activeCard=null
+     */
+    activeCard = null
 
     onConstructed() {
         super.onConstructed();
@@ -202,7 +243,7 @@ class MainView extends Container {
             }] : [], {
                 text   : t('Logout'),
                 icon   : 'logout',
-                handler: () => client.logout().catch(e => notifyError(me, e))
+                handler: () => me.logout()
             }]}
         }]);
 
@@ -215,7 +256,7 @@ class MainView extends Container {
 
         me.getReference('topbar').addDomListeners({contextmenu: me.onTabContextMenu, scope: me});
 
-        me.initModulesArea();
+        me.initExtensions();
 
         me.getReference('launcher').on('open', ({app}) => app.classic ? me.openClassic(app.route) :
             Neo.Main.setRoute({value: app.name, windowId: me.windowId}));
@@ -238,7 +279,8 @@ class MainView extends Container {
         // a page rendered for the login screen has no user theme yet (Neo.php)
         applyTheme({theme: client.user?.theme, colorScheme: client.user?.themeColorScheme}, [me.windowId]);
 
-        me.start(current);
+        // the extensions start first (restore what the window showed), then the address is routed
+        me.ready = me.startExtensions(current).then(() => me.isDestroyed || me.start(current));
 
         // notifications: core alerts and popup reminders of the user, desktop notifications through this window
         notificationCenter.attach(me.windowId);
@@ -356,15 +398,59 @@ class MainView extends Container {
     }
 
     /**
-     * Sets up the main area below the top bar. Here one card per opened module; a module's
-     * main area (ModuleRegistry `mainArea`) overrides it.
+     * Creates the modules' extensions of this window (ModuleRegistry `mainViewExtension`)
      * @protected
      */
-    initModulesArea() {
+    initExtensions() {
+        let me = this;
+
+        me.extensions = me.extensionClasses.map(Extension => {
+            try {
+                return new Extension({mainView: me})
+            } catch (e) {
+                console.error('Main view extension', e);
+                return null
+            }
+        }).filter(Boolean)
     }
 
     /**
-     * Boot: the window's first hash, else the user's start module (My account) or the only module
+     * Calls a hook of every extension
+     * @param {String} name
+     * @param {...*} args
+     * @returns {*[]} the results
+     * @protected
+     */
+    callExtensions(name, ...args) {
+        return this.extensions.map(extension => {
+            try {
+                return extension[name]?.(...args)
+            } catch (e) {
+                console.error(`Main view extension ${name}`, e);
+                return undefined
+            }
+        })
+    }
+
+    /**
+     * The extensions' start(current): each may resolve to a route to show when the window has no hash
+     * @param {Object|null} current the window's first hash
+     * @returns {Promise<void>}
+     * @protected
+     */
+    async startExtensions(current) {
+        const routes = await Promise.all(this.callExtensions('start', current).map(p => Promise.resolve(p).catch(e => {
+            // the window closed meanwhile
+            e === Neo.isDestroyed || console.error('Main view extension start', e);
+            return null
+        })));
+
+        this.extensionStartRoute = routes.find(route => typeof route === 'string' && route) || null
+    }
+
+    /**
+     * Boot: the window's first hash, else what an extension restored, else the user's start module
+     * (My account) or the only module
      * @param {Object|null} current the window's first hash
      * @protected
      */
@@ -373,7 +459,19 @@ class MainView extends Container {
             available = ModuleRegistry.getAvailable(),
             start     = available.find(m => m.name === client.user?.start_module) || (available.length === 1 && available[0]);
 
-        if (current) {
+        // a hash that came while the extensions started is shown instead (onHashChange())
+        if (me.hashSeen != null && me.hashSeen !== (current?.hashString || '')) {
+            return
+        }
+
+        if (current?.hashString) {
+            me.onHashChange(current)
+        } else if (me.extensionStartRoute) {
+            // routed here too: the address may already be this route (a later window of the shared
+            // worker can start without its first hash), then setRoute() fires no hashchange
+            me.onHashChange({hashString: me.extensionStartRoute, windowId: me.windowId});
+            Neo.Main.setRoute({value: me.extensionStartRoute, windowId: me.windowId})
+        } else if (current) {
             me.onHashChange(current)
         } else if (start) {
             Neo.Main.setRoute({value: start.name, windowId: me.windowId})
@@ -388,7 +486,19 @@ class MainView extends Container {
         this.removeBadgeListener?.();
         notificationCenter.detach(this.windowId);
         activityWatcher.unregister(this.windowId);
+        this.callExtensions('destroy');
         super.destroy(...args)
+    }
+
+    /**
+     * Avatar menu "Logout": the extensions save what they hold first (beforeLogout())
+     */
+    async logout() {
+        let me = this;
+
+        await Promise.all(me.callExtensions('beforeLogout').map(p => Promise.resolve(p).catch(e => console.warn('beforeLogout', e))));
+
+        client.logout().catch(e => notifyError(me, e))
     }
 
     /**
@@ -559,9 +669,40 @@ class MainView extends Container {
             [name, ...rest] = (hashString || '').split('/'),
             module          = ModuleRegistry.getAvailable().find(m => m.name === name);
 
+        if (me.extensions.length) {
+            const seq = ++me.hashSeq;
+
+            // for start(): a hash other than the window's first one came meanwhile and wins over it
+            me.hashSeen = hashString || '';
+
+            // what the extensions restored comes first (startExtensions())
+            await me.ready;
+
+            // a newer hash came while the extensions started: only the last one is shown
+            if (me.isDestroyed || seq !== me.hashSeq) {
+                return
+            }
+        }
+
         if (name === 'systemsettings') {
             me.openSystemSettings(rest[0] || null, true);
             return
+        }
+
+        if (!module && me.extensions.length) {
+            const previousHash = me.activeHash;
+
+            // the hash this window last handled, also one of an extension (routeToPanel(…, ifHash) of sf/workspaces)
+            me.activeHash = hashString || null;
+
+            const handled = await Promise.all(me.callExtensions('onHashChange', {name, rest, hashString}));
+
+            if (handled.some(Boolean)) {
+                return
+            }
+
+            // not an extension's: a classic link or an unknown hash goes back to the address before it
+            me.activeHash === (hashString || null) && (me.activeHash = previousHash)
         }
 
         if (!module && me.routeUnknownHash(name, rest)) {
@@ -575,9 +716,40 @@ class MainView extends Container {
             return
         }
 
+        await me.showModule(module, rest.join('/'))
+    }
+
+    /**
+     * Shows a module: in an extension's card when one has it (showModule hook), else as its own tab
+     * @param {Object} module ModuleRegistry entry
+     * @param {String|null} route passed to the view's route(), null: the view keeps its route
+     * @returns {Promise<Neo.component.Base|null>} the module's view
+     */
+    async showModule(module, route) {
+        let me = this;
+
+        for (const extension of me.extensions) {
+            let view = null;
+
+            try {
+                view = await extension.showModule?.(module, route)
+            } catch (e) {
+                e === Neo.isDestroyed || console.error('Main view extension showModule', e)
+            }
+
+            if (view) {
+                return view
+            }
+        }
+
         await me.openModule(module);
+
         // undefined when the module was closed while its code loaded
-        me.openModules[name]?.view.route?.(rest.join('/'))
+        const view = me.openModules[module.name]?.view || null;
+
+        route !== null && view?.route?.(route);
+
+        return view
     }
 
     async openModule(module) {
@@ -608,6 +780,11 @@ class MainView extends Container {
 
         me.activeModule = module.name;
 
+        if (me.activeCard) {
+            me.activeCard = null;
+            me.callExtensions('onActiveCardChange', null)
+        }
+
         ModuleRegistry.getAvailable().forEach(m => {
             const button = me.getReference('module-' + m.name);
 
@@ -625,9 +802,11 @@ class MainView extends Container {
         let me = this;
 
         // keeps a deep link ("#notes/note/5") when the module is showing already
-        me.activeModule !== module.name && Neo.Main.setRoute({value: module.name, windowId: me.windowId});
-        await me.openModule(module);
-        me.openModules[module.name]?.view.onQuickAdd?.()
+        me.routeModule !== module.name && Neo.Main.setRoute({value: module.name, windowId: me.windowId});
+
+        const view = await me.showModule(module, null);
+
+        view?.onQuickAdd?.()
     }
 
     /**
@@ -799,7 +978,7 @@ class MainView extends Container {
         me.syncActiveCard();
 
         if (closedActive || (prefer && me.activeModule !== prefer)) {
-            const next = prefer || Object.keys(me.openModules).at(-1) || '';
+            const next = prefer || Object.keys(me.openModules).at(-1) || me.callExtensions('fallbackRoute').find(Boolean) || '';
 
             Neo.Main.setRoute({value: next, windowId: me.windowId})
         }
@@ -813,8 +992,9 @@ class MainView extends Container {
         const me     = this,
               node   = data.path?.find(node => node.cls?.includes('go-module-button')),
               button = node && Neo.getComponent(node.id),
-              name   = button?.reference?.replace(/^module-/, '');
+              name   = button?.reference?.startsWith('module-') && button.reference.slice(7);
 
+        // an extension's tab (sf/workspaces) has its own menu
         if (!name) {
             return
         }
@@ -876,6 +1056,7 @@ class MainView extends Container {
         }
 
         tab && tab.badgeText !== text && (tab.badgeText = text);
+        me.claimed[name]?.owner.onBadge?.(name, text);
         me.updateMainMenuDot();
         me.getReference('launcher')?.setBadge(name, text);
 
@@ -896,7 +1077,8 @@ class MainView extends Container {
             return
         }
 
-        const show = ModuleRegistry.getAvailable().some(m => badges.get(m.name) && me.getReference('module-' + m.name)?.hidden !== false);
+        // a module an extension holds shows its count there (onBadge())
+        const show = ModuleRegistry.getAvailable().some(m => badges.get(m.name) && !me.claimed[m.name] && me.getReference('module-' + m.name)?.hidden !== false);
 
         button.toggleCls('go-badge-dot', show)
     }
@@ -915,7 +1097,177 @@ class MainView extends Container {
 
         if (entry) {
             cards.layout.activeIndex = cards.indexOf(entry.placeholder || entry.view)
+        } else if (me.activeCard && !me.activeCard.isDestroyed) {
+            cards.layout.activeIndex = cards.indexOf(me.activeCard)
         }
+    }
+
+    // ------------------------------------------------------------ extension API (docs/neo-small-modules.md)
+
+    /**
+     * Inserts items into the top bar, before the module tabs or after them
+     * @param {Object[]} items configs
+     * @param {Object} [options]
+     * @param {Boolean} [options.start=false] before the module tabs (right after the logo)
+     * @returns {Neo.component.Base[]}
+     */
+    insertTopbarItems(items, {start = false} = {}) {
+        const topbar = this.getReference('topbar'),
+              // after the logo, or before the '->' spacer in front of the notification button
+              at     = start ? 1 : topbar.indexOf(this.getReference('notificationButton')) - 1;
+
+        return [].concat(topbar.insert(at, items))
+    }
+
+    /**
+     * Adds a card to the main card layout (below the top bar); it shows with showCard()
+     * @param {Object} config
+     * @returns {Neo.component.Base}
+     */
+    addCard(config) {
+        return this.getReference('modules').add(config)
+    }
+
+    /**
+     * Shows an extension's card: no module tab is pressed then
+     * @param {Neo.component.Base} card
+     */
+    showCard(card) {
+        let me = this;
+
+        me.activeModule = null;
+        me.activeCard   = card;
+        me.syncActiveCard();
+
+        ModuleRegistry.getAvailable().forEach(m => {
+            const button = me.getReference('module-' + m.name);
+
+            button && button.pressed && (button.pressed = false)
+        });
+
+        me.callExtensions('onActiveCardChange', card)
+    }
+
+    /**
+     * Removes an extension's card (destroyed)
+     * @param {Neo.component.Base} card
+     */
+    removeCard(card) {
+        let me = this;
+
+        if (me.activeCard === card) {
+            me.activeCard = null;
+            me.callExtensions('onActiveCardChange', null)
+        }
+
+        me.getReference('modules').remove(card);
+        me.syncActiveCard()
+    }
+
+    /**
+     * An extension takes a module's view: from its standalone card and tab (both go), or created
+     * when the module isn't open. The extension adds it to its own container. A module popped out
+     * into its own window stays there (null).
+     * @param {String} name module
+     * @param {Object} owner the extension
+     * @returns {Promise<Neo.component.Base|null>} the view
+     */
+    async claimModuleView(name, owner) {
+        let me     = this,
+            module = ModuleRegistry.getAvailable().find(m => m.name === name),
+            claim  = me.claimed[name];
+
+        if (!module) {
+            return null
+        }
+
+        if (claim) {
+            if (claim.owner !== owner) {
+                // the other extension lets it go (out of its container)
+                claim.owner.onModuleViewReleased?.(name, claim.view);
+                claim.owner = owner
+            }
+
+            return claim.view
+        }
+
+        const entry = me.openModules[name];
+
+        if (entry?.popup) {
+            return null
+        }
+
+        let view;
+
+        if (entry) {
+            delete me.openModules[name];
+            // its open finished: an open token left would count it as being opened (isFree() of sf/workspaces)
+            delete me.openTokens[name];
+            me.getReference('modules').remove(entry.view, false);
+            view = entry.view;
+            me.setTabVisible(name, false);
+            me.activeModule === name && (me.activeModule = null);
+            me.syncActiveCard()
+        } else {
+            const token = me.openTokens[name] = Symbol();
+
+            const {default: ViewClass} = await module.mainView();
+
+            if (me.isDestroyed || me.openTokens[name] !== token) {
+                return null
+            }
+
+            delete me.openTokens[name];
+
+            // claimed or opened meanwhile
+            if (me.claimed[name] || me.openModules[name]) {
+                return me.claimModuleView(name, owner)
+            }
+
+            view = Neo.create({module: ViewClass, appName: me.appName, windowId: me.windowId, moduleName: name})
+        }
+
+        me.claimed[name] = {view, owner};
+        // also a tab of a module that was not open yet: the module shows in the extension now
+        me.setTabVisible(name, false);
+
+        return view
+    }
+
+    /**
+     * An extension gives a module's view back: it becomes a standalone tab again (not shown; route
+     * to it to show it). The extension has removed it from its container.
+     * @param {String} name
+     */
+    releaseModuleView(name) {
+        let me    = this,
+            claim = me.claimed[name];
+
+        if (!claim) {
+            return
+        }
+
+        delete me.claimed[name];
+
+        if (claim.view.isDestroyed) {
+            return
+        }
+
+        const cards = me.getReference('modules');
+
+        claim.view.set({appName: me.appName, windowId: me.windowId});
+        me.openModules[name] = {view: cards.add(claim.view)};
+        me.setTabVisible(name, true);
+        me.syncActiveCard()
+    }
+
+    /**
+     * An extension destroyed (or will destroy) a module's view it held: the module is closed
+     * @param {String} name
+     */
+    unclaimModuleView(name) {
+        delete this.claimed[name];
+        this.updateMainMenuDot()
     }
 
 }
