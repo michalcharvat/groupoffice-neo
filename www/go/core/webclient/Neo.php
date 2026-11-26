@@ -333,6 +333,9 @@ class Neo {
 			'useFontAwesome' => false,
 			// one App worker for all GO windows: a dialog can move to a popup window
 			'useSharedWorkers' => true,
+			// Neural Link (docs/neo-neural-link.md): agents drive the App worker over ws://127.0.0.1:8081
+			// with the user's session, so its own switch and only on a debug installation
+			'useAiClient' => !empty(go()->getConfig()['debug']) && (go()->getConfig()['neuralLink'] ?? false) === true,
 			// custom keys, read by the GO shell
 			'goBaseUrl' => $root,
 			'goModules' => array_map(fn($s) => $root . $s, $this->moduleFiles('Index.mjs')),

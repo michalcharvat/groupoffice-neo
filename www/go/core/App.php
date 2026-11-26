@@ -479,6 +479,7 @@ namespace go\core {
 				"tmpdir" => sys_get_temp_dir() . '/groupoffice',
 				"debug" => false,
 				"debugEmail" => false,
+				"neuralLink" => false, // neo web client: App worker connects to the local Neural Link MCP bridge, only together with debug (docs/neo-neural-link.md)
 				"mailerDebugLevel" => 0,
 				"servermanager" => false,
 				"sseEnabled" => true,
