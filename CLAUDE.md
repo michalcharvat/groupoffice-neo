@@ -10,6 +10,7 @@ Write the product name as "GroupOffice" in new text (changelog, messages, commen
 | Writing PHPUnit tests | `docs/writing-tests.md` |
 | Converting ExtJS to GOUI, building and styling GOUI | `docs/goui-frontend.md` |
 | neo web client | `docs/neo-*.md` |
+| Writing neo classes (JSDoc, comments) | `docs/neo-code-style.md` |
 | Merging GroupOffice master into neo (regular upstream sync) | `docs/neo-upstream-sync.md` |
 | Code outside a business module that touches its classes, `defineListeners()` | `docs/encoded-business-modules.md` |
 
