@@ -66,3 +66,11 @@ label_: '',
 - Explain intent, an invariant or a boundary: *why*, not *what*.
 - No ticket or card numbers, line numbers (`Foo.mjs:120`) or history ("was X before the fix") in source comments: those belong in the commit message or in `docs/`.
 - Point to a symbol (`Dialog#onEscape()`), not a file position.
+
+## Check
+
+`npm run lint-summary` in `www/views/neo` (`buildScripts/lintSummary.mjs`) lists the classes and
+methods of the changed and untracked `views/neo` sources (core and modules) whose docblock has no `@summary`:
+a method counts as changed when its docblock, signature or body has an added line, a class only
+when its docblock or `class` line does. Base: the merge base with `neo-ui`, or a ref as argument
+(`npm run lint-summary -- HEAD~1`). It exits with 1 when it finds one.
