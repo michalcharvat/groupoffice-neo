@@ -3,6 +3,7 @@
 namespace go\core\webclient\neo;
 
 use go\core\Installer;
+use go\core\model\Module;
 use go\core\model\User;
 use go\core\orm\Mapping;
 use go\core\orm\Property;
@@ -41,48 +42,127 @@ final class Schema {
 	 */
 	public static function onUserMapping(Mapping $mapping): void
 	{
-		$db = go()->getDatabase();
 		foreach (self::USER_PROPERTIES as $name => [$cls, $table]) {
-			if ($db->hasTable($table)) {
-				$mapping->add($name, Relation::one($cls, true)->keys(['id' => 'userId']));
-			}
+			self::addProperty($mapping, $name, $cls, $table, ['id' => 'userId']);
 		}
 	}
 
 	/**
-	 * All update queries (SQL strings or callables) in the order they run
+	 * Adds a property over a neo_* table to an entity mapping, only when the table exists (before the migration
+	 * the entity works without it). The related row is created with its defaults when the property is saved.
+	 *
+	 * Call it from an {@see Property::EVENT_MAPPING} listener; a module registers that listener only when
+	 * `class_exists(Schema::class)`, so it stays inert on GroupOffice without neo (docs/neo-core-components.md).
+	 *
+	 * @param string $name property name on the entity
+	 * @param class-string<Property> $cls the Property class over $table
+	 * @param array<string, string> $keys entity column => $table column
+	 */
+	public static function addProperty(Mapping $mapping, string $name, string $cls, string $table, array $keys): void
+	{
+		if (go()->getDatabase()->hasTable($table)) {
+			$mapping->add($name, Relation::one($cls, true)->keys($keys));
+		}
+	}
+
+	/**
+	 * All update queries of core neo (SQL strings or callables) in the order they run
 	 */
 	public static function updates(): array
 	{
+		return self::loadUpdates(__DIR__ . '/install/updates.php');
+	}
+
+	/**
+	 * Update queries of one updates.php file, sorted by their timestamp key
+	 */
+	private static function loadUpdates(string $file): array
+	{
 		$updates = [];
-		require __DIR__ . '/install/updates.php';
+		require $file;
 		ksort($updates);
 		return array_merge([], ...array_values($updates));
 	}
 
 	/**
-	 * Number of update queries run on this database, 0 when neo_schema doesn't exist yet
+	 * views/neo/install/updates.php of every installed, available and allowed module that has one, keyed "package/name"
+	 * (package "legacy" for modules without one)
+	 *
+	 * @return array<string, string> module key => file path
 	 */
-	public static function version(): int
+	public static function moduleUpdateFiles(): array
+	{
+		$files = [];
+		foreach (Module::getInstalled() as $module) {
+			// getInstalled() doesn't apply config.php allowed_modules for legacy modules
+			if (!\go\core\Module::isAllowed($module->name, $module->package)) {
+				continue;
+			}
+			$file = $module->folder()->getFile('views/neo/install/updates.php');
+			if ($file->exists()) {
+				$files[($module->package ?? 'legacy') . '/' . $module->name] = $file->getPath();
+			}
+		}
+		return $files;
+	}
+
+	/**
+	 * Number of update queries run on this database per module key ('' for core neo), empty when neo_schema doesn't
+	 * exist yet
+	 *
+	 * @return array<string, int>
+	 */
+	private static function versions(): array
 	{
 		// no Database::hasTable(): clearing its table cache would evict the cached table definitions on every page
 		$conn = go()->getDbConnection();
 		if (!$conn->query("SHOW TABLES LIKE 'neo\\_schema'")->fetchColumn()) {
-			return 0;
+			return [];
 		}
-		return (int) go()->getDbConnection()->selectSingleValue('version')->from('neo_schema')->where('id', '=', 1)->single();
+		$versions = [];
+		// SELECT *: the module column is added by a core neo update, the core row (id 1) has module NULL
+		foreach ($conn->query("SELECT * FROM `neo_schema`")->fetchAll(\PDO::FETCH_ASSOC) as $row) {
+			$versions[$row['module'] ?? ''] = (int) $row['version'];
+		}
+		return $versions;
 	}
 
 	/**
-	 * Runs the updates that haven't run yet, saving the version after every query so a failed one runs again next
-	 * time. Does nothing when another request is migrating.
+	 * Number of update queries run on this database for core neo or a module ("package/name"), 0 when none ran
+	 */
+	public static function version(string $module = ''): int
+	{
+		return self::versions()[$module] ?? 0;
+	}
+
+	/**
+	 * Runs the updates of core neo and of every installed module that haven't run yet
 	 *
 	 * @return int number of queries run
 	 */
 	public static function migrate(): int
 	{
-		$updates = self::updates();
-		if (self::version() >= count($updates)) {
+		return self::migrateFiles(['' => __DIR__ . '/install/updates.php'] + self::moduleUpdateFiles());
+	}
+
+	/**
+	 * Runs the updates of the given files that haven't run yet, saving the version after every query so a failed
+	 * one runs again next time. Does nothing when another request is migrating.
+	 *
+	 * @param array<string, string> $files module key => updates.php; core neo ('') must come first, it creates
+	 *   neo_schema.module
+	 * @return int number of queries run
+	 */
+	public static function migrateFiles(array $files): int
+	{
+		$versions = self::versions();
+		$all = [];
+		$pending = false;
+		foreach ($files as $key => $file) {
+			$all[$key] = self::loadUpdates($file);
+			$pending = $pending || ($versions[$key] ?? 0) < count($all[$key]);
+		}
+		if (!$pending) {
 			return 0;
 		}
 
@@ -102,10 +182,24 @@ final class Schema {
 			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 			$conn->insertIgnore('neo_schema', ['id' => 1, 'version' => 0])->execute();
 
-			for ($i = self::version(); $i < count($updates); $i++) {
-				is_callable($updates[$i]) ? call_user_func($updates[$i]) : $conn->exec($updates[$i]);
-				$conn->update('neo_schema', ['version' => $i + 1], ['id' => 1])->execute();
-				$run++;
+			// all files, not only those pending before the lock: an uninstall meanwhile resets core neo as well
+			foreach ($all as $key => $updates) {
+				if ($key === '') {
+					$save = $conn->getPDO()->prepare("UPDATE `neo_schema` SET `version` = ? WHERE `id` = 1");
+					$args = [];
+				} else {
+					// plain SQL, not the query builder: it checks columns against the cached table definition, which
+					// doesn't know neo_schema.module when the core update adding it ran in this same call
+					$conn->getPDO()->prepare("INSERT IGNORE INTO `neo_schema` (`module`, `version`) VALUES (?, 0)")->execute([$key]);
+					$save = $conn->getPDO()->prepare("UPDATE `neo_schema` SET `version` = ? WHERE `module` = ?");
+					$args = [$key];
+				}
+				// read again under the lock: another request may have run them meanwhile
+				for ($i = self::version($key); $i < count($updates); $i++) {
+					is_callable($updates[$i]) ? call_user_func($updates[$i]) : $conn->exec($updates[$i]);
+					$save->execute([$i + 1, ...$args]);
+					$run++;
+				}
 			}
 		} finally {
 			$lock->unlock();
@@ -120,7 +214,7 @@ final class Schema {
 	}
 
 	/**
-	 * Drops every neo_* table including neo_schema, leaving a classic GroupOffice database
+	 * Drops every neo_* table of core neo and of the modules, including neo_schema, leaving a classic GroupOffice database
 	 *
 	 * @return string[] the dropped tables
 	 */

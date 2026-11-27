@@ -73,6 +73,52 @@ class SchemaTest extends TestCase
 		$this->assertSame('progress', User::findById($id)->neoTasksSettings->boardGroupBy);
 	}
 
+	/**
+	 * Writes a temporary module updates.php creating neo_test_neoschema_items with an FK to core_user
+	 */
+	private static function moduleUpdatesFile(int $count): string
+	{
+		$php = "<?php\n\$updates = [];\n"
+			. "\$updates['202601010000'][] = \"CREATE TABLE IF NOT EXISTS `neo_test_neoschema_items` (`userId` INT(11) NOT NULL, "
+			. "PRIMARY KEY (`userId`), CONSTRAINT `neo_test_neoschema_items_user` FOREIGN KEY (`userId`) REFERENCES `core_user` (`id`) ON DELETE CASCADE) ENGINE=InnoDB\";\n";
+		if ($count > 1) {
+			$php .= "\$updates['202601020000'][] = \"ALTER TABLE `neo_test_neoschema_items` ADD COLUMN IF NOT EXISTS `note` VARCHAR(16) NULL\";\n";
+		}
+		$file = sys_get_temp_dir() . '/neoschema' . uniqid() . '.php';
+		file_put_contents($file, $php);
+		return $file;
+	}
+
+	public function testModuleUpdatesRunOnceCountedPerModule(): void
+	{
+		$key = 'test/neoschema';
+		$core = Schema::version();
+		$file = self::moduleUpdatesFile(1);
+		try {
+			$this->assertSame(0, Schema::version($key));
+			$this->assertSame(1, Schema::migrateFiles([$key => $file]));
+			$this->assertTrue(go()->getDatabase()->hasTable('neo_test_neoschema_items'));
+			$this->assertSame(1, Schema::version($key));
+			$this->assertSame($core, Schema::version(), 'the core neo version is its own');
+			$this->assertSame(0, Schema::migrateFiles([$key => $file]), 'a second run runs nothing');
+
+			// a later update of the module runs alone
+			rename(self::moduleUpdatesFile(2), $file);
+			$this->assertSame(1, Schema::migrateFiles([$key => $file]));
+			$this->assertSame(2, Schema::version($key));
+			$this->assertSame(0, Schema::migrate(), 'migrate() does not reset the module row');
+			$this->assertSame(2, Schema::version($key));
+
+			// uninstall drops the module's tables and its neo_schema row with neo_schema
+			$this->assertContains('neo_test_neoschema_items', Schema::uninstall());
+			$this->assertFalse(go()->getDatabase()->hasTable('neo_test_neoschema_items'));
+			$this->assertSame(0, Schema::version($key));
+		} finally {
+			unlink($file);
+			Schema::uninstall(); // also after a failure: the test table and the test row; setUp() migrates again
+		}
+	}
+
 	public function testUninstallDropsOnlyNeoTables(): void
 	{
 		$before = go()->getDbConnection()->query("SHOW TABLES")->fetchAll(\PDO::FETCH_COLUMN);
@@ -91,7 +137,8 @@ class SchemaTest extends TestCase
 		$after = go()->getDbConnection()->query("SHOW TABLES")->fetchAll(\PDO::FETCH_COLUMN);
 		$this->assertSame(array_values(array_diff($before, $neo)), $after);
 		$this->assertSame(0, Schema::version());
-		$this->assertSame(count(Schema::updates()), Schema::migrate());
+		$this->assertGreaterThanOrEqual(count(Schema::updates()), Schema::migrate(), 'plus the updates of installed modules');
+		$this->assertSame(count(Schema::updates()), Schema::version());
 		$this->assertSame($changes, self::syncState());
 		Schema::uninstall();
 		go()->getDbConnection()->exec("UPDATE core_entity SET highestModSeq = highestModSeq - 1 WHERE name = 'User'");

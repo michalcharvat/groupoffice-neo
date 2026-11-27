@@ -18,3 +18,8 @@ $updates['202611270100'][] = "CREATE TABLE IF NOT EXISTS `neo_tasks_user_setting
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
 
 $updates['202611271200'][] = "ALTER TABLE `neo_tasks_user_settings` ADD COLUMN IF NOT EXISTS `view` VARCHAR(16) NULL DEFAULT NULL";
+
+// one row per module with neo updates (views/neo/install/updates.php), keyed "package/name"; core neo stays id 1, module NULL
+$updates['202611271700'][] = "ALTER TABLE `neo_schema` MODIFY `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+	ADD COLUMN IF NOT EXISTS `module` VARCHAR(201) NULL DEFAULT NULL,
+	ADD UNIQUE KEY IF NOT EXISTS `module` (`module`)";
