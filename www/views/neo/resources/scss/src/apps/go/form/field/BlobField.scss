@@ -2,6 +2,7 @@
 .neo-theme-go .go-blobfield {
     align-items: center;
     display    : flex;
+    flex-wrap  : wrap;
     gap        : .8rem;
     min-height : 4rem;
 
@@ -39,6 +40,12 @@
         &:hover {
             background-color: var(--bg-hover);
         }
+    }
+
+    .go-blobfield-error {
+        color    : var(--fg-error);
+        flex     : 0 0 100%;
+        font-size: 1.2rem;
     }
 
     .go-blobfield-input {

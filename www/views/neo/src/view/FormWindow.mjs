@@ -445,6 +445,17 @@ class FormWindow extends Dialog {
     }
 
     /**
+     * Waits for the fields that finish their value late: rich text editors sync their HTML
+     * debounced, file fields upload (a failed upload leaves its field invalid)
+     * @returns {Promise<void>}
+     * @protected
+     */
+    async flushFields() {
+        const fields = await this.form.getFields();
+        await Promise.all(fields.filter(field => typeof field.flush === 'function').map(field => field.flush()))
+    }
+
+    /**
      * Validates and saves the form
      * @returns {Promise<Object|false>}
      */
@@ -461,9 +472,7 @@ class FormWindow extends Dialog {
         me.isLoading = true;
 
         try {
-            // rich text editors sync their HTML debounced: take the last typing along
-            const fields = await me.form.getFields();
-            await Promise.all(fields.filter(field => typeof field.flush === 'function').map(field => field.flush()));
+            await me.flushFields();
 
             me.afterSavePromise = null;
 
