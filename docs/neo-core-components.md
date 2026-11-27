@@ -238,6 +238,23 @@ was below 0.1 % of its pixels after the fixes.
   clear it); the helper resets it. `TextList`
   re-renders on a store swap to an empty store (neo only does that for a store with records).
 
+## neo user settings (2026-11-27)
+
+Per-user settings of the neo client go in an own `neo_<module>_user_settings` table, never in an upstream table
+(`tasks_user_settings`, `core_user`, `go_state`): see `docs/neo-upstream-sync.md`. First one: `neoTasksSettings`.
+
+1. Table in `www/go/core/webclient/neo/install/updates.php`: `userId INT(11) NOT NULL` primary key with a foreign
+   key to `core_user (id) ON DELETE CASCADE`, settings columns nullable or with a default.
+2. Property class in `www/go/core/webclient/neo/model/` (example `TasksUserSettings`: public `$userId`, the
+   settings, `defineMapping()` with `addTable()`).
+3. One line in `Schema::USER_PROPERTIES`: `'neo<Module>Settings' => [Class::class, 'neo_..._user_settings']`.
+   `Schema::onUserMapping()` adds it as `Relation::one($cls, true)` (auto create) keyed `id => userId`, only when
+   the table exists.
+
+A user without a row reads the defaults; the row is inserted when User/set changes the property
+(`{"neoTasksSettings": {"boardGroupBy": "progress"}}`). Planned next: `neo_notes_user_settings`,
+`neo_addressbook_user_settings`, `neo_calendar_preferences`.
+
 ## Left to build (2026-11-19)
 
 1. ~~**Notes Markdown + image zoom**~~ — done: `MarkdownField`, `src/Markdown.mjs`, `ImageWindow`.
