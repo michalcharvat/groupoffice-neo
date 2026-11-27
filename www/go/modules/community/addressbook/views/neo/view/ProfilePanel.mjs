@@ -1,9 +1,8 @@
 import Container  from '../../../../../../../views/neo/node_modules/neo.mjs/src/container/Base.mjs';
-import ChipsField from '../../../../../../../views/neo/src/form/field/ChipsField.mjs';
+import AutocompleteChips from '../../../../../../../views/neo/src/form/field/AutocompleteChips.mjs';
 import {fieldset} from '../../../../../../../views/neo/src/form/fieldset.mjs';
-import client     from '../../../../../../../views/neo/src/jmap/Client.mjs';
 import {t}        from '../util.mjs';
-import {addressList, dateList, phoneList, select, text, urlList} from './fields.mjs';
+import {addressBookNames, addressList, dateList, phoneList, select, text, urlList} from './fields.mjs';
 
 /**
  * "Profile" card of My account (ExtJS SettingsProfilePanel): the user's own contact,
@@ -26,21 +25,18 @@ class ProfilePanel extends Container {
                 select('profile.gender', t('Gender'), [[null, t('Unknown')], ['M', t('Male')], ['F', t('Female')],
                     ['N', t('Non-binary')], ['P', t("Won't say")]]),
                 {
-                    module          : ChipsField,
-                    name            : 'profile.organizationIds',
-                    labelText       : t('Organizations'),
-                    placeholder     : t('Type a name and press Enter'),
-                    // existing organizations only: the profile card has no address book to create one in
-                    textInputToValue: async name => {
-                        const {list} = await client.queryGet('Contact', {
-                            filter    : {isOrganization: true, name: String(name || '').trim()},
-                            limit     : 1,
-                            properties: ['id', 'name', 'addressBookId']
-                        });
-                        return list[0]?.id || null
-                    },
+                    // ExtJS OrganizationCombo: ▾ lists the organizations with their address books;
+                    // Enter adds the first match, existing organizations only
+                    module       : AutocompleteChips,
+                    name         : 'profile.organizationIds',
+                    labelText    : t('Organizations'),
+                    placeholder  : t('Type a name and press Enter'),
+                    entity       : 'Contact',
+                    jmapFilter   : {isOrganization: true},
+                    jmapSort     : [{property: 'name', isAscending: true}],
                     // an AclItemEntity: Contact/get needs addressBookId among the properties
-                    chipRenderer: async id => (await client.get('Contact', [id], ['id', 'name', 'addressBookId']))[0]?.name || String(id)
+                    properties   : ['id', 'name', 'addressBookId'],
+                    recordDetails: addressBookNames
                 }
             ]),
             fieldset(t('Communication'), [...phoneList('profile.'), ...addressList('profile.')]),

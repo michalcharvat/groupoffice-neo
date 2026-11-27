@@ -1,14 +1,19 @@
 import MenuList from '../../node_modules/neo.mjs/src/menu/List.mjs';
 
 /**
+ * @summary GO menu list with item icons, images, details and badges.
+ *
  * GO menu: items may name a Material Symbols icon like GOUI's btn({icon}).
  *
  *     items: [{text: 'Edit', icon: 'edit', handler}, {separator: true}, {text: 'Delete', icon: 'delete', disabled: true}]
  *
  * An item's `badge` shows a count at its end (header main menu, see src/Badges.mjs).
  * An item's `image` (URL) shows a picture instead of the icon, e.g. a bookmark's logo.
+ * An item's `detail` shows a muted text after its own, e.g. the address book of an organization.
  *
  * GO.button.Button uses it for its `menu`.
+ * @class GO.menu.List
+ * @extends Neo.menu.List
  */
 class List extends MenuList {
     static config = {
@@ -35,23 +40,45 @@ class List extends MenuList {
      */
     itemImages = []
 
+    /**
+     * Muted text after the item text per item index, like itemIcons
+     * @member {String[]} itemDetails=[]
+     */
+    itemDetails = []
+
+    /**
+     * @summary Takes the icon, badge, image and detail of each item from the config.
+     * @param {Object} config
+     */
     construct(config) {
         this.itemIcons  = (config.items || []).map(item => item?.icon || null);
         this.itemBadges = (config.items || []).map(item => item?.badge || null);
         this.itemImages = (config.items || []).map(item => item?.image || null);
+        this.itemDetails = (config.items || []).map(item => item?.detail || null);
         super.construct(config)
     }
 
+    /**
+     * @summary Adds the icon or image, the detail and the badge to the item content.
+     * @param {Object} record
+     * @param {Number} index
+     * @returns {Object[]|String}
+     */
     createItemContent(record, index) {
         const content = super.createItemContent(record, index),
               icon    = this.itemIcons[index],
               badge   = this.itemBadges[index],
-              image   = this.itemImages[index];
+              image   = this.itemImages[index],
+              detail  = this.itemDetails[index];
 
         if (image && Array.isArray(content) && !record.iconCls) {
             content.unshift({tag: 'img', cls: ['neo-menu-icon', 'go-menu-image'], src: image, alt: ''})
         } else if (icon && Array.isArray(content) && !record.iconCls) {
             content.unshift({tag: 'i', cls: ['neo-menu-icon', 'go-icon'], text: icon})
+        }
+
+        if (detail && Array.isArray(content)) {
+            content.push({tag: 'span', cls: ['go-menu-detail'], text: detail})
         }
 
         if (badge && Array.isArray(content)) {

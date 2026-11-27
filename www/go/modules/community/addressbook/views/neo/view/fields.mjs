@@ -8,6 +8,7 @@ import DateField      from '../../../../../../../views/neo/src/form/field/DateFi
 import LocalCombo     from '../../../../../../../views/neo/src/form/field/LocalCombo.mjs';
 import TextList       from '../../../../../../../views/neo/src/list/TextList.mjs';
 import {lookup}       from '../../../../../../../views/neo/src/Translate.mjs';
+import client         from '../../../../../../../views/neo/src/jmap/Client.mjs';
 import {t, typeOptions} from '../util.mjs';
 
 /**
@@ -142,3 +143,17 @@ export const addressList = (prefix = '') => typedList(prefix + 'addresses', 'add
         {module: Hidden, name: 'longitude'}
     ]
 }], t('Add street address'), 'add_location');
+
+/**
+ * @summary The address book name of each contact, for AutocompleteChips recordDetails.
+ * Organizations of the same name in different (personal) address books can then be told apart.
+ * @param {Object[]} records contacts with addressBookId
+ * @returns {Promise<String[]>}
+ */
+export async function addressBookNames(records) {
+    const ids   = [...new Set(records.map(r => String(r.addressBookId)))],
+          books = ids.length ? await client.get('AddressBook', ids, ['id', 'name']) : [],
+          names = new Map(books.map(b => [String(b.id), b.name]));
+
+    return records.map(r => names.get(String(r.addressBookId)) || '')
+}
