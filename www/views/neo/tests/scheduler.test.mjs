@@ -59,6 +59,51 @@ describe('GO.scheduler.Scheduler', () => {
         assert.equal(Scheduler.mergeBar(node(), 'Bob').cn[0].text, 'Bob');
     });
 
+    it('paints a band on its row and, with inherit, on every descendant', () => {
+        const rows = Scheduler.mapBackgrounds([
+            {resourceId: 'v1', startDate: '2026-11-03T00:00:00Z', endDate: '2026-11-05T00:00:00Z', cls: 'port', inherit: true},
+            {resourceId: 'r2', startDate: '2026-11-10T00:00:00Z', endDate: '2026-11-10T00:30:00Z', cls: ['change', 'off']},
+            {resourceId: 'r1', startDate: '2026-11-10T00:00:00Z', endDate: '2026-11-09T00:00:00Z'}
+        ], resources);
+
+        assert.deepEqual([...rows.keys()].sort(), ['r1', 'r2', 'v1']);
+        assert.equal(rows.has('c1'), false);
+        assert.deepEqual(rows.get('r2').map(b => b.cls), [['port'], ['change', 'off']]);
+        assert.equal(rows.get('r1').length, 1);
+        assert.equal(+rows.get('v1')[0].startDate, Date.parse('2026-11-03T00:00:00Z'));
+
+        // a band over the end of summer time stays; a parent cycle does not loop
+        const dst   = {resourceId: 'a', startDate: '2026-10-25T00:45:00Z', endDate: '2026-10-25T01:15:00Z', inherit: true},
+              cycle = Scheduler.mapBackgrounds([dst], [{id: 'a', parentId: 'b'}, {id: 'b', parentId: 'a'}]);
+        assert.deepEqual([...cycle.keys()], ['a', 'b']);
+    });
+
+    it('grows the range by whole months near an edge only', async () => {
+        const {default: TimeAxis} = await import('../node_modules/neo.mjs/src/timeline/TimeAxis.mjs'),
+              axis = Neo.create(TimeAxis, {start: new Date(2026, 10, 1), end: new Date(2027, 10, 1), pxPerMinute: 0.01, tickUnit: 'week'}),
+              month = 30 * 1440 * 0.01;   // 432 px
+
+        assert.equal(Scheduler.grownRange(axis, 1000, 400), null);
+        const atStart = Scheduler.grownRange(axis, 100, 400);
+        assert.deepEqual([atStart.start.getFullYear(), atStart.start.getMonth(), atStart.start.getDate()], [2026, 8, 1]);
+        assert.equal(+atStart.end, +axis.end);
+        const atEnd = Scheduler.grownRange(axis, axis.totalSize - 500, 400);
+        assert.equal(+atEnd.start, +axis.start);
+        assert.deepEqual([atEnd.end.getFullYear(), atEnd.end.getMonth()], [2028, 0]);
+        assert.ok(month > 400);
+
+        assert.equal(Scheduler.rangeIncluding(axis, new Date(2026, 11, 24)), null);
+        const back = Scheduler.rangeIncluding(axis, new Date(2026, 5, 15));
+        assert.deepEqual([back.start.getFullYear(), back.start.getMonth(), back.start.getDate()], [2026, 4, 1]);
+        assert.equal(Scheduler.rangeIncluding(axis, new Date(2027, 10, 1)).end.getMonth(), 0);
+        axis.destroy();
+    });
+
+    it('has month, quarter and year zoom presets next to neo\'s', () => {
+        assert.deepEqual(Object.keys(Scheduler.zoomPresets), ['hour', 'day', 'week', 'month', 'quarter', 'year']);
+        assert.equal(Scheduler.zoomPresets.year.tickUnit, 'month');
+    });
+
     describe('instance', () => {
         let scheduler, stub;
 
@@ -71,6 +116,7 @@ describe('GO.scheduler.Scheduler', () => {
                 resources,
                 events   : voyages,
                 eventFields,
+                backgrounds: [{resourceId: 'v1', startDate: '2026-11-03T00:00:00Z', endDate: '2026-11-05T00:00:00Z', cls: 'port', inherit: true}],
                 timeAxis : {start: '2026-11-01', end: '2026-12-01', tickUnit: 'day', pxPerMinute: 0.05, snapMinutes: 60},
                 resourceColumns: [{dataField: 'name', text: 'Resource', type: 'tree', width: 200, locked: 'start'}]
             });
@@ -132,6 +178,47 @@ describe('GO.scheduler.Scheduler', () => {
 
             assert.equal(scheduler.moveEvent('7', {startDate: new Date(start + 3600000)}), null);
             assert.equal(+scheduler.eventStore.get('7').startDate, start);
+        });
+
+        it('turns the click position on the empty track of a bookable row into a date', () => {
+            const axis  = scheduler.timeAxis,
+                  x     = axis.dateToX(new Date(2026, 10, 10, 12)),
+                  track = {cls: ['neo-timeline-track'], rect: {left: 300}},
+                  row   = id => ({cls: ['neo-grid-row'], id: 'row-' + id, data: {recordId: id}}),
+                  slot  = scheduler.getSlotTarget({clientX: 300 + x, path: [track, {cls: ['neo-timeline-cell']}, row('r1')]});
+
+            assert.equal(slot.resource.id, 'r1');
+            assert.equal(+slot.date, +new Date(2026, 10, 10, 12));
+            // a bar, a grouping row and a click without a position are no slot
+            assert.equal(scheduler.getSlotTarget({clientX: 300 + x, path: [{cls: ['neo-timeline-bar'], data: {eventId: '7'}}, track, row('r1')]}), null);
+            assert.equal(scheduler.getSlotTarget({clientX: 300 + x, path: [track, row('v1')]}), null);
+            assert.equal(scheduler.getSlotTarget({path: [track, row('r1')]}), null);
+        });
+
+        it('paints inherited background bands behind the bars of a row', () => {
+            const record = scheduler.store.get('r1'),
+                  track  = scheduler.timelineColumn.cellRenderer({record, row: {id: 'row'}}).cn[0];
+
+            assert.deepEqual(track.cn[0].cls, ['go-scheduler-background', 'port']);
+            assert.equal(track.cn[0].style.left, `${scheduler.timeAxis.dateToX(new Date(Date.parse('2026-11-03T00:00:00Z')))}px`);
+            assert.equal(scheduler.timelineColumn.cellRenderer({record: scheduler.store.get('c1'), row: {id: 'c'}}).cn[0].cn
+                .some(node => node.cls.includes('go-scheduler-background')), false);
+        });
+
+        it('zooms to a GO preset and grows the axis to a date out of range', async () => {
+            let changed = null;
+
+            scheduler.zoomTo('quarter');
+            assert.equal(scheduler.timeAxis.tickUnit, 'week');
+            assert.equal(scheduler.majorTickUnit, 'month');
+
+            scheduler.growRange = true;
+            scheduler.on('rangeChange', range => changed = range);
+            await scheduler.scrollToDate(new Date(2027, 2, 10));
+            assert.ok(+scheduler.timeAxis.end > +new Date(2027, 2, 10));
+            assert.equal(scheduler.timeAxis.start.getDate(), 1);
+            assert.equal(+changed.end, +scheduler.timeAxis.end);
+            scheduler.growRange = false;
         });
 
         it('does not move a read-only bar with the arrow keys', () => {

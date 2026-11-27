@@ -299,17 +299,27 @@ the resources and field mappings. First user: amd/crew Crew Planning (`docs/neo-
 | `eventFields` | `{startDate, endDate, resourceId, title, cls}`: each a field name of the source record or a function `record => value`; defaults are the same names. A record without `id` or resource, or ending before it starts, is left out. Dates are instants (ISO with offset or Z, Date, ms) and are shown in the user's time zone (`DateUtil.toUserTime()`) |
 | `readOnly` | true: no drag, no resize handles, no EventEditor, no keyboard moves (neo's ArrowLeft / ArrowRight on a focused bar ignore `editable` and `barDraggable`, the wrapper blocks them) and `moveEvent()` returns null. Switching it off again turns drag, resize and the editor on; false at construction leaves neo's `barDraggable`, `resizableBars` and `editable` as passed |
 | `eventRenderer(record, descriptor)` | `{html, cls}` merged into neo's bar node: `html` replaces the label (escape it yourself), `cls` (string or array) is added. A string (also `''`) sets the label text. Don't pass neo's own `barRenderer`: the wrapper sets it to run `eventRenderer` (neo's returned object would replace the whole bar node) |
-| `timeAxis` | neo's `Neo.timeline.TimeAxis` config (`start`, `end`, `tickUnit`, `pxPerMinute` …) in wall time of the user's zone; `zoomTo('hour' | 'day' | 'week')` and `scrollToDate(date)` are neo's |
+| `timeAxis` | neo's `Neo.timeline.TimeAxis` config (`start`, `end`, `tickUnit`, `pxPerMinute` …) in wall time of the user's zone. `start` and `end` are the range; start it on the 1st of a month for month ticks (they are anchored to `start`) |
+| `backgrounds` | `[{resourceId, startDate, endDate, cls, inherit}]`: bands behind the bars of a row, rendered by `GO.scheduler.TimelineColumn` next to neo's non-working bands. Dates are instants like the events; a band ending before it starts is left out. `inherit: true` paints the row and every descendant (crew: a port call on the vessel row and its rank rows; the company row gets none). `cls` (string or array) is added to `go-scheduler-background` (default colour: primary at 14 %). Bands are at least 2 px wide (a 30-minute crew change line stays visible) and take no pointer events, so a click on a band is a slot click |
+| `zoom` | a preset applied at construction and on change: neo's `hour`, `day`, `week` plus `month` (day ticks, month header), `quarter` (week ticks, month header) and `year` (month ticks, a header per 3 months counted from the axis start month, so calendar quarters only when the range starts in January, April, July or October). `zoomTo(presetOrConfig)` takes the same names or a neo axis config; presets are in `Scheduler.zoomPresets`. Header labels use neo's formatters in the user's GO language (`Translate.language()`, also passed to neo's header, which otherwise keeps `Neo.config.locale`); `timelineColumnConfig: {locale}` overrides it |
+| `growRange` | true: when the view comes within one view width of the axis start or end (on scroll, when the view is measured or resized, and after a zoom), the axis grows by whole months (two view widths, at least one month), the date at the left edge stays in place and `rangeChange` fires. `scrollToDate(date)` first grows the range to contain `date` (plus one month). Default false: the axis keeps `timeAxis.start` / `end` |
 
 The normalised events live in a `Neo.timeline.store.Events` (`eventStore`): `{id, resourceId, startDate, endDate, title,
 cls}`, because neo's lookup reads those literal field names. `getSourceRecord(eventId)` returns the record it came from.
 
-Events: `eventClick {record, eventRecord}` (a click on a bar; `record` is the source record, also when read-only).
+Events:
+
+- `eventClick {record, eventRecord}`: a click on a bar; `record` is the source record, also when read-only.
+- `slotClick {resource, date}`: a click on the empty track (or a background band) of a row whose `bookable` is not
+  false; `resource` is the row's record, `date` the clicked moment as wall time of the user's zone (`fromUserTime()`
+  for the instant), not snapped. `getSlotTarget(data)` does the bar / row / x → date part (`TimeAxis.xToDate()` of
+  `clientX` minus the track's left edge).
+- `rangeChange {start, end}`: the axis grew (`growRange`); wall-time Dates. Load the events of the new window here.
 
 Interaction permissions are the caller's: pass `readOnly: true` when the user may not change the events.
 
-Not built yet (crew card B): background bands per row, `slotClick`, month / quarter / year zoom presets, a growing
-range (`rangeChange`), drag and resize writing a JMAP patch.
+Not built yet: drag and resize writing a JMAP patch (with the first user that edits on the scheduler). Dev demo:
+`#dev/core/Scheduler` (bands, zoom buttons, slot click, growing range).
 
 ## neo user settings (2026-11-27)
 
