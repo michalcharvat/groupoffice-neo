@@ -308,6 +308,52 @@ class FormWindow extends Dialog {
     }
 
     /**
+     * @summary Turns a card's tab off or on (e.g. off until the entity is saved). The first available card
+     * takes over when the card was the active one.
+     * @param {Neo.component.Base|String} card the card addCard() returned, or its reference
+     * @param {Boolean} disabled
+     */
+    setCardDisabled(card, disabled) {
+        this.updateCardTab(card, tab => tab.disabled = disabled, disabled)
+    }
+
+    /**
+     * @summary Hides or shows a card's tab. The first available card takes over when the card was the active one.
+     * @param {Neo.component.Base|String} card the card addCard() returned, or its reference
+     * @param {Boolean} hidden
+     */
+    setCardHidden(card, hidden) {
+        this.updateCardTab(card, tab => tab.hidden = hidden, hidden)
+    }
+
+    /**
+     * @summary Applies fn to the tab of a card.
+     * @param {Neo.component.Base|String} card
+     * @param {Function} fn (tab) => void
+     * @param {Boolean} leave activate the first card when this one is active
+     * @protected
+     */
+    updateCardTab(card, fn, leave) {
+        const {cards} = this,
+              cmp     = typeof card === 'string' ? this.getReference(card) : card,
+              index   = cmp ? cards.getCardContainer().items.indexOf(cmp) : -1,
+              tab     = index > -1 ? cards.getTabAtIndex(index) : null;
+
+        if (tab) {
+            fn(tab);
+            if (leave && cards.activeIndex === index) {
+                const items = cards.getCardContainer().items,
+                      next  = items.findIndex((item, i) => {
+                          const t = cards.getTabAtIndex(i);
+                          return i !== index && t && !t.hidden && !t.disabled
+                      });
+
+                next > -1 && (cards.activeIndex = next)
+            }
+        }
+    }
+
+    /**
      * Tab bar only with more than one card (GOUI cardMenu)
      * @protected
      */

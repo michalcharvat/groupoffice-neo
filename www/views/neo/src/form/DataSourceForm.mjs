@@ -178,21 +178,45 @@ class DataSourceForm extends FormContainer {
     }
 
     /**
-     * @param {*} a
-     * @param {*} b
+     * @summary Whether a field value is unchanged. Rows of an array (ArrayField) count as unchanged when
+     * the keys of the current row match: a stored row may carry keys without a field.
+     * @param {*} a current value
+     * @param {*} b original value
+     * @param {Boolean} [row=false] a is a row of an array
      * @returns {Boolean}
      */
-    static isSameValue(a, b) {
+    static isSameValue(a, b, row = false) {
         const empty = v => v === null || v === undefined || v === '',
               // a map entry set to null means "not set" (e.g. acl {groupId: null} removes the group)
-              clean = v => Neo.typeOf(v) === 'Object'
-                  ? Object.fromEntries(Object.entries(v).filter(([, x]) => x !== null && x !== undefined))
-                  : v;
+              clean = v => Object.entries(v).filter(([, x]) => x !== null && x !== undefined),
+              same  = DataSourceForm.isSameValue;
 
         // JMAP ids come as numbers or strings: a combo that resolved its record returns "65" for 65
         const scalar = v => typeof v === 'number' || typeof v === 'string';
 
-        return (empty(a) && empty(b)) || (scalar(a) && scalar(b) && String(a) === String(b)) || Neo.isEqual(clean(a), clean(b))
+        if ((empty(a) && empty(b)) || (scalar(a) && scalar(b) && String(a) === String(b))) {
+            return true
+        }
+
+        if (Array.isArray(a) && Array.isArray(b)) {
+            // Array.from: a hole of a sparse array is undefined, every() would skip it
+            return a.length === b.length && Array.from(a, (v, i) => same(v, b[i], true)).every(Boolean)
+        }
+
+        if (Neo.typeOf(a) === 'Object' && Neo.typeOf(b) === 'Object') {
+            // shortcut: a row is compared on its own keys, so a row type whose value drops a key when
+            // emptied would hide that change; all rows are ContainerFields with fixed keys now
+            if (row) {
+                return Object.entries(a).every(([k, v]) => same(v, b[k]))
+            }
+
+            const ea = clean(a),
+                  eb = Object.fromEntries(clean(b));
+
+            return ea.length === Object.keys(eb).length && ea.every(([k, v]) => Object.hasOwn(eb, k) && same(v, eb[k]))
+        }
+
+        return Neo.isEqual(a, b)
     }
 
     /**

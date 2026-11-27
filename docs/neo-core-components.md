@@ -416,6 +416,17 @@ onFormWindow: win => win.entityName !== 'Voyage' ? null : {
 - Return `null` for windows the module does not extend; per-window state lives in the closure. A throwing
   `onFormWindow` is logged and skipped. Only modules the user has access to are asked (`getConfigs()`).
 
+## FormWindow cards and row arrays (2026-11-28)
+
+- Tabs of cards: `win.setCardDisabled(card, true)` turns the tab of a card off (e.g. child grids until the
+  entity is saved: `win.setCardDisabled(card, !win.form.currentId)`), `win.setCardHidden(card, true)` hides
+  it. `card` is what `addCard()` returned or its reference. When the card was active, the first visible, enabled card takes over.
+- `DataSourceForm.isSameValue()` compares an array value row by row and a row only on the keys the field
+  gives (`getSubmitValue()`), ids as strings: a stored row with keys without a field (`memberId`,
+  `latitude`) or a row combo that turned `1` into `"1"` after resolving its record is not a change. Maps
+  (`acl`) are still compared both ways. A module needs no `setOriginalValue()` workaround for row arrays.
+- `AutocompleteChips` `recordDetails` is optional (before 2026-11-28 a field without it never opened its menu).
+
 ## Entity actions in GO.grid.Grid (2026-11-27)
 
 Edit / delete / row menu of a JMAP entity list belong to the core grid, opt-in with
