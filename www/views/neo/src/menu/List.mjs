@@ -127,7 +127,7 @@ class List extends MenuList {
     returnFocusModality = undefined
 
     /**
-     * neo's hand-back with the modality of the open (Neo.main.DomAccess.focus() modality)
+     * @summary neo's hand-back with the modality of the open (Neo.main.DomAccess.focus() modality)
      */
     revertFocusOnDeparture() {
         let me = this;
@@ -140,8 +140,23 @@ class List extends MenuList {
         me.containsFocus && me.getFocusReturnTarget()?.focus(undefined, false, undefined, me.returnFocusModality, me.id)
     }
 
+    /**
+     * Called once the menu closed (unmounted), e.g. for a toggle that must not reopen it on the click
+     * that closed it
+     * @member {Function|null} onClose=null
+     */
+    onClose = null
+
+    /**
+     * @summary Calls onClose and, for a showAt() menu, destroys it once it closed.
+     * @param {Boolean} value
+     * @param {Boolean} oldValue
+     * @protected
+     */
     afterSetMounted(value, oldValue) {
         super.afterSetMounted(value, oldValue);
+
+        !value && oldValue && this.onClose?.();
 
         // a floating root menu closes by unmounting (item click, focus leaving, Escape)
         if (!value && oldValue && this.destroyOnUnmount) {

@@ -94,6 +94,11 @@ import {createColumns as createCustomFieldColumns, loadNames as loadCustomFieldN
  * ⋮), `notifyLoadError` notifies a failed store load, and a store with `scrollLoad` loads more when
  * the body scrolls to its end.
  *
+ * Column sizing: the rows always fill the grid's width (the cells carry the background). Without a
+ * flex column the last visible column with a header text gets `flex: 1` and its width as minWidth;
+ * `autoExpandColumn: 'name'` (ExtJS) picks that column instead, `forceFit: true` (ExtJS
+ * viewConfig.forceFit) lets every text column flex by its width. Icon columns (no text) keep theirs.
+ *
  * Overflow tooltips (GOUI Table overflowTooltip): a cell or header whose text is cut off shows the
  * full text as its title on hover (main thread addon WS/OverflowTooltip); a renderer's title wins.
  * @class GO.grid.Grid
@@ -150,6 +155,16 @@ class Grid extends GridContainer {
          * @member {Object|null} entityActions=null
          */
         entityActions: null,
+        /**
+         * ExtJS autoExpandColumn: dataField of the column that fills the rest of the row
+         * @member {String|null} autoExpandColumn=null
+         */
+        autoExpandColumn: null,
+        /**
+         * ExtJS viewConfig.forceFit: the columns share the grid's width by their widths
+         * @member {Boolean} forceFit=false
+         */
+        forceFit: false,
         /**
          * Fire `navigate` {record} on a plain row click (no ctrl / ⌘ / shift, not on the row ⋮)
          * @member {Boolean} navigateOnRowClick=false
@@ -384,6 +399,10 @@ class Grid extends GridContainer {
         return Math.round((Grid.ROW_DP[rowLines] || Grid.ROW_DP[1]) * dp)
     }
 
+    /**
+     * @summary Keeps every column (allColumns) and hands neo the visible ones, sized (visibleColumns()).
+     * @param {Object} config
+     */
     construct(config) {
         const all = (config.columns || []).map(column => ({hideable: true, hidden: false, ...column})),
               dp  = Grid.measuredDp || Grid.THEME_DP[client.user?.theme] || Grid.THEME_DP.Paper;
@@ -401,7 +420,7 @@ class Grid extends GridContainer {
             ...(config.groupBy ? {contentSizedRows: true} : {}),
             ...config,
             ...(config.multiSelect ? {viewConfig: {...config.viewConfig, selectionModel: {module: RowSelectionModel}}} : {}),
-            columns      : Grid.visibleColumns(all),
+            columns      : Grid.visibleColumns(all, config),
             headerToolbar: {...config.headerToolbar, itemDefaults: {module: HeaderButton, ntype: 'go-grid-header-button'}}
         });
 
@@ -412,7 +431,14 @@ class Grid extends GridContainer {
         this.removeThemeListener = onThemeChange(windowIds => windowIds.includes(this.windowId) && this.measureRowHeight())
     }
 
+    /**
+     * @summary Closes an open header menu and removes the theme, group and name listeners.
+     * @param {...*} args
+     */
     destroy(...args) {
+        const menu = this.headerMenu;
+
+        menu && !menu.isDestroyed && (menu.hidden = true);
         this.removeThemeListener?.();
         this.groupListeners && this.groupStore?.un(this.groupListeners);
         // the store they were added to, also when the grid got another one since
@@ -731,12 +757,30 @@ class Grid extends GridContainer {
     }
 
     /**
-     * Column configs for neo: copies (neo's createColumns() changes them) without our keys
+     * @summary Column configs for neo: copies (neo's createColumns() changes them) without our keys,
+     * sized so the rows fill the grid's width (see the class comment, "Column sizing").
      * @param {Object[]} columns
+     * @param {Object} [options]
+     * @param {String|null} [options.autoExpandColumn] dataField of the column that fills the rest
+     * @param {Boolean} [options.forceFit] the columns share the width by their widths
      * @returns {Object[]}
      */
-    static visibleColumns(columns) {
-        return columns.filter(column => !column.hidden).map(({hidden, hideable, resized, stateKey, goCustomField, ...column}) => ({...column}))
+    static visibleColumns(columns, {autoExpandColumn = null, forceFit = false} = {}) {
+        const visible = columns.filter(column => !column.hidden).map(({hidden, hideable, resized, stateKey, goCustomField, ...column}) => ({...column})),
+              // a column of icons (row ⋮, check box) has no header text and keeps its width
+              center  = visible.filter(column => !column.locked && column.text),
+              flexing = column => column.flex && column.flex !== 'none';
+
+        if (forceFit) {
+            center.forEach(column => !flexing(column) && column.width > 0 && (column.flex = column.width))
+        } else {
+            const fill = center.find(column => column.dataField === autoExpandColumn) ||
+                (center.some(flexing) ? null : center.at(-1));
+
+            fill && Object.assign(fill, {flex: 1, minWidth: fill.minWidth || fill.width})
+        }
+
+        return visible
     }
 
     /**
@@ -899,13 +943,13 @@ class Grid extends GridContainer {
     }
 
     /**
-     * Shows the visible columns of allColumns
+     * @summary Shows the visible columns of allColumns, sized (visibleColumns()).
      * @protected
      */
     async applyColumns() {
         let me = this;
 
-        me.columns = Grid.visibleColumns(me.allColumns);
+        me.columns = Grid.visibleColumns(me.allColumns, me);
 
         // header.Toolbar#createItems() runs in afterSetColumns()
         await me.timeout(60);
@@ -957,7 +1001,7 @@ class Grid extends GridContainer {
     }
 
     /**
-     * GO 6.8 column header menu: sort ascending / descending, then the columns
+     * @summary GO 6.8 column header menu: sort ascending / descending, then the columns
      * @param {Neo.grid.header.Button} button
      */
     showHeaderMenu(button) {
@@ -976,22 +1020,51 @@ class Grid extends GridContainer {
             }, {separator: true})
         }
 
-        MenuList.showAt({appName: me.appName, target: button.id, windowId: me.windowId, items})
+        me.showHeaderMenuList(button.id, items)
     }
 
     /**
-     * Checkable list of the hideable columns (GO 6.8 "Columns", GOUI column menu)
+     * @summary Checkable list of the hideable columns (GO 6.8 "Columns", GOUI column menu)
      * @param {String} target DOM id to align the menu to
      */
     showColumnMenu(target) {
-        let me = this;
+        this.showHeaderMenuList(target, this.columnMenuItems())
+    }
 
-        MenuList.showAt({
-            appName : me.appName,
-            target,
-            windowId: me.windowId,
-            items   : me.columnMenuItems()
-        })
+    /**
+     * @summary Shows a header menu; one is open at a time, and the same target again closes it (the ⋮
+     * clicked twice). Escape and a click outside close it (MenuList).
+     * @param {String} target DOM id to align the menu to
+     * @param {Object[]} items
+     * @protected
+     */
+    showHeaderMenuList(target, items) {
+        let me   = this,
+            open = me.headerMenu,
+            // the press on the ⋮ already closed the menu (focus left it) before this click
+            justClosed = me.headerMenuTarget === target && Date.now() - (me.headerMenuClosedAt || 0) < 500;
+
+        const wasOpen = !!open && !open.isDestroyed;
+
+        me.headerMenu = null;
+        // hidden, not destroyed: a floating menu leaves its DOM behind on destroy(); showAt() menus
+        // destroy themselves once unmounted
+        wasOpen && (open.hidden = true);
+
+        if ((wasOpen && me.headerMenuTarget === target) || justClosed) {
+            me.headerMenuClosedAt = 0;
+            return
+        }
+
+        const menu = MenuList.showAt({appName: me.appName, target, windowId: me.windowId, items});
+
+        menu.onClose = () => {
+            me.headerMenu === menu && (me.headerMenu = null);
+            me.headerMenuClosedAt = Date.now()
+        };
+
+        me.headerMenuTarget = target;
+        me.headerMenu       = menu
     }
 
     /**

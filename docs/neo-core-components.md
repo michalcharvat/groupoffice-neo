@@ -496,6 +496,28 @@ Opt-in, from amd/crew `entityList.mjs` `wireList()` and the notes / tasks / addr
 - `notifyLoadError: true`: a `loadError` of the grid's store becomes `notifyError(grid, error)`
   (not after the grid is destroyed). Other stores of the view (trees, lists) keep their own listener.
 
+## Column sizing on GO.grid.Grid (2026-11-28)
+
+The cells (and header buttons) carry the background, so the columns must fill the grid's width,
+or rows, hover and selection stop after the last column. `Grid.visibleColumns()` sizes the copies
+it hands to neo:
+
+| Classic config | neo |
+|---|---|
+| none, and no column has `flex` | the last visible center column with a header text gets `flex: 1`, `minWidth` = its width |
+| ExtJS `autoExpandColumn: 'name'` | grid config `autoExpandColumn: 'name'`: that column `flex: 1`, `minWidth` = its width |
+| ExtJS `viewConfig.forceFit: true` | grid config `forceFit: true`: every text column flexes by its width (`flex: width`) |
+| a column with `flex` | kept; no column is added to fill |
+
+Columns without header text (row ⋮, check boxes, icons) and locked columns keep their width. A
+narrower grid scrolls once the minWidths do not fit. go:neo-port: carry `autoExpandColumn` /
+`forceFit` over as these grid configs; don't hand-pick a flex column for it.
+
+The header column chooser (⋮, right click) is one menu per grid: the same ⋮ again closes it,
+Escape and a click outside close it (`showHeaderMenuList()`; `GO.menu.List` `onClose`). A floating
+menu is closed with `hidden = true`, never `destroy()`, which leaves its DOM behind. The header ⋮
+over a text-less last column (the row ⋮) is centred on the row ⋮ (`HeaderButton.scss`).
+
 ## List toolbar: GO.grid.ListToolbar (2026-11-27)
 
 The toolbar of an entity list is core too (`src/grid/ListToolbar.mjs`), next to a GO.grid.Grid

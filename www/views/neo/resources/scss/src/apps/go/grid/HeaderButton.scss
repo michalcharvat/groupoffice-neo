@@ -1,3 +1,5 @@
+@use "../../../../go/go";
+
 // GO.grid.HeaderButton: column chooser (⋮) in the last column header of the last region
 // (a locked end region is a toolbar of its own: once per grid, not once per region)
 .neo-theme-go {
@@ -24,5 +26,18 @@
     .go-grid .neo-grid-header-toolbar:last-child > .neo-grid-header-button:last-child .go-grid-header-trigger:hover {
         opacity: 1;
         background: rgba(0, 0, 0, .08);
+    }
+}
+
+// the ⋮ over a row ⋮ column (Grid.rowMenuColumn(), no text): centred like the row icon, which sits in
+// a last cell padded dp(8) / dp(16) (Grid.scss)
+.neo-theme-go .go-grid .neo-grid-header-toolbar:last-child > .neo-grid-header-button.no-text:last-child {
+    padding-right: 0;
+
+    // the cell's content box is centred dp(4) left of the middle
+    .go-grid-header-trigger {
+        left     : calc(50% - #{go.dp(4)});
+        right    : auto;
+        transform: translate(-50%, -50%);
     }
 }
