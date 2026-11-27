@@ -21,10 +21,11 @@ class BatchEditButton extends Button {
         tooltip  : t('Batch edit'),
         hidden   : true,
         /**
-         * JMAP entity of the grid's records, e.g. 'Contact'
-         * @member {String|null} entity=null
+         * JMAP entity of the grid's records, e.g. 'Contact'; the button shows when it has custom fields
+         * @member {String|null} entity_=null
+         * @reactive
          */
-        entity: null,
+        entity_: null,
         /**
          * The ids to edit, by default the selected records of the toolbar's grid
          * @member {Function|null} getIds=null
@@ -32,17 +33,28 @@ class BatchEditButton extends Button {
         getIds: null
     }
 
+    /**
+     * @summary Opens the batch edit dialog on a click.
+     */
     onConstructed() {
         super.onConstructed();
+        this.handler = () => this.openDialog()
+    }
 
-        let me = this;
+    /**
+     * @summary Shows the button while the entity has custom fields to edit.
+     * @param {String|null} value
+     * @param {String|null} oldValue
+     */
+    afterSetEntity(value, oldValue) {
+        const me = this;
 
-        me.handler = () => me.openDialog();
+        me.hidden = true;
 
-        import('../form/BatchEditDialog.mjs')
-            .then(({default: BatchEditDialog}) => BatchEditDialog.isAvailable(me.entity))
+        value && import('../form/BatchEditDialog.mjs')
+            .then(({default: BatchEditDialog}) => BatchEditDialog.isAvailable(value))
             .then(available => {
-                me.isDestroyed || (me.hidden = !available)
+                me.isDestroyed || me.entity !== value || (me.hidden = !available)
             })
             .catch(e => console.error('Batch edit', e))
     }
@@ -62,9 +74,13 @@ class BatchEditButton extends Button {
         return (toolbar?.grid?.getSelectedRecords() || []).filter(Boolean).map(r => String(r.id))
     }
 
+    /**
+     * @summary Opens GO.form.BatchEditDialog for the selected ids of the entity.
+     */
     async openDialog() {
-        let me  = this,
-            ids = me.getSelectedIds();
+        let me     = this,
+            ids    = me.getSelectedIds(),
+            entity = me.entity;
 
         if (!ids.length) {
             return
@@ -72,7 +88,8 @@ class BatchEditButton extends Button {
 
         const {default: BatchEditDialog} = await import('../form/BatchEditDialog.mjs');
 
-        me.isDestroyed || Neo.create(BatchEditDialog, {appName: me.appName, windowId: me.windowId, entity: me.entity, ids})
+        // the ids belong to the entity they were selected in
+        me.isDestroyed || me.entity !== entity || Neo.create(BatchEditDialog, {appName: me.appName, windowId: me.windowId, entity, ids})
             .on('save', ({updated}) => me.isDestroyed || me.fire('save', {updated}))
     }
 }

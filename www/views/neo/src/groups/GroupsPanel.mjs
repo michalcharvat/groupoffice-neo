@@ -1,11 +1,10 @@
 import Container     from '../../node_modules/neo.mjs/src/container/Base.mjs';
-import Toolbar       from '../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import {LEVEL_WRITE} from '../Acl.mjs';
 import Button        from '../button/Button.mjs';
-import SearchButton  from '../button/SearchButton.mjs';
 import JmapStore     from '../data/JmapStore.mjs';
 import GroupModel     from '../model/Group.mjs';
 import Grid          from '../grid/Grid.mjs';
+import ListToolbar   from '../grid/ListToolbar.mjs';
 import client        from '../jmap/Client.mjs';
 import {notifyError} from '../Notify.mjs';
 import {escapeHtml}  from '../Format.mjs';
@@ -44,13 +43,11 @@ class GroupsPanel extends Container {
         let me = this;
 
         me.items = [{
-            module: Toolbar,
-            flex  : 'none',
-            cls   : ['go-groups-tbar'],
-            items : ['->', {
-                module   : SearchButton,
-                listeners: {search: ({text}) => me.grid.store.setFilter({text: text || undefined}).catch(() => {})}
-            }, {
+            module    : ListToolbar,
+            reference : 'listToolbar',
+            flex      : 'none',
+            toolbarCls: ['go-groups-tbar'],
+            endItems  : [{
                 module  : Button,
                 icon    : 'add',
                 ui      : 'primary',
@@ -110,6 +107,7 @@ class GroupsPanel extends Container {
         let me   = this,
             grid = me.grid;
 
+        me.getReference('listToolbar').setGrid(grid);
         grid.body.on('scrollEdge', () => grid.store.loadMore().catch(() => {}));
         grid.store.on({
             load     : me.loadNames,

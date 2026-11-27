@@ -55,12 +55,13 @@ class MultiSelectToolbar extends Toolbar {
     }
 
     /**
+     * @summary Follows the selection of the grid (unbinds the previous one).
      * @param {GO.grid.Grid} grid
      */
     setGrid(grid) {
         let me = this;
 
-        me.grid?.view.selectionModel.un('selectionChange', me.onSelectionChange, me);
+        me.grid && !me.grid.isDestroyed && me.grid.view.selectionModel.un('selectionChange', me.onSelectionChange, me);
         me.grid = grid;
         grid.view.selectionModel.on('selectionChange', me.onSelectionChange, me);
         me.onSelectionChange({records: grid.getSelectedRecords()})

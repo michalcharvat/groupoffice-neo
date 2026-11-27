@@ -474,6 +474,49 @@ Not migrated yet (own copies of the row menu / delete question, follow-up cards)
   member Add and `loadNames()` stay in crew.
 - sf modules: grep `showRowMenu|deleteRecords|go-row-menu|'Confirm delete'` in their `views/neo`.
 
+## List toolbar: GO.grid.ListToolbar (2026-11-27)
+
+The toolbar of an entity list is core too (`src/grid/ListToolbar.mjs`), next to a GO.grid.Grid
+with `entityActions`: start items, search, end items (Add), ⋮, and the MultiSelectToolbar over
+it (batch edit, delete). A component, not a grid config: the toolbar sits above the grid in the
+host's vbox and is bound with `setGrid(grid)` in the host's `onConstructed()`.
+
+```js
+items: [{
+    module       : ListToolbar,
+    reference    : 'listToolbar',
+    flex         : 'none',
+    toolbarCls   : ['go-users-tbar'],             // default go-bg-mid go-border-bottom
+    searchFilters: QUERY_FILTERS,                  // default; tbsearch filters, null: no search
+    exportFormats: ['xlsx', 'csv', 'json'],        // ⋮ Export of what the grid shows; null: none
+    startItems   : [...], endItems: [addButton],
+    moreItems    : ({export: exp, delete: del}) => [importItem, exp, del], // default [export, sep, delete]
+    multiSelectItems: [...], batchEdit: true
+}, {module: Grid, reference: 'grid', multiSelect: true, entityActions: {...}, ...}]
+```
+
+- Search: `searchFilter(text, searchFilters, entity)` (GO "name: value" syntax, custom fields of the
+  entity) → `store.setFilter()`; only the latest search counts. The filter keys are `text` and
+  `search`, so other keys the host sets (`showDisabled`, …) stay.
+- Delete (⋮ "Delete" = `grid.deleteSelectedMenuItem()`, the bulk button = `grid.deleteRecords()`)
+  goes through the grid's entity actions; the bulk button is disabled while no selected row may be
+  deleted. A list whose delete does more (clears its detail, legacy controller) keeps its own toolbar.
+- `GO.grid.BatchEditButton` `entity` is reactive now: it hides itself again and checks the custom
+  fields when the entity is set later (ListToolbar sets it from `grid.store.entity` in setGrid()).
+- References inside: `moreButton`, `multiSelectToolbar`, `deleteSelectedButton`, `batchEditButton`
+  (the host's `getReference()` finds them; neo searches down).
+- Tests: `tests/listToolbar.test.mjs`.
+- Using it: `UsersPanel` (Show disabled, Add, ⋮ with defaults / import / export / delete /
+  permissions), `GroupsPanel` (Add, Group defaults; gained ⋮ Delete and the multi select toolbar).
+
+Own copies of the same toolbar (not a straight replacement, follow-up cards): community/notes
+`NotesMain`, tasks `TasksMain`, addressbook `AddressBookMain` (own delete that clears the detail,
+table title, west button), maildomains `DomainGridCard`, multi_instance `InstancesMain`,
+bookmarks `BookmarksMain`, history `HistoryMain`, zpushadmin `DevicesMain`, files `FilesMain`,
+email `EmailMain`, `EmailTemplateGrid` (ActionTable), dev demos `MultiSelect`/`GridExport`.
+amd/crew `entityList.mjs` (`listItems`, `wireList` multi select part, `searchList`, `showListMenu`)
+→ ListToolbar; `showAddFor()`, `loadNames` and the row click navigation stay in crew.
+
 ## Left to build (2026-11-19)
 
 1. ~~**Notes Markdown + image zoom**~~ — done: `MarkdownField`, `src/Markdown.mjs`, `ImageWindow`.
