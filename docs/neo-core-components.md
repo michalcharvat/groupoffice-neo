@@ -64,7 +64,7 @@ Status: **neo** = neo.mjs 13.4 ships it (14 since 2026-11-24), usable as is (may
 | auth/Login | GO.neo (`apps/go/view/LoginView.mjs`: forgot credentials, 2FA via `loginPanels`) |
 | Main area (GOUI/ExtJS card per module) | GO.neo `apps/go/view/MainView.mjs`: one card per module. Modules extend it through `mainViewExtension` (extra cards, top-bar items, routes, claimed module views; `docs/neo-small-modules.md`, "Main view extensions"). The module sf/workspaces (sf-mono, off by default) adds workspace tabs next to the module tabs, each a dock (`GO.workspaces.Workspace` over neo's dock; panels side by side, drag from the top bar, maximize, saved per user and screen profile; `docs/neo-workspace.md`) |
 | MainThreeColumnPanel, TableTitle | GO.neo |
-| DetailPanel | GO.neo (`detail/Card` + panels); `Card` `capability` hides a card without module access (history, comments, files) |
+| DetailPanel | GO.neo (`GO.detail.Panel`: toolbar, standard cards, `load(id)`, see "Entity detail" below; `detail/Card` + panels, `GO.detail.LinesCard` for label / value lines); `Card` `capability` hides a card without module access (history, comments, files) |
 | Comments, Files (legacy files), History | GO.neo (`CommentsPanel`, `FilesPanel`, `HistoryPanel` + `HistoryDetailDialog`). `FilesPanel` takes files dropped from the desktop; with the files module's neo UI a click opens the file with the user's file handler (ModuleRegistry hook `openFile`) and "Browse files" opens the entity's folder in `#files/folder/<id>` |
 | FilterPanel (saved EntityFilters) | GO.neo (`FilterPanel`, `FilterDialog`; value editors per filter `type` in `view/filterTypes.mjs`: string/number/date, `select` {options}, `user`, `group`, `entity` {entity, jmapFilter}, `link`; the entity's custom fields are added as filters. `searchFilter(text, filters, entity)` gives a toolbar search GO's `name:value` syntax, ExtJS go.util.Filters.parseQueryString; "Input field" = EntityFilter type variable, `VariableFilterDialog` + a chips field per filter in the panel, values ORed, ExtJS go.filter.VariableFilterPanel; no permissions tab, like the neo FilterDialog) |
 | Global search | GO.neo (`GlobalSearch`) |
@@ -516,6 +516,49 @@ bookmarks `BookmarksMain`, history `HistoryMain`, zpushadmin `DevicesMain`, file
 email `EmailMain`, `EmailTemplateGrid` (ActionTable), dev demos `MultiSelect`/`GridExport`.
 amd/crew `entityList.mjs` (`listItems`, `wireList` multi select part, `searchList`, `showListMenu`)
 → ListToolbar; `showAddFor()`, `loadNames` and the row click navigation stay in crew.
+
+## Entity detail: GO.detail.Panel (2026-11-28)
+
+`src/detail/Panel.mjs`, the right pane of an entity (GOUI `DetailPanel`, ExtJS `go.detail.Panel`).
+A module detail extends it and keeps only its own body:
+
+```js
+class NoteDetail extends Panel {
+    static config = {className: 'GO.notes.view.NoteDetail', entityName: 'Note',
+        cards: ['customFields', 'comments', 'files', 'links', 'history']}
+    createBody()         {return [{ntype: 'component', reference: 'body'}]}
+    renderRecord(note)   {/* fill the body; null: empty it */}
+}
+```
+
+- Toolbar: `createToolbarItems()` (default `['->']`, items left of Edit), then Edit, add / browse
+  link buttons (`hasLinks: false` drops them) and ⋮ from `createMoreMenu()`: Print (the scroller,
+  title `getTitle(record)`), Download PDF only when the subclass overrides `getDownloadUrl(record)`,
+  Delete (id `delete`). Edit and Delete follow `canEdit(record)` / `canDelete(record)`
+  (permissionLevel ≥ write / delete; override to refuse more, e.g. legacy encrypted notes).
+- Body: `createBody()` items go into the `scroller` above the standard cards; `createBottomItems()`
+  below it (tasks "Continue task"). `cards` lists the standard cards in their order:
+  `customFields` (DetailFieldsets), `comments`, `files`, `links` (LinkCards), `history`; each is a
+  reference of that name. The same record keeps the cards' content while it reloads.
+- Record: the host passes it with `setRecord(record)` (grid row; the grid reloads on push and passes
+  it again) or the panel gets it with `load(id)` (`entityName`, `properties`): a later call wins, a
+  missing record shows "Not found" (`notFound`), a change of a `watch` entity (default
+  `[entityName]`) loads it again. `setRecord()` cancels a pending load and that reload.
+- Events: `edit {record}`, `delete {record}` (the host confirms and deletes, as notes and tasks do
+  for their grid too). A detail without such a host overrides `onDelete()` to call
+  `deleteRecord()` (destroyEntities, empties the detail, fires `deleted {record}`).
+- `GO.detail.LinesCard` (`src/detail/LinesCard.mjs`): a collapsible card of label / value lines
+  (`setLines([[label, value|{html}]])`, null hides it) or trusted HTML (`setHtml()`), filled by its
+  detail; moved from amd/crew.
+- Tests: `tests/detailPanel.test.mjs`.
+- On it: community notes `NoteDetail` (NotesMain deep links use `load(id)`), tasks `TaskDetail`.
+  Not yet, each a follow-up: addressbook `ContactDetail` (star and own ⋮, address book name
+  loaded before rendering, action date field), calendar `EventDetail` (an event occurrence, not a
+  record by id: RSVP toolbar, organizer/calendar/alert fields in the toolbar, no ⋮ Delete),
+  maildomains `DomainDetail` (own load with principal names, DNS and mailbox / alias grid cards,
+  no links), files `FileDetail` (legacy File/Folder through the files controller, not JMAP),
+  amd/crew `MemberVoyageDetail` (crew card: `LinesCard` → `GO.detail.LinesCard`, `load()`,
+  `getDownloadUrl()`, `deleteRecord()`).
 
 ## Left to build (2026-11-19)
 
