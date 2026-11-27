@@ -63,5 +63,6 @@ export default [
     {id: 'core/Image',        text: 'Image zoom',        level: 1, status: 'done', demo: 'MarkdownField', neo: 'GO.view.ImageWindow, enableImageZoom()', goui: 'groupoffice-core/script/jmap/Image.ts'},
     {id: 'core/Mail',         text: 'showComposer',      level: 1, status: 'done', demo: 'Mail', neo: 'src/Mail.mjs showComposer(), e-mail module compose()', goui: 'ExtJS go.showComposer (go/core/views/extjs3/Mail.js)'},
     {id: 'core/AppLauncher',  text: 'App launcher',      level: 1, status: 'done', demo: 'AppLauncher', neo: 'GO.view.AppLauncher (header main menu)', goui: 'ExtJS 6.8 MainLayout.js startMenu, Paper _modules.scss #startMenu'},
-    {id: 'core/Recipients',   text: 'RecipientPicker',   level: 1, status: 'done', demo: 'Recipients', neo: 'GO.form.field.RecipientsField, GO.view.RecipientPicker', goui: 'goui-docs/script/components/RecipientsField.ts, groupoffice-core/script/components/picker/RecipientPicker.ts'}
+    {id: 'core/Recipients',   text: 'RecipientPicker',   level: 1, status: 'done', demo: 'Recipients', neo: 'GO.form.field.RecipientsField, GO.view.RecipientPicker', goui: 'goui-docs/script/components/RecipientsField.ts, groupoffice-core/script/components/picker/RecipientPicker.ts'},
+    {id: 'core/Scheduler',    text: 'Scheduler',         level: 1, status: 'done', demo: 'Scheduler', neo: 'GO.scheduler.Scheduler (tree resources, read-only)', goui: 'ExtJS amd/crew TimelinePanel (vis-timeline)'}
 ];
