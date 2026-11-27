@@ -7,7 +7,7 @@
  * CalendarItem.ui, set by the calendar main view, or from the item's own ui (ownUi).
  */
 import client     from '../../../../../../views/neo/src/jmap/Client.mjs';
-import {escapeHtml, smartDateTime} from '../../../../../../views/neo/src/Format.mjs';
+import {escapeHtml, smartDateTime, userFormat} from '../../../../../../views/neo/src/Format.mjs';
 import RecurrenceField from '../../../../../../views/neo/src/form/field/RecurrenceField.mjs';
 import {translator} from '../../../../../../views/neo/src/Translate.mjs';
 import calendarData from './data.mjs';
@@ -445,6 +445,30 @@ export default class CalendarItem {
         }
 
         return lines.join('<br>')
+    }
+
+    /**
+     * @summary Compact date span in the user's date and time format, e.g. "Wed, 04-11-2026, 8:15 - 10:00" (GOUI compactDate).
+     * @returns {String}
+     */
+    get compactDate() {
+        const withTime = !this.data.showWithoutTime,
+              end      = new Date(this.end),
+              day      = d => format(d, 'D') + ', ' + format(d, userFormat.dateFormat),
+              time     = d => withTime ? ', ' + formatTime(d) : '';
+
+        // the end of an event without time is exclusive
+        withTime || end.setSeconds(end.getSeconds() - 1);
+
+        let str = day(this.start) + time(this.start);
+
+        if (!sameDay(this.start, end)) {
+            str += ' - ' + day(end) + time(end)
+        } else if (withTime) {
+            str += ' - ' + formatTime(end)
+        }
+
+        return str
     }
 
     /**
