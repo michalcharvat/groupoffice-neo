@@ -121,8 +121,8 @@ Nothing found so far needs one: the saved company choice and the planning zoom a
     1561, `grid/column/Tree.mjs`).
   - The scheduler keeps the resource column descriptors, and the timeline column finds a row's bars by that row's
     resource id (`timeline/Column.mjs` about line 996).
-  - **Unverified**, and the first step of scheduler card A: the bars stay aligned and hit testing still works
-    after a collapse or expand.
+  - **Verified** by scheduler card A (2026-11-27, `#dev/core/Scheduler`, three levels): after a collapse or
+    expand the bars stay on their rows and a click on a moved bar hits its own record.
 - **Missing pieces:**
   - **Background ranges per row.** Only the global non-working-time bands exist. `Column` renders
     `nonWorkingNodes` next to each row's bars, which is where per-row backgrounds fit in.
@@ -170,7 +170,7 @@ as the board card does.
     eventFields     : {startDate: 'startTime', endDate: 'endTime', resourceId: r => ...},
     backgrounds     : [{resourceId, startDate, endDate, cls, inherit: true}], // inherit: paint the descendants too
     readOnly        : true,                           // no drag, resize, EventEditor or keyboard moves
-    barRenderer     : record => ({html, cls}),        // merged into the default bar node; html escaped by the caller
+    eventRenderer   : record => ({html, cls}),        // built as eventRenderer: barRenderer is neo's own config
     zoom            : 'month',                        // presets hour, day, week + month, quarter, year
     range           : {start, end},                   // grows near an edge (rangeChange)
     listeners       : {

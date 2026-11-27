@@ -60,6 +60,7 @@ Status: **neo** = neo.mjs 13.4 ships it (14 since 2026-11-24), usable as is (may
 | JMAP client, Entities, Modules | GO.neo (`jmap/Client`, `JmapStore`, `ModuleRegistry`; module hooks `onMainView`, `onCreateUserDialog`, `fileHandlers`, see `docs/neo-small-modules.md`; `Badges.mjs`: counts on the module tab and main menu item (GO.mainLayout.setNotification()), registry key `badge: {entities, count}` recounted on push, or `badges.set(name, count)`; a dot on the main menu button while a closed module has one; calendar invitations, tasks due, e-mail unseen; `NotificationCenter` message `muteSound`: the user property that mutes its sound, default `mute_reminder_sound`) |
 | Upload (`client.upload()`, ExtJS `go.Uploader`) | GO.neo (`jmap/Uploader.mjs`: XHR with progress, queue of `maxConcurrentUpload`, `maxSizeUpload` check, abort; `component/UploadPanel.mjs` shows the uploads of a window bottom right; used by `UploadButton` `autoUpload`, `BlobField`, `AttachmentsField`, `ImageField`, `MarkdownField`, `FilesPanel`, imports; demo `#dev/core/Upload`) |
 | Kanban board (GOUI has none; ExtJS business/kanban) | GO.neo (`GO.board.Board`, see "GO.board.Board" below; first user: tasks board view) |
+| Resource scheduler / timeline (vis-timeline in amd/crew) | GO.neo (`GO.scheduler.Scheduler`, see "GO.scheduler.Scheduler" below; first user: crew planning) |
 | auth/Login | GO.neo (`apps/go/view/LoginView.mjs`: forgot credentials, 2FA via `loginPanels`) |
 | Main area (GOUI/ExtJS card per module) | GO.neo `apps/go/view/MainView.mjs`: one card per module. Modules extend it through `mainViewExtension` (extra cards, top-bar items, routes, claimed module views; `docs/neo-small-modules.md`, "Main view extensions"). The module sf/workspaces (sf-mono, off by default) adds workspace tabs next to the module tabs, each a dock (`GO.workspaces.Workspace` over neo's dock; panels side by side, drag from the top bar, maximize, saved per user and screen profile; `docs/neo-workspace.md`) |
 | MainThreeColumnPanel, TableTitle | GO.neo |
@@ -282,6 +283,33 @@ feeds columns needs the field (`TaskList.groups`).
 
 Not used: neo's `CardEditor` (cards are records of another entity; `GO.board.Card` turns the title edit into
 `cardOpen`), column reordering (`columnsResortable: false`), swimlanes (`laneField`: later).
+
+## GO.scheduler.Scheduler (2026-11-27)
+
+`src/scheduler/Scheduler.mjs`, a thin layer over neo 14 `Neo.scheduler.Container` (`node_modules/neo.mjs/src/scheduler/`,
+`src/timeline/`; examples `examples/scheduler/*`). Generic like `GO.board.Board`: it knows no entity, the caller passes
+the resources and field mappings. First user: amd/crew Crew Planning (`docs/neo-crew-port.md` section 3).
+
+| Config | What |
+|---|---|
+| `resources` | `[{id, parentId, name, bookable, cls, collapsed}]`, a tree by `parentId` (null = top level), in display order with every parent before its children (a child listed first ends up a top-level row); ids are compared as strings, unique across levels (prefix them: `vessel-5`, `rank-5-3`) and never `root` (the TreeStore's own root key). Projected into a `Neo.data.TreeStore`: `isLeaf` is derived from the children, `collapsed` defaults to false |
+| `store` | default `{module: TreeStore, model: GO.scheduler.ResourceModel}` (`name`, `bookable`, `cls`); for more resource fields pass your own `TreeModel` subclass the same way (neo drops undeclared fields) |
+| `resourceColumns` | neo's resource columns; `type: 'tree'` on the first one gives the expand/collapse arrows (`Neo.grid.column.Tree`); default one tree column "Name" on `name` |
+| `events` | a `GO.data.JmapStore` (rebuilt on `load`, `loadMore`, `recordChange`; the scheduler does not load it) or an array of plain objects |
+| `eventFields` | `{startDate, endDate, resourceId, title, cls}`: each a field name of the source record or a function `record => value`; defaults are the same names. A record without `id` or resource, or ending before it starts, is left out. Dates are instants (ISO with offset or Z, Date, ms) and are shown in the user's time zone (`DateUtil.toUserTime()`) |
+| `readOnly` | true: no drag, no resize handles, no EventEditor, no keyboard moves (neo's ArrowLeft / ArrowRight on a focused bar ignore `editable` and `barDraggable`, the wrapper blocks them) and `moveEvent()` returns null. Switching it off again turns drag, resize and the editor on; false at construction leaves neo's `barDraggable`, `resizableBars` and `editable` as passed |
+| `eventRenderer(record, descriptor)` | `{html, cls}` merged into neo's bar node: `html` replaces the label (escape it yourself), `cls` (string or array) is added. A string (also `''`) sets the label text. Don't pass neo's own `barRenderer`: the wrapper sets it to run `eventRenderer` (neo's returned object would replace the whole bar node) |
+| `timeAxis` | neo's `Neo.timeline.TimeAxis` config (`start`, `end`, `tickUnit`, `pxPerMinute` …) in wall time of the user's zone; `zoomTo('hour' | 'day' | 'week')` and `scrollToDate(date)` are neo's |
+
+The normalised events live in a `Neo.timeline.store.Events` (`eventStore`): `{id, resourceId, startDate, endDate, title,
+cls}`, because neo's lookup reads those literal field names. `getSourceRecord(eventId)` returns the record it came from.
+
+Events: `eventClick {record, eventRecord}` (a click on a bar; `record` is the source record, also when read-only).
+
+Interaction permissions are the caller's: pass `readOnly: true` when the user may not change the events.
+
+Not built yet (crew card B): background bands per row, `slotClick`, month / quarter / year zoom presets, a growing
+range (`rangeChange`), drag and resize writing a JMAP patch.
 
 ## neo user settings (2026-11-27)
 
