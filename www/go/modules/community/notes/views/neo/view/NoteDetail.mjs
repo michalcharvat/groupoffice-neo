@@ -1,19 +1,8 @@
-import Container from '../../../../../../../views/neo/node_modules/neo.mjs/src/container/Base.mjs';
-import Toolbar   from '../../../../../../../views/neo/node_modules/neo.mjs/src/toolbar/Base.mjs';
-import {LEVEL_DELETE, LEVEL_WRITE} from '../../../../../../../views/neo/src/Acl.mjs';
-import Button      from '../../../../../../../views/neo/src/button/Button.mjs';
+import Panel from '../../../../../../../views/neo/src/detail/Panel.mjs';
 import {escapeHtml, sanitizeHtml} from '../../../../../../../views/neo/src/Format.mjs';
 import {notify} from '../../../../../../../views/neo/src/Notify.mjs';
-import {print} from '../../../../../../../views/neo/src/print.mjs';
 import {blobImages, contentToHtml} from '../../../../../../../views/neo/src/Markdown.mjs';
 import {enableImageZoom} from '../../../../../../../views/neo/src/view/ImageWindow.mjs';
-import CommentsPanel from '../../../../../../../views/neo/src/detail/CommentsPanel.mjs';
-import FilesPanel    from '../../../../../../../views/neo/src/detail/FilesPanel.mjs';
-import HistoryPanel  from '../../../../../../../views/neo/src/detail/HistoryPanel.mjs';
-import AddLinkButton    from '../../../../../../../views/neo/src/link/AddLinkButton.mjs';
-import LinkBrowseButton from '../../../../../../../views/neo/src/link/LinkBrowseButton.mjs';
-import LinkCards        from '../../../../../../../views/neo/src/link/LinkCards.mjs';
-import DetailFieldsets  from '../../../../../../../views/neo/src/customfields/DetailFieldsets.mjs';
 import PasswordPrompt   from '../../../../../../../views/neo/src/view/PasswordPrompt.mjs';
 import {translator} from '../../../../../../../views/neo/src/Translate.mjs';
 import {decryptNote, getLastPassword, isLegacyEncrypted, isLocked} from './Encrypt.mjs';
@@ -21,8 +10,8 @@ import {decryptNote, getLastPassword, isLegacyEncrypted, isLocked} from './Encry
 const t = translator('community', 'notes');
 
 /**
- * Right pane: the selected note, like the GOUI NoteDetail (toolbar with edit and a
- * more menu, the note in a card on the app background).
+ * @summary Right pane: the selected note, like the GOUI NoteDetail, on GO.detail.Panel (toolbar,
+ * custom fields, comments, files, links, history); the note in a card on the app background.
  *
  * HTML content is sanitised by the server on write (Note::internalValidate()) and
  * rendered with innerHTML, which does not run <script> elements. Markdown content is
@@ -32,136 +21,49 @@ const t = translator('community', 'notes');
  * Encrypted content (Encrypt.mjs) shows a lock until it is decrypted: with the last
  * password that worked, else with the password the user enters after clicking it.
  * Decrypted HTML was never sanitised by the server, so it goes through sanitizeHtml().
+ * @class GO.notes.view.NoteDetail
+ * @extends GO.detail.Panel
  */
-class NoteDetail extends Container {
+class NoteDetail extends Panel {
     static config = {
-        className: 'GO.notes.view.NoteDetail',
-        cls      : ['go-notes-detail'],
-        layout   : {ntype: 'vbox', align: 'stretch'},
-        items    : [{
-            module   : Toolbar,
-            cls      : ['go-border-bottom'],
-            flex     : 'none',
-            reference: 'toolbar',
-            items    : ['->', {
-                module   : Button,
-                icon     : 'edit',
-                reference: 'editButton',
-                tooltip  : t('Edit'),
-                disabled : true,
-                handler  : 'up.onEdit'
-            }, {
-                module   : AddLinkButton,
-                reference: 'addLinkButton'
-            }, {
-                module   : LinkBrowseButton,
-                reference: 'linkBrowseButton'
-            }, {
-                module   : Button,
-                icon     : 'more_vert',
-                reference: 'moreButton',
-                tooltip  : t('More'),
-                disabled : true
-            }]
-        }, {
-            // GOUI DetailPanel: the entity card, then go.detail.Panel's comments, files, history
-            ntype    : 'container',
-            cls      : ['go-detail-scroller'],
-            flex     : 1,
-            layout   : {ntype: 'vbox', align: 'stretch'},
-            reference: 'scroller',
-            items    : [{
-                ntype    : 'component',
-                reference: 'body',
-                flex     : 'none',
-                html     : ''
-            }, {
-                // a card per custom field set with values
-                module   : DetailFieldsets,
-                reference: 'customFields',
-                flex     : 'none'
-            }, {
-                module   : CommentsPanel,
-                reference: 'comments',
-                flex     : 'none',
-                hidden   : true
-            }, {
-                module   : FilesPanel,
-                reference: 'files',
-                flex     : 'none',
-                hidden   : true
-            }, {
-                // shows itself when the note has links
-                module   : LinkCards,
-                reference: 'links',
-                flex     : 'none'
-            }, {
-                module   : HistoryPanel,
-                reference: 'history',
-                flex     : 'none',
-                hidden   : true
-            }]
-        }]
+        className : 'GO.notes.view.NoteDetail',
+        cls       : ['go-notes-detail'],
+        entityName: 'Note',
+        cards     : ['customFields', 'comments', 'files', 'links', 'history']
     }
 
     /**
-     * @member {Object|null} note=null record of GO.notes.model.Note
+     * @summary The note card.
+     * @returns {Object[]}
      */
-    note = null
+    createBody() {
+        return [{ntype: 'component', reference: 'body', html: ''}]
+    }
 
+    /**
+     * @summary Opens the password prompt from the lock.
+     */
     onConstructed() {
         super.onConstructed();
-
-        let me = this;
-
-        me.getReference('body').addDomListeners([{click: me.onDecryptClick, delegate: '.go-notes-decrypt', scope: me}]);
-
-        me.getReference('moreButton').menu = [
-            {text: t('Print'), icon: 'print', handler: () => me.onPrint()},
-            {separator: true},
-            {id: 'delete', text: t('Delete'), icon: 'delete', handler: () => me.onDelete()}
-        ]
+        this.getReference('body').addDomListeners([{click: this.onDecryptClick, delegate: '.go-notes-decrypt', scope: this}])
     }
 
     /**
-     * @param {Object|null} note
+     * @summary Legacy encrypted notes are read-only.
+     * @param {Object} note
+     * @returns {Boolean}
      */
-    setNote(note) {
-        let me    = this,
-            body  = me.getReference('body'),
-            level = note?.permissionLevel || 0;
+    canEdit(note) {
+        return !isLegacyEncrypted(note) && super.canEdit(note)
+    }
 
-        me.note = note;
-
-        me.getReference('editButton').disabled = !note || isLegacyEncrypted(note) || level < LEVEL_WRITE;
-        me.getReference('moreButton').disabled = !note;
-        me.getReference('moreButton').setMenuItemDisabled('delete', level < LEVEL_DELETE);
-
-        me.getReference('addLinkButton').setEntity(note ? 'Note' : null, note?.id || null, note);
-
-        if (me.getReference('linkBrowseButton').target?.entityId !== note?.id) {
-            me.getReference('linkBrowseButton').setEntity(note ? 'Note' : null, note?.id || null)
-        }
-
-        if (me.getReference('links').current?.entityId !== note?.id) {
-            me.getReference('links').setEntity(note ? 'Note' : null, note?.id || null, note)
-        }
-
-        // also for the same note: setNote() follows a reload (e.g. after editing)
-        me.getReference('customFields').setEntity(note ? 'Note' : null, note?.id || null);
-
-        // the cards follow the note (same id: they keep their content while reloading)
-        ['comments', 'files', 'history'].forEach(ref => {
-            const card = me.getReference(ref);
-
-            card.hidden = !note;
-
-            if (card.current?.entityId !== note?.id) {
-                card.setEntity(note ? 'Note' : null, note?.id || null, note)
-            } else if (note) {
-                card.current.record = note
-            }
-        });
+    /**
+     * @summary Renders the note, a lock for encrypted content until it is decrypted.
+     * @param {Object|null} note record of GO.notes.model.Note
+     */
+    renderRecord(note) {
+        let me   = this,
+            body = me.getReference('body');
 
         if (!note) {
             body.html = '';
@@ -199,7 +101,7 @@ class NoteDetail extends Container {
     }
 
     /**
-     * Shows the decrypted content of the current note
+     * @summary Shows the decrypted content of the current note
      * @param {Object} note
      * @param {String} password
      * @param {Boolean} [silent=false] no error for a wrong password (the last password tried)
@@ -219,16 +121,19 @@ class NoteDetail extends Container {
         }
 
         // another note was selected meanwhile (a reload of the same note is fine)
-        if (me.isDestroyed || me.note?.id !== note.id || me.note.content !== note.content) {
+        if (me.isDestroyed || me.record?.id !== note.id || me.record.content !== note.content) {
             return
         }
 
         me.renderBody(note, note.type === 'markdown' ? contentToHtml(content, 'markdown') : sanitizeHtml(blobImages(content)))
     }
 
+    /**
+     * @summary Asks for the password and decrypts the shown note.
+     */
     async onDecryptClick() {
         let me   = this,
-            note = me.note;
+            note = me.record;
 
         if (!note || !isLocked(note)) {
             return
@@ -240,22 +145,7 @@ class NoteDetail extends Container {
             title   : t('Enter password to decrypt')
         });
 
-        password && me.note?.id === note.id && me.decrypt(me.note, password)
-    }
-
-    onEdit() {
-        this.note && this.fire('edit', {note: this.note})
-    }
-
-    onDelete() {
-        this.note && this.fire('delete', {note: this.note})
-    }
-
-    /**
-     * Prints the note with its cards (GOUI NoteDetail print())
-     */
-    onPrint() {
-        this.note && print(this.getReference('scroller'), {title: this.note.name})
+        password && me.record?.id === note.id && me.decrypt(me.record, password)
     }
 }
 
