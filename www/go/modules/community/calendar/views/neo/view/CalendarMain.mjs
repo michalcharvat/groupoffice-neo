@@ -716,13 +716,9 @@ class CalendarMain extends MainThreeColumnPanel {
             {text: t('Unsubscribe'), icon: 'remove_circle', handler: () => client.set('Calendar', {update: {[id]: {isSubscribed: false}}}).then(() => calendarData.loadCalendars()).catch(e => me.showError(e))}
         );
 
-        if (!c.groupId) {
-            items.push(
-                {separator: true},
-                {text: t('Export'), icon: 'file_save', handler: () => me.download('community/calendar/calendar/' + c.id)},
-                {text: t('Import') + '…', icon: 'upload_file', handler: () => me.importIcs(c)}
-            )
-        }
+        // resources can be exported but not imported: resource bookings need GroupOffice's handling
+        items.push({separator: true}, {text: t('Export'), icon: 'file_save', disabled: !c.myRights?.mayAdmin, handler: () => me.download('community/calendar/calendar/' + c.id)});
+        c.groupId || items.push({text: t('Import') + '…', icon: 'upload_file', handler: () => me.importIcs(c)});
 
         me.showMenu(items, target)
     }

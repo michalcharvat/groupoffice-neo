@@ -179,7 +179,8 @@ class UserSettingsDialog extends FormWindow {
 
         me.saving = await me.form.getModified();
 
-        if (!me.currentPassword && !client.mayChangeUsers && PASSWORD_PROTECTED.some(name => name in me.saving)) {
+        // administrators never need it, user managers only for their own account
+        if (!me.currentPassword && !client.isAdmin && (!client.mayChangeUsers || me.isOwnAccount) && PASSWORD_PROTECTED.some(name => name in me.saving)) {
             if (!await me.askCurrentPassword()) {
                 return false
             }

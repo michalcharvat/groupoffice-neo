@@ -924,7 +924,7 @@ class TasksMain extends MainThreeColumnPanel {
         }, {
             text    : t('Delete') + '...',
             icon    : 'delete',
-            disabled: !manage,
+            disabled: !manage || !hasRight('mayChangeTasklists'),
             handler : () => this.destroyWithConfirm('TaskList', record)
         }, {
             separator: true

@@ -4,6 +4,8 @@ import Button     from '../button/Button.mjs';
 import client     from '../jmap/Client.mjs';
 import {avatarHtml, escapeHtml, formatUserDateTime, sanitizeHtml, smartDateTime} from '../Format.mjs';
 import Card       from './Card.mjs';
+import {enableImageZoom} from '../view/ImageWindow.mjs';
+import {blobImages} from '../Markdown.mjs';
 import {t} from '../Translate.mjs';
 
 /** CommentLabel colour: hex without "#" (GOUI colorfield) */
@@ -69,7 +71,7 @@ class CommentsPanel extends Card {
         return [{
             ntype    : 'component',
             reference: 'list',
-            cls      : ['go-comments'],
+            cls      : ['go-comments', 'go-image-zoom'],
             html     : ''
         }, {
             module     : HtmlField,
@@ -162,10 +164,13 @@ class CommentsPanel extends Card {
                 ${avatarHtml(name)}
                 <div class="go-comment-body">
                     <div class="go-comment-meta"><b>${escapeHtml(name)}</b> <span title="${formatUserDateTime(c.date)}">${smartDateTime(c.date)}</span>${tags}</div>
-                    <div class="go-comment-text">${sanitizeHtml(c.text)}</div>
+                    <div class="go-comment-text">${sanitizeHtml(blobImages(c.text))}</div>
                 </div>
             </div>`
-        }).join('')
+        }).join('');
+
+        // also after a popout: the addon is loaded per window
+        enableImageZoom(me.getReference('list'))
     }
 
     /**
