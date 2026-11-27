@@ -119,6 +119,9 @@ class MiniCalendar extends Component {
         }
     }
 
+    /**
+     * @summary Renders the month grid and its navigation buttons into the vdom.
+     */
     render() {
         let me    = this,
             today = dayNumber(userNow()),
@@ -155,9 +158,9 @@ class MiniCalendar extends Component {
         me.vdom.cn = [{
             cls: ['go-cal-mini-header'],
             cn : [
-                {tag: 'button', cls: ['go-cal-mini-nav', 'go-icon'], 'data-step': '-1', title: t('Previous'), text: 'chevron_left'},
-                {tag: 'button', cls: ['go-cal-mini-nav', 'go-cal-mini-title'], title: t('Today'), text: `${monthName(month)} ${me.month.getFullYear()}`},
-                {tag: 'button', cls: ['go-cal-mini-nav', 'go-icon'], 'data-step': '1', title: t('Next'), text: 'chevron_right'}
+                {tag: 'button', type: 'button', cls: ['go-cal-mini-nav', 'go-icon'], 'data-step': '-1', title: t('Previous'), text: 'chevron_left'},
+                {tag: 'button', type: 'button', cls: ['go-cal-mini-nav', 'go-cal-mini-title'], title: t('Today'), text: `${monthName(month)} ${me.month.getFullYear()}`},
+                {tag: 'button', type: 'button', cls: ['go-cal-mini-nav', 'go-icon'], 'data-step': '1', title: t('Next'), text: 'chevron_right'}
             ]
         }, {
             tag: 'table',

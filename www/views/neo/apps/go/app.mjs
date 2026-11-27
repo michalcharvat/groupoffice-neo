@@ -3,6 +3,7 @@ import ModuleRegistry from '../../src/ModuleRegistry.mjs';
 import {load}  from '../../src/Translate.mjs';
 import '../../src/form/field/textAutoComplete.mjs';
 import '../../src/form/field/textReadOnly.mjs';
+import '../../src/form/noNativeSubmit.mjs';
 
 client.baseUrl = Neo.config.goBaseUrl || '/';
 

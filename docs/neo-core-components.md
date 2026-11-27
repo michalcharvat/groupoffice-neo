@@ -161,6 +161,11 @@ was below 0.1 % of its pixels after the fixes.
   `aria-pressed`).
 
 - `src/form/field/textAutoComplete.mjs`: replaces `Text.afterSetAutoComplete` (string values).
+- `src/form/noNativeSubmit.mjs`: every `button.Base` root `<button>` gets `type="button"` (via
+  `syncNativeDisabledState`; 14 sets it only on the plain button, not on tab headers, table headers
+  or the split button, which then submit a FormWindow: native validation of hidden required fields,
+  Enter "clicks" the first tab) and `form.Container` renders `novalidate`. A raw `{tag: 'button'}`
+  in a vdom needs `type: 'button'` itself. Tests `tests/noNativeSubmit.test.mjs`.
 - Enter submits a form (ExtJS `go.form.Dialog` hidden submit button, GOUI `<form>`): neo forms
   don't submit natively (`onsubmit="return false;"`, app in a worker), so a form binds
   `keys: {Enter: submitOnEnter('submit' | 'up.onLogin')}` (`src/form/submitOnEnter.mjs`); FormWindow
