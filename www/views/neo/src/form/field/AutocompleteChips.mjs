@@ -192,10 +192,12 @@ class AutocompleteChips extends ChipsField {
         }
 
         // the details are extra: the menu shows without them when they fail
-        details = await (me.recordDetails ? me.recordDetails(records) : []).catch(e => {
+        try {
+            details = (me.recordDetails && await me.recordDetails(records)) || []
+        } catch (e) {
             console.error('AutocompleteChips details', e);
-            return []
-        });
+            details = []
+        }
 
         if (me.isDestroyed || generation !== me.queryGeneration) {
             return
