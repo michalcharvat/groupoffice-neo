@@ -21,16 +21,18 @@ class LegacyFormWindow extends FormWindow {
             return false
         }
 
-        if (!await form.validate()) {
-            await me.focusFirstInvalid();
-            return false
-        }
-
         button.disabled = true;
         me.showError('');
         me.isLoading = true;
 
         try {
+            await me.flushFields();
+
+            if (!await form.validate()) {
+                await me.focusFirstInvalid();
+                return false
+            }
+
             const modified = await form.getModified(),
                   values   = await form.getEntityValues();
 

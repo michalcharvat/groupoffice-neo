@@ -7,11 +7,19 @@ import {t}           from '../../Translate.mjs';
 
 /**
  * go.form.ImageField: an image as a blob id, e.g. a contact's photoBlobId. Click the
- * picture to upload one (JMAP blob), "delete" removes it.
+ * picture to upload one (JMAP blob), "delete" removes it. A failed upload makes the field
+ * invalid with the error until another upload or delete.
  *
  *     {module: ImageField, name: 'photoBlobId', placeholderIcon: 'business'}
  */
 class ImageField extends Field {
+    /** uploads running (flush() waits for them) */
+    uploads = new Set()
+    /** message of the last failed upload, null for none */
+    uploadError = null
+    /** number of the latest upload: an older one that settles later is ignored */
+    uploadSeq = 0
+
     static config = {
         className: 'GO.form.field.ImageField',
         ntype    : 'go-imagefield',
@@ -61,7 +69,8 @@ class ImageField extends Field {
             cls      : ['go-icon', 'go-imagefield-clear'],
             text     : 'delete',
             title    : t('Delete'),
-            removeDom: !me.value || locked
+            // also after a failed first upload: Delete discards it
+            removeDom: (!me.value && !me.uploadError) || locked
         }]
     }
 
@@ -73,16 +82,55 @@ class ImageField extends Field {
             return
         }
 
-        try {
-            const blob = await uploader.upload(file, {component: me});
-            me.isDestroyed || me.userChange(blob.blobId || blob.id)
-        } catch (e) {
-            notifyError(me, e)
+        const seq = ++me.uploadSeq;
+
+        // flush() waits for the outcome, so a failure is marked before the form validates
+        const upload = uploader.upload(file, {component: me}).then(blob => {
+            if (!me.isDestroyed && seq === me.uploadSeq) {
+                me.uploadError = null;
+                me.userChange(blob.blobId || blob.id)
+            }
+        }, e => {
+            // an upload the user aborted keeps the old file without an error
+            if (!me.isDestroyed && seq === me.uploadSeq && !uploader.constructor.isAbort(e)) {
+                me.uploadError = e?.message || String(e);
+                me.renderControl();
+                me.validate(false);
+                notifyError(me, e)
+            }
+        }).finally(() => me.uploads?.delete(upload));
+
+        me.uploads.add(upload);
+        await upload
+    }
+
+    /**
+     * Waits for a running upload (GO.view.FormWindow calls it before saving)
+     * @returns {Promise<void>}
+     */
+    async flush() {
+        // an upload started while waiting is waited for too
+        while (this.uploads?.size) {
+            await Promise.allSettled([...this.uploads])
         }
     }
 
+    getError() {
+        return this.uploadError || super.getError()
+    }
+
+    reset(value = null) {
+        this.uploadSeq++;
+        this.uploadError = null;
+        super.reset(value);
+        this.renderControl()
+    }
+
     onClearClick() {
-        this.userChange(null)
+        this.uploadSeq++;
+        this.uploadError = null;
+        this.userChange(null);
+        this.renderControl()
     }
 }
 

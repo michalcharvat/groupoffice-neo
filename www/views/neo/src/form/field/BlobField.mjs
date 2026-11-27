@@ -7,13 +7,19 @@ import {t}    from '../../Translate.mjs';
 /**
  * One uploaded file as a form field (go.form.FileButtonField): the value is the blob as
  * the API gives it ({id, name, …}, e.g. PdfTemplate `logo`), null for none. Shows the file
- * as a link, a button to upload another and one to remove it.
+ * as a link, a button to upload another and one to remove it. A failed upload makes the
+ * field invalid with the error until another upload or remove, so the form does not save
+ * the old file as if it were the new one.
  *
  *     {module: BlobField, name: 'logo', labelText: t('Logo'), accept: 'image/*'}
  */
 class BlobField extends Field {
     /** uploads running (flush() waits for them) */
     uploads = new Set()
+    /** message of the last failed upload, null for none */
+    uploadError = null
+    /** number of the latest upload: an older one that settles later is ignored */
+    uploadSeq = 0
 
     static config = {
         className: 'GO.form.field.BlobField',
@@ -43,7 +49,8 @@ class BlobField extends Field {
             ]},
             {tag: 'button', type: 'button', cls: ['go-blobfield-clear'], cn: [
                 {tag: 'span', cls: ['go-icon'], text: 'close'}
-            ]}
+            ]},
+            {cls: ['go-blobfield-error'], removeDom: true}
         ]}
     }
 
@@ -84,6 +91,40 @@ class BlobField extends Field {
         return this.value?.id ? this.value : null
     }
 
+    /**
+     * A failed upload or `required` without a file; shows the error unless silent (a
+     * shown error always follows the current one)
+     * @param {Boolean} [silent=true]
+     * @returns {Boolean}
+     */
+    validate(silent = true) {
+        let me    = this,
+            error = me.uploadError || (me.required && !me.value?.id ? t('Required field') : null),
+            node  = me.vdom.cn[5];
+
+        if ((!silent || !error || !node.removeDom) && node.text !== (error || '')) {
+            node.text      = error || '';
+            node.removeDom = !error;
+            me.update()
+        }
+
+        return !error
+    }
+
+    isValid() {
+        return this.validate(true)
+    }
+
+    reset(value = null) {
+        let me = this;
+
+        me.uploadSeq++;
+        me.uploadError = null;
+        super.reset(value);
+        me.renderValue();
+        me.validate(true)
+    }
+
     get isDirty() {
         return (this.value?.id || null) !== (this.beforeSetValue(this.originalConfig.value)?.id || null)
     }
@@ -100,7 +141,8 @@ class BlobField extends Field {
         link.text       = me.value?.name || t('Download');
         link.removeDom  = !value;
         empty.removeDom = !!value;
-        clear.removeDom = !value;
+        // also after a failed first upload: Remove discards it
+        clear.removeDom = !value && !me.uploadError;
         me.update()
     }
 
@@ -112,23 +154,30 @@ class BlobField extends Field {
             return
         }
 
-        const upload = uploader.upload(file, {component: me});
+        const seq = ++me.uploadSeq;
+
+        // flush() waits for the outcome, so a failure is marked before the form validates
+        const upload = uploader.upload(file, {component: me}).then(blob => {
+            const oldValue = me.value;
+
+            if (!me.isDestroyed && seq === me.uploadSeq) {
+                me.uploadError = null;
+                me.value = {id: blob.blobId, name: blob.name};
+                me.fireUserChangeEvent(me.value, oldValue);
+                me.validate(true)
+            }
+        }, e => {
+            // an upload the user aborted keeps the old file without an error
+            if (!me.isDestroyed && seq === me.uploadSeq && !uploader.constructor.isAbort(e)) {
+                me.uploadError = e?.message || String(e);
+                me.renderValue();
+                me.validate(false);
+                notifyError(me, e)
+            }
+        }).finally(() => me.uploads?.delete(upload));
 
         me.uploads.add(upload);
-
-        try {
-            const blob     = await upload,
-                  oldValue = me.value;
-
-            if (!me.isDestroyed) {
-                me.value = {id: blob.blobId, name: blob.name};
-                me.fireUserChangeEvent(me.value, oldValue)
-            }
-        } catch (e) {
-            notifyError(me, e)
-        } finally {
-            me.uploads.delete(upload)
-        }
+        await upload
     }
 
     /**
@@ -136,7 +185,10 @@ class BlobField extends Field {
      * @returns {Promise<void>}
      */
     async flush() {
-        await Promise.allSettled([...this.uploads])
+        // an upload started while waiting is waited for too
+        while (this.uploads?.size) {
+            await Promise.allSettled([...this.uploads])
+        }
     }
 
     onClearClick() {
@@ -147,8 +199,12 @@ class BlobField extends Field {
             return
         }
 
+        me.uploadSeq++;
+        me.uploadError = null;
         me.value = null;
-        me.fireUserChangeEvent(null, oldValue)
+        me.fireUserChangeEvent(null, oldValue);
+        me.renderValue();
+        me.validate(true)
     }
 }
 
