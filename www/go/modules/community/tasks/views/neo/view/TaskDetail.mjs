@@ -1,18 +1,10 @@
-import Container from '../../../../../../../views/neo/node_modules/neo.mjs/src/container/Base.mjs';
 import Toolbar   from '../../../../../../../views/neo/node_modules/neo.mjs/src/toolbar/Base.mjs';
-import {LEVEL_DELETE, LEVEL_WRITE} from '../../../../../../../views/neo/src/Acl.mjs';
+import {LEVEL_WRITE} from '../../../../../../../views/neo/src/Acl.mjs';
 import Button      from '../../../../../../../views/neo/src/button/Button.mjs';
 import client      from '../../../../../../../views/neo/src/jmap/Client.mjs';
+import Panel       from '../../../../../../../views/neo/src/detail/Panel.mjs';
 import {escapeHtml} from '../../../../../../../views/neo/src/Format.mjs';
 import {notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
-import {print} from '../../../../../../../views/neo/src/print.mjs';
-import CommentsPanel from '../../../../../../../views/neo/src/detail/CommentsPanel.mjs';
-import FilesPanel    from '../../../../../../../views/neo/src/detail/FilesPanel.mjs';
-import HistoryPanel  from '../../../../../../../views/neo/src/detail/HistoryPanel.mjs';
-import AddLinkButton    from '../../../../../../../views/neo/src/link/AddLinkButton.mjs';
-import LinkBrowseButton from '../../../../../../../views/neo/src/link/LinkBrowseButton.mjs';
-import LinkCards        from '../../../../../../../views/neo/src/link/LinkCards.mjs';
-import DetailFieldsets  from '../../../../../../../views/neo/src/customfields/DetailFieldsets.mjs';
 import RecurrenceField  from '../../../../../../../views/neo/src/form/field/RecurrenceField.mjs';
 import {translator} from '../../../../../../../views/neo/src/Translate.mjs';
 import {categories, formatDuration, formatTaskDate, PROGRESS, toDate, principalHtml, principals, progressBarHtml, taskLists} from '../util.mjs';
@@ -21,110 +13,80 @@ import {userNow} from '../../../../../../../views/neo/src/DateUtil.mjs';
 const t = translator('community', 'tasks');
 
 /**
- * Right pane: the selected task, like the GOUI TaskDetail: toolbar (assign me, edit,
+ * @summary Right pane: the selected task on GO.detail.Panel, like the GOUI TaskDetail: toolbar (assign me, edit,
  * links, more), a card with title and progress (click: change it), dates, list,
  * responsible, % complete, description, location, categories; then custom fields,
  * comments, files, links, history and "Continue task" at the bottom.
  *
- * Events: edit {task}, delete {task}, continue {task}
+ * Events (GO.detail.Panel): edit {record}, delete {record}, continue {record}
+ * @class GO.tasks.TaskDetail
+ * @extends GO.detail.Panel
  */
-class TaskDetail extends Container {
+class TaskDetail extends Panel {
     static config = {
-        className: 'GO.tasks.TaskDetail',
-        baseCls  : ['go-tasks-detail', 'neo-container'],
-        layout   : {ntype: 'vbox', align: 'stretch'},
-        items    : [{
-            module   : Toolbar,
-            cls      : ['go-border-bottom'],
-            flex     : 'none',
-            reference: 'toolbar',
-            items    : ['->', {
-                module   : Button,
-                text     : t('Assign me'),
-                reference: 'assignMeButton',
-                hidden   : true,
-                handler  : 'up.onAssignMe'
-            }, {
-                module   : Button,
-                icon     : 'edit',
-                reference: 'editButton',
-                tooltip  : t('Edit'),
-                disabled : true,
-                handler  : 'up.onEdit'
-            }, {
-                module   : AddLinkButton,
-                reference: 'addLinkButton'
-            }, {
-                module   : LinkBrowseButton,
-                reference: 'linkBrowseButton'
-            }, {
-                module   : Button,
-                icon     : 'more_vert',
-                reference: 'moreButton',
-                tooltip  : t('More'),
-                disabled : true
-            }]
-        }, {
+        className : 'GO.tasks.TaskDetail',
+        baseCls   : ['go-tasks-detail', 'go-detail-panel', 'neo-container'],
+        entityName: 'Task',
+        cards     : ['customFields', 'comments', 'files', 'links', 'history']
+    }
+
+    /**
+     * @summary "Assign me" left of Edit.
+     * @returns {Array}
+     */
+    createToolbarItems() {
+        return ['->', {
+            module   : Button,
+            text     : t('Assign me'),
+            reference: 'assignMeButton',
+            hidden   : true,
+            handler  : () => this.onAssignMe()
+        }]
+    }
+
+    /**
+     * @summary The task card: title, progress chip and fields.
+     * @returns {Object[]}
+     */
+    createBody() {
+        return [{
             ntype    : 'container',
-            cls      : ['go-detail-scroller'],
-            flex     : 1,
+            cls      : ['go-card', 'go-tasks-card'],
+            reference: 'card',
+            hidden   : true,
             layout   : {ntype: 'vbox', align: 'stretch'},
-            reference: 'scroller',
             items    : [{
-                ntype    : 'container',
-                cls      : ['go-card', 'go-tasks-card'],
-                reference: 'card',
-                flex     : 'none',
-                hidden   : true,
-                layout   : {ntype: 'vbox', align: 'stretch'},
-                items    : [{
-                    module: Toolbar,
-                    flex  : 'none',
-                    items : [{
-                        ntype    : 'component',
-                        tag      : 'h3',
-                        reference: 'title',
-                        flex     : 1,
-                        text     : ''
-                    }, {
-                        // GOUI: the status chip opens a menu that sets the progress
-                        module   : Button,
-                        reference: 'progressButton',
-                        // the status is printed (renderTask() sets the cls)
-                        cls      : ['go-tasks-status', 'go-print-show'],
-                        text     : ''
-                    }]
-                }, {
+                module: Toolbar,
+                flex  : 'none',
+                items : [{
                     ntype    : 'component',
-                    reference: 'body',
-                    flex     : 'none',
-                    html     : ''
+                    tag      : 'h3',
+                    reference: 'title',
+                    flex     : 1,
+                    text     : ''
+                }, {
+                    // GOUI: the status chip opens a menu that sets the progress
+                    module   : Button,
+                    reference: 'progressButton',
+                    // the status is printed (renderTask() sets the cls)
+                    cls      : ['go-tasks-status', 'go-print-show'],
+                    text     : ''
                 }]
             }, {
-                module   : DetailFieldsets,
-                reference: 'customFields',
-                flex     : 'none'
-            }, {
-                module   : CommentsPanel,
-                reference: 'comments',
+                ntype    : 'component',
+                reference: 'body',
                 flex     : 'none',
-                hidden   : true
-            }, {
-                module   : FilesPanel,
-                reference: 'files',
-                flex     : 'none',
-                hidden   : true
-            }, {
-                module   : LinkCards,
-                reference: 'links',
-                flex     : 'none'
-            }, {
-                module   : HistoryPanel,
-                reference: 'history',
-                flex     : 'none',
-                hidden   : true
+                html     : ''
             }]
-        }, {
+        }]
+    }
+
+    /**
+     * @summary "Continue task" at the bottom.
+     * @returns {Object[]}
+     */
+    createBottomItems() {
+        return [{
             module   : Toolbar,
             cls      : ['go-border-top'],
             flex     : 'none',
@@ -134,84 +96,45 @@ class TaskDetail extends Container {
                 module : Button,
                 icon   : 'arrow_right_alt',
                 text   : t('Continue task'),
-                handler: 'up.onContinue'
+                handler: () => this.onContinue()
             }]
         }]
     }
 
     /**
-     * @member {Object|null} task=null record of GO.tasks.model.Task
+     * @summary The progress menu.
      */
-    task = null
-
     onConstructed() {
         super.onConstructed();
 
-        let me = this;
-
-        me.getReference('moreButton').menu = [
-            {text: t('Print'), icon: 'print', handler: () => me.onPrint()},
-            {separator: true},
-            {id: 'delete', text: t('Delete'), icon: 'delete', handler: () => me.onDelete()}
-        ];
-        me.getReference('progressButton').menu = Object.entries(PROGRESS).map(([value, text]) => ({
+        this.getReference('progressButton').menu = Object.entries(PROGRESS).map(([value, text]) => ({
             text   : t(text),
-            handler: () => me.setProgress(value)
+            handler: () => this.setProgress(value)
         }))
     }
 
     /**
-     * @param {Object|null} task
+     * @summary The task's own buttons and card.
+     * @param {Object|null} task record of GO.tasks.model.Task
      */
-    setTask(task) {
+    renderRecord(task) {
         let me    = this,
-            level = task?.permissionLevel || 0,
-            id    = task?.id || null,
-            type  = task ? 'Task' : null;
+            level = task?.permissionLevel || 0;
 
-        me.task = task;
-
-        me.getReference('editButton').disabled     = !task || level < LEVEL_WRITE;
-        me.getReference('moreButton').disabled     = !task;
-        me.getReference('moreButton').setMenuItemDisabled('delete', level < LEVEL_DELETE);
         me.getReference('assignMeButton').hidden   = !task || !!task.responsibleUserId || level < LEVEL_WRITE;
         me.getReference('progressButton').disabled = !task || level < LEVEL_WRITE;
         me.getReference('bottomBar').hidden        = !task || level < LEVEL_WRITE;
         me.getReference('card').hidden             = !task;
 
-        me.getReference('addLinkButton').setEntity(type, id, task);
-
-        if (me.getReference('linkBrowseButton').target?.entityId !== id) {
-            me.getReference('linkBrowseButton').setEntity(type, id)
-        }
-
-        if (me.getReference('links').current?.entityId !== id) {
-            me.getReference('links').setEntity(type, id, task)
-        }
-
-        me.getReference('customFields').setEntity(type, id);
-
-        ['comments', 'files', 'history'].forEach(ref => {
-            const card = me.getReference(ref);
-
-            card.hidden = !task;
-
-            if (card.current?.entityId !== id) {
-                card.setEntity(type, id, task)
-            } else if (task) {
-                card.current.record = task
-            }
-        });
-
         me.renderTask()
     }
 
     /**
-     * Renders the card again (names loaded later, see TasksMain.loadNames())
+     * @summary Renders the card again (names loaded later, see TasksMain.loadNames())
      */
     renderTask() {
         let me   = this,
-            task = me.task,
+            task = me.record,
             body = me.getReference('body');
 
         if (!task) {
@@ -245,46 +168,43 @@ class TaskDetail extends Container {
             ${field(t('Categories'), names.map(name => `<span class="go-tasks-category">${escapeHtml(name)}</span>`).join(''))}`
     }
 
+    /**
+     * @summary Saves changed properties of the shown task.
+     */
     async saveTask(values) {
         let me = this;
 
-        if (!me.task) {
+        if (!me.record) {
             return
         }
 
         try {
-            await client.set('Task', {update: {[me.task.id]: values}})
+            await client.set('Task', {update: {[me.record.id]: values}})
             // the grid reloads on the push and shows the task again
         } catch (e) {
             notifyError(me, e)
         }
     }
 
+    /**
+     * @summary Sets the progress of the shown task.
+     */
     setProgress(progress) {
-        this.task?.progress !== progress && this.saveTask({progress})
+        this.record?.progress !== progress && this.saveTask({progress})
     }
 
+    /**
+     * @summary Makes the current user responsible.
+     */
     onAssignMe() {
         this.saveTask({responsibleUserId: client.user.id})
     }
 
-    onEdit() {
-        this.task && this.fire('edit', {task: this.task})
-    }
-
-    onDelete() {
-        this.task && this.fire('delete', {task: this.task})
-    }
-
     /**
-     * Prints the task with its cards (GOUI TaskDetail print())
+     * @summary Fires continue {record}.
      */
-    onPrint() {
-        this.task && print(this.getReference('scroller'), {title: this.task.title})
-    }
-
     onContinue() {
-        this.task && this.fire('continue', {task: this.task})
+        this.record && this.fire('continue', {record: this.record})
     }
 }
 

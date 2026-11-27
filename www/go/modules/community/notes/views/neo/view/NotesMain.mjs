@@ -300,7 +300,7 @@ class NotesMain extends MainThreeColumnPanel {
     }
 
     /**
-     * @summary Wires the grid, the detail and the stores, then loads the notes.
+     * @summary Wires the note book list, the grid and the detail, then loads.
      */
     onConstructed() {
         super.onConstructed();
@@ -345,8 +345,8 @@ class NotesMain extends MainThreeColumnPanel {
         detail.getReference('toolbar').insert(0, me.showCenterButton());
 
         detail.on({
-            edit  : ({note}) => me.openDialog(note),
-            delete: ({note}) => me.deleteNote(note)
+            edit  : ({record}) => me.openDialog(record),
+            delete: ({record}) => me.deleteNote(record)
         });
 
         // also reloads on push and paging, which nobody awaits
@@ -427,33 +427,26 @@ class NotesMain extends MainThreeColumnPanel {
     }
 
     /**
-     * Shows a note that is not in the grid's page. A later selection wins over
-     * an older fetch.
+     * @summary Shows a note that is not in the grid's page ("Not found" when it is gone).
+     * A later selection wins (GO.detail.Panel load()); a note loaded by id already follows pushes itself.
      * @param {String} id
      */
-    async fetchIntoDetail(id) {
-        let me         = this,
-            generation = me.detailGeneration = (me.detailGeneration || 0) + 1;
+    fetchIntoDetail(id) {
+        const detail = this.getReference('detail');
 
-        try {
-            const [note] = await client.get('Note', [id]);
-
-            if (!me.isDestroyed && generation === me.detailGeneration) {
-                me.getReference('detail').setNote(note || null)
-            }
-        } catch (e) {
-            me.isDestroyed || me.showError(e)
-        }
+        detail.requestedId === String(id) || detail.load(id)
     }
 
     getNoteBookName(id) {
         return this.getReference('noteBookList').store.get(id)?.name || ''
     }
 
+    /**
+     * @summary Shows a note (null: none) in the detail.
+     */
     showInDetail(note) {
-        // invalidates a pending fetchIntoDetail()
-        this.detailGeneration = (this.detailGeneration || 0) + 1;
-        this.getReference('detail').setNote(note)
+        // also cancels a pending fetchIntoDetail()
+        this.getReference('detail').setRecord(note)
     }
 
     async onNoteBooksLoad() {
@@ -638,6 +631,9 @@ class NotesMain extends MainThreeColumnPanel {
         !me.isDestroyed && !grid.isDestroyed && grid.body?.createViewData()
     }
 
+    /**
+     * @summary Selects the note asked for by a deep link once it is loaded, keeps the detail in step.
+     */
     onNotesLoad() {
         // a load can finish after the view (e.g. of a closed window) is gone
         if (this.isDestroyed || !this.getReference('grid')) {
@@ -647,7 +643,7 @@ class NotesMain extends MainThreeColumnPanel {
         let me     = this,
             store  = me.getReference('grid').store,
             detail = me.getReference('detail'),
-            id     = me.pendingNoteId || detail.note?.id;
+            id     = me.pendingNoteId || detail.record?.id;
 
         me.updateNoteCount();
 

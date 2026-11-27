@@ -560,7 +560,7 @@ class TasksMain extends MainThreeColumnPanel {
     }
 
     /**
-     * @summary Wires the grid, the detail and the stores, then loads the tasks.
+     * @summary Wires the west filters, the grid, the board and the detail, then loads.
      */
     onConstructed() {
         super.onConstructed();
@@ -616,9 +616,9 @@ class TasksMain extends MainThreeColumnPanel {
 
         detail.getReference('toolbar').insert(0, me.showCenterButton());
         detail.on({
-            edit    : ({task}) => me.openDialog(task.id),
-            delete  : ({task}) => me.deleteTasks([task]),
-            continue: ({task}) => me.openContinueDialog(task)
+            edit    : ({record}) => me.openDialog(record.id),
+            delete  : ({record}) => me.deleteTasks([record]),
+            continue: ({record}) => me.openContinueDialog(record)
         });
 
         listList.store.on('loadError', ({error}) => me.showError(error));
@@ -706,7 +706,7 @@ class TasksMain extends MainThreeColumnPanel {
     }
 
     /**
-     * Shows a task that is not in the grid's page. A later selection wins.
+     * @summary Shows a task that is not in the grid's page. A later selection wins.
      * @param {String} id
      */
     async fetchIntoDetail(id) {
@@ -719,16 +719,19 @@ class TasksMain extends MainThreeColumnPanel {
             task && await me.fetchNames([task]);
 
             if (!me.isDestroyed && generation === me.detailGeneration) {
-                me.getReference('detail').setTask(task || null)
+                me.getReference('detail').setRecord(task || null)
             }
         } catch (e) {
             me.isDestroyed || me.showError(e)
         }
     }
 
+    /**
+     * @summary Shows a task (null: none) in the detail.
+     */
     showInDetail(task) {
         this.detailGeneration = (this.detailGeneration || 0) + 1;
-        this.getReference('detail').setTask(task)
+        this.getReference('detail').setRecord(task)
     }
 
     reloadTasks() {
@@ -1093,6 +1096,9 @@ class TasksMain extends MainThreeColumnPanel {
         }
     }
 
+    /**
+     * @summary Selects the task asked for by a deep link once it is loaded, keeps the detail in step.
+     */
     onTasksLoad() {
         if (this.isDestroyed || !this.getReference('grid')) {
             return
@@ -1101,7 +1107,7 @@ class TasksMain extends MainThreeColumnPanel {
         let me     = this,
             store  = me.getReference('grid').store,
             detail = me.getReference('detail'),
-            id     = me.pendingTaskId || detail.task?.id;
+            id     = me.pendingTaskId || detail.record?.id;
 
         me.updateTaskCount();
         me.refreshBoard();
