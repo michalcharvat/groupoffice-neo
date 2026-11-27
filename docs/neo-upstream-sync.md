@@ -110,8 +110,9 @@ The merge usually brings database updates and a new `www/version.php`. Don't upg
   groupoffice_<name>`, grant it to user `groupoffice`), APFS-clone the data folder
   (`cp -Rc ~/Projects/docker/groupoffice26-neo/data <dir>/data`) and render a config with that `db_name`.
 - Run a container from the `groupoffice26-groupoffice26` image on network `groupoffice26_go26` with the worktree's
-  `www`, the module repos (amd, business, nuw) from `~/Projects/groupoffice26/www/go/modules` and sf from
-  `~/Projects/groupoffice26-neo-sf` (see "sf modules for neo" below), the config, the
+  `www`, the module repos (business, nuw) from `~/Projects/groupoffice26/www/go/modules`, sf from
+  `~/Projects/groupoffice26-neo-sf` and amd from `~/Projects/groupoffice26-neo-amd` (see "sf and amd modules for
+  neo" below), the config, the
   data folder, and for PHPUnit `tests/` at `/usr/local/share/src/tests`, `www/` at `/usr/local/share/src/www` and
   `rendered/tests-config.go26.php` (from `~/Projects/go-docker`) over `tests/config.php`. Claim the cloned
   database, the container and `db26:groupoffice_phpunit` on the board: in the `install` and `upgrade` modes (the
@@ -123,7 +124,8 @@ The merge usually brings database updates and a new `www/version.php`. Don't upg
   can't reach, so it prints "Failed to clear cache". Rebuild it in the container instead with a small PHP script
   (as `www-data`, from `/var/www/html`): require `vendor/autoload.php`, then
   `\go\core\App::get()->rebuildCache()`. Restart the container afterwards to clear APCu.
-- GOUI bundles of modules from other repositories (amd, business, sf, nuw, mounted from `~/Projects/groupoffice26`)
+- GOUI bundles of modules from other repositories (amd, business, sf, nuw; mounted from `~/Projects/groupoffice26`
+  or, for amd and sf, from their neo worktrees)
   contain the GroupOffice version in their imports (`index.js?v=26.0.61`). After a version bump the classic client
   then loads GOUI twice and logs `Cannot redefine property: capitalize` (2026-11-24: `nuw/projectsdsgvo`). That
   is a stale build of that repository, not a merge error; it goes away when that repository is built again.
@@ -141,13 +143,27 @@ The merge usually brings database updates and a new `www/version.php`. Don't upg
   `git diff HEAD^2 HEAD -- <files>`), so a discarded upstream change shows too, and include uncommitted docs.
 - Clean up afterwards: remove the container, the cloned databases and the data copy.
 
-## sf modules for neo (2026-11-25)
+## sf and amd modules for neo (2026-11-25, amd 2026-11-27)
 
-sf-mono has a branch **`neo`** for sf module work that needs the neo core (today `sf/workspaces`: it uses
-`openWindow(windowId, hash, {key, items})` / `isWindowClosed()` and the central no-cache rule in `www/.htaccess`). `26.0.x`
-must keep working with GroupOffice 26.x, so such commits go to `neo` only, never to `26.0.x`. The branch is
-checked out as the worktree `~/Projects/groupoffice26-neo-sf`, which the neo container (`groupoffice26-neo`,
-`~/Projects/go-docker/docker-compose.go26neo.yml`) mounts at `go/modules/sf`; `~/Projects/groupoffice26`
-(container `groupoffice26` and other sessions) stays on `26.0.x`. Merge `26.0.x` into `neo` to keep it current.
-The 13 workspaces commits up to `58a4ea577` are on `26.0.x` already (owner: leave them, the module is off by
-default).
+sf-mono and amd-mono each have a branch **`neo`** for module work that needs the neo core. `26.0.x` ships with
+plain GroupOffice 26.x, so neo-only commits (a module's `views/neo`, code that calls neo-only APIs) go to `neo`
+only, never to `26.0.x`.
+
+| Repo | Branch `neo` from | Worktree | Mounted in the neo container at | Today on `neo` |
+|---|---|---|---|---|
+| sf-mono | `26.0.x`, 2026-11-25 | `~/Projects/groupoffice26-neo-sf` | `go/modules/sf` | `sf/workspaces` (uses `openWindow(windowId, hash, {key, items})` / `isWindowClosed()` and the central no-cache rule in `www/.htaccess`) |
+| amd-mono | `origin/26.0.x` (`f456b1287`), 2026-11-27 | `~/Projects/groupoffice26-neo-amd` | `go/modules/amd` | nothing neo-only yet; the neo ports start with `amd/crew` |
+
+- The neo container (`groupoffice26-neo`, `~/Projects/go-docker/docker-compose.go26neo.yml`, not in git there)
+  mounts both worktrees read-only. `~/Projects/groupoffice26/www/go/modules/{sf,amd}` (container `groupoffice26`
+  and other sessions) stay on `26.0.x`. After changing a mount, `docker compose -f docker-compose.go26neo.yml up -d`
+  in `~/Projects/go-docker` recreates the container.
+- Files git doesn't carry have to be copied into a new worktree: amd `dms/vendor/` (Composer packages of
+  `dms/composer.json`, copied from the 26.0.x checkout; `composer install` in `dms/` does the same).
+- Keep `neo` current by merging `26.0.x` into it in the worktree (`git fetch origin && git merge origin/26.0.x`),
+  never the other way. A fix that is not neo-only (PHP backend, ExtJS) is made on `26.0.x` and reaches `neo` with
+  the next merge.
+- Pushing `neo` to git.smartflows.io needs the owner's go each time a branch is pushed for the first time (sf:
+  pushed as `origin/neo`; amd: not pushed yet).
+- The 13 workspaces commits up to `58a4ea577` are on sf `26.0.x` already (owner: leave them, the module is off by
+  default).
