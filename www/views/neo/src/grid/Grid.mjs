@@ -761,21 +761,25 @@ class Grid extends GridContainer {
      * sized so the rows fill the grid's width (see the class comment, "Column sizing").
      * @param {Object[]} columns
      * @param {Object} [options]
-     * @param {String|null} [options.autoExpandColumn] dataField of the column that fills the rest
+     * @param {String|Boolean|null} [options.autoExpandColumn] dataField of the column that fills the
+     * rest; false: no column fills (a grid created hidden, where a flex column gets no width)
      * @param {Boolean} [options.forceFit] the columns share the width by their widths
      * @returns {Object[]}
      */
     static visibleColumns(columns, {autoExpandColumn = null, forceFit = false} = {}) {
-        const visible = columns.filter(column => !column.hidden).map(({hidden, hideable, resized, stateKey, goCustomField, ...column}) => ({...column})),
-              // a column of icons (row ⋮, check box) has no header text and keeps its width
-              center  = visible.filter(column => !column.locked && column.text),
-              flexing = column => column.flex && column.flex !== 'none';
+        const shown   = columns.filter(column => !column.hidden),
+              visible = shown.map(({hidden, hideable, resized, stateKey, goCustomField, ...column}) => ({...column})),
+              flexing = column => column.flex && column.flex !== 'none',
+              // a column of icons (row ⋮, check box) has no header text and keeps its width, a
+              // column the user resized keeps the width the user gave it
+              center  = visible.filter((column, i) => !column.locked && column.text && !shown[i].resized);
 
         if (forceFit) {
-            center.forEach(column => !flexing(column) && column.width > 0 && (column.flex = column.width))
-        } else {
+            // weights by width, also for a configured flex column (flex 1 next to width 100 would be 1:100)
+            center.forEach(column => column.flex = column.width > 0 ? column.width : Grid.FLEX_MIN_WIDTH)
+        } else if (autoExpandColumn !== false) {
             const fill = center.find(column => column.dataField === autoExpandColumn) ||
-                (center.some(flexing) ? null : center.at(-1));
+                (visible.some(column => !column.locked && flexing(column)) ? null : center.at(-1));
 
             fill && Object.assign(fill, {flex: 1, minWidth: fill.minWidth || fill.width})
         }
@@ -975,7 +979,8 @@ class Grid extends GridContainer {
         }
 
         // never hide the last visible center column: neo keeps the stale center header without one
-        if (hidden && !column.locked && me.allColumns.filter(c => !c.hidden && !c.locked).length < 2) {
+        if (hidden && (me.allColumns.filter(c => !c.hidden).length < 2 ||
+            (!column.locked && me.allColumns.filter(c => !c.hidden && !c.locked).length < 2))) {
             return
         }
 
@@ -1032,35 +1037,51 @@ class Grid extends GridContainer {
     }
 
     /**
+     * @summary The ⋮ of the last header (GO.grid.HeaderButton): opens the column menu, or closes it
+     * when it is open, also when the press on the ⋮ already closed it (focus left the menu).
+     * @param {String} target DOM id of the header button
+     */
+    toggleColumnMenu(target) {
+        const me = this;
+
+        if (me.headerMenuTarget === target && Date.now() - (me.headerMenuClosedAt || 0) < 500) {
+            me.headerMenuClosedAt = 0;
+            return
+        }
+
+        me.showHeaderMenuList(target, me.columnMenuItems(), true)
+    }
+
+    /**
      * @summary Shows a header menu; one is open at a time, and the same target again closes it (the ⋮
      * clicked twice). Escape and a click outside close it (MenuList).
      * @param {String} target DOM id to align the menu to
      * @param {Object[]} items
+     * @param {Boolean} [toggle=false] an open menu of the same target closes instead (toggleColumnMenu())
      * @protected
      */
-    showHeaderMenuList(target, items) {
-        let me   = this,
-            open = me.headerMenu,
-            // the press on the ⋮ already closed the menu (focus left it) before this click
-            justClosed = me.headerMenuTarget === target && Date.now() - (me.headerMenuClosedAt || 0) < 500;
-
-        const wasOpen = !!open && !open.isDestroyed;
+    showHeaderMenuList(target, items, toggle = false) {
+        let me      = this,
+            open    = me.headerMenu,
+            wasOpen = !!open && !open.isDestroyed;
 
         me.headerMenu = null;
         // hidden, not destroyed: a floating menu leaves its DOM behind on destroy(); showAt() menus
         // destroy themselves once unmounted
         wasOpen && (open.hidden = true);
 
-        if ((wasOpen && me.headerMenuTarget === target) || justClosed) {
-            me.headerMenuClosedAt = 0;
+        if (toggle && wasOpen && me.headerMenuTarget === target) {
             return
         }
 
         const menu = MenuList.showAt({appName: me.appName, target, windowId: me.windowId, items});
 
+        // a replaced menu closing late must not count as a close of this one
         menu.onClose = () => {
-            me.headerMenu === menu && (me.headerMenu = null);
-            me.headerMenuClosedAt = Date.now()
+            if (me.headerMenu === menu) {
+                me.headerMenu         = null;
+                me.headerMenuClosedAt = Date.now()
+            }
         };
 
         me.headerMenuTarget = target;
@@ -1082,6 +1103,7 @@ class Grid extends GridContainer {
     }
 
     /**
+     * @summary Keeps a dragged width (state) and drops a minWidth that would hold the header wider.
      * @param {Neo.grid.header.Button} button
      * @param {Number|String|null} width px
      * @protected
@@ -1095,6 +1117,9 @@ class Grid extends GridContainer {
         if (!column || !width || column.width === width) {
             return
         }
+
+        // a filling column's minWidth (visibleColumns()) would keep the header wider than its cells
+        parseInt(button.minWidth, 10) > width && (button.minWidth = null);
 
         // a resized flex column keeps its new width
         me.touchedColumns.add(Grid.columnKey(column));

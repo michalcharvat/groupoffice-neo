@@ -506,14 +506,17 @@ it hands to neo:
 |---|---|
 | none, and no column has `flex` | the last visible center column with a header text gets `flex: 1`, `minWidth` = its width |
 | ExtJS `autoExpandColumn: 'name'` | grid config `autoExpandColumn: 'name'`: that column `flex: 1`, `minWidth` = its width |
-| ExtJS `viewConfig.forceFit: true` | grid config `forceFit: true`: every text column flexes by its width (`flex: width`) |
+| ExtJS `viewConfig.forceFit: true` | grid config `forceFit: true`: every text column flexes by its width (`flex: width`, also a configured flex column) |
+| a grid created hidden (flex gets no width there, files Trash) | `autoExpandColumn: false`: no column fills |
 | a column with `flex` | kept; no column is added to fill |
 
-Columns without header text (row ⋮, check boxes, icons) and locked columns keep their width. A
+Columns without header text (row ⋮, check boxes, icons), locked columns and columns the user resized
+(state) keep their width; dragging a filling column below its minWidth drops the minWidth. A
 narrower grid scrolls once the minWidths do not fit. go:neo-port: carry `autoExpandColumn` /
 `forceFit` over as these grid configs; don't hand-pick a flex column for it.
 
-The header column chooser (⋮, right click) is one menu per grid: the same ⋮ again closes it,
+The header column chooser (⋮, right click) is one menu per grid: the same ⋮ again closes it
+(`toggleColumnMenu()`, also when the press already closed it through focus leave),
 Escape and a click outside close it (`showHeaderMenuList()`; `GO.menu.List` `onClose`). A floating
 menu is closed with `hidden = true`, never `destroy()`, which leaves its DOM behind. The header ⋮
 over a text-less last column (the row ⋮) is centred on the row ⋮ (`HeaderButton.scss`).

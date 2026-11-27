@@ -88,6 +88,35 @@ describe('GO.grid.Grid list wiring', () => {
             assert.deepEqual([fit.id.flex, fit.type.flex, fit.rowMenu.flex], [160, 100, undefined])
         });
 
+        it('a resized column keeps its width, false turns the fill off', () => {
+            const columns = cols();
+
+            columns[1].resized = true;
+            const c = byField(Grid.visibleColumns(columns));
+            assert.deepEqual([c.type.flex, c.id.flex], [undefined, 1]);
+            assert.equal(byField(Grid.visibleColumns(cols(), {autoExpandColumn: false})).type.flex, undefined)
+        });
+
+        it('forceFit weighs a configured flex column by its width too', () => {
+            const columns = cols();
+
+            columns[0].flex = 1;
+            const fit = byField(Grid.visibleColumns(columns, {forceFit: true}));
+            assert.deepEqual([fit.id.flex, fit.type.flex], [160, 100])
+        });
+
+        it('an all-locked grid keeps its last visible column', async () => {
+            const grid = {
+                allColumns    : [{dataField: 'a', hideable: true, hidden: false, locked: 'start'}],
+                touchedColumns: new Set(),
+                applyColumns  : async () => {},
+                saveColumnState() {}
+            };
+
+            await proto.setColumnHidden.call(grid, 'a', true);
+            assert.equal(grid.allColumns[0].hidden, false)
+        });
+
         it('does not change the given columns', () => {
             const columns = cols();
 
@@ -107,24 +136,33 @@ describe('GO.grid.Grid list wiring', () => {
         };
 
         try {
-            const grid = {appName: 'test', windowId: 1, headerMenu: null};
+            const grid = {appName: 'test', windowId: 1, headerMenu: null, columnMenuItems: () => [],
+                showHeaderMenuList: proto.showHeaderMenuList};
+            const toggle = target => proto.toggleColumnMenu.call(grid, target);
 
-            proto.showHeaderMenuList.call(grid, 'trigger', []);
-            proto.showHeaderMenuList.call(grid, 'trigger', []);
+            toggle('trigger');
+            toggle('trigger');
             assert.equal(shown.length, 1);
             assert.equal(shown[0].hidden, true);
 
             // closed by the press on the ⋮ (focus left the menu) just before this click
-            proto.showHeaderMenuList.call(grid, 'trigger', []);
+            toggle('trigger');
             shown[1].onClose();
-            proto.showHeaderMenuList.call(grid, 'trigger', []);
+            toggle('trigger');
             assert.equal(shown.length, 2);
 
-            // another header: the open menu goes, the new one opens
+            // a right click on the same header (no toggle) reopens; another header replaces it
             proto.showHeaderMenuList.call(grid, 'trigger', []);
-            proto.showHeaderMenuList.call(grid, 'other', []);
+            proto.showHeaderMenuList.call(grid, 'trigger', []);
             assert.equal(shown.length, 4);
-            assert.equal(shown[2].hidden, true)
+            assert.equal(shown[2].hidden, true);
+
+            // a replaced menu closing late does not swallow the next ⋮ click
+            shown[2].onClose();
+            proto.showHeaderMenuList.call(grid, 'other', []);
+            shown[3].onClose();
+            toggle('trigger');
+            assert.equal(shown.length, 6)
         } finally {
             MenuList.showAt = show
         }
