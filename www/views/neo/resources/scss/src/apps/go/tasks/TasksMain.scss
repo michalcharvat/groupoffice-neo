@@ -91,3 +91,15 @@
         vertical-align: middle;
     }
 }
+
+// "Closed tasks of the last 14 days · Show all" above the board
+.neo-theme-go .go-tasks .go-tasks-board-hint {
+    color    : var(--fg-secondary-text);
+    font-size: 1.2rem;
+    padding  : go.dp(4) go.dp(16);
+
+    a {
+        color : var(--c-primary);
+        cursor: pointer;
+    }
+}

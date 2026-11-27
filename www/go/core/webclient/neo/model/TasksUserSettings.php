@@ -23,6 +23,11 @@ class TasksUserSettings extends Property {
 	 */
 	public ?string $boardGroupBy = null;
 
+	/**
+	 * View of the tasks main panel, "list" or "board", null for the list
+	 */
+	public ?string $view = null;
+
 	protected static function defineMapping(): Mapping
 	{
 		return parent::defineMapping()->addTable("neo_tasks_user_settings", "ntus");

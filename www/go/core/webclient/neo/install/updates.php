@@ -16,3 +16,5 @@ $updates['202611270100'][] = "CREATE TABLE IF NOT EXISTS `neo_tasks_user_setting
 	PRIMARY KEY (`userId`),
 	CONSTRAINT `neo_tasks_user_settings_user` FOREIGN KEY (`userId`) REFERENCES `core_user` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+
+$updates['202611271200'][] = "ALTER TABLE `neo_tasks_user_settings` ADD COLUMN IF NOT EXISTS `view` VARCHAR(16) NULL DEFAULT NULL";

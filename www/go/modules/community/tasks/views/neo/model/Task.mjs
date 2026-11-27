@@ -12,6 +12,8 @@ class Task extends Model {
             {name: 'id',                type: 'String'},
             {name: 'title',             type: 'String'},
             {name: 'tasklistId',        type: 'String'},
+            // TaskListGroup: the board's list columns
+            {name: 'groupId',           type: 'String'},
             {name: 'responsibleUserId', type: 'String'},
             {name: 'start',             type: 'String'},
             {name: 'due',               type: 'String'},

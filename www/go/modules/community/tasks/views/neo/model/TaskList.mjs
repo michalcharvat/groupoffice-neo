@@ -17,6 +17,8 @@ class TaskList extends Model {
             {name: 'tasklistId',      type: 'String'},
             // TaskListGrouping, null when the list has none
             {name: 'groupingId'},
+            // TaskListGroup [{id, name, color, progressChange}]: the board's list columns
+            {name: 'groups'},
             {name: 'permissionLevel', type: 'Int'}
         ]
     }

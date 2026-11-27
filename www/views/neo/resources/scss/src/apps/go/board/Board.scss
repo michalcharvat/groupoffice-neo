@@ -1,0 +1,31 @@
+@use "../../../../go/go";
+
+// GO.board.Board: neo's board (neo-board-*) with GO's tag colours, the due/icon/avatar row and the GO icon size
+.neo-theme-go .go-board {
+    padding: go.dp(8);
+
+    .go-board-tag[style*="--go-board-tag-color"] {
+        background: var(--go-board-tag-color);
+        color     : #fff;
+    }
+
+    .go-board-card-meta {
+        align-items: center;
+        display    : flex;
+        gap        : go.dp(8);
+        min-height : go.dp(24);
+
+        .go-icon {
+            font-size: go.dp(18);
+        }
+    }
+
+    .go-board-assignee {
+        margin-left: auto;
+    }
+
+    // room for the "..." button of neo's card
+    .neo-board-card-title {
+        padding-right: go.dp(24);
+    }
+}

@@ -7,6 +7,7 @@ Port of `../goui` (GOUI) to the neo webclient; see `www/views/neo/README.md` for
 | `Index.mjs` | registers the module (route `#tasks/task/<id>`, header "+" and search, My account card) |
 | `util.mjs` | progress/priority options, status chip and progress bar HTML, task dates ("Y-m-d"), name caches (Principal, TaskList, TaskCategory), module rights |
 | `view/TasksMain.mjs` | west: schedule (`ScheduleList`), show completed, assigned (mine / unassigned), lists (`TaskListList`, colour per list), categories, saved filters; center: grid with multi select (merge, delete); east: `TaskDetail` |
+| `boardGroups.mjs` | board groupings (status, list columns, list, assignee, priority, category, due): columns, columns of a task, drop → JMAP patch, due buckets, order; pure, tested in `www/views/neo/tests/tasksBoard.test.mjs` |
 | `view/TaskDialog.mjs` | task form (`AutocompleteChips` categories, `DateField`, `DurationField` in seconds, `RecurrenceField`, alerts as `ArrayField`) |
 | `view/TaskListDialog.mjs`, `CategoryDialog.mjs`, `SubscribeDialog.mjs`, `ContinueTaskDialog.mjs`, `SettingsPanel.mjs` | list (with permissions), category (global with `mayChangeCategories`), subscribe, continue (date + alert, progress, comment), My account |
 
@@ -19,6 +20,15 @@ the checked lists in `tasksSettings.lastTasklistIds` (with "remember last select
 
 The grid has a header per list (GOUI TaskGrid groupBy; a column sort keeps the list as the first
 sort), the west panel a header per TaskListGrouping (ExtJS TasklistsGrid).
+
+Board (`GO.board.Board`, toolbar switch list ↔ board, kept in `neoTasksSettings.view`; grouping in the toolbar
+menu and My account, `neoTasksSettings.boardGroupBy`): uses the grid's store with the same west filters, search and
+saved filters, loads all tasks (limit 0) and closed ones only from the last 14 days ("Show all" goes to the list
+with "Show completed"). In board mode the center takes the free width and the detail keeps 40rem. List columns
+(`TaskList.groups`) are offered with exactly one checked list; a task without a column shows in the first. The
+server does not apply `TaskListGroup.progressChange`, so the drop sends `progress` itself. Categories have no
+colour in GO, so their tags are neutral. Creating a list column without `progressChange` fails upstream
+(`TaskListGroup::$progressChange` has no default).
 
 Still different from GOUI: the list headers in the grid can't be collapsed; tasks
 can't be dragged onto a list; no import/export, print or project field; the responsible combo

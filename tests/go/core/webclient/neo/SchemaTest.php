@@ -65,9 +65,10 @@ class SchemaTest extends TestCase
 		$this->assertNotNull($user->neoTasksSettings, 'auto created for a user without a row');
 		$this->assertNull($user->neoTasksSettings->boardGroupBy);
 
-		$user->setValues(['neoTasksSettings' => ['boardGroupBy' => 'progress']]);
+		$user->setValues(['neoTasksSettings' => ['boardGroupBy' => 'progress', 'view' => 'board']]);
 		$this->assertTrue($user->save(), var_export($user->getValidationErrors(), true));
 		$this->assertSame('progress', self::settingsRow($id)['boardGroupBy']);
+		$this->assertSame('board', self::settingsRow($id)['view']);
 
 		$this->assertSame('progress', User::findById($id)->neoTasksSettings->boardGroupBy);
 	}

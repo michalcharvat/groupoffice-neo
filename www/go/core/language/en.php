@@ -495,4 +495,5 @@ If you did not request a new password please delete this mail.',
   'Move to window {number}: {title}' => 'Move to window {number}: {title}',
   '{module} moved to window {number}.' => '{module} moved to window {number}.',
   'Return to page' => 'Return to page',
+  'Board' => 'Board',
 );
