@@ -1,0 +1,4 @@
+// GO.scheduler.TimelineColumn: background bands per row (Scheduler `backgrounds`); a band's own cls sets its colour
+.neo-theme-go .go-scheduler-background {
+    background: color-mix(in srgb, var(--c-primary) 14%, transparent);
+}

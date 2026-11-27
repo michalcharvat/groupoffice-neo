@@ -33,9 +33,16 @@ const voyages = [
     [8, 'v3', 2, 'Mia Svensson', 10, 28, 'onboard']
 ].map(([id, vesselId, rankId, name, from, to, type]) => ({id, vesselId, rankId, name, startTime: day(from), endTime: day(to), type}));
 
+// port calls on the vessel and its ranks (inherit), a crew change line on one rank
+const backgrounds = [
+    {resourceId: 'v1', startDate: day(9), endDate: day(11), inherit: true},
+    {resourceId: 'v3', startDate: day(19), endDate: day(22), inherit: true},
+    {resourceId: 'v1-3', startDate: '2026-11-14T08:00:00Z', endDate: '2026-11-14T08:30:00Z'}
+];
+
 /**
  * @summary Dev demo of GO.scheduler.Scheduler: three resource levels as a tree, crew-like records mapped by
- * eventFields, read-only toggle, eventRenderer and eventClick.
+ * eventFields, read-only toggle, eventRenderer, eventClick, background bands, slotClick, zoom presets and a growing range.
  * @class GO.dev.demo.Scheduler
  * @extends Neo.container.Base
  */
@@ -59,7 +66,12 @@ class SchedulerDemo extends Container {
                 ui     : 'secondary',
                 text   : 'Collapse / expand MV Aurora',
                 handler: 'up.onToggleVessel'
-            }, {
+            }, ...['week', 'month', 'quarter', 'year'].map(zoom => ({
+                module : Button,
+                ui     : 'secondary',
+                text   : zoom,
+                handler: 'up.onZoom'
+            })), {
                 module   : Component,
                 reference: 'output',
                 tag      : 'pre',
@@ -74,11 +86,14 @@ class SchedulerDemo extends Container {
             readOnly       : true,
             resources,
             events         : voyages,
+            backgrounds,
+            growRange      : true,
+            zoom           : 'month',
             eventFields    : {startDate: 'startTime', endDate: 'endTime', title: 'name', resourceId: r => `${r.vesselId}-${r.rankId}`},
             eventRenderer  : record => ({html: `<i class="go-icon">person</i> ${escapeHtml(record.name)}`, cls: `go-dev-scheduler-${record.type}`}),
             resourceColumns: [{dataField: 'name', text: 'Vessel', type: 'tree', width: 220, locked: 'start'}],
             timeAxis       : {start: '2026-11-01', end: '2026-12-01', tickUnit: 'day', tickStep: 1, majorTickUnit: 'week', pxPerMinute: 0.04, snapMinutes: 60},
-            listeners      : {eventClick: 'up.onEventClick'}
+            listeners      : {eventClick: 'up.onEventClick', slotClick: 'up.onSlotClick', rangeChange: 'up.onRangeChange'}
         }]
     }
 
@@ -88,6 +103,30 @@ class SchedulerDemo extends Container {
      */
     onEventClick({record}) {
         this.getReference('output').text = `eventClick: #${record.id} ${record.name}`
+    }
+
+    /**
+     * @summary Shows the row and date of a click on an empty track.
+     * @param {Object} data
+     */
+    onSlotClick({resource, date}) {
+        this.getReference('output').text = `slotClick: ${resource.name} ${date.toLocaleString()}`
+    }
+
+    /**
+     * @summary Shows the grown range.
+     * @param {Object} data
+     */
+    onRangeChange({start, end}) {
+        this.getReference('output').text = `rangeChange: ${start.toLocaleDateString()} – ${end.toLocaleDateString()}`
+    }
+
+    /**
+     * @summary Applies the zoom preset named by the button.
+     * @param {Object} data
+     */
+    onZoom({component}) {
+        this.getReference('scheduler').zoom = component.text
     }
 
     /**
