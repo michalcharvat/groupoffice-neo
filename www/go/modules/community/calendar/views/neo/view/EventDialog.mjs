@@ -52,8 +52,14 @@ class EventDialog extends FormWindow {
     /** @member {Boolean} saved */
     saved = false
 
+    /**
+     * @summary Loads an existing event, or seeds a new one with the calendar's reminders, privacy and busy status.
+     * @param {Object} config
+     */
     construct(config) {
-        const item = config.item;
+        const item = config.item,
+              // the alert came from the event or the copied item, so don't replace it with the calendar's default
+              alertChosen = !!(item.key && !item.isNew() && item.data.id) || !!item.data.alerts;
 
         if (item.key && !item.isNew() && item.data.id) {
             config.entityId = item.data.id
@@ -67,7 +73,8 @@ class EventDialog extends FormWindow {
             delete config.values.useDefaultAlerts
         }
 
-        super.construct(config)
+        super.construct(config);
+        this.alertChosen = alertChosen
     }
 
     /**
@@ -227,6 +234,9 @@ class EventDialog extends FormWindow {
         return list
     }
 
+    /**
+     * @summary Wires the field listeners (all day, start / end, calendar, reminder, participants) and loads the form.
+     */
     async onConstructed() {
         await super.onConstructed();
 
@@ -247,6 +257,7 @@ class EventDialog extends FormWindow {
         me.getReference('startField').on('userChange', ({value, oldValue}) => me.onStartChange(value, oldValue));
         me.getReference('endField').on('userChange', ({value, oldValue}) => me.onEndChange(value, oldValue));
         me.getReference('calendarField').on('change', ({value}) => me.onCalendarChange(value));
+        me.getReference('alertField').on('userChange', () => me.alertChosen = true);
 
         const participants = me.getReference('participantField');
 
@@ -340,11 +351,22 @@ class EventDialog extends FormWindow {
         return calendarData.getCalendar(this.getReference('calendarField').getSubmitValue?.() ?? this.item.data.calendarId)
     }
 
+    /**
+     * @summary Shows the calendar's default reminder in the "Default" option and selects it for a new
+     * event when no reminder was chosen yet (GOUI applyDefaultAlerts()).
+     */
     updateDefaultAlertLabel() {
         const cal    = this.calendar,
-              allDay = !!this.getReference('allDayField').checked;
+              allDay = !!this.getReference('allDayField').checked,
+              field  = this.getReference('alertField'),
+              alerts = cal && (allDay ? cal.defaultAlertsWithoutTime : cal.defaultAlertsWithTime);
 
-        cal && this.getReference('alertField').setDefaultLabel(allDay ? cal.defaultAlertsWithoutTime : cal.defaultAlertsWithTime)
+        if (!cal) {
+            return
+        }
+
+        field.setDefaultLabel(alerts);
+        this.alertChosen || (field.value = alerts && Object.keys(alerts).length ? alerts : 'default')
     }
 
     onAllDayChange() {
