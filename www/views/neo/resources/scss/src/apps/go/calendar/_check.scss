@@ -3,7 +3,7 @@
 // a coloured calendar check box and its name: GO.calendar.CheckRows and
 // GO.calendar.field.CalendarIdsField render the same markup
 .neo-theme-go {
-    // GOUI checkbox({color}): the box in the colour, white tick
+    // GOUI checkbox({color}): the box in the colour, white tick (black on a light colour)
     .go-cal-check {
         border-color: currentColor;
         border-width: 2px;
@@ -13,6 +13,11 @@
 
             &::before {
                 background-color: #fff;
+            }
+
+            // a light colour (GOUI --tickColor): black tick
+            &.go-dark-tick::before {
+                background-color: #000;
             }
         }
     }

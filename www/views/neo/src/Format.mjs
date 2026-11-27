@@ -217,6 +217,22 @@ export function avatarColor(name) {
 }
 
 /**
+ * @summary Whether text on this background colour should be dark (GOUI CheckboxField color:
+ * brightness above 125 of 255).
+ * @param {String} hex e.g. "ffeb3b", "#FFEB3B" or "fff"
+ * @returns {Boolean}
+ */
+export function isLightColor(hex) {
+    let h = String(hex || '').replace('#', '');
+
+    h.length === 3 && (h = h.replace(/./g, '$&$&')); // "fff" → "ffffff"
+
+    const n = parseInt(h, 16) || 0;
+
+    return ((n >> 16 & 255) * 299 + (n >> 8 & 255) * 587 + (n & 255) * 114) / 1000 > 125
+}
+
+/**
  * GO avatar (go.util.avatar): initials on a colour derived from the name
  * @param {String} name
  * @param {String[]} cls extra classes
