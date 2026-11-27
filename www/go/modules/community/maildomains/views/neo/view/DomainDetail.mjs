@@ -444,7 +444,7 @@ class DomainDetail extends Container {
             windowId: me.windowId,
             domain  : me.domain.domain,
             entityId: id,
-            values  : {domainId: me.domain.id, quota: me.domain.defaultQuota || 0, active: true, autoExpunge: '30d'}
+            values  : {domainId: me.domain.id, quota: me.domain.defaultQuota || 0, active: true, autoExpunge: me.domain.defaultAutoExpunge ?? '30d', fts: !!me.domain.defaultFts}
         })).on('save', () => me.isDestroyed || me.getReference('mailboxes').reload())
     }
 

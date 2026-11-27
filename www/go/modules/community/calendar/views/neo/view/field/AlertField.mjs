@@ -59,6 +59,7 @@ class AlertField extends SelectField {
                 {value: '-PT5M',  text: `5 ${t('minutes')} ${t('before')}`},
                 {value: '-PT10M', text: `10 ${t('minutes')} ${t('before')}`},
                 {value: '-PT15M', text: `15 ${t('minutes')} ${t('before')}`},
+                {value: '-PT30M', text: `30 ${t('minutes')} ${t('before')}`},
                 {value: '-PT1H',  text: `1 ${t('hour')} ${t('before')}`},
                 {value: '-PT2H',  text: `2 ${t('hours')} ${t('before')}`},
                 {value: '-P1D',   text: `1 ${t('day')} ${t('before')}`},

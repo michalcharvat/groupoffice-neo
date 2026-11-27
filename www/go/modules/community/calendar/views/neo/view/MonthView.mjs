@@ -92,7 +92,8 @@ class MonthView extends CalendarView {
             today = dayNumber(userNow()),
             cn    = [me.renderHead()];
 
-        me.viewModel.sort((a, b) => a.start - b.start);
+        // same start: by id (0 without one, e.g. holidays), so equal-start items keep one order across renders
+        me.viewModel.sort((a, b) => (a.start - b.start) || (a.data.id > b.data.id) - (a.data.id < b.data.id));
         me.continues = [];
         me.iterator  = 0;
 
