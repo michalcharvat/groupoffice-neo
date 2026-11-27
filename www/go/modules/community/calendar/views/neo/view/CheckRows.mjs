@@ -1,5 +1,6 @@
 import Component    from '../../../../../../../views/neo/node_modules/neo.mjs/src/component/Base.mjs';
 import {t}          from '../../../../../../../views/neo/src/Translate.mjs';
+import {isLightColor} from '../../../../../../../views/neo/src/Format.mjs';
 
 /**
  * Rows with a coloured check box, a text and a row menu (GOUI check-list with
@@ -42,6 +43,9 @@ class CheckRows extends Component {
         Neo.main.DomEvents.registerPreventDefaultTargets({name: 'contextmenu', cls: ['go-cal-check'], windowId: this.windowId})
     }
 
+    /**
+     * @summary Renders the rows: group headings, the coloured check box (black tick on a light colour), text and menu.
+     */
     afterSetRows() {
         let me    = this,
             cn    = [],
@@ -54,7 +58,7 @@ class CheckRows extends Component {
             }
 
             const rowCn = [
-                row.leadIcon ? {tag: 'i', cls: ['go-icon', 'go-cal-lead-icon'], text: row.leadIcon} : {tag: 'span', id: `${me.id}__check_${row.id}`, cls: ['go-check', 'go-cal-check', row.checked ? 'go-checked' : null].filter(Boolean),
+                row.leadIcon ? {tag: 'i', cls: ['go-icon', 'go-cal-lead-icon'], text: row.leadIcon} : {tag: 'span', id: `${me.id}__check_${row.id}`, cls: ['go-check', 'go-cal-check', row.checked ? 'go-checked' : null, row.color && isLightColor(row.color) ? 'go-dark-tick' : null].filter(Boolean),
                     style: row.color ? {color: '#' + row.color} : {}, 'data-check': row.id, tabIndex: 0, role: 'checkbox', 'aria-checked': row.checked ? 'true' : 'false'},
                 {tag: 'span', cls: ['go-cal-check-text'], cn: [
                     {vtype: 'text', text: row.text},

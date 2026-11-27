@@ -88,6 +88,9 @@ import {createColumns as createCustomFieldColumns, loadNames as loadCustomFieldN
  *
  * From code: openDialog({entityId} | {values}), deleteRecords(records), and
  * deleteSelectedMenuItem() for the ⋮ menu of the owner's toolbar.
+ *
+ * Overflow tooltips (GOUI Table overflowTooltip): a cell or header whose text is cut off shows the
+ * full text as its title on hover (main thread addon WS/OverflowTooltip); a renderer's title wins.
  * @class GO.grid.Grid
  * @extends Neo.grid.Container
  */
@@ -396,6 +399,17 @@ class Grid extends GridContainer {
         // the store they were added to, also when the grid got another one since
         this.customFieldNameListeners && this.customFieldNameStore?.un?.(this.customFieldNameListeners);
         super.destroy(...args)
+    }
+
+    /**
+     * @summary Loads the overflow tooltips (main thread addon WS/OverflowTooltip) in the grid's window.
+     * @param {Number|null} value
+     * @param {Number|null} oldValue
+     */
+    afterSetWindowId(value, oldValue) {
+        super.afterSetWindowId(value, oldValue);
+
+        value && Neo.Main.importAddon({name: 'WS/OverflowTooltip', windowId: value}).catch(e => console.error('Overflow tooltips', e))
     }
 
     /**
