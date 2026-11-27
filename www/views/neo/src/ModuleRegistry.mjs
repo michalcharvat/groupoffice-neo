@@ -56,6 +56,9 @@ import client from './jmap/Client.mjs';
  *     onMainView: mainView => {},
  *     // optional, called with each new src/users/CreateUserDialog (e.g. an extra card)
  *     onCreateUserDialog: dialog => {},
+ *     // optional, called with each new src/view/FormWindow: {load, save} to add fields and save data,
+ *     // or null to leave it alone (src/form/formExtensions.mjs, docs/neo-core-components.md)
+ *     onFormWindow: win => win.entityName === 'Voyage' ? {load: async data => {}, save: async event => {}} : null,
  *     // optional, awaited after login before the main view is built: may register more modules
  *     onLogin     : async () => {}
  * });

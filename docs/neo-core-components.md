@@ -300,6 +300,39 @@ A user without a row reads the defaults; the row is inserted when User/set chang
 (`{"neoTasksSettings": {"boardGroupBy": "progress"}}`). Planned next: `neo_notes_user_settings`,
 `neo_addressbook_user_settings`, `neo_calendar_preferences`.
 
+## Form extensions: fields of another module in a FormWindow (2026-11-27)
+
+ExtJS modules extended another module's dialog with `Ext.override(go.form.Dialog)` (amd/formbuilder renders
+`entity.formBuilder.formStructure` into the crew voyage dialog). In neo a module registers `onFormWindow` in
+`ModuleRegistry.register()`; `src/view/FormWindow.mjs` calls it for every new window and keeps what it returns
+on `form.extensions` (`src/form/formExtensions.mjs`, test `tests/formExtensions.test.mjs`):
+
+```js
+onFormWindow: win => win.entityName !== 'Voyage' ? null : {
+    load: async data => {},             // add fields/cards for data (win.addCard(), win.generalTab.add())
+    save: async ({data, isNew}) => {}   // change what is sent, e.g. delete data.formBuilder?.formStructure
+}
+```
+
+- `load(data)` is awaited in `DataSourceForm.applyData()` before the values are set: on `create()` (data = the
+  initial values), `load()` and after every save (data = the saved entity). Fields it adds get their values and
+  are part of the unmodified state (`originalValues`), so they count for `isModified()`/`getModified()`. It runs
+  again after a save: rebuild only when the structure changed. A failing `load()` is logged, the form still loads.
+- `save(event)` is awaited before `beforesave`; `event.data` is mutable. A new entity sends all values (fields +
+  values without a field), an existing one only `getModified()` (nested by field name: `formBuilder.answer` →
+  `{formBuilder: {answer}}`). On create the field values replace a nested initial value shallowly
+  (`{...entityData, ...fieldValues}`): parts of `formBuilder` without a field are dropped. If the property must go
+  whole, `save()` fills it in. A throwing `save()` stops the save and shows its message (`saveerror`).
+- A dialog with a fixed `properties` list (e.g. `NoteDialog`) does not fetch the extension's property: append it
+  in `onFormWindow` (`win.form.properties = [...win.form.properties, 'formBuilder']` when the list is set), the
+  first fetch runs later.
+- Add cards with an imported class (`module: Container`), not a lazy `() => import()`: a card that is still
+  loading has no fields for `reset()` and the baseline, and they would show defaults as user changes.
+- `save()` runs only in `DataSourceForm.submit()`. A window that saves itself (calendar `EventDialog.saveItem()`)
+  calls `load()` but never `save()`.
+- Return `null` for windows the module does not extend; per-window state lives in the closure. A throwing
+  `onFormWindow` is logged and skipped. Only modules the user has access to are asked (`getConfigs()`).
+
 ## Left to build (2026-11-19)
 
 1. ~~**Notes Markdown + image zoom**~~ — done: `MarkdownField`, `src/Markdown.mjs`, `ImageWindow`.
