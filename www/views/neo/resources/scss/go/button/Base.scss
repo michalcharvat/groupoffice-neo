@@ -15,6 +15,10 @@
     --button-border-radius     : #{go.dp(12)};
     --button-glyph-margin      : 0 #{go.dp(8)} 0 0;
     --button-ripple-background-color: var(--bg-pressed);
+    // GOUI *[disabled]: opacity .6, else a disabled ghost button looks active; neo reads one per ui
+    --button-opacity-disabled          : .6;
+    --button-primary-opacity-disabled  : .6;
+    --button-secondary-opacity-disabled: .6;
 
     --button-background-color         : var(--c-primary);
     --button-background-color-hover   : var(--c-primary);

@@ -111,13 +111,6 @@
         max-height: 40rem;
     }
 
-    // one line per row, like GOUI's table cells (long recipient lists)
-    .go-md-grid .neo-grid-cell {
-        overflow     : hidden;
-        text-overflow: ellipsis;
-        white-space  : nowrap;
-    }
-
     .go-md-row-menu {
         color : var(--fg-secondary-text);
         cursor: pointer;
