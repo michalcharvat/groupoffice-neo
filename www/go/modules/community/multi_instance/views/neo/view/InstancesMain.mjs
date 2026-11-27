@@ -6,7 +6,7 @@ import JmapStore     from '../../../../../../../views/neo/src/data/JmapStore.mjs
 import Grid          from '../../../../../../../views/neo/src/grid/Grid.mjs';
 import client        from '../../../../../../../views/neo/src/jmap/Client.mjs';
 import {notify, notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
-import ConfirmDialog from '../../../../../../../views/neo/src/view/ConfirmDialog.mjs';
+import {destroyEntities} from '../../../../../../../views/neo/src/data/destroyEntities.mjs';
 import {escapeHtml, formatUserDateTime, smartDateTime} from '../../../../../../../views/neo/src/Format.mjs';
 import {fmt, t as coreT, translator} from '../../../../../../../views/neo/src/Translate.mjs';
 import {searchFilter} from '../../../../../../../views/neo/src/view/filterTypes.mjs';
@@ -342,33 +342,14 @@ class InstancesMain extends Container {
         notify(this, addresses.join(', ') || coreT('No items to display'), {title: 'E-mail addresses', closable: true})
     }
 
+    /**
+     * @summary Deletes the selected instances after a confirmation.
+     */
     async deleteSelected() {
-        let me       = this,
-            selected = me.getSelected();
+        const me = this;
 
-        if (!selected.length) {
-            return
-        }
-
-        const yes = await ConfirmDialog.ask({
-            appName : me.appName,
-            windowId: me.windowId,
-            title   : coreT('Confirm delete'),
-            message : selected.length === 1
-                ? fmt(coreT("Are you sure you want to delete '{item}'?"), {item: selected[0].hostname})
-                : fmt(coreT('Are you sure you want to delete the {count} selected items?'), {count: selected.length})
-        });
-
-        if (!yes || me.isDestroyed) {
-            return
-        }
-
-        try {
-            await client.set('Instance', {destroy: selected.map(r => r.id)});
-            me.getReference('grid').store.load().catch(() => {})
-        } catch (e) {
-            notifyError(me, e)
-        }
+        await destroyEntities(me, 'Instance', me.getSelected(), {displayField: 'hostname'}) && !me.isDestroyed
+            && me.getReference('grid').store.load().catch(() => {})
     }
 }
 

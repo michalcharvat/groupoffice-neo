@@ -2,10 +2,10 @@ import Container     from '../../node_modules/neo.mjs/src/container/Base.mjs';
 import Toolbar       from '../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import Button        from '../button/Button.mjs';
 import client        from '../jmap/Client.mjs';
+import {destroyEntities} from '../data/destroyEntities.mjs';
 import ActionTable   from '../list/ActionTable.mjs';
 import {notifyError} from '../Notify.mjs';
-import {fmt, t}      from '../Translate.mjs';
-import ConfirmDialog from '../view/ConfirmDialog.mjs';
+import {t}           from '../Translate.mjs';
 
 /**
  * A System settings card that lists one JMAP entity in a GO.list.ActionTable with
@@ -231,29 +231,11 @@ class EntityListPanel extends Container {
     }
 
     /**
+     * @summary Deletes the row after a confirmation and reloads.
      * @param {Object} record
      */
     async remove(record) {
-        let me   = this,
-            name = record[me.displayField];
-
-        const yes = await ConfirmDialog.ask({
-            appName : me.appName,
-            windowId: me.windowId,
-            title   : t('Confirm delete'),
-            message : name ? fmt(t("Are you sure you want to delete '{item}'?"), {item: name}) : t('Are you sure you want to delete the selected item?')
-        });
-
-        if (!yes || me.isDestroyed) {
-            return
-        }
-
-        try {
-            await client.set(me.entity, {destroy: [record.id]});
-            me.load()
-        } catch (e) {
-            notifyError(me, e)
-        }
+        await destroyEntities(this, this.entity, [record], {displayField: this.displayField}) && this.load()
     }
 
     /**

@@ -116,4 +116,14 @@
     &[data-empty-icon]::after {
         top: calc(30px + #{go.dp(84)});
     }
+
+    // ⋮ of Grid.rowMenuColumn()
+    .go-row-menu {
+        color : var(--fg-secondary-text);
+        cursor: pointer;
+
+        &:hover {
+            color: var(--fg-main);
+        }
+    }
 }

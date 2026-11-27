@@ -7,9 +7,15 @@ import {dpPixels, onThemeChange} from '../Preferences.mjs';
 import client        from '../jmap/Client.mjs';
 import {t}           from '../Translate.mjs';
 import {escapeHtml}  from '../Format.mjs';
+import {LEVEL_DELETE, LEVEL_WRITE} from '../Acl.mjs';
+import {destroyEntities} from '../data/destroyEntities.mjs';
+import {selectRow}   from './selectRow.mjs';
 import {createColumns as createCustomFieldColumns, loadNames as loadCustomFieldNames} from '../customfields/gridColumns.mjs';
 
 /**
+ * @summary neo's grid with the GOUI table look, column chooser and state, custom field columns,
+ * group headers, empty state and opt-in entity actions (edit / delete / row menu).
+ *
  * GO grid: neo's grid with the GOUI table metrics (goui/style/_table.scss) —
  * td padding dp(8) around a dp(24) line = dp(40) rows, no vertical cell lines, dp(16) padding
  * at the outer columns.
@@ -63,6 +69,27 @@ import {createColumns as createCustomFieldColumns, loadNames as loadCustomFieldN
  * A plain Store whose `data` is replaced by [] fires no load: fire it (see JmapStore.load()).
  *
  *     {module: Grid, emptyText: t('No items to display'), emptyIcon: 'description'}
+ *
+ * Entity actions (ExtJS go.grid.GridPanel edit/delete, GOUI Table row menu), opt-in with
+ * `entityActions` on a grid over a JmapStore: a double click or Enter opens the dialog, Delete
+ * deletes the selected rows after a confirmation, a right click or the ⋮ of
+ * Grid.rowMenuColumn() shows Edit / Delete. Edit needs `permissionLevel` ≥ write and delete ≥
+ * delete when the rows carry it (add 'permissionLevel' to the store properties); the hooks add
+ * the module's own rules. Saving or deleting reloads the store.
+ *
+ *     entityActions: {
+ *         dialog      : () => import('./GroupDialog.mjs'),       // or the class; opened with entityId
+ *         displayField: 'name',                                   // name in the delete question
+ *         mayEdit     : record => true,
+ *         mayDelete   : record => Number(record.id) > 3,
+ *         rowMenuItems: (record, {edit, delete: del}) => [edit, {separator: true}, del]
+ *     },
+ *     columns: [..., Grid.rowMenuColumn()]
+ *
+ * From code: openDialog({entityId} | {values}), deleteRecords(records), and
+ * deleteSelectedMenuItem() for the ⋮ menu of the owner's toolbar.
+ * @class GO.grid.Grid
+ * @extends Neo.grid.Container
  */
 class Grid extends GridContainer {
     static config = {
@@ -109,7 +136,12 @@ class Grid extends GridContainer {
          * Material symbol above the emptyText, null for none
          * @member {String|null} emptyIcon_='article'
          */
-        emptyIcon_: 'article'
+        emptyIcon_: 'article',
+        /**
+         * Edit / delete of the rows' JMAP entity (see the class comment), null: none
+         * @member {Object|null} entityActions=null
+         */
+        entityActions: null
     }
 
     /**
@@ -682,6 +714,9 @@ class Grid extends GridContainer {
         return column.stateKey || column.dataField
     }
 
+    /**
+     * @summary Header menu, keys, groups, entity actions, custom field columns and the column state.
+     */
     async onConstructed() {
         super.onConstructed();
 
@@ -701,6 +736,8 @@ class Grid extends GridContainer {
         me.decorateHeader();
 
         me.groupBy && me.initGroups();
+
+        me.entityActions && me.initEntityActions();
 
         me.measureRowHeight();
 
@@ -1046,6 +1083,7 @@ class Grid extends GridContainer {
     }
 
     /**
+     * @summary Stores hidden columns and dragged widths under stateId.
      * Merged into the stored state: GOUI also keeps sort and column order there
      * @protected
      */
@@ -1077,6 +1115,182 @@ class Grid extends GridContainer {
         });
 
         await setState(me.stateId, {...state, columns}, me.windowId)
+    }
+
+    /**
+     * @summary The ⋮ column that opens a row's entity menu (entityActions).
+     * @returns {Object} column config
+     */
+    static rowMenuColumn() {
+        return {
+            dataField: 'rowMenu', text: '', width: 48, sortable: false, hideable: false, cellAlign: 'center',
+            renderer : ({record, gridContainer}) => `<i class="go-icon go-row-menu" id="${gridContainer.id}__menu__${escapeHtml(record.id)}" title="${escapeHtml(t('More options'))}">more_vert</i>`
+        }
+    }
+
+    /**
+     * @summary Wires double click / Enter (edit), Delete, the right click and the ⋮ (row menu).
+     * @protected
+     */
+    initEntityActions() {
+        const me = this;
+
+        me.on('rowDoubleClick', ({record}) => record && me.canEdit(record) && me.openDialog({entityId: record.id}));
+        me.on('enterKey', ({records}) => records.length === 1 && me.canEdit(records[0]) && me.openDialog({entityId: records[0].id}));
+        me.on('deleteKey', ({records}) => me.deleteRecords(records));
+
+        me.addCls('go-entity-grid');
+        Neo.main.DomEvents.registerPreventDefaultTargets({name: 'contextmenu', cls: ['go-entity-grid'], windowId: me.windowId});
+        me.addDomListeners([
+            {contextmenu: me.onRowMenuEvent, scope: me},
+            {click: me.onRowMenuEvent, delegate: '.go-row-menu', scope: me}
+        ])
+    }
+
+    /**
+     * @summary Shows the row menu of the row a right click or ⋮ click was on.
+     * @param {Object} data DOM event
+     * @protected
+     */
+    onRowMenuEvent(data) {
+        const row    = data.path?.find(node => node.cls?.includes('neo-grid-row') && node.data?.recordId),
+              record = row && this.store.get(row.data.recordId);
+
+        // a right click on the header has its own menu
+        record && this.showRowMenu(record, data.path[0]?.id)
+    }
+
+    /**
+     * @summary Whether the user may edit a row: permissionLevel (when the row has it) and mayEdit().
+     * @param {Object} record
+     * @returns {Boolean}
+     */
+    canEdit(record) {
+        const {dialog, mayEdit} = this.entityActions || {};
+
+        return !!dialog && (record.permissionLevel == null || record.permissionLevel >= LEVEL_WRITE) && (!mayEdit || !!mayEdit(record))
+    }
+
+    /**
+     * @summary Whether the user may delete a row: permissionLevel (when the row has it) and mayDelete().
+     * @param {Object} record
+     * @returns {Boolean}
+     */
+    canDelete(record) {
+        const {mayDelete} = this.entityActions || {};
+
+        return (record.permissionLevel == null || record.permissionLevel >= LEVEL_DELETE) && (!mayDelete || !!mayDelete(record))
+    }
+
+    /**
+     * @summary Opens the entityActions dialog; its save reloads the store.
+     * @param {Object} [config] entityId (edit) or values (new)
+     * @returns {Promise<GO.view.FormWindow|null>}
+     */
+    async openDialog(config = {}) {
+        const me     = this;
+        let   dialog = me.entityActions?.dialog;
+
+        if (!dialog) {
+            return null
+        }
+
+        // a class, or () => import() of its module
+        dialog.isClass || (dialog = (await dialog()).default);
+
+        if (me.isDestroyed) {
+            return null
+        }
+
+        const win = Neo.create(dialog, {appName: me.appName, windowId: me.windowId, ...config});
+
+        win.on('save', () => me.reloadEntities());
+        return win
+    }
+
+    /**
+     * @summary Shows Edit / Delete (and entityActions.rowMenuItems()) for a row and selects it.
+     * @param {Object} record
+     * @param {String} target DOM id the menu aligns to
+     */
+    showRowMenu(record, target) {
+        const me    = this,
+              items = {
+                  edit: {
+                      text    : t('Edit'),
+                      icon    : 'edit',
+                      disabled: !me.canEdit(record),
+                      handler : () => me.openDialog({entityId: record.id})
+                  },
+                  delete: {
+                      text    : t('Delete'),
+                      icon    : 'delete',
+                      disabled: !me.canDelete(record),
+                      handler : () => me.deleteRecords(me.recordsWith(record))
+                  }
+              };
+
+        me.getSelectedRecords().includes(record) || selectRow(me, record.id);
+
+        MenuList.showAt({
+            appName : me.appName,
+            windowId: me.windowId,
+            target,
+            items   : me.entityActions?.rowMenuItems?.(record, items) || [items.edit, {separator: true}, items.delete]
+        })
+    }
+
+    /**
+     * @summary The selected rows when the record is one of them, else the record alone.
+     * @param {Object} record
+     * @returns {Object[]}
+     */
+    recordsWith(record) {
+        const selected = this.getSelectedRecords();
+        return selected.includes(record) ? selected : [record]
+    }
+
+    /**
+     * @summary A "Delete" menu item for the selected rows (the ⋮ of the owner's toolbar).
+     * @returns {Object} menu item
+     */
+    deleteSelectedMenuItem() {
+        const me = this;
+
+        return {
+            text    : t('Delete'),
+            icon    : 'delete',
+            disabled: !me.getSelectedRecords().some(record => me.canDelete(record)),
+            handler : () => me.deleteRecords(me.getSelectedRecords())
+        }
+    }
+
+    /**
+     * @summary Deletes rows after a confirmation; rows the user may not delete are left out.
+     * @param {Object[]} records
+     * @returns {Promise<Boolean>} true when rows were deleted
+     */
+    async deleteRecords(records) {
+        const me      = this,
+              allowed = (records || []).filter(record => record && me.canDelete(record)),
+              deleted = await destroyEntities(me, me.store.entity, allowed, {displayField: me.entityActions?.displayField});
+
+        if (deleted && !me.isDestroyed) {
+            const sm = me.view.selectionModel;
+
+            // GO's multi-select model has clear(), neo's single-row model deselectAllRows()
+            sm.clear ? sm.clear() : sm.deselectAllRows?.();
+            me.reloadEntities()
+        }
+
+        return deleted
+    }
+
+    /**
+     * @summary Reloads the store as far as it was loaded.
+     */
+    reloadEntities() {
+        this.isDestroyed || this.store.load({keepCount: true}).catch(() => {})
     }
 }
 
