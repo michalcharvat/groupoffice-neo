@@ -12,6 +12,26 @@ feature that needs tables lives in a module with its own `install/` (example: `s
 `docs/neo-workspace.md`), with per-user data hung on the User entity by the module (a `UserSettings`
 property), not a `core_user` column.
 
+**Upstream tables stay untouched, schema and data (owner decision 2026-11-27).** No columns, no entries in core or
+upstream module `install/updates.php`, no neo data in `go_state` (the classic ExtJS state cache, which upstream
+TRUNCATEs) or `core_setting`. neo may add its own `neo_*` tables; dropping them leaves a clean GroupOffice database
+(back to classic). They have their own migrations, outside GroupOffice's update counting:
+
+- Updates in `www/go/core/webclient/neo/install/updates.php` (`$updates['YYYYMMDDHHMM'][] = "SQL"` or a closure,
+  only `neo_*` tables, never edit a committed entry, each safe to rerun: `IF NOT EXISTS`). The number of queries run is in `neo_schema` (one row,
+  `id = 1`), not in `core_module.version`.
+- `go\core\webclient\neo\Schema::migrate()` runs the missing ones under a lock and clears the cache (`go()->clearCache()`, not
+  `rebuildCache()`, which also resets the sync state in `core_change` of every entity). It runs on
+  `Installer::EVENT_UPGRADE`, on every render of the neo page (`Neo::render()`, errors only logged), because a
+  deploy without a version change runs no upgrade, and with `php cli.php core/Neo/migrate`. A fresh install has
+  no neo tables until one of those runs.
+- `php cli.php core/Neo/uninstall` drops every `neo_*` table including `neo_schema`.
+- Saving a neo user property through User/set also updates `core_user.modifiedAt` and records a User change, as
+  every User property does (`tasksSettings` too); that is upstream metadata, not neo data.
+- A neo user property is hung on User only while its table exists, so a request before the migration still works
+  (without the property). Pattern: `docs/neo-core-components.md` "neo user settings".
+- Tests: `tests/go/core/webclient/neo/SchemaTest.php`.
+
 ## Procedure
 
 1. Work in a task worktree on a branch from `neo-ui`.
@@ -77,6 +97,9 @@ originals, copy it again the same way. Don't point neo, `go\core\webclient\Page`
 - Tests that both sides added under the same path (add/add): don't merge two unrelated test classes into one.
   Keep upstream's file and rename neo's (2026-11-24: neo's mention test became `CommentMentionTest.php`).
 - `www/composer.lock`: upstream changes it often. Run `composer install` after the merge.
+- `www/go/core/App.php`: neo adds `defineListeners()`, one line calling `go\core\webclient\neo\Schema::defineListeners()`
+  (the upgrade hook and the neo user properties; App is the core module, so `Listeners::init()` calls it). If upstream
+  adds its own `defineListeners()` to App, keep the neo line in it.
 
 ## Checks
 

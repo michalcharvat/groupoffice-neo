@@ -206,6 +206,11 @@ namespace go\core {
 			return "Intermesh BV";
 		}
 
+		public function defineListeners()
+		{
+			\go\core\webclient\neo\Schema::defineListeners(); // neo: own neo_* tables (docs/neo-upstream-sync.md)
+		}
+
 		/**
 		 * Required for app being a go\core extend
 		 * 
