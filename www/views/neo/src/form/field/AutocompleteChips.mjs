@@ -51,7 +51,13 @@ class AutocompleteChips extends ChipsField {
          * (record) => value of a picked entity, null: its id (GOUI pickerRecordToValue)
          * @member {Function|null} pickerRecordToValue=null
          */
-        pickerRecordToValue: null
+        pickerRecordToValue: null,
+        /**
+         * async (records) => muted text per menu entry, e.g. the address book of each
+         * organization so equal names can be told apart; null: none
+         * @member {Function|null} recordDetails=null
+         */
+        recordDetails: null
     }
 
     /** @member {GO.menu.List|null} menu=null */
@@ -167,12 +173,12 @@ class AutocompleteChips extends ChipsField {
     }
 
     /**
-     * The menu of entities: a click toggles one
+     * @summary Shows the menu of entities: a click toggles one.
      */
     async showMenu() {
         let me         = this,
             generation = ++me.queryGeneration,
-            records;
+            records, details;
 
         if (me.readOnly || me.disabled) {
             return
@@ -185,6 +191,12 @@ class AutocompleteChips extends ChipsField {
             return
         }
 
+        // the details are extra: the menu shows without them when they fail
+        details = await (me.recordDetails ? me.recordDetails(records) : []).catch(e => {
+            console.error('AutocompleteChips details', e);
+            return []
+        });
+
         if (me.isDestroyed || generation !== me.queryGeneration) {
             return
         }
@@ -192,7 +204,7 @@ class AutocompleteChips extends ChipsField {
         me.closeMenu();
 
         const selected = new Set((me.value || []).map(v => me.valueKey(v))),
-              items    = records.map(record => {
+              items    = records.map((record, index) => {
                   const text  = String(record[me.displayField] ?? ''),
                         value = me.recordToValue(record);
 
@@ -200,6 +212,7 @@ class AutocompleteChips extends ChipsField {
 
                   return {
                       text,
+                      detail : details[index] || null,
                       icon   : selected.has(me.valueKey(value)) ? 'check_box' : 'check_box_outline_blank',
                       handler: () => me.toggle(value)
                   }

@@ -44,6 +44,13 @@
         width     : go.dp(24);
     }
 
+    // muted text after the item text, e.g. the address book of an organization
+    .go-menu-detail {
+        color      : var(--fg-secondary-text);
+        font-size  : go.sp(13);
+        margin-left: go.dp(8);
+    }
+
     // count of a module in the header main menu (src/Badges.mjs)
     .go-menu-badge {
         background-color: var(--c-danger, #c62828);

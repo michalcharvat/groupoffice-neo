@@ -11,7 +11,7 @@ import {t}            from '../util.mjs';
 import ColorField     from '../../../../../../../views/neo/src/form/field/ColorField.mjs';
 import ImageField     from '../../../../../../../views/neo/src/form/field/ImageField.mjs';
 import {icdOptions}   from './icd.mjs';
-import {addressList, dateList, emailList, phoneList, select, text, urlList} from './fields.mjs';
+import {addressBookNames, addressList, dateList, emailList, phoneList, select, text, urlList} from './fields.mjs';
 
 const NAME_PARTS = ['firstName', 'middleName', 'lastName'];
 
@@ -98,6 +98,10 @@ class ContactDialog extends FormWindow {
         return result
     }
 
+    /**
+     * @summary The fields of the contact form.
+     * @returns {Object[]}
+     */
     createFormItems() {
         const genders = [[null, t('Unknown')], ['M', t('Male')], ['F', t('Female')], ['N', t('Non-binary')], ['P', t("Won't say")]];
 
@@ -181,6 +185,8 @@ class ContactDialog extends FormWindow {
                 jmapSort        : [{property: 'name', isAscending: true}],
                 // an AclItemEntity: Contact/get needs addressBookId among the properties
                 properties      : ['id', 'name', 'addressBookId'],
+                // the address book of each organization: equal names in personal address books
+                recordDetails   : addressBookNames,
                 // Enter: an existing organization or a new one (ExtJS Chips allowNew)
                 textInputToValue: text => this.findOrCreateOrganization(text)
             }, {
