@@ -1,6 +1,7 @@
 import FormContainer from '../../node_modules/neo.mjs/src/form/Container.mjs';
 import './nestedFields.mjs';
 import client        from '../jmap/Client.mjs';
+import {loadFormExtensions, saveFormExtensions} from './formExtensions.mjs';
 import {t}           from '../Translate.mjs';
 
 /**
@@ -56,6 +57,13 @@ class DataSourceForm extends FormContainer {
      * @member {Object} originalValues={}
      */
     originalValues = {}
+
+    /**
+     * {load, save} of modules (formExtensions.mjs): load(data) is awaited before the values are set
+     * (create, load and after a save), save(event) before `beforesave`
+     * @member {Object[]} extensions=[]
+     */
+    extensions = []
 
     /**
      * @returns {Boolean}
@@ -119,6 +127,8 @@ class DataSourceForm extends FormContainer {
         let me = this;
 
         me.entityData = data;
+        // fields the extensions add get the values and are part of the unmodified state
+        await loadFormExtensions(me.extensions, data);
         await me.reset(data);
         await me.clearServerErrors();
         me.originalValues = await me.collectValues()
@@ -263,6 +273,14 @@ class DataSourceForm extends FormContainer {
         }
 
         const event = {data, isNew, cancel: false};
+
+        try {
+            await saveFormExtensions(me.extensions, event)
+        } catch (error) {
+            me.isDestroyed || me.fire('saveerror', {error, validationErrors: null});
+            return false
+        }
+
         me.fire('beforesave', event);
 
         if (event.cancel) {

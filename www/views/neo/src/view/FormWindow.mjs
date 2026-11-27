@@ -5,9 +5,11 @@ import LinkBrowseButton from '../link/LinkBrowseButton.mjs';
 import Container      from '../../node_modules/neo.mjs/src/container/Base.mjs';
 import DataSourceForm from '../form/DataSourceForm.mjs';
 import Dialog         from './Dialog.mjs';
+import ModuleRegistry from '../ModuleRegistry.mjs';
 import TabContainer   from '../../node_modules/neo.mjs/src/tab/Container.mjs';
 import Toolbar        from '../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import {addCustomFieldsTo} from '../customfields/form.mjs';
+import {createFormExtensions} from '../form/formExtensions.mjs';
 import {notifyError}  from '../Notify.mjs';
 import {submitOnEnter} from '../form/submitOnEnter.mjs';
 import {createLinks}  from '../link/links.mjs';
@@ -37,6 +39,7 @@ import {t}            from '../Translate.mjs';
  *   save), LinkBrowseButton for existing ones; both live in linkSlot.
  *   addLinkOnSave() links a new entity to the item it is created from.
  * - addCard(config):   any extra card
+ * - other modules: ModuleRegistry `onFormWindow` (src/form/formExtensions.mjs)
  *
  * Events:
  * - formReady {currentId}   loaded, or prepared for a new entity
@@ -320,6 +323,8 @@ class FormWindow extends Dialog {
         super.onConstructed();
 
         let me = this;
+
+        me.form.extensions = createFormExtensions(ModuleRegistry.getConfigs('onFormWindow'), me);
 
         const customFieldsPromise = me.addCustomFields();
         me.updateCardMenu();
