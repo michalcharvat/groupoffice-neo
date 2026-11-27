@@ -321,6 +321,7 @@ const skip       = /^GO\.(main\.addon|dev)\./,
           'GO.tasks.TasksMain'                 : ['go-mstb-host'],
           'GO.files.view.FilesMain'            : ['go-mstb-host'],
           'GO.email.EmailMain'                 : ['go-mstb-host'],
+          'GO.grid.ListToolbar'                : ['go-mstb-host'],
           // messageHtml.mjs: 'go-email' is the class prefix it builds names from ('go-email-...')
           'GO.email.message.MessagePanel'      : ['go-email']
       };

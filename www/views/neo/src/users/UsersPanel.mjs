@@ -1,13 +1,10 @@
 import Container     from '../../node_modules/neo.mjs/src/container/Base.mjs';
-import Toolbar       from '../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import Button        from '../button/Button.mjs';
-import SearchButton  from '../button/SearchButton.mjs';
-import {exportMenuItem} from '../export/exportEntities.mjs';
 import JmapStore     from '../data/JmapStore.mjs';
 import UserModel     from '../model/User.mjs';
 import Grid          from '../grid/Grid.mjs';
+import ListToolbar   from '../grid/ListToolbar.mjs';
 import client        from '../jmap/Client.mjs';
-import MenuList      from '../menu/List.mjs';
 import {notifyError} from '../Notify.mjs';
 import {avatarHtml, escapeHtml, formatUserDateTime, smartDateTime} from '../Format.mjs';
 import {fmt, t}      from '../Translate.mjs';
@@ -57,31 +54,26 @@ class UsersPanel extends Container {
         let me = this;
 
         me.items = [{
-            module: Toolbar,
-            flex  : 'none',
-            cls   : ['go-users-tbar'],
-            items : [{
+            module       : ListToolbar,
+            reference    : 'listToolbar',
+            flex         : 'none',
+            toolbarCls   : ['go-users-tbar'],
+            exportFormats: ['xlsx', 'csv', 'json'],
+            moreItems    : items => me.moreItems(items),
+            startItems   : [{
                 module   : Button,
                 reference: 'showDisabled',
                 pressed  : false, // a toggle: neo 14 renders aria-pressed only for a boolean
                 icon     : 'person_off',
                 text     : t('Show disabled'),
                 handler  : () => me.toggleDisabled()
-            }, '->', {
-                module   : SearchButton,
-                listeners: {search: ({text}) => me.setFilter({text: text || undefined})}
-            }, {
+            }],
+            endItems: [{
                 module : Button,
                 icon   : 'add',
                 ui     : 'primary',
                 text   : t('Add'),
                 handler: () => me.create()
-            }, {
-                module   : Button,
-                reference: 'moreButton',
-                icon     : 'more_vert',
-                tooltip  : t('More options'),
-                handler  : () => me.showMoreMenu()
             }]
         }, {
             module   : Grid,
@@ -138,6 +130,7 @@ class UsersPanel extends Container {
         let me   = this,
             grid = me.grid;
 
+        me.getReference('listToolbar').setGrid(grid);
         grid.body.on('scrollEdge', () => grid.store.loadMore().catch(() => {}));
         grid.store.on('loadError', ({error}) => notifyError(me, error))
     }
@@ -187,34 +180,34 @@ class UsersPanel extends Container {
         }, items.delete]
     }
 
-    showMoreMenu() {
+    /**
+     * @summary The toolbar ⋮: user defaults, import, export, delete selected, permissions overview.
+     * @param {Object} items the list toolbar's export and delete items
+     * @returns {Object[]}
+     */
+    moreItems(items) {
         let me = this;
 
-        MenuList.showAt({
-            appName : me.appName,
-            windowId: me.windowId,
-            target  : me.getReference('moreButton').id,
-            items   : [{
-                text    : t('User defaults'),
-                icon    : 'settings',
-                disabled: !client.isAdmin,
-                handler : () => me.openDefaults()
-            }, {
-                separator: true
-            }, {
-                text    : t('Import'),
-                icon    : 'cloud_upload',
-                disabled: !client.mayChangeUsers,
-                handler : () => me.openImport()
-            }, exportMenuItem(me, {entity: 'User', store: me.grid.store, formats: ['xlsx', 'csv', 'json']}), {
-                separator: true
-            }, {
-                text    : t('Permissions overview'),
-                icon    : 'share',
-                disabled: !client.isAdmin, // Acl/overview: admins only
-                handler : () => me.openAclOverview()
-            }]
-        })
+        return [{
+            text    : t('User defaults'),
+            icon    : 'settings',
+            disabled: !client.isAdmin,
+            handler : () => me.openDefaults()
+        }, {
+            separator: true
+        }, {
+            text    : t('Import'),
+            icon    : 'cloud_upload',
+            disabled: !client.mayChangeUsers,
+            handler : () => me.openImport()
+        }, items.export, items.delete, {
+            separator: true
+        }, {
+            text    : t('Permissions overview'),
+            icon    : 'share',
+            disabled: !client.isAdmin, // Acl/overview: admins only
+            handler : () => me.openAclOverview()
+        }]
     }
 
     async openAclOverview() {
