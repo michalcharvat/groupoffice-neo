@@ -7,11 +7,15 @@ import {notifyError} from '../Notify.mjs';
 import {t} from '../Translate.mjs';
 import Dialog    from '../view/Dialog.mjs';
 import {linkType} from './linkTypes.mjs';
+import {searchesWhileTyping} from '../form/searchWhileTyping.mjs';
 
 /**
+ * @summary Dialog that picks Search records to link
+ *
  * Pick items to link, like GOUI SelectSearchWindow / SelectSearchPanel: a search
  * over the core `Search` entity (newest first), click rows to select, "Add" fires
- * `select` with the Search records and closes.
+ * `select` with the Search records and closes. It searches while typing from 3 characters
+ * or when the field is emptied, and on Enter for any text.
  *
  * GOUI's entity type list on the left is not ported: results of all types are
  * shown with their type icon.
@@ -61,7 +65,8 @@ class SelectSearchDialog extends Dialog {
                 flex           : 1,
                 hideLabel      : true,
                 autoComplete   : false,
-                placeholderText: t('Search') + '...'
+                placeholderText: t('Search') + '...',
+                keys           : {Enter: (data, field) => me.search(field.value, true)}
             }]
         }, {
             ntype    : 'component',
@@ -98,7 +103,8 @@ class SelectSearchDialog extends Dialog {
 
         let me = this;
 
-        me.getReference('searchField').on('change', ({value}) => me.search(value));
+        // a short text drops the pending search of the longer one
+        me.getReference('searchField').on('change', ({value}) => searchesWhileTyping(value) ? me.search(value) : me.searchGeneration++);
 
         me.getReference('results').addDomListeners({
             click: me.onResultClick,
@@ -109,14 +115,19 @@ class SelectSearchDialog extends Dialog {
         me.timeout(50).then(() => me.getReference('searchField').focus())
     }
 
-    async search(text) {
+    /**
+     * @summary Loads the Search records for the text, debounced while typing
+     * @param {String|null} text
+     * @param {Boolean} [now=false] Enter: no debounce
+     */
+    async search(text, now = false) {
         let me         = this,
             generation = me.searchGeneration = (me.searchGeneration || 0) + 1;
 
         text = String(text || '').trim();
 
         // debounce typing
-        text && await me.timeout(250);
+        text && !now && await me.timeout(250);
 
         if (me.isDestroyed || generation !== me.searchGeneration) {
             return

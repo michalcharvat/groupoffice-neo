@@ -4,10 +4,14 @@ import Button    from '../button/Button.mjs';
 import client    from '../jmap/Client.mjs';
 import {escapeHtml, smartDateTime} from '../Format.mjs';
 import {t} from '../Translate.mjs';
+import {searchesWhileTyping} from '../form/searchWhileTyping.mjs';
 
 /**
+ * @summary Header search over the core Search entity
+ *
  * GO's header search (go.search.SearchField in the ExtJS shell): a field over the whole
- * top bar, results of the core "Search" entity in a panel below it.
+ * top bar, results of the core "Search" entity in a panel below it. It searches while typing
+ * from 3 characters, and on Enter for any text (an empty field lists the latest changes).
  *
  * A result opens through `resolveRoute(entity, entityId)` (set by the shell): a hash
  * for entities that have a neo module, null for the rest (shown, not clickable).
@@ -48,7 +52,8 @@ class GlobalSearch extends Container {
                     hideLabel      : true,
                     clearable      : false,
                     placeholderText: t('Search...'),
-                    autoComplete   : false
+                    autoComplete   : false,
+                    keys           : {Enter: (data, field) => field.up({className: 'GO.view.GlobalSearch'}).onSearch(field.value, true)}
                 }, {
                     module   : Button,
                     icon     : 'close',
@@ -98,38 +103,46 @@ class GlobalSearch extends Container {
         let me = this;
 
         me.hidden = true;
+        // drops a search in flight: setting an empty field again fires no change
+        me.searchGeneration = (me.searchGeneration || 0) + 1;
         me.getReference('field').value = '';
         me.showResults(null)
     }
 
-    async onSearch(text) {
+    /**
+     * @summary Searches 250ms after typing from 3 characters, right away on Enter for any text
+     * @param {String|null} text
+     * @param {Boolean} [now=false] Enter: no debounce, also an empty or short text
+     */
+    async onSearch(text, now = false) {
         let me         = this,
             generation = me.searchGeneration = (me.searchGeneration || 0) + 1;
 
         text = String(text || '').trim();
 
-        // GO searches from 2 characters on
-        if (text.length < 2) {
+        // typing fewer than 3 characters only clears the results
+        if (!now && (!text || !searchesWhileTyping(text))) {
             me.showResults(null);
             return
         }
 
-        // debounce typing
-        await me.timeout(250);
+        if (!now) {
+            await me.timeout(250);
 
-        if (generation !== me.searchGeneration) {
-            return
+            if (generation !== me.searchGeneration) {
+                return
+            }
         }
 
         // the extensions' results never hold up or break the server's
-        const extra = Promise.resolve(me.extraResults?.(text)).catch(e => {
+        const extra = Promise.resolve(text && me.extraResults?.(text)).catch(e => {
             console.warn('GlobalSearch: extraResults', e);
             return []
         });
 
         try {
             const [{list}, own] = await Promise.all([client.queryGet('Search', {
-                filter    : {text},
+                filter    : text ? {text} : {},
                 sort      : [{property: 'modifiedAt', isAscending: false}],
                 limit     : 20,
                 properties: ['id', 'name', 'description', 'entity', 'entityId', 'modifiedAt']
