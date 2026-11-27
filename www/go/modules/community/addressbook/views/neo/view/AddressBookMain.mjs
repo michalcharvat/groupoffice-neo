@@ -212,6 +212,9 @@ class AddressBookMain extends MainThreeColumnPanel {
         }
     }
 
+    /**
+     * @summary Builds the center grid of the contacts.
+     */
     createCenter() {
         let me = this;
 
@@ -293,7 +296,7 @@ class AddressBookMain extends MainThreeColumnPanel {
                     model     : ContactModel,
                     pageSize  : PAGE_SIZE,
                     scrollLoad: true,
-                    sortProperties: {createdBy: 'creator', modifiedBy: 'modifier', addressBookId: 'addressBook'},
+                    serverSortProperties: {createdBy: 'creator', modifiedBy: 'modifier', addressBookId: 'addressBook'},
                     sorters   : [{property: settings.sortBy === 'lastName' ? 'lastName' : 'name', direction: 'ASC'}],
                     properties: CONTACT_PROPERTIES
                 },

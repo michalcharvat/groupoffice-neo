@@ -231,6 +231,9 @@ class TasksMain extends MainThreeColumnPanel {
         }
     }
 
+    /**
+     * @summary Builds the center grid of the tasks.
+     */
     createCenter() {
         return {
             ntype : 'container',
@@ -310,7 +313,7 @@ class TasksMain extends MainThreeColumnPanel {
                     // a list rename or a new category shows in the rows
                     watch     : ['Task', 'TaskList', 'TaskCategory'],
                     // GOUI TaskGrid relations: GO sorts these by name
-                    sortProperties: {tasklistId: 'tasklist', responsibleUserId: 'responsible', createdBy: 'creator', modifiedBy: 'modifier'},
+                    serverSortProperties: {tasklistId: 'tasklist', responsibleUserId: 'responsible', createdBy: 'creator', modifiedBy: 'modifier'},
                     // GOUI: grouped by list, then by start
                     sorters   : [{property: 'tasklistId', direction: 'ASC'}, {property: 'start', direction: 'ASC'}],
                     jmapFilter: {role: 'list'}

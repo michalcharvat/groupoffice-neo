@@ -52,6 +52,9 @@ class MailDomainsMain extends MainThreeColumnPanel {
         return {ntype: 'container', hidden: true}
     }
 
+    /**
+     * @summary Builds the center grid of the mail domains.
+     */
     createCenter() {
         return {
             ntype : 'container',
@@ -96,7 +99,7 @@ class MailDomainsMain extends MainThreeColumnPanel {
                     // GOUI: inactive domains only with "show inactive"
                     jmapFilter: {active: true},
                     // GO sorts creator/modifier by name
-                    sortProperties: {createdBy: 'creator', modifiedBy: 'modifier'},
+                    serverSortProperties: {createdBy: 'creator', modifiedBy: 'modifier'},
                     sorters   : [{property: 'domain', direction: 'ASC'}],
                     properties: ['id', 'domain', 'description', 'userId', 'active', 'backupMx', 'mxStatus', 'dmarcStatus',
                                  'spfStatus', 'dkim', 'totalQuota', 'sumUsedQuota', 'sumUsage', 'createdAt', 'createdBy',
