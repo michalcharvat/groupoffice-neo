@@ -147,6 +147,9 @@ class NotesMain extends MainThreeColumnPanel {
         }
     }
 
+    /**
+     * @summary Builds the center grid of the notes.
+     */
     createCenter() {
         return {
             ntype : 'container',
@@ -209,7 +212,7 @@ class NotesMain extends MainThreeColumnPanel {
                     // GOUI: more notes load when the grid is scrolled to the end
                     scrollLoad: true,
                     // the creator/modifier columns show names: GO sorts names as creator/modifier
-                    sortProperties: {createdBy: 'creator', modifiedBy: 'modifier'},
+                    serverSortProperties: {createdBy: 'creator', modifiedBy: 'modifier'},
                     // shows the header's sort arrow; JmapStore sends it to the server
                     sorters   : [{property: 'name', direction: 'ASC'}],
                     properties: ['id', 'name', 'content', 'type', 'noteBookId', 'createdAt', 'modifiedAt',

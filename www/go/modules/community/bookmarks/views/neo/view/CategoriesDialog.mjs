@@ -47,6 +47,9 @@ class CategoriesDialog extends Dialog {
      */
     dialogs = new Set()
 
+    /**
+     * @summary Builds the categories grid and its toolbar.
+     */
     construct(config) {
         super.construct(config);
 
@@ -84,7 +87,7 @@ class CategoriesDialog extends Dialog {
                     {name: 'id'}, {name: 'name', type: 'String'},
                     {name: 'createdBy'}, {name: 'permissionLevel', type: 'Int'}
                 ]},
-                sortProperties: {createdBy: 'creator'},
+                serverSortProperties: {createdBy: 'creator'},
                 sorters   : [{property: 'name', direction: 'ASC'}],
                 properties: ['id', 'name', 'createdBy', 'permissionLevel']
             },

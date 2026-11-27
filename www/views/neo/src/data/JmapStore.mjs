@@ -49,10 +49,11 @@ class JmapStore extends Store {
          */
         scrollLoad: false,
         /**
-         * Server sort property per field when they differ, e.g. {createdBy: 'creator'}
-         * @member {Object|null} sortProperties=null
+         * Server sort property per field when they differ, e.g. {createdBy: 'creator'}.
+         * Not "sortProperties": neo.collection.Base owns that name and resets it on every sort
+         * @member {Object|null} serverSortProperties=null
          */
-        sortProperties: null
+        serverSortProperties: null
     }
 
     construct(config) {
@@ -178,12 +179,12 @@ class JmapStore extends Store {
     }
 
     /**
-     * Sort of the last grid header click, else jmapSort
+     * @summary Sort of the last grid header click mapped through serverSortProperties, else jmapSort unchanged.
      * @returns {Object[]}
      */
     getJmapSort() {
         const sorters = (this.sorters || []).filter(s => typeof s.property === 'string'),
-              map     = this.sortProperties || {};
+              map     = this.serverSortProperties || {};
 
         return sorters.length
             ? sorters.map(s => ({property: map[s.property] || s.property, isAscending: s.direction !== 'DESC'}))
