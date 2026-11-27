@@ -3,6 +3,7 @@
 namespace go\core\webclient;
 
 use GO;
+use go\core\ErrorHandler;
 use go\core\fs\File;
 use go\core\SingletonTrait;
 
@@ -319,6 +320,13 @@ class Neo {
 
 	public function render(): void
 	{
+		// a deploy without a GroupOffice version change runs no upgrade, so the page brings the neo tables up to date
+		try {
+			neo\Schema::migrate();
+		} catch (\Throwable $e) {
+			ErrorHandler::logException($e, 'neo schema migration');
+		}
+
 		$iso = go()->getLanguage()->getIsoCode();
 		$build = $this->workerBuild($iso);
 
