@@ -7,6 +7,7 @@ import TableTitle    from '../../../../../../../views/neo/src/component/TableTit
 import JmapStore     from '../../../../../../../views/neo/src/data/JmapStore.mjs';
 import BoolCheckBox  from '../../../../../../../views/neo/src/form/field/BoolCheckBox.mjs';
 import Grid          from '../../../../../../../views/neo/src/grid/Grid.mjs';
+import Board         from '../../../../../../../views/neo/src/board/Board.mjs';
 import BatchEditButton from '../../../../../../../views/neo/src/grid/BatchEditButton.mjs';
 import MultiSelectToolbar from '../../../../../../../views/neo/src/grid/MultiSelectToolbar.mjs';
 import MenuList      from '../../../../../../../views/neo/src/menu/List.mjs';
@@ -35,6 +36,7 @@ import TaskDialog    from './TaskDialog.mjs';
 import TaskListDialog from './TaskListDialog.mjs';
 import TaskListList  from './TaskListList.mjs';
 import {userNow} from '../../../../../../../views/neo/src/DateUtil.mjs';
+import {boardColumns, columnsOf, compareTasks, dropPatch, GROUP_BY, groupByOptions, recentlyClosedFilter} from '../boardGroups.mjs';
 
 const t = translator('community', 'tasks');
 
@@ -91,6 +93,21 @@ class TasksMain extends MainThreeColumnPanel {
      * @member {Object|null} tasksSettings=null
      */
     tasksSettings = null
+    /**
+     * The user's neoTasksSettings: {view, boardGroupBy}
+     * @member {Object} neoSettings={}
+     */
+    neoSettings = {}
+    /**
+     * 'list' or 'board'
+     * @member {String} view='list'
+     */
+    view = 'list'
+    /**
+     * boardContext() of the last refreshBoard(): computed once for all cards
+     * @member {Object|null} boardCtx=null
+     */
+    boardCtx = null
 
     createWest() {
         return {
@@ -171,7 +188,8 @@ class TasksMain extends MainThreeColumnPanel {
                     jmapFilter: {role: 'list', isSubscribed: true},
                     // ExtJS TasklistsGrid: grouped by TaskListGrouping, then by name
                     jmapSort  : [{property: 'group', isAscending: true}, {property: 'name', isAscending: true}],
-                    properties: ['id', 'name', 'color', 'aclId', 'permissionLevel', 'groupingId']
+                    // groups: the board's list columns
+                    properties: ['id', 'name', 'color', 'aclId', 'permissionLevel', 'groupingId', 'groups']
                 }
             }, {
                 module: Toolbar,
@@ -230,6 +248,19 @@ class TasksMain extends MainThreeColumnPanel {
                         reference: 'tableTitle',
                         title    : t('Tasks')
                     }, '->', {
+                        module   : Button,
+                        icon     : 'view_column',
+                        reference: 'groupByButton',
+                        hidden   : true,
+                        tooltip  : t('Group by'),
+                        handler  : 'up.showGroupByMenu'
+                    }, {
+                        module   : Button,
+                        icon     : 'view_kanban',
+                        reference: 'viewButton',
+                        tooltip  : t('Board'),
+                        handler  : 'up.toggleView'
+                    }, {
                         module   : SearchButton,
                         listeners: {search: ({text}) => this.onSearch(text)}
                     }, {
@@ -409,6 +440,25 @@ class TasksMain extends MainThreeColumnPanel {
                     hidden   : true,
                     renderer : nameRenderer(principals)
                 }]
+            }, {
+                ntype    : 'component',
+                reference: 'boardHint',
+                flex     : 'none',
+                hidden   : true,
+                cls      : ['go-tasks-board-hint'],
+                html     : `${escapeHtml(t('Closed tasks of the last 14 days'))} <a class="go-tasks-show-all">${escapeHtml(t('Show all'))}</a>`,
+                domListeners: {click: {fn: () => this.showAllClosed(), delegate: '.go-tasks-show-all'}}
+            }, {
+                module   : Board,
+                reference: 'board',
+                flex     : 1,
+                hidden   : true,
+                entity   : 'Task',
+                columnsOf: task => columnsOf(this.getGroupBy(), task, this.boardCtx || this.boardContext()),
+                compare  : compareTasks,
+                cardData : task => this.taskCardData(task),
+                canDrag  : task => task.permissionLevel >= LEVEL_WRITE,
+                dropPatch: (task, from, to) => dropPatch(this.getGroupBy(), task, from, to, this.boardContext())
             }]
         }
     }
@@ -555,6 +605,16 @@ class TasksMain extends MainThreeColumnPanel {
         taskStore.on('loadMore', me.loadNames, me);
         grid.body.on('scrollEdge', () => taskStore.loadMore().catch(() => {})); // loadError shows it
 
+        const board = me.getReference('board');
+
+        board.sourceStore = taskStore;
+        board.on({
+            cardSelect: ({records}) => me.onTaskSelectionChange({records}),
+            cardOpen  : ({record}) => record.permissionLevel >= LEVEL_WRITE && me.openDialog(record.id),
+            cardMenu  : data => me.showCardMenu(data),
+            dropError : ({error}) => me.showError(error)
+        });
+
         detail.getReference('toolbar').insert(0, me.showCenterButton());
         detail.on({
             edit    : ({task}) => me.openDialog(task.id),
@@ -582,7 +642,7 @@ class TasksMain extends MainThreeColumnPanel {
 
         const [lists, user, state] = await Promise.allSettled([
             listList.store.load(),
-            client.get('User', [client.user.id], ['tasksSettings']),
+            client.get('User', [client.user.id], ['tasksSettings', 'neoTasksSettings']),
             getState('tasks-main', me.windowId)
         ]);
 
@@ -591,7 +651,8 @@ class TasksMain extends MainThreeColumnPanel {
         }
 
         if (user.status === 'fulfilled') {
-            settings = user.value[0]?.tasksSettings || null
+            settings = user.value[0]?.tasksSettings || null;
+            me.neoSettings = user.value[0]?.neoTasksSettings || {}
         }
 
         me.tasksSettings = settings;
@@ -612,6 +673,7 @@ class TasksMain extends MainThreeColumnPanel {
         records.length && listList.selectionModel.select(records);
         me.applyListFilter();
         me.loadCategories();
+        me.setView(me.neoSettings?.view === 'board' ? 'board' : 'list');
 
         me.restoring = false;
         me.reloadTasks()
@@ -899,6 +961,7 @@ class TasksMain extends MainThreeColumnPanel {
         }
 
         categories.put(catList.store.items);
+        me.refreshBoard();
 
         // a checked category was deleted or is no longer offered
         if (!me.restoring && !me.sameIds(catList.getCheckedIds(), me.getReference('grid').store.jmapFilter.categories)) {
@@ -1026,6 +1089,7 @@ class TasksMain extends MainThreeColumnPanel {
         if (grid && await me.fetchNames(grid.store.items) && !me.isDestroyed && !grid.isDestroyed) {
             // forced: a row with the same record keeps its vdom otherwise (also the group headers)
             grid.refreshRows();
+            me.refreshBoard();
             // the detail shows the same names
             me.getReference('detail').renderTask()
         }
@@ -1042,6 +1106,7 @@ class TasksMain extends MainThreeColumnPanel {
             id     = me.pendingTaskId || detail.task?.id;
 
         me.updateTaskCount();
+        me.refreshBoard();
         me.pendingTaskId = null;
 
         if (!id) {
@@ -1270,6 +1335,218 @@ class TasksMain extends MainThreeColumnPanel {
             appName   : me.appName,
             windowId  : me.windowId,
             tasklistId: id || null
+        })
+    }
+
+    // --- board ---
+
+    /**
+     * @summary The board's grouping; list columns need exactly one checked list, else status.
+     * @returns {String} one of GROUP_BY
+     */
+    getGroupBy() {
+        const groupBy = this.neoSettings?.boardGroupBy;
+
+        if (groupBy === 'group') {
+            return this.hasListColumns() ? groupBy : 'progress'
+        }
+
+        return GROUP_BY.includes(groupBy) ? groupBy : 'progress'
+    }
+
+    /**
+     * @summary List columns are offered for exactly one checked list that has columns.
+     * @returns {Boolean}
+     */
+    hasListColumns() {
+        const ids = this.getCheckedListIds();
+
+        return ids.length === 1 && !!this.getReference('taskListList').store.get(ids[0])?.groups?.length
+    }
+
+    /**
+     * @summary What the groupings need (boardGroups.mjs): the shown lists, the offered categories, the assignees.
+     * @returns {Object}
+     */
+    boardContext() {
+        let me      = this,
+            store   = me.getReference('taskListList').store,
+            checked = me.getCheckedListIds(),
+            lists   = checked.length ? checked.map(id => store.get(id)).filter(Boolean) : [...store.items],
+            tasks   = [...me.getReference('grid').store.items],
+            userIds = [...new Set(tasks.map(task => task.responsibleUserId).filter(Boolean).map(String))],
+            offered = [...me.getReference('categoryList').store.items].map(c => ({id: String(c.id), name: c.name})),
+            // categories of lists that are not checked aren't offered in the west, but their tasks need a column
+            others  = [...new Set(tasks.flatMap(task => task.categories || []).map(String))]
+                .filter(id => !offered.some(c => c.id === id)).map(id => categories.get(id)).filter(Boolean)
+                .map(c => ({id: String(c.id), name: c.name}));
+
+        return {
+            t,
+            today       : userNow(),
+            firstWeekday: client.user?.firstWeekday ?? 1,
+            lists       : lists.map(list => ({id: list.id, name: list.name, color: list.color, permissionLevel: list.permissionLevel, groups: list.groups || []})),
+            categories  : [...offered, ...others],
+            users       : userIds.map(id => ({id, name: principals.get(id)?.name || id}))
+                .sort((a, b) => a.name.localeCompare(b.name))
+        }
+    }
+
+    /**
+     * @summary What a task's card shows (GO.board.Board cardData).
+     * @param {Object} task
+     * @returns {Object}
+     */
+    taskCardData(task) {
+        const priority = task.priority > 0 && task.priority < 5 ? {icon: 'priority_high', cls: 'go-tasks-orange', title: t('High')}
+                       : task.priority > 5 ? {icon: 'low_priority', cls: 'go-tasks-blue', title: t('Low')} : null;
+
+        return {
+            title   : task.title,
+            tags    : (task.categories || []).map(id => categories.get(id)).filter(Boolean).map(c => ({name: c.name})),
+            assignee: principals.get(task.responsibleUserId)?.name || null,
+            due     : formatTaskDate(task.due),
+            overdue : dateState(task) === 'go-tasks-danger',
+            icons   : priority ? [priority] : [],
+            progress: task.percentComplete > 0 && task.percentComplete < 100 ? task.percentComplete : null,
+            color   : /^[0-9a-f]{6}$/i.test(task.color || '') ? '#' + task.color : null
+        }
+    }
+
+    /**
+     * @summary New columns for the grouping, the lists and the names, then the cards.
+     */
+    refreshBoard() {
+        const board = this.getReference('board');
+
+        if (board && !board.hidden) {
+            this.boardCtx      = this.boardContext();
+            board.boardColumns = boardColumns(this.getGroupBy(), this.boardCtx);
+            board.rebuild()
+        }
+    }
+
+    /**
+     * @summary Saves a neo tasks setting of the user (User property neoTasksSettings).
+     * @param {Object} values
+     */
+    saveNeoSettings(values) {
+        this.neoSettings = {...this.neoSettings, ...values};
+        client.set('User', {update: {[client.user.id]: {neoTasksSettings: values}}}).catch(e => this.showError(e))
+    }
+
+    /**
+     * @summary Toolbar switch list <-> board, remembered per user.
+     */
+    toggleView() {
+        const view = this.view === 'board' ? 'list' : 'board';
+
+        this.setView(view);
+        this.saveNeoSettings({view});
+        this.reloadTasks()
+    }
+
+    /**
+     * @summary Shows the list or the board. The board loads all tasks of the same query, closed ones only from the
+     * last 14 days. Doesn't load.
+     * @param {String} view 'list' or 'board'
+     */
+    setView(view) {
+        let me      = this,
+            isBoard = view === 'board',
+            store   = me.getReference('grid').store,
+            button  = me.getReference('viewButton'),
+            {center, east} = me.panels;
+
+        me.view = view;
+        // the board takes the room of the detail, which keeps a fixed width (a later flex change is not applied:
+        // the hbox layout sets it once)
+        center.style = {...center.style, flex: isBoard ? '1 1 0%' : null};
+        east.style   = {...east.style, flex: isBoard ? 'none' : '1 1 0%', width: isBoard ? '40rem' : null};
+        me.getReference('grid').hidden      = isBoard;
+        me.getReference('board').hidden     = !isBoard;
+        me.getReference('boardHint').hidden = !isBoard;
+        me.getReference('groupByButton').hidden = !isBoard;
+        button.icon    = isBoard ? 'list' : 'view_kanban';
+        button.tooltip = isBoard ? t('List') : t('Board');
+
+        // shortcut: the board loads every matching task (limit 0, like GOUI's task grid), page it when boards get big
+        // silent (like JmapStore's _currentPage): the pageSize setter loads at once, before the filter below
+        store._pageSize  = isBoard ? 0 : PAGE_SIZE;
+        store.scrollLoad = !isBoard;
+        me.setTaskFilter({boardClosed: isBoard ? recentlyClosedFilter() : undefined})
+    }
+
+    /**
+     * @summary "Show all" of the board: the list with the closed tasks.
+     */
+    showAllClosed() {
+        const showCompleted = this.getReference('showCompleted');
+
+        this.setView('list');
+        this.saveNeoSettings({view: 'list'});
+
+        if (!showCompleted.checked) {
+            // its change handler reloads
+            showCompleted.checked = true
+        } else {
+            this.reloadTasks()
+        }
+    }
+
+    /**
+     * @summary Toolbar menu of the board's grouping.
+     */
+    showGroupByMenu() {
+        let me      = this,
+            current = me.getGroupBy();
+
+        MenuList.showAt({
+            appName : me.appName,
+            windowId: me.windowId,
+            target  : me.getReference('groupByButton').id,
+            items   : groupByOptions(t).map(({id: key, name}) => ({
+                text    : name,
+                icon    : key === current ? 'check' : null,
+                // the columns of one list
+                disabled: key === 'group' && !me.hasListColumns(),
+                handler : () => {
+                    me.saveNeoSettings({boardGroupBy: key});
+                    me.refreshBoard()
+                }
+            }))
+        })
+    }
+
+    /**
+     * @summary The "..." menu of a card: edit, delete, move to another column (keyboard and touch).
+     * @param {Object} data cardMenu event {record, column, target}
+     */
+    showCardMenu({record, column, target}) {
+        let me    = this,
+            board = me.getReference('board'),
+            moves = board.canDrag(record) ? (board.boardColumns || [])
+                .filter(c => String(c.key) !== column && board.getMovePatch(record, column, c.key)) : [];
+
+        MenuList.showAt({
+            appName : me.appName,
+            windowId: me.windowId,
+            target,
+            items   : [{
+                text    : t('Edit') + '...',
+                icon    : 'edit',
+                disabled: record.permissionLevel < LEVEL_WRITE,
+                handler : () => me.openDialog(record.id)
+            }, {
+                text    : t('Delete') + '...',
+                icon    : 'delete',
+                disabled: record.permissionLevel < LEVEL_DELETE,
+                handler : () => me.deleteTasks([record])
+            }, ...(moves.length ? [{separator: true}] : []), ...moves.map(c => ({
+                text   : fmt(t('Move to {column}'), {column: c.title}),
+                icon   : 'arrow_forward',
+                handler: () => board.moveRecord(record, column, c.key)
+            }))]
         })
     }
 

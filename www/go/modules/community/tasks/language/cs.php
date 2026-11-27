@@ -81,4 +81,12 @@ return array (
   'This task already has booked hours or progress' => 'Na tomto úkolu již jsou vykázané hodiny nebo postup',
   '1 task' => '1 úloha',
   '{count} tasks' => 'Úloh: {count}',
+  'Group by' => 'Seskupit podle',
+  'Board' => 'Tabule',
+  'Closed tasks of the last 14 days' => 'Uzavřené úlohy za posledních 14 dní',
+  'List columns' => 'Sloupce seznamu',
+  'Assignee' => 'Řešitel',
+  'No category' => 'Bez kategorie',
+  'No date' => 'Bez data',
+  'Move to {column}' => 'Přesunout do: {column}',
 );

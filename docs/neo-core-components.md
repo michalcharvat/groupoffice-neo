@@ -59,6 +59,7 @@ Status: **neo** = neo.mjs 13.4 ships it (14 since 2026-11-24), usable as is (may
 |---|---|
 | JMAP client, Entities, Modules | GO.neo (`jmap/Client`, `JmapStore`, `ModuleRegistry`; module hooks `onMainView`, `onCreateUserDialog`, `fileHandlers`, see `docs/neo-small-modules.md`; `Badges.mjs`: counts on the module tab and main menu item (GO.mainLayout.setNotification()), registry key `badge: {entities, count}` recounted on push, or `badges.set(name, count)`; a dot on the main menu button while a closed module has one; calendar invitations, tasks due, e-mail unseen; `NotificationCenter` message `muteSound`: the user property that mutes its sound, default `mute_reminder_sound`) |
 | Upload (`client.upload()`, ExtJS `go.Uploader`) | GO.neo (`jmap/Uploader.mjs`: XHR with progress, queue of `maxConcurrentUpload`, `maxSizeUpload` check, abort; `component/UploadPanel.mjs` shows the uploads of a window bottom right; used by `UploadButton` `autoUpload`, `BlobField`, `AttachmentsField`, `ImageField`, `MarkdownField`, `FilesPanel`, imports; demo `#dev/core/Upload`) |
+| Kanban board (GOUI has none; ExtJS business/kanban) | GO.neo (`GO.board.Board`, see "GO.board.Board" below; first user: tasks board view) |
 | auth/Login | GO.neo (`apps/go/view/LoginView.mjs`: forgot credentials, 2FA via `loginPanels`) |
 | Main area (GOUI/ExtJS card per module) | GO.neo `apps/go/view/MainView.mjs`: one card per module. Modules extend it through `mainViewExtension` (extra cards, top-bar items, routes, claimed module views; `docs/neo-small-modules.md`, "Main view extensions"). The module sf/workspaces (sf-mono, off by default) adds workspace tabs next to the module tabs, each a dock (`GO.workspaces.Workspace` over neo's dock; panels side by side, drag from the top bar, maximize, saved per user and screen profile; `docs/neo-workspace.md`) |
 | MainThreeColumnPanel, TableTitle | GO.neo |
@@ -237,6 +238,50 @@ was below 0.1 % of its pixels after the fixes.
   `store.isLoading` true (neo's `beforeSetData()` sets it, the skipped `afterSetData()` would
   clear it); the helper resets it. `TextList`
   re-renders on a store swap to an empty store (neo only does that for a store with records).
+
+## GO.board.Board (2026-11-27)
+
+`src/board/Board.mjs`, a thin layer over neo 14 `Neo.board.Container` (`node_modules/neo.mjs/src/board/`; examples
+`examples/board/wipLimits`, `swimlanes`). Generic: it knows no entity, the user (tasks) passes functions.
+
+neo's board projects ONE store into columns by `statusField`, one card per record (cards keyed by record key). GO
+needs a record in several columns (task categories), so the board keeps its own projection store
+(`GO.board.CardModel`): one row per (source record, column key), id `<sourceId>::<columnKey>`, fields `sourceId`,
+`status` (column key), `order`, plus the display fields of `cardData()`. It is rebuilt from the source store on
+`load`, `loadMore` and `recordChange`, not while the board is hidden: the caller sets `boardColumns` and calls
+`rebuild()` when it shows the board.
+
+| Config | What |
+|---|---|
+| `sourceStore` | the data, e.g. a `GO.data.JmapStore`; not loaded by the board |
+| `boardColumns` | `[{key, title, color, dropDisabled}]` in order; `color` CSS colour; `dropDisabled` refuses drops (tasks "Overdue") |
+| `columnsOf(record)` | column keys of a record (`[]` = not shown, several = a card per column) |
+| `compare(a, b)` | order inside a column (source records); no manual order |
+| `cardData(record)` | display fields: `title`, `tags` `[{name, color}]`, `assignee` (name, avatar), `due` (text), `overdue`, `icons` `[{icon, cls, title}]` (Material Symbols), `progress` (0-100, null = no bar), `color` (card accent) |
+| `canDrag(record)` | false: the card goes back on drop (no write permission) |
+| `dropPatch(record, fromKey, toKey)` | the JMAP patch for a drop, null refuses it |
+| `entity` | JMAP entity the patch is sent to (`client.set`) |
+
+Events: `cardSelect {records}` (click; neo's `selectionChange`), `cardOpen {record}` (double click, Enter, F2),
+`cardMenu {record, card, target}` ("..." button; the caller shows `GO.menu.List.showAt({target})`), `dropError {error}`.
+`moveRecord(record, fromKey, toKey)` runs the same path as a drop (the "Move to column" menu, keyboard / touch).
+
+Cards of a record `canDrag()` refuses are not armed (`GO.board.SortZone`), so they can't be picked up. The moves of
+one drag are sent per record as one patch after the drag: `dropPatch()` of a second card of the same record sees the
+first card's change (two category cards of one task dragged together). A moved card keeps its `compare()` order.
+neo's container `moveTo(fromIndex, toIndex)` reorders items: don't override it.
+
+Drag only between columns: a drop inside its own column, onto a `dropDisabled` column, of a record `canDrag()`
+refuses, or with a null patch writes nothing and re-projects (the card goes back). A drop moves the card at once,
+then `client.set()`s the patch; a refusal re-projects from the source and fires `dropError`. Success needs nothing:
+the JMAP push reloads the source store.
+
+Gotchas: a `flex` change of an hbox child after construction is not applied (the layout sets it once): set
+`style.flex` (tasks board widens the center that way). A neo Model drops undeclared fields, so a list store that
+feeds columns needs the field (`TaskList.groups`).
+
+Not used: neo's `CardEditor` (cards are records of another entity; `GO.board.Card` turns the title edit into
+`cardOpen`), column reordering (`columnsResortable: false`), swimlanes (`laneField`: later).
 
 ## neo user settings (2026-11-27)
 

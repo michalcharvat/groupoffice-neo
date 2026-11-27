@@ -2332,4 +2332,5 @@ Pokud jste o nové heslo nežádali, tento e-mail prosím smažte.',
   'Move to window {number}: {title}' => 'Přesunout do okna {number}: {title}',
   '{module} moved to window {number}.' => 'Modul {module} byl přesunut do okna {number}.',
   'Return to page' => 'Vrátit do stránky',
+  'Board' => 'Tabule',
 );
