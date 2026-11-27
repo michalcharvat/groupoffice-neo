@@ -5,7 +5,9 @@
     .neo-grid-body .neo-grid-row .neo-grid-cell { // outranks neo's .neo-grid-body .neo-grid-row .neo-grid-cell
         border-right: none;
         line-height : go.dp(24);
+        overflow    : hidden; // one line, like GOUI's table cells: long text never wraps over the row height
         padding     : 0 go.dp(8);
+        white-space : nowrap;
 
         &:first-child {
             padding-left: go.dp(16);
@@ -14,6 +16,17 @@
         &.neo-last-column {
             box-shadow   : none;
             padding-right: go.dp(16);
+        }
+
+        // a text-only cell becomes a block so text-overflow can draw the ellipsis (a flex box can't);
+        // cells with elements (avatars, icons, two-line renderers) stay flex and are clipped
+        &:not(:has(> *)) {
+            align-content: center;
+            display      : block;
+            text-overflow: ellipsis;
+
+            &.neo-center { text-align: center; }
+            &.neo-right  { text-align: right; }
         }
     }
 

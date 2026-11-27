@@ -8,11 +8,4 @@
     .go-history-panel > .go-detail-card-body {
         padding: 0;
     }
-
-    /* one line per entry, like GOUI's table cells */
-    .go-history-grid .neo-grid-cell {
-        overflow     : hidden;
-        text-overflow: ellipsis;
-        white-space  : nowrap;
-    }
 }
