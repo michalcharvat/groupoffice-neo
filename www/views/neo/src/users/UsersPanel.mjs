@@ -6,7 +6,6 @@ import {exportMenuItem} from '../export/exportEntities.mjs';
 import JmapStore     from '../data/JmapStore.mjs';
 import UserModel     from '../model/User.mjs';
 import Grid          from '../grid/Grid.mjs';
-import {selectRow}   from '../grid/selectRow.mjs';
 import client        from '../jmap/Client.mjs';
 import MenuList      from '../menu/List.mjs';
 import {notifyError} from '../Notify.mjs';
@@ -49,6 +48,9 @@ class UsersPanel extends Container {
         layout   : {ntype: 'vbox', align: 'stretch'}
     }
 
+    /**
+     * @summary Builds the toolbar and the users grid.
+     */
     construct(config) {
         super.construct(config);
 
@@ -89,6 +91,13 @@ class UsersPanel extends Container {
             rowLines : 2, // avatar, name + user name
             flex     : 1,
             stateId  : 'users-grid',
+            entityActions: {
+                dialog      : () => import('../usersettings/UserSettingsDialog.mjs'),
+                displayField: 'displayName',
+                // the own account is never deleted
+                mayDelete   : user => client.isAdmin && String(user.id) !== String(client.user?.id),
+                rowMenuItems: (user, items) => me.rowMenuItems(user, items)
+            },
             store    : {
                 module    : JmapStore,
                 entity    : 'User',
@@ -108,8 +117,7 @@ class UsersPanel extends Container {
                 {dataField: 'authenticators', text: t('Authentication'), width: 140, sortable: false,
                  renderer: ({value}) => escapeHtml((value || []).join(', '))},
                 {dataField: 'id', text: 'ID', width: 80, hidden: true, renderer: ({value}) => escapeHtml(value)},
-                {dataField: 'username', text: '', width: 48, sortable: false, hideable: false, cellAlign: 'center',
-                 renderer: ({record}) => `<i class="go-icon go-users-more" id="${me.id}__more__${escapeHtml(record.id)}" title="${escapeHtml(t('More options'))}">more_vert</i>`}
+                Grid.rowMenuColumn()
             ]
         }]
     }
@@ -121,23 +129,17 @@ class UsersPanel extends Container {
         return this.getReference('grid')
     }
 
+    /**
+     * @summary Wires the paging and the load errors of the grid.
+     */
     onConstructed() {
         super.onConstructed();
 
         let me   = this,
             grid = me.grid;
 
-        grid.on('rowDoubleClick', ({record}) => record && me.edit(record.id));
-        grid.on('enterKey', ({records}) => records.length === 1 && me.edit(records[0].id));
-        grid.on('deleteKey', ({records}) => me.remove(records[0]));
         grid.body.on('scrollEdge', () => grid.store.loadMore().catch(() => {}));
-        grid.store.on('loadError', ({error}) => notifyError(me, error));
-
-        Neo.main.DomEvents.registerPreventDefaultTargets({name: 'contextmenu', cls: ['go-users-grid'], windowId: me.windowId});
-        grid.addDomListeners([
-            {contextmenu: me.onGridContextMenu, scope: me},
-            {click: me.onMoreClick, delegate: '.go-users-more', scope: me}
-        ])
+        grid.store.on('loadError', ({error}) => notifyError(me, error))
     }
 
     /**
@@ -162,62 +164,27 @@ class UsersPanel extends Container {
     }
 
     /**
-     * @param {Object} data DOM event
-     * @returns {Object|null} the row's user
-     * @protected
-     */
-    recordOf(data) {
-        const row = data.path?.find(node => node.cls?.includes('neo-grid-row') && node.data?.recordId);
-        return row ? this.grid.store.get(row.data.recordId) : null
-    }
-
-    onGridContextMenu(data) {
-        const record = this.recordOf(data);
-        record && this.showRowMenu(record, data.path[0]?.id)
-    }
-
-    onMoreClick(data) {
-        const record = this.recordOf(data);
-        record && this.showRowMenu(record, data.path[0]?.id)
-    }
-
-    /**
-     * Edit, login as, archive, delete (SystemSettingsUserGrid.initMoreMenu())
+     * @summary The row menu (SystemSettingsUserGrid.initMoreMenu()): Edit, login as, archive, Delete.
      * @param {Object} user
-     * @param {String} target DOM id the menu aligns to
+     * @param {Object} items the grid's edit and delete items
+     * @returns {Object[]}
      */
-    showRowMenu(user, target) {
+    rowMenuItems(user, items) {
         let me = this;
 
-        selectRow(me.grid, user.id);
-
-        MenuList.showAt({
-            appName : me.appName,
-            windowId: me.windowId,
-            target,
-            items   : [{
-                text   : t('Edit'),
-                icon   : 'edit',
-                handler: () => me.edit(user.id)
-            }, {
-                text    : t('Login as this user'),
-                icon    : 'swap_horiz',
-                disabled: !client.isAdmin || !user.enabled || String(user.id) === String(client.user?.id),
-                handler : () => me.loginAs(user)
-            }, {
-                separator: true
-            }, {
-                text    : t('Archive user'),
-                icon    : 'archive',
-                disabled: !client.mayChangeUsers,
-                handler : () => me.archive(user)
-            }, {
-                text    : t('Delete'),
-                icon    : 'delete',
-                disabled: !client.isAdmin,
-                handler : () => me.remove(user)
-            }]
-        })
+        return [items.edit, {
+            text    : t('Login as this user'),
+            icon    : 'swap_horiz',
+            disabled: !client.isAdmin || !user.enabled || String(user.id) === String(client.user?.id),
+            handler : () => me.loginAs(user)
+        }, {
+            separator: true
+        }, {
+            text    : t('Archive user'),
+            icon    : 'archive',
+            disabled: !client.mayChangeUsers,
+            handler : () => me.archive(user)
+        }, items.delete]
     }
 
     showMoreMenu() {
@@ -259,22 +226,8 @@ class UsersPanel extends Container {
     }
 
     /**
-     * Account dialog of a user (go.usersettings.UserSettingsDialog with an id)
-     * @param {String} id
+     * @summary Opens the create-user wizard, then the new user's account dialog.
      */
-    async edit(id) {
-        let me = this;
-
-        const {default: UserSettingsDialog} = await import('../usersettings/UserSettingsDialog.mjs');
-
-        if (me.isDestroyed) {
-            return
-        }
-
-        Neo.create(UserSettingsDialog, {appName: me.appName, windowId: me.windowId, entityId: id})
-            .on('save', () => me.reload())
-    }
-
     async create() {
         let me = this;
 
@@ -288,7 +241,7 @@ class UsersPanel extends Container {
         Neo.create(CreateUserDialog, {appName: me.appName, windowId: me.windowId})
             .on('save', ({id}) => {
                 me.reload();
-                me.edit(id)
+                me.isDestroyed || me.grid.openDialog({entityId: id})
             })
     }
 
@@ -300,8 +253,11 @@ class UsersPanel extends Container {
         me.isDestroyed || Neo.create(UserDefaultsDialog, {appName: me.appName, windowId: me.windowId})
     }
 
+    /**
+     * @summary Reloads the users as far as they were loaded.
+     */
     reload() {
-        this.isDestroyed || this.grid.store.load({keepCount: true}).catch(() => {})
+        this.isDestroyed || this.grid.reloadEntities()
     }
 
     /**
@@ -361,42 +317,6 @@ class UsersPanel extends Container {
 
         try {
             await client.set('User', {update: {[user.id]: {enabled: false, archive: true}}});
-            me.reload()
-        } catch (e) {
-            notifyError(me, e)
-        }
-    }
-
-    /**
-     * Deletes the user, or all selected users when the user is one of them (ExtJS grid
-     * delete of the selection). The own account is left out.
-     * @param {Object} user
-     */
-    async remove(user) {
-        let me       = this,
-            selected = me.grid.getSelectedRecords(),
-            users    = (selected.includes(user) ? selected : [user]).filter(u => String(u.id) !== String(client.user?.id));
-
-        if (!users.length) {
-            return
-        }
-
-        const yes = await ConfirmDialog.ask({
-            appName : me.appName,
-            windowId: me.windowId,
-            title   : t('Confirm delete'),
-            message : users.length === 1
-                ? fmt(t("Are you sure you want to delete '{item}'?"), {item: users[0].displayName || users[0].username})
-                : fmt(t('Are you sure you want to delete the {count} items?'), {count: users.length})
-        });
-
-        if (!yes || me.isDestroyed) {
-            return
-        }
-
-        try {
-            await client.set('User', {destroy: users.map(u => u.id)});
-            me.grid.view.selectionModel.clear();
             me.reload()
         } catch (e) {
             notifyError(me, e)

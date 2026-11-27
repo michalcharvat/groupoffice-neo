@@ -33,13 +33,4 @@
             font-size: 1.2rem;
         }
     }
-
-    .go-users-more {
-        color : var(--fg-secondary-text);
-        cursor: pointer;
-
-        &:hover {
-            color: var(--fg-main);
-        }
-    }
 }

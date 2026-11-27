@@ -411,6 +411,64 @@ onFormWindow: win => win.entityName !== 'Voyage' ? null : {
 - Return `null` for windows the module does not extend; per-window state lives in the closure. A throwing
   `onFormWindow` is logged and skipped. Only modules the user has access to are asked (`getConfigs()`).
 
+## Entity actions in GO.grid.Grid (2026-11-27)
+
+Edit / delete / row menu of a JMAP entity list belong to the core grid, opt-in with
+`entityActions` (owner: generic logic in the neo grid, each module's grid keeps only its own
+logic; no base class per module, no mixin). A grid without `entityActions` is unchanged.
+
+```js
+{
+    module       : Grid,
+    store        : {module: JmapStore, entity: 'Group', properties: ['id', 'name', 'permissionLevel'], ...},
+    entityActions: {
+        dialog      : () => import('./GroupDialog.mjs'),   // or the class; opened with {entityId} / {values}
+        displayField: 'name',                               // name in "delete '{item}'?"
+        mayEdit     : record => true,                       // on top of permissionLevel
+        mayDelete   : record => Number(record.id) > 3,
+        rowMenuItems: (record, {edit, delete: del}) => [edit, myItem, {separator: true}, del]
+    },
+    columns: [..., Grid.rowMenuColumn()]                    // the ⋮ (class go-row-menu)
+}
+```
+
+- Wired by the grid: double click and Enter edit, Delete / ctrl+Backspace delete the selection,
+  right click and the ⋮ show the row menu (and select the row). Saving in the dialog or deleting
+  reloads the store (`reloadEntities()`, `keepCount`).
+- Permission: edit needs `permissionLevel` ≥ `LEVEL_WRITE`, delete ≥ `LEVEL_DELETE` (`src/Acl.mjs`)
+  **when the row carries `permissionLevel`**; without it (admin-only entities such as User,
+  SmtpAccount) only the hooks decide and the server checks. Request `permissionLevel` in the store
+  properties for ACL entities.
+- A Delete from the row menu of a selected row deletes the whole selection (classic grid);
+  rows the user may not delete are left out before the question.
+  Known limit (as before the move): a left click on the ⋮ also fires the row click, which narrows a
+  multi-selection to that row; a right click keeps the selection.
+- From code: `grid.openDialog({entityId})` / `openDialog({values})` (new), `grid.deleteRecords(records)`,
+  `grid.deleteSelectedMenuItem()` for the ⋮ menu of the owner's toolbar (the toolbar is not part of
+  the grid), `exportMenuItem()` (`src/export/exportEntities.mjs`) for export, `BatchEditButton` /
+  `MultiSelectToolbar` unchanged.
+- Lists that are not a GO.grid.Grid (`GO.list.ActionTable`: `EntityListPanel`, `SmtpAccountGrid`,
+  `AuthAllowGroupGrid`, `EmailTemplateGrid`) share the question and the destroy through
+  `destroyEntities(owner, entity, records, {displayField})` (`src/data/destroyEntities.mjs`),
+  which the grid uses too. It returns true when the records were destroyed; errors are notified.
+- Tests: `tests/entityActions.test.mjs` (gating, delete flow with a mocked client and ConfirmDialog).
+- Using it: `UsersPanel` (row menu adds Login as / Archive through `rowMenuItems`), `GroupsPanel`
+  (system groups via `mayDelete`).
+
+Not migrated yet (own copies of the row menu / delete question, follow-up cards):
+
+- `CronPanel` (legacy `core/cron/store` delete_keys, not Entity/set: keeps its own `remove()`).
+- community/maildomains `DomainGridCard` (edit goes to its owner through an `edit` event, title
+  from `recordTitle()`): `entityActions` without `dialog` plus `rowMenuItems` firing `edit`.
+- community/multi_instance `InstancesMain`: delete now through `destroyEntities()`; no row menu.
+- files `FilesMain`, zpushadmin `DevicesMain` (legacy controllers, not Entity/set), calendar
+  `ResourcesDialog`/`SubscribeDialog`/`CheckRows`, addressbook `AddressBookTree`, email
+  `AccountTree`, site `SiteTree`, `CheckList`, `EntityFieldsDialog`: menus of lists/trees, not
+  entity grids; leave them.
+- amd/crew `CrewEntityGrid` (amd branch neo): drop it for `entityActions` on its grids; only the
+  member Add and `loadNames()` stay in crew.
+- sf modules: grep `showRowMenu|deleteRecords|go-row-menu|'Confirm delete'` in their `views/neo`.
+
 ## Left to build (2026-11-19)
 
 1. ~~**Notes Markdown + image zoom**~~ — done: `MarkdownField`, `src/Markdown.mjs`, `ImageWindow`.

@@ -26,13 +26,4 @@
             white-space  : nowrap;
         }
     }
-
-    .go-groups-more {
-        color : var(--fg-secondary-text);
-        cursor: pointer;
-
-        &:hover {
-            color: var(--fg-main);
-        }
-    }
 }

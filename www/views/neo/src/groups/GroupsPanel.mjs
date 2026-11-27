@@ -1,18 +1,15 @@
 import Container     from '../../node_modules/neo.mjs/src/container/Base.mjs';
 import Toolbar       from '../../node_modules/neo.mjs/src/toolbar/Base.mjs';
-import {LEVEL_DELETE, LEVEL_WRITE} from '../Acl.mjs';
+import {LEVEL_WRITE} from '../Acl.mjs';
 import Button        from '../button/Button.mjs';
 import SearchButton  from '../button/SearchButton.mjs';
 import JmapStore     from '../data/JmapStore.mjs';
 import GroupModel     from '../model/Group.mjs';
 import Grid          from '../grid/Grid.mjs';
-import {selectRow}   from '../grid/selectRow.mjs';
 import client        from '../jmap/Client.mjs';
-import MenuList      from '../menu/List.mjs';
 import {notifyError} from '../Notify.mjs';
 import {escapeHtml}  from '../Format.mjs';
 import {fmt, t}      from '../Translate.mjs';
-import ConfirmDialog from '../view/ConfirmDialog.mjs';
 
 const PAGE_SIZE = 50;
 
@@ -38,6 +35,9 @@ class GroupsPanel extends Container {
     /** principal id → name */
     names = new Map()
 
+    /**
+     * @summary Builds the toolbar and the groups grid.
+     */
     construct(config) {
         super.construct(config);
 
@@ -56,7 +56,7 @@ class GroupsPanel extends Container {
                 ui      : 'primary',
                 text    : t('Add'),
                 disabled: !client.isAdmin,
-                handler : () => me.edit(null)
+                handler : () => me.grid.openDialog({entityId: null})
             }, {
                 module  : Button,
                 icon    : 'settings',
@@ -71,6 +71,11 @@ class GroupsPanel extends Container {
             multiSelect: true,
             flex     : 1,
             stateId  : 'groups-grid',
+            entityActions: {
+                dialog   : () => import('./GroupDialog.mjs'),
+                // the system groups can't be deleted
+                mayDelete: group => Number(group.id) > SYSTEM_GROUPS
+            },
             store    : {
                 module    : JmapStore,
                 entity    : 'Group',
@@ -84,8 +89,7 @@ class GroupsPanel extends Container {
             columns: [
                 {dataField: 'id', text: 'ID', width: 80, hidden: true, renderer: ({value}) => escapeHtml(value)},
                 {dataField: 'name', text: t('Name'), flex: 1, hideable: false, renderer: ({record}) => me.groupCell(record)},
-                {dataField: 'isUserGroupFor', text: '', width: 48, sortable: false, hideable: false, cellAlign: 'center',
-                 renderer: ({record}) => `<i class="go-icon go-groups-more" id="${me.id}__more__${escapeHtml(record.id)}" title="${escapeHtml(t('More options'))}">more_vert</i>`}
+                Grid.rowMenuColumn()
             ]
         }]
     }
@@ -97,28 +101,22 @@ class GroupsPanel extends Container {
         return this.getReference('grid')
     }
 
+    /**
+     * @summary Wires the paging, the member names and the load errors of the grid.
+     */
     onConstructed() {
         super.onConstructed();
 
         let me   = this,
             grid = me.grid;
 
-        grid.on('rowDoubleClick', ({record}) => record && me.edit(record.id));
-        grid.on('enterKey', ({records}) => records.length === 1 && me.edit(records[0].id));
-        grid.on('deleteKey', ({records}) => me.remove(records[0]));
         grid.body.on('scrollEdge', () => grid.store.loadMore().catch(() => {}));
         grid.store.on({
             load     : me.loadNames,
             loadMore : me.loadNames,
             loadError: ({error}) => notifyError(me, error),
             scope    : me
-        });
-
-        Neo.main.DomEvents.registerPreventDefaultTargets({name: 'contextmenu', cls: ['go-groups-grid'], windowId: me.windowId});
-        grid.addDomListeners([
-            {contextmenu: me.onRowMenu, scope: me},
-            {click: me.onRowMenu, delegate: '.go-groups-more', scope: me}
-        ])
+        })
     }
 
     /**
@@ -169,49 +167,6 @@ class GroupsPanel extends Container {
         !me.isDestroyed && !grid.isDestroyed && grid.body?.createViewData()
     }
 
-    onRowMenu(data) {
-        let me  = this,
-            row = data.path?.find(node => node.cls?.includes('neo-grid-row') && node.data?.recordId),
-            group = row && me.grid.store.get(row.data.recordId);
-
-        if (!group) {
-            return
-        }
-
-        selectRow(me.grid, group.id);
-
-        MenuList.showAt({
-            appName : me.appName,
-            windowId: me.windowId,
-            target  : data.path[0]?.id,
-            items   : [{
-                text   : t('Edit'),
-                icon   : 'edit',
-                handler: () => me.edit(group.id)
-            }, {
-                separator: true
-            }, {
-                text    : t('Delete'),
-                icon    : 'delete',
-                // the system groups can't be deleted
-                disabled: Number(group.id) <= SYSTEM_GROUPS || group.permissionLevel < LEVEL_DELETE,
-                handler : () => me.remove(group)
-            }]
-        })
-    }
-
-    /**
-     * @param {String|null} id null: new
-     */
-    async edit(id) {
-        let me = this;
-
-        const {default: GroupDialog} = await import('./GroupDialog.mjs');
-
-        me.isDestroyed || Neo.create(GroupDialog, {appName: me.appName, windowId: me.windowId, entityId: id})
-            .on('save', () => me.reload())
-    }
-
     /**
      * Default permissions of new groups (go.defaultpermissions.ShareWindow for "Group")
      */
@@ -221,47 +176,6 @@ class GroupsPanel extends Container {
         const {default: DefaultAclDialog} = await import('../defaultpermissions/DefaultAclDialog.mjs');
 
         me.isDestroyed || Neo.create(DefaultAclDialog, {appName: me.appName, windowId: me.windowId, forEntity: 'Group', entityTitle: t('Groups')})
-    }
-
-    reload() {
-        this.isDestroyed || this.grid.store.load({keepCount: true}).catch(() => {})
-    }
-
-    /**
-     * Deletes the group, or all selected groups when the group is one of them. System
-     * groups and groups without delete permission are left out.
-     * @param {Object} group
-     */
-    async remove(group) {
-        let me       = this,
-            selected = me.grid.getSelectedRecords(),
-            groups   = (selected.includes(group) ? selected : [group])
-                .filter(g => Number(g.id) > SYSTEM_GROUPS && g.permissionLevel >= LEVEL_DELETE);
-
-        if (!groups.length) {
-            return
-        }
-
-        const yes = await ConfirmDialog.ask({
-            appName : me.appName,
-            windowId: me.windowId,
-            title   : t('Confirm delete'),
-            message : groups.length === 1
-                ? fmt(t("Are you sure you want to delete '{item}'?"), {item: groups[0].name})
-                : fmt(t('Are you sure you want to delete the {count} items?'), {count: groups.length})
-        });
-
-        if (!yes || me.isDestroyed) {
-            return
-        }
-
-        try {
-            await client.set('Group', {destroy: groups.map(g => g.id)});
-            me.grid.view.selectionModel.clear();
-            me.reload()
-        } catch (e) {
-            notifyError(me, e)
-        }
     }
 }
 

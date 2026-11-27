@@ -3,10 +3,10 @@ import Toolbar       from '../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import Button        from '../button/Button.mjs';
 import SearchButton  from '../button/SearchButton.mjs';
 import client        from '../jmap/Client.mjs';
+import {destroyEntities} from '../data/destroyEntities.mjs';
 import ActionTable   from '../list/ActionTable.mjs';
 import {notify, notifyError} from '../Notify.mjs';
 import {fmt, t}      from '../Translate.mjs';
-import ConfirmDialog from '../view/ConfirmDialog.mjs';
 
 /**
  * Template copied with "Copy", pasted into any template list (go.copyEmailTemplate)
@@ -250,28 +250,11 @@ class EmailTemplateGrid extends Container {
     }
 
     /**
+     * @summary Deletes the row after a confirmation and reloads.
      * @param {Object} record
      */
     async remove(record) {
-        let me = this;
-
-        const yes = await ConfirmDialog.ask({
-            appName : me.appName,
-            windowId: me.windowId,
-            title   : t('Confirm delete'),
-            message : fmt(t("Are you sure you want to delete '{item}'?"), {item: record.name})
-        });
-
-        if (!yes || me.isDestroyed) {
-            return
-        }
-
-        try {
-            await client.set(me.entity, {destroy: [record.id]});
-            me.load()
-        } catch (e) {
-            notifyError(me, e)
-        }
+        await destroyEntities(this, this.entity, [record]) && this.load()
     }
 }
 
