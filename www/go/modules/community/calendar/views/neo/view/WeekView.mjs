@@ -3,6 +3,7 @@ import calendarData from '../data.mjs';
 import {addDays, addMinutes, dayNumber, diffDays, format, formatTime, minuteOfDay, parseDate, sameDay, startOfDay, weekOfYear, ymd, ymdhis} from '../util/date.mjs';
 import CalendarView from './CalendarView.mjs';
 import {userNow} from '../../../../../../../views/neo/src/DateUtil.mjs';
+import {dpPixels} from '../../../../../../../views/neo/src/Preferences.mjs';
 
 const t = translator('community', 'calendar');
 
@@ -18,6 +19,8 @@ class WeekView extends CalendarView {
 
     /** @member {CalendarItem[]} dayItems timed items */
     dayItems = []
+    /** @member {Number} minEventMinutes minutes the minimum event height covers, see measureMinEvent() */
+    minEventMinutes = 15
 
     construct(config) {
         super.construct(config);
@@ -75,8 +78,37 @@ class WeekView extends CalendarView {
         }
     }
 
+    /**
+     * @summary Minutes the min-height of a timed event (`dl dd > div` in WeekView.scss, go.dp(24)) covers
+     * at the window height and grid size, at least the 15 minutes dayEventNode() draws, rendered
+     * again when it changed (GOUI minEventMinutes())
+     * shortcut: measured on mount only, not on window resize or a new grid size; measure again there when lanes look off after one
+     */
+    async measureMinEvent() {
+        let me = this;
+
+        try {
+            const [win, dp] = await Promise.all([Neo.Main.getWindowData({windowId: me.windowId}), dpPixels(me.windowId)]),
+                  hourPx    = win.innerHeight * (calendarData.prefs.weekViewGridSize ?? 8) / 100,
+                  minutes   = Math.max(15, hourPx ? Math.ceil(24 * dp / (hourPx / 60)) : 0);
+
+            if (!me.isDestroyed && minutes !== me.minEventMinutes) {
+                me.minEventMinutes = minutes;
+                me.days && me.render()
+            }
+        } catch (e) {
+            // keep the real end for collisions
+        }
+    }
+
+    /**
+     * @summary Measures the minimum event height and scrolls to the morning once.
+     * @param {Boolean} value
+     * @param {Boolean} oldValue
+     */
     afterSetMounted(value, oldValue) {
         super.afterSetMounted(value, oldValue);
+        value && this.measureMinEvent();
         value && !this.scrolled && this.days && (this.scrolled = true, this.scrollToMorning())
     }
 
@@ -355,7 +387,7 @@ class WeekView extends CalendarView {
     }
 
     /**
-     * Timed items of one day column (GOUI drawDay()): items with the same uid at the same
+     * @summary Timed items of one day column (GOUI drawDay()): items with the same uid at the same
      * time (one event in more calendars) stack into one
      * @param {Date} dayStart
      * @returns {Object[]}
@@ -380,7 +412,7 @@ class WeekView extends CalendarView {
             e.end > dayStart && me.continues.push(e)
         }
 
-        me.continues.length && WeekView.calculateOverlap(me.continues, dayStart);
+        me.continues.length && WeekView.calculateOverlap(me.continues, dayStart, me.minEventMinutes);
 
         while ((e = me.continues.shift())) {
             nodes.push(me.dayEventNode(e, dayStart));
@@ -393,11 +425,15 @@ class WeekView extends CalendarView {
     }
 
     /**
-     * Lanes of overlapping items (GOUI calculateOverlap(), unchanged)
+     * @summary Lanes of overlapping items (GOUI calculateOverlap()). Short items are drawn with a minimum
+     * height, so collisions are checked on the drawn end instead of the real end.
      * @param {CalendarItem[]} events sorted by start
      * @param {Date} dayStart
+     * @param {Number} [minMinutes=0] minutes the minimum drawn height covers
      */
-    static calculateOverlap(events, dayStart) {
+    static calculateOverlap(events, dayStart, minMinutes = 0) {
+        const visEnd = e => Math.max(e.endM, e.startM + minMinutes);
+
         let highestEnd = 0,
             blockStart = 0,
             blockLanes = 1;
@@ -411,6 +447,8 @@ class WeekView extends CalendarView {
             a.endM   = dayNumber(a.end) > day ? 1440 : minuteOfDay(a.end);
             a.pos    = 0;
 
+            const aEnd = visEnd(a);
+
             if (a.startM >= highestEnd) {
                 blockStart = i;
                 blockLanes = 1
@@ -419,7 +457,7 @@ class WeekView extends CalendarView {
             for (let j = blockStart; j < i; j++) {
                 const b = events[j];
 
-                if (a.endM > b.startM && a.startM < b.endM && a.pos === b.pos) {
+                if (aEnd > b.startM && a.startM < visEnd(b) && a.pos === b.pos) {
                     a.pos++;
                     blockLanes = Math.max(blockLanes, a.pos + 1);
                     j = blockStart - 1 // restart from blockstart
@@ -429,7 +467,7 @@ class WeekView extends CalendarView {
             }
 
             a.lanes    = blockLanes;
-            highestEnd = Math.max(highestEnd, a.endM)
+            highestEnd = Math.max(highestEnd, aEnd)
         }
     }
 

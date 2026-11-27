@@ -2,7 +2,7 @@ import Component    from '../../../../../../../views/neo/node_modules/neo.mjs/sr
 import {translator} from '../../../../../../../views/neo/src/Translate.mjs';
 import Dialog, {headerTools} from '../../../../../../../views/neo/src/view/Dialog.mjs';
 import CalendarItem from '../CalendarItem.mjs';
-import {format, formatTime} from '../util/date.mjs';
+import RecurrenceField from '../../../../../../../views/neo/src/form/field/RecurrenceField.mjs';
 
 const t = translator('community', 'calendar');
 
@@ -46,6 +46,9 @@ class InvitationsDialog extends Dialog {
         this.renderList()
     }
 
+    /**
+     * @summary Renders one row per open invitation: title, owner, date span, recurrence and the answer buttons.
+     */
     renderList() {
         const list = this.getReference('list');
 
@@ -60,11 +63,12 @@ class InvitationsDialog extends Dialog {
                     {tag: 'br'},
                     {tag: 'small', text: owner?.name || owner?.email || t('Unknown owner')}
                 ]},
-                {tag: 'h3', text: format(item.start, 'D j M') + ' ' + t('at') + ' ' + formatTime(item.start)},
+                {tag: 'h3', text: item.compactDate},
+                item.isRecurring && e.recurrenceRule ? {tag: 'small', text: RecurrenceField.toText(e.recurrenceRule, item.start)} : null,
                 {cls: ['go-cal-invitation-buttons'], cn: [
                     ['accepted', t('Accept')], ['tentative', t('Maybe')], ['declined', t('Decline')]
                 ].map(([status, text]) => ({tag: 'button', type: 'button', cls: ['neo-button', 'neo-button-secondary'], 'data-status': status, text}))}
-            ]}
+            ].filter(Boolean)}
         });
 
         list.update()
