@@ -11,9 +11,12 @@ import client          from '../jmap/Client.mjs';
 import ModuleRegistry  from '../ModuleRegistry.mjs';
 import {avatarHtml, escapeHtml} from '../Format.mjs';
 import {notifyError}   from '../Notify.mjs';
-import {fmt, t}        from '../Translate.mjs';
+import {fmt, t, translator} from '../Translate.mjs';
 import ConfirmDialog   from './ConfirmDialog.mjs';
 import Dialog          from './Dialog.mjs';
+
+/** Titles of the newsletters list tabs come from that module's language file */
+const tNewsletters = translator('business', 'newsletters');
 
 /** "Add all results" fetches the records in pages of this size */
 const PAGE = 500;
@@ -49,6 +52,58 @@ class ContactModel extends Model {
 Neo.setupClass(ContactModel);
 
 /**
+ * @summary An address list of the newsletters module (id and name)
+ */
+class AddressListModel extends Model {
+    static config = {
+        className  : 'GO.model.RecipientPickerAddressList',
+        keyProperty: 'id',
+        fields     : [
+            {name: 'id', type: 'String'},
+            {name: 'name', type: 'String'}
+        ]
+    }
+}
+
+Neo.setupClass(AddressListModel);
+
+const userToRecipient    = r => ({entity: 'User', id: String(r.id), name: r.name || '', email: r.email || null, avatarId: r.avatarId || null}),
+      contactToRecipient = r => ({entity: 'Contact', id: String(r.id), name: r.name || '', email: r.emailAddresses?.[0]?.email || null, avatarId: null});
+
+/**
+ * A tab of address lists of the newsletters module: the selected lists add their members
+ * (classic SelectContactDialogPanel / SelectUserDialogPanel)
+ * @param {String} listType 'Contact' or 'User'
+ * @param {Function} title
+ * @returns {Object} SOURCES entry
+ */
+const addressListSource = (listType, title) => ({
+    title,
+    entity    : 'AddressList',
+    model     : AddressListModel,
+    filter    : {listType},
+    properties: ['id', 'name'],
+    isList    : true,
+    available : () => client.hasCapability('go:business:newsletters'),
+    /**
+     * @param {String[]} addressListIds
+     * @returns {Promise<Object[]>} recipients
+     */
+    async members(addressListIds) {
+        const filter = {addressListId: addressListIds, ...(listType === 'Contact' ? {hasEmailAddresses: true} : {})};
+
+        // the server joins each list: a member of two selected lists comes twice
+        if (listType === 'Contact') {
+            const {ids} = await client.call('Contact/query', {filter});
+            return ids.length ? (await client.get('Contact', [...new Set(ids)], SOURCES.Contact.properties)).map(contactToRecipient) : []
+        }
+
+        const {ids} = await client.call('User/query', {filter});
+        return ids.length ? (await client.get('Principal', [...new Set(ids)], SOURCES.User.properties)).map(userToRecipient) : []
+    }
+});
+
+/**
  * The kinds of people the picker offers, one tab each (GOUI UserPicker, AddressBookPicker).
  * toRecipient() turns a record into {entity, id, name, email, avatarId}.
  */
@@ -60,7 +115,7 @@ const SOURCES = {
         filter     : {entity: 'User'},
         properties : ['id', 'name', 'email', 'avatarId'],
         emailColumn: {dataField: 'email', renderer: ({value}) => escapeHtml(value || '')},
-        toRecipient: r => ({entity: 'User', id: String(r.id), name: r.name || '', email: r.email || null, avatarId: r.avatarId || null})
+        toRecipient: userToRecipient
     },
     Contact: {
         title      : () => t('Contacts'),
@@ -71,13 +126,16 @@ const SOURCES = {
         // the addressbook module may be off for this user
         available  : () => ModuleRegistry.getAvailable().some(m => m.name === 'addressbook'),
         emailColumn: {dataField: 'emailAddresses', sortable: false, renderer: ({value}) => escapeHtml((value || [])[0]?.email || '')},
-        toRecipient: r => ({entity: 'Contact', id: String(r.id), name: r.name || '', email: r.emailAddresses?.[0]?.email || null, avatarId: null})
-    }
+        toRecipient: contactToRecipient
+    },
+    ContactList: addressListSource('Contact', () => tNewsletters('Contact lists')),
+    UserList   : addressListSource('User', () => tNewsletters('User lists'))
 };
 
 /**
- * "Select people" (GOUI RecipientPicker): users, filtered by group, and contacts with an
- * e-mail address. "Add selected" and "Add all results" fire `select` and close.
+ * @summary "Select people" (GOUI RecipientPicker): users, filtered by group, contacts with an
+ * e-mail address and, with the newsletters module, the members of contact and user lists.
+ * "Add selected" and "Add all results" (not on the list tabs) fire `select` and close.
  *
  *     Neo.create(RecipientPicker, {appName, windowId, listeners: {select: ({recipients}) => ...}})
  *
@@ -94,11 +152,15 @@ class RecipientPicker extends Dialog {
         containerConfig: {layout: {ntype: 'vbox', align: 'stretch'}},
         /**
          * Tabs: keys of SOURCES
-         * @member {String[]} sources=['User', 'Contact']
+         * @member {String[]} sources=['User', 'Contact', 'ContactList', 'UserList']
          */
-        sources: ['User', 'Contact']
+        sources: ['User', 'Contact', 'ContactList', 'UserList']
     }
 
+    /**
+     * @summary Builds one tab per available source and the buttons.
+     * @param {Object} config
+     */
     construct(config) {
         super.construct(config);
 
@@ -112,15 +174,18 @@ class RecipientPicker extends Dialog {
             reference          : 'tabs',
             flex               : 1,
             removeInactiveCards: false,
-            items              : sources.map(key => me.createTab(key))
+            items              : sources.map(key => me.createTab(key)),
+            listeners          : {activeIndexChange: () => me.getReference('addAll').hidden = !!SOURCES[me.activeSource]?.isList}
         }, {
             module: Toolbar,
             cls   : ['go-dialog-buttons'],
             flex  : 'none',
             items : ['->', {
-                module : Button,
-                text   : t('Add all results'),
-                handler: () => me.addAll()
+                module   : Button,
+                reference: 'addAll',
+                hidden   : !!SOURCES[sources[0]]?.isList,
+                text     : t('Add all results'),
+                handler  : () => me.addAll()
             }, {
                 module : Button,
                 ui     : 'primary',
@@ -131,6 +196,7 @@ class RecipientPicker extends Dialog {
     }
 
     /**
+     * @summary The tab of a source: a grid with a search, for users also the group filter.
      * @param {String} key of SOURCES
      * @returns {Object} tab config
      */
@@ -141,7 +207,7 @@ class RecipientPicker extends Dialog {
                 module     : Grid,
                 reference  : 'grid-' + key,
                 flex       : 1,
-                rowLines   : 2, // avatar column
+                rowLines   : source.isList ? 1 : 2, // avatar column
                 multiSelect: true,
                 store      : {
                     module    : JmapStore,
@@ -153,7 +219,13 @@ class RecipientPicker extends Dialog {
                     sorters   : [{property: 'name', direction: 'ASC'}],
                     properties: source.properties
                 },
-                columns: [{
+                columns: source.isList ? [{
+                    dataField: 'name',
+                    text     : t('Name'),
+                    flex     : 1,
+                    hideable : false,
+                    renderer : ({value}) => escapeHtml(value || '')
+                }] : [{
                     dataField: 'id',
                     text     : '',
                     width    : 56,
@@ -209,6 +281,9 @@ class RecipientPicker extends Dialog {
         }
     }
 
+    /**
+     * @summary Loads the grids and wires their paging, errors and double click.
+     */
     onConstructed() {
         super.onConstructed();
 
@@ -220,7 +295,9 @@ class RecipientPicker extends Dialog {
             if (grid) {
                 grid.body.on('scrollEdge', () => grid.store.loadMore().catch(() => {}));
                 grid.store.on('loadError', ({error}) => notifyError(me, error));
-                grid.store.load().catch(() => {})
+                grid.store.load().catch(() => {});
+                // classic list panels add the lists on double click
+                SOURCES[key].isList && grid.on('rowDoubleClick', () => me.addSelected())
             }
         })
     }
@@ -247,7 +324,11 @@ class RecipientPicker extends Dialog {
         this.close()
     }
 
-    addSelected() {
+    /**
+     * @summary The selected people, or the members of the selected lists, fire `select`.
+     * @returns {Promise<void>}
+     */
+    async addSelected() {
         let me     = this,
             key    = me.activeSource,
             source = SOURCES[key];
@@ -256,9 +337,24 @@ class RecipientPicker extends Dialog {
             return
         }
 
-        const recipients = me.getReference('grid-' + key).getSelectedRecords().map(source.toRecipient);
+        const records = me.getReference('grid-' + key).getSelectedRecords();
 
-        recipients.length && me.finish(recipients)
+        if (!source.isList) {
+            records.length && me.finish(records.map(source.toRecipient));
+            return
+        }
+
+        if (!records.length) {
+            return
+        }
+
+        try {
+            const recipients = await source.members(records.map(r => r.id));
+
+            me.isDestroyed || me.finish(recipients)
+        } catch (e) {
+            notifyError(me, e)
+        }
     }
 
     /**
