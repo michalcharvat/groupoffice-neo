@@ -433,9 +433,16 @@ logic; no base class per module, no mixin). A grid without `entityActions` is un
         mayDelete   : record => Number(record.id) > 3,
         rowMenuItems: (record, {edit, delete: del}) => [edit, myItem, {separator: true}, del]
     },
-    columns: [..., Grid.rowMenuColumn()]                    // the ⋮ (class go-row-menu)
+    columns: [..., Grid.rowMenuColumn()]                    // the ⋮ (class go-row-menu), pinned to the row's end
 }
 ```
+
+- `rowMenuColumn()` is `locked: 'end'` (2026-11-27): in a row wider than the grid the ⋮ stays in
+  view. A locked region is a header toolbar of its own (neo `headerWrapper.getToolbars()`): the
+  header right click and the width-save hook cover every toolbar, the column chooser ⋮ shows once
+  (last button of the last toolbar, `HeaderButton.scss`), and the last visible **center** column
+  cannot be hidden (neo's `Wrapper.updateHeaders()` skips an empty center and leaves its stale
+  header); a restored state that hides them all shows the first center column again.
 
 - Wired by the grid: double click and Enter edit, Delete / ctrl+Backspace delete the selection,
   right click and the ⋮ show the row menu (and select the row). Saving in the dialog or deleting
@@ -473,6 +480,21 @@ Not migrated yet (own copies of the row menu / delete question, follow-up cards)
 - amd/crew `CrewEntityGrid` (amd branch neo): drop it for `entityActions` on its grids; only the
   member Add and `loadNames()` stay in crew.
 - sf modules: grep `showRowMenu|deleteRecords|go-row-menu|'Confirm delete'` in their `views/neo`.
+
+## List wiring on GO.grid.Grid (2026-11-27)
+
+Opt-in, from amd/crew `entityList.mjs` `wireList()` and the notes / tasks / addressbook mains:
+
+- `navigateOnRowClick: true`: the grid fires `navigate` {record} on a plain row click (no ctrl / ⌘ /
+  shift, not on the row ⋮). neo's selection model handles the click first, so with `multiSelect` the
+  row is the only selected one; a click on the row already shown fires it again (a phone after
+  "close"). Used by notes, tasks, addressbook (show in the detail) and crew (route).
+- Scroll loading needs no option: the grid calls `store.loadMore()` on its body's `scrollEdge`
+  while the store has `scrollLoad` (JmapStore; tasks switches it off for the board). Lists still
+  wiring it themselves (history, multi_instance, maildomains, DuplicateDialog, files, email) do no
+  harm (`loadMore()` returns while a load runs); drop the line when touching them.
+- `notifyLoadError: true`: a `loadError` of the grid's store becomes `notifyError(grid, error)`
+  (not after the grid is destroyed). Other stores of the view (trees, lists) keep their own listener.
 
 ## List toolbar: GO.grid.ListToolbar (2026-11-27)
 
@@ -514,8 +536,10 @@ Own copies of the same toolbar (not a straight replacement, follow-up cards): co
 table title, west button), maildomains `DomainGridCard`, multi_instance `InstancesMain`,
 bookmarks `BookmarksMain`, history `HistoryMain`, zpushadmin `DevicesMain`, files `FilesMain`,
 email `EmailMain`, `EmailTemplateGrid` (ActionTable), dev demos `MultiSelect`/`GridExport`.
-amd/crew `entityList.mjs` (`listItems`, `wireList` multi select part, `searchList`, `showListMenu`)
-→ ListToolbar; `showAddFor()`, `loadNames` and the row click navigation stay in crew.
+amd/crew has no toolbar copy any more: its lists use GO.grid.ListToolbar (amd neo b346f57d9).
+`entityList.mjs` still holds the row click `navigate`, scroll loading and the load error notify,
+which are core Grid options now (section above): a crew follow-up drops them; `showAddFor()` and
+`loadNames` stay in crew.
 
 ## Left to build (2026-11-19)
 

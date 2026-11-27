@@ -7,6 +7,7 @@ import {dpPixels, onThemeChange} from '../Preferences.mjs';
 import client        from '../jmap/Client.mjs';
 import {t}           from '../Translate.mjs';
 import {escapeHtml}  from '../Format.mjs';
+import {notifyError} from '../Notify.mjs';
 import {LEVEL_DELETE, LEVEL_WRITE} from '../Acl.mjs';
 import {destroyEntities} from '../data/destroyEntities.mjs';
 import {selectRow}   from './selectRow.mjs';
@@ -89,6 +90,10 @@ import {createColumns as createCustomFieldColumns, loadNames as loadCustomFieldN
  * From code: openDialog({entityId} | {values}), deleteRecords(records), and
  * deleteSelectedMenuItem() for the ⋮ menu of the owner's toolbar.
  *
+ * List wiring: `navigateOnRowClick` fires `navigate` {record} on a plain row click (not on the row
+ * ⋮), `notifyLoadError` notifies a failed store load, and a store with `scrollLoad` loads more when
+ * the body scrolls to its end.
+ *
  * Overflow tooltips (GOUI Table overflowTooltip): a cell or header whose text is cut off shows the
  * full text as its title on hover (main thread addon WS/OverflowTooltip); a renderer's title wins.
  * @class GO.grid.Grid
@@ -144,7 +149,17 @@ class Grid extends GridContainer {
          * Edit / delete of the rows' JMAP entity (see the class comment), null: none
          * @member {Object|null} entityActions=null
          */
-        entityActions: null
+        entityActions: null,
+        /**
+         * Fire `navigate` {record} on a plain row click (no ctrl / ⌘ / shift, not on the row ⋮)
+         * @member {Boolean} navigateOnRowClick=false
+         */
+        navigateOnRowClick: false,
+        /**
+         * Show a failed load of the store (its `loadError`) as an error notification
+         * @member {Boolean} notifyLoadError=false
+         */
+        notifyLoadError: false
     }
 
     /**
@@ -329,9 +344,13 @@ class Grid extends GridContainer {
     }
 
     /**
+     * @summary A failed load: no empty state, and the error notified with notifyLoadError.
+     * @param {Object} [data] loadError {error}
      * @protected
      */
-    onEmptyLoadError() {
+    onEmptyLoadError({error} = {}) {
+        // the store can outlive the grid
+        this.notifyLoadError && !this.isDestroyed && notifyError(this, error);
         this.emptyLoadFailed = true;
         this.emptyLoading    = false;
         this.updateEmptyState()
@@ -743,9 +762,14 @@ class Grid extends GridContainer {
             windowId: me.windowId
         });
 
-        me.headerToolbar?.addCls('go-grid-header');
-        me.headerToolbar?.addDomListeners({contextmenu: me.onHeaderContextMenu, scope: me});
+        // the wrapper holds the header of every region (locked start, center, locked end)
+        me.headerWrapper?.addCls('go-grid-header');
+        me.headerWrapper?.addDomListeners({contextmenu: me.onHeaderContextMenu, scope: me});
         me.addDomListeners({keydown: me.onGridKeyDown, scope: me});
+
+        me.navigateOnRowClick && me.on('rowClick', me.onNavigateRowClick, me);
+        // a store without scrollLoad has no more to load (JmapStore.hasMore())
+        me.body?.on('scrollEdge', () => me.store?.scrollLoad && me.store.loadMore?.().catch(() => {}));
 
         me.decorateHeader();
 
@@ -850,13 +874,14 @@ class Grid extends GridContainer {
     }
 
     /**
-     * Header buttons are created again whenever the columns change
+     * @summary Aligns the header buttons of every region and hooks their width (state). Header
+     * buttons are created again whenever the columns change.
      * @protected
      */
     decorateHeader() {
         let me = this;
 
-        me.headerToolbar?.items.forEach(button => {
+        (me.headerWrapper?.getToolbars() || []).flatMap(toolbar => toolbar.items || []).forEach(button => {
             // GOUI aligns a column's header like its cells; neo's header buttons get no class for it
             button.cellAlign && button.cellAlign !== 'left' && button.addCls('go-align-' + button.cellAlign);
 
@@ -892,6 +917,8 @@ class Grid extends GridContainer {
     }
 
     /**
+     * @summary Hides or shows a hideable column and saves the state; the last visible center
+     * column stays.
      * @param {String} key column key (stateKey or dataField)
      * @param {Boolean} hidden
      */
@@ -903,8 +930,8 @@ class Grid extends GridContainer {
             return
         }
 
-        // never hide the last visible column
-        if (hidden && me.allColumns.filter(c => !c.hidden).length < 2) {
+        // never hide the last visible center column: neo keeps the stale center header without one
+        if (hidden && !column.locked && me.allColumns.filter(c => !c.hidden && !c.locked).length < 2) {
             return
         }
 
@@ -1007,6 +1034,7 @@ class Grid extends GridContainer {
     }
 
     /**
+     * @summary Applies the stored hidden columns and widths (stateId); a center column stays visible.
      * @protected
      */
     async restoreColumnState() {
@@ -1050,9 +1078,12 @@ class Grid extends GridContainer {
             }
         });
 
-        // at least one column stays visible
-        if (me.allColumns.length && !me.allColumns.some(c => !c.hidden)) {
-            me.allColumns[0].hidden = false
+        // a center column stays visible (see setColumnHidden())
+        const center = me.allColumns.filter(c => !c.locked),
+              pool   = center.length ? center : me.allColumns;
+
+        if (pool.length && !pool.some(c => !c.hidden)) {
+            pool[0].hidden = false
         }
 
         changed && !me.isDestroyed && await me.applyColumns();
@@ -1137,9 +1168,23 @@ class Grid extends GridContainer {
      */
     static rowMenuColumn() {
         return {
-            dataField: 'rowMenu', text: '', width: 48, sortable: false, hideable: false, cellAlign: 'center',
+            // pinned to the row's end: in a row wider than the grid it stays in view
+            dataField: 'rowMenu', text: '', width: 48, sortable: false, hideable: false, cellAlign: 'center', locked: 'end',
             renderer : ({record, gridContainer}) => `<i class="go-icon go-row-menu" id="${gridContainer.id}__menu__${escapeHtml(record.id)}" title="${escapeHtml(t('More options'))}">more_vert</i>`
         }
+    }
+
+    /**
+     * @summary navigateOnRowClick: `navigate` {record} on a plain click. The selection model handles
+     * the click first, so the row is the selected one.
+     * @param {Object} event rowClick {data, record}
+     * @protected
+     */
+    onNavigateRowClick({data, record}) {
+        // the ⋮ icon opens the row menu; the rest of its cell is a row click
+        const onMenu = data?.path?.some(node => node.cls?.includes('go-row-menu'));
+
+        record && !onMenu && !data?.ctrlKey && !data?.metaKey && !data?.shiftKey && this.fire('navigate', {record})
     }
 
     /**

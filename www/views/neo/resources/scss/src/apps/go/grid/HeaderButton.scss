@@ -1,14 +1,15 @@
-// GO.grid.HeaderButton: column chooser (⋮) in the last column header
+// GO.grid.HeaderButton: column chooser (⋮) in the last column header of the last region
+// (a locked end region is a toolbar of its own: once per grid, not once per region)
 .neo-theme-go {
     .go-grid .neo-grid-header-button .go-grid-header-trigger {
         display: none;
     }
-    .go-grid .neo-grid-header-button:last-child {
+    .go-grid .neo-grid-header-toolbar:last-child > .neo-grid-header-button:last-child {
         position: relative;
         /* room for the ⋮ next to the sort icon */
         padding-right: 22px;
     }
-    .go-grid .neo-grid-header-button:last-child .go-grid-header-trigger {
+    .go-grid .neo-grid-header-toolbar:last-child > .neo-grid-header-button:last-child .go-grid-header-trigger {
         display: block;
         position: absolute;
         top: 50%;
@@ -20,7 +21,7 @@
         cursor: pointer;
         opacity: .7;
     }
-    .go-grid .neo-grid-header-button:last-child .go-grid-header-trigger:hover {
+    .go-grid .neo-grid-header-toolbar:last-child > .neo-grid-header-button:last-child .go-grid-header-trigger:hover {
         opacity: 1;
         background: rgba(0, 0, 0, .08);
     }
