@@ -66,7 +66,8 @@ legacy email module without declaring them.
 
 **Data rule for every card.** The upstream schema of crew, fleet, formbuilder and portcall stays as it is. Business
 edits go only through the existing JMAP API, the same calls the classic client makes. Cards don't rewrite data
-directly. New persistence that only neo needs goes to `neo_*` tables (`docs/neo-workspace.md`, neo_* section).
+directly. New persistence that only neo needs goes to `neo_*` tables (`docs/neo-workspace.md`, neo_* section; a module's own
+in `views/neo/install/updates.php`, `docs/neo-core-components.md` "neo tables of modules").
 Nothing found so far needs one: the saved company choice and the planning zoom and range are per-user UI state
 (`State`).
 
@@ -268,5 +269,8 @@ because it works only in its own worktree.
   `TimelinePanel.js` with portcall). Guard it in the port: the classic client hides the failure behind a load mask.
 - **Trap:** `Neo.scheduler.Container` with `editable: false, barDraggable: false, resizableBars: false` still moves
   a focused bar with ArrowLeft / ArrowRight. Use `GO.scheduler.Scheduler` `readOnly`.
+- **Data only neo needs** (a flag, a per-user view setting): a `neo_<package>_<module>_*` table in the module's
+  `views/neo/install/updates.php` and a property hung with `Schema::addProperty()` from a `class_exists`-guarded
+  listener (`docs/neo-core-components.md` "neo tables of modules"), never a column on the module's upstream table.
 - **Where the code goes:** amd card worktrees branch from amd `neo`. Their browser check needs a container that
   mounts the card's worktree (open point above).

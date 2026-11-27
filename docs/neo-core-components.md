@@ -321,12 +321,52 @@ Per-user settings of the neo client go in an own `neo_<module>_user_settings` ta
 2. Property class in `www/go/core/webclient/neo/model/` (example `TasksUserSettings`: public `$userId`, the
    settings, `defineMapping()` with `addTable()`).
 3. One line in `Schema::USER_PROPERTIES`: `'neo<Module>Settings' => [Class::class, 'neo_..._user_settings']`.
-   `Schema::onUserMapping()` adds it as `Relation::one($cls, true)` (auto create) keyed `id => userId`, only when
-   the table exists.
+   `Schema::onUserMapping()` adds it with `Schema::addProperty()`: `Relation::one($cls, true)` (auto create) keyed
+   `id => userId`, only when the table exists.
+
+This list is for core neo only. A module declares its own properties, see the next section.
 
 A user without a row reads the defaults; the row is inserted when User/set changes the property
 (`{"neoTasksSettings": {"boardGroupBy": "progress"}}`). Planned next: `neo_notes_user_settings`,
 `neo_addressbook_user_settings`, `neo_calendar_preferences`.
+
+## neo tables of modules (2026-11-27)
+
+A module that needs neo-only data (sf/tours: which client a tour is for) keeps it in its own `neo_*` tables, never
+in its upstream tables, so the module still runs on GroupOffice 26.x without neo.
+
+1. **Updates** in the module's `views/neo/install/updates.php`, same format as core neo's
+   (`$updates['YYYYMMDDHHMM'][] = "SQL"` or a closure). Table names `neo_<package>_<module>_*`. Never edit a
+   committed entry; make each safe to rerun (`IF NOT EXISTS`). A foreign key to the module's own table is fine
+   (`ON DELETE CASCADE`); never ALTER an upstream table.
+2. **When they run:** `Schema::migrate()` (upgrade, every neo page render, `php cli.php core/Neo/migrate`) runs core
+   neo first, then every installed, enabled, available and allowed (`allowed_modules`) module that has the file, each counted in its own
+   `neo_schema` row (`module = 'package/name'`). A module installed later gets its updates on the next run.
+3. **Property on the module's entity:** a `Property` class over the table (like `TasksUserSettings`, the module's own
+   namespace) and a mapping listener registered in the module's `defineListeners()`, guarded so it stays inert on
+   26.x where neo core is missing:
+
+   ```php
+   public function defineListeners() {
+       parent::defineListeners();
+       if (class_exists(\go\core\webclient\neo\Schema::class)) {
+           Tour::on(Property::EVENT_MAPPING, static::class, 'onNeoTourMapping');
+       }
+   }
+
+   public static function onNeoTourMapping(Mapping $mapping): void {
+       \go\core\webclient\neo\Schema::addProperty($mapping, 'neoClient', TourClient::class,
+           'neo_sf_tours_tour_client', ['id' => 'tourId']);
+   }
+   ```
+
+   `addProperty()` adds `Relation::one($cls, true)` (auto create) only while the table exists, so the entity works
+   before the migration. Listeners are cached: after adding one, clear the cache (`go()->clearCache()` or
+   System settings → Tools).
+4. **Uninstall:** `php cli.php core/Neo/uninstall` drops every `neo_*` table, modules included, and `neo_schema`.
+   Uninstalling only the module through GroupOffice leaves its `neo_*` tables and `neo_schema` row behind (its
+   `uninstall.sql` runs with foreign key checks off). Not handled yet: a reinstall then keeps the old rows.
+5. **Tests:** `tests/go/core/webclient/neo/SchemaTest.php` (`Schema::migrateFiles()` with a temporary updates file).
 
 ## Form extensions: fields of another module in a FormWindow (2026-11-27)
 

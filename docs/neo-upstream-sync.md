@@ -18,14 +18,17 @@ TRUNCATEs) or `core_setting`. neo may add its own `neo_*` tables; dropping them 
 (back to classic). They have their own migrations, outside GroupOffice's update counting:
 
 - Updates in `www/go/core/webclient/neo/install/updates.php` (`$updates['YYYYMMDDHHMM'][] = "SQL"` or a closure,
-  only `neo_*` tables, never edit a committed entry, each safe to rerun: `IF NOT EXISTS`). The number of queries run is in `neo_schema` (one row,
-  `id = 1`), not in `core_module.version`.
+  only `neo_*` tables, never edit a committed entry, each safe to rerun: `IF NOT EXISTS`). The number of queries run is in `neo_schema` (core
+  row `id = 1`, `module` NULL), not in `core_module.version`.
+- A module ships its own in `views/neo/install/updates.php` (same format), counted in its own `neo_schema` row
+  (`module = 'package/name'`, `legacy/name` for a module without package). See `docs/neo-core-components.md`
+  "neo tables of modules".
 - `go\core\webclient\neo\Schema::migrate()` runs the missing ones under a lock and clears the cache (`go()->clearCache()`, not
   `rebuildCache()`, which also resets the sync state in `core_change` of every entity). It runs on
   `Installer::EVENT_UPGRADE`, on every render of the neo page (`Neo::render()`, errors only logged), because a
   deploy without a version change runs no upgrade, and with `php cli.php core/Neo/migrate`. A fresh install has
   no neo tables until one of those runs.
-- `php cli.php core/Neo/uninstall` drops every `neo_*` table including `neo_schema`.
+- `php cli.php core/Neo/uninstall` drops every `neo_*` table (core and modules, matched by name) including `neo_schema`.
 - Saving a neo user property through User/set also updates `core_user.modifiedAt` and records a User change, as
   every User property does (`tasksSettings` too); that is upstream metadata, not neo data.
 - A neo user property is hung on User only while its table exists, so a request before the migration still works
