@@ -104,6 +104,22 @@ originals, copy it again the same way. Don't point neo, `go\core\webclient\Page`
   (the upgrade hook and the neo user properties; App is the core module, so `Listeners::init()` calls it). If upstream
   adds its own `defineListeners()` to App, keep the neo line in it.
 
+## Classic UI changes after a merge
+
+The merge brings PHP, language files and `updates.php`, but a change in `views/extjs3`, `views/Extjs3` or
+`views/goui` never reaches `views/neo`. After a merge, list what needs a neo port:
+
+```bash
+scripts/neo-port-check.sh -C <checkout>          # what the last merge of master (core) / 26.0.x (amd, sf) brought
+scripts/neo-port-check.sh -C <checkout> A..B     # every such merge on the first-parent line in A..B
+```
+
+It works in neo-ui and in the amd/sf neo worktrees (`~/Projects/groupoffice26-neo-{amd,sf}`). Per commit and
+module it prints the classic files and the module's `views/neo/PORTING.md` (the map to the neo files); a module
+without `views/neo` is reported as "no neo views yet". The last line is a summary; exit 1 means commits wait.
+The neo commit that ports one records it with `Ported-from: <full hash>` (or `Port-skipped: <full hash>
+<reason>`) and drops out of the list. Workflow and session-start summary: go:port, section "Target neo".
+
 ## Checks
 
 The merge usually brings database updates and a new `www/version.php`. Don't upgrade the shared dev database
