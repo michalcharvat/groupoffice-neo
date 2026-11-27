@@ -290,6 +290,9 @@ class AddressBookMain extends MainThreeColumnPanel {
                 emptyIcon  : 'description',
                 flex       : 1,
                 multiSelect: true,
+                // GO.grid.Grid: `navigate` on a row click, store load errors notified
+                navigateOnRowClick: true,
+                notifyLoadError   : true,
                 store      : {
                     module    : JmapStore,
                     entity    : 'Contact',
@@ -499,6 +502,9 @@ class AddressBookMain extends MainThreeColumnPanel {
         return dialog
     }
 
+    /**
+     * @summary Wires the grid, the detail and the stores, then loads the contacts.
+     */
     onConstructed() {
         super.onConstructed();
 
@@ -520,16 +526,9 @@ class AddressBookMain extends MainThreeColumnPanel {
         me.getReference('multiSelectToolbar').setGrid(grid);
 
         // a click on the open contact again (a phone after "close") shows it
-        grid.on('rowClick', event => {
-            const sm     = grid.view.selectionModel,
-                  data   = event.data || {},
-                  record = event.record || sm.getRecord(data.path),
-                  id     = record && grid.view.getRecordId(record);
-
-            if (record && !data.ctrlKey && !data.metaKey && !data.shiftKey && sm.selectedRows.length === 1 && sm.isSelectedRow(id)) {
-                me.showInDetail(record);
-                me.activatePanel('east')
-            }
+        grid.on('navigate', ({record}) => {
+            me.showInDetail(record);
+            me.activatePanel('east')
         });
         grid.on('rowDoubleClick', ({record}) => {
             record && record.permissionLevel >= LEVEL_WRITE && me.openDialog(record)
@@ -550,8 +549,6 @@ class AddressBookMain extends MainThreeColumnPanel {
         store.on('loadMore', me.updateCount, me);
         store.on('load', me.loadNames, me);
         store.on('loadMore', me.loadNames, me);
-        store.on('loadError', ({error}) => me.showError(error));
-        grid.body.on('scrollEdge', () => store.loadMore().catch(() => {}));
 
         detail.getReference('toolbar').insert(0, me.showCenterButton());
 

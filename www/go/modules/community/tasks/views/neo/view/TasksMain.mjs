@@ -304,6 +304,9 @@ class TasksMain extends MainThreeColumnPanel {
                 reference  : 'grid',
                 flex       : 1,
                 multiSelect: true,
+                // GO.grid.Grid: `navigate` on a row click, store load errors notified
+                navigateOnRowClick: true,
+                notifyLoadError   : true,
                 store      : {
                     module    : JmapStore,
                     entity    : 'Task',
@@ -589,18 +592,9 @@ class TasksMain extends MainThreeColumnPanel {
         grid.view.selectionModel.on('selectionChange', me.onTaskSelectionChange, me);
         me.getReference('multiSelectToolbar').setGrid(grid);
         me.enableTaskDragDrop();
-        grid.on('rowClick', event => {
-            const sm     = grid.view.selectionModel,
-                  data   = event.data || {},
-                  record = event.record || sm.getRecord(data.path),
-                  id     = record && grid.view.getRecordId(record);
-
-            // a clicked row stays selected (no selectionChange): tapping the open task again
-            // (a phone after "close") must show it
-            if (record && !data.ctrlKey && !data.metaKey && !data.shiftKey && sm.selectedRows.length === 1 && sm.isSelectedRow(id)) {
-                me.showInDetail(record);
-                me.activatePanel('east')
-            }
+        grid.on('navigate', ({record}) => {
+            me.showInDetail(record);
+            me.activatePanel('east')
         });
         grid.on('cellClick', ({dataField, record}) => dataField === 'complete' && record && me.toggleComplete(record));
         grid.on('rowDoubleClick', ({record}) => record && record.permissionLevel >= LEVEL_WRITE && me.openDialog(record.id));
@@ -609,7 +603,6 @@ class TasksMain extends MainThreeColumnPanel {
         taskStore.on('loadMore', me.updateTaskCount, me);
         taskStore.on('load', me.loadNames, me);
         taskStore.on('loadMore', me.loadNames, me);
-        grid.body.on('scrollEdge', () => taskStore.loadMore().catch(() => {})); // loadError shows it
 
         const board = me.getReference('board');
 
@@ -630,7 +623,6 @@ class TasksMain extends MainThreeColumnPanel {
 
         listList.store.on('loadError', ({error}) => me.showError(error));
         catList.store.on('loadError', ({error}) => me.showError(error));
-        taskStore.on('loadError', ({error}) => me.showError(error));
 
         me.initialLoad = me.loadInitial()
     }

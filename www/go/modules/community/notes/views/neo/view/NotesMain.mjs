@@ -204,6 +204,9 @@ class NotesMain extends MainThreeColumnPanel {
                 flex     : 1,
                 // ctrl/shift + click: more notes, deleted at once (MultiSelectToolbar)
                 multiSelect: true,
+                // GO.grid.Grid: `navigate` on a row click, store load errors notified
+                navigateOnRowClick: true,
+                notifyLoadError   : true,
                 store    : {
                     module    : JmapStore,
                     entity    : 'Note',
@@ -323,16 +326,9 @@ class NotesMain extends MainThreeColumnPanel {
         });
         // GO.grid.RowSelectionModel keeps a clicked row selected (no selectionChange): tapping
         // the open note again (a phone after "close") must show it
-        grid.on('rowClick', event => {
-            const sm     = grid.view.selectionModel,
-                  data   = event.data || {},
-                  record = event.record || sm.getRecord(data.path),
-                  id     = record && grid.view.getRecordId(record);
-
-            if (record && !data.ctrlKey && !data.metaKey && !data.shiftKey && sm.selectedRows.length === 1 && sm.isSelectedRow(id)) {
-                me.showInDetail(record);
-                me.activatePanel('east')
-            }
+        grid.on('navigate', ({record}) => {
+            me.showInDetail(record);
+            me.activatePanel('east')
         });
         // GO: double click edits (same rules as the detail's Edit button)
         grid.on('rowDoubleClick', ({record}) => {
@@ -344,7 +340,6 @@ class NotesMain extends MainThreeColumnPanel {
         noteStore.on('loadMore', me.updateNoteCount, me);
         noteStore.on('load',     me.loadPrincipalNames, me);
         noteStore.on('loadMore', me.loadPrincipalNames, me);
-        grid.body.on('scrollEdge', () => noteStore.loadMore().catch(() => {})); // loadError shows it
 
         // GOUI createEast(): back to the grid on a phone
         detail.getReference('toolbar').insert(0, me.showCenterButton());
@@ -356,7 +351,6 @@ class NotesMain extends MainThreeColumnPanel {
 
         // also reloads on push and paging, which nobody awaits
         bookList.store.on('loadError', ({error}) => me.showError(error));
-        noteStore.on('loadError', ({error}) => me.showError(error));
 
         me.enableNoteDragDrop();
         me.initialLoad = me.loadInitial()

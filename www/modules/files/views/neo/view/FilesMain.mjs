@@ -160,6 +160,10 @@ class FilesMain extends MainThreeColumnPanel {
         }
     }
 
+    /**
+     * @summary The center: the file grid and the trash grid (created hidden).
+     * @returns {Object}
+     */
     createCenter() {
         return {
             ntype : 'container',
@@ -294,6 +298,8 @@ class FilesMain extends MainThreeColumnPanel {
                 multiSelect: true,
                 store      : {module: FolderStore, keyProperty: 'id', defaultSort: {property: 'deletedAt', direction: 'DESC'}},
                 stateId    : 'files-trash-grid',
+                // created hidden: a column filling the rest would get no width
+                autoExpandColumn: false,
                 columns    : [{
                     // fixed widths: the grid is created hidden, a flex column would get none
                     dataField: 'name',
