@@ -495,6 +495,16 @@ onFormWindow: win => win.entityName !== 'Voyage' ? null : {
   closes itself (calendar EventDialog) must honour `closeOnSave` and its own second-call guard before it turns
   `applyButton` on.
 
+## FormWindow titleField (2026-11-28)
+
+- `titleField: 'name'` in a `FormWindow` subclass config shows "<title>: <value>" once a saved entity is loaded
+  and follows the field while the user types (classic `go.form.Dialog` `titleField`). A new entity keeps the plain
+  title until it is saved (Apply), an empty value shows the plain title. Text, not HTML.
+- Default `null`, unlike classic (`'name'`): calendar Category/View/Calendar dialogs and the addressbook
+  ContactDialog set their own titles, which a default would overwrite. Port the classic `titleField` by setting it.
+- The plain title is `title` at the first update (`plainTitle`); a subclass that changes `title` itself should not
+  also use `titleField`.
+
 ## Module settings dialog with lookup lists (2026-11-28)
 
 The classic amd `SettingsDialog` + `SettingsGridTrait` (one tab per Status / Type / Category / Unit grid,

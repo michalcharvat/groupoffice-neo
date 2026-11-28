@@ -108,7 +108,13 @@ class FormWindow extends Dialog {
          * Extra config of the cards' tab container, e.g. {tabBarPosition: 'left'}
          * @member {Object} cardsConfig={}
          */
-        cardsConfig: {}
+        cardsConfig: {},
+        /**
+         * Field whose value follows the title of a saved entity, "<title>: <value>"
+         * (go.form.Dialog titleField). null: the title stays as it is.
+         * @member {String|null} titleField=null
+         */
+        titleField: null
     }
 
     /**
@@ -142,6 +148,12 @@ class FormWindow extends Dialog {
     applying = false
 
     /**
+     * The configured title, before titleField added the value (updateTitle())
+     * @member {String|null} plainTitle=null
+     */
+    plainTitle = null
+
+    /**
      * @summary Builds the form, its cards and the button bar.
      * @param {Object} config
      */
@@ -160,8 +172,12 @@ class FormWindow extends Dialog {
             listeners : {
                 loaderror: ({error}) => me.showError(error.message || String(error)),
                 saveerror: data      => me.onSaveError(data),
-                save     : data      => me.onFormSave(data),
-                invalid  : ()        => me.focusFirstInvalid()
+                // Apply keeps the window open: a created entity now shows its titleField
+                save     : data      => (me.updateTitle(), me.onFormSave(data)),
+                invalid  : ()        => me.focusFirstInvalid(),
+                load       : ()          => me.updateTitle(),
+                // a nested field of the same name only triggers a re-read of the form's own field
+                fieldChange: ({component}) => me.titleField && component.name === me.titleField && me.updateTitle()
             },
             items: [{
                 module             : TabContainer,
@@ -434,6 +450,31 @@ class FormWindow extends Dialog {
      */
     onReady() {
         this.updateLinkButtons()
+    }
+
+    /**
+     * Title "<title>: <value of titleField>" for a saved entity, the plain title for a new one
+     * or an empty value. Text, not HTML: the header renders it as text.
+     * @returns {Promise<void>}
+     * @protected
+     */
+    async updateTitle() {
+        let me = this;
+
+        if (!me.titleField) {
+            return
+        }
+
+        me.plainTitle ??= me.title || '';
+
+        const value = (await me.form.getField(me.titleField))?.value;
+
+        if (me.isDestroyed) {
+            return
+        }
+
+        // shortcut: assumes a text field, a combo's object value would need its display text
+        me.title = me.form.currentId && value ? [me.plainTitle, value].filter(Boolean).join(': ') : me.plainTitle
     }
 
     /**
