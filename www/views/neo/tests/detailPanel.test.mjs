@@ -7,6 +7,7 @@ import '../node_modules/neo.mjs/src/core/_export.mjs';
 setup({appConfig: {name: 'test'}});
 
 const {default: Panel}         = await import('../src/detail/Panel.mjs'),
+      {default: Button}        = await import('../src/button/Button.mjs'),
       {default: client}        = await import('../src/jmap/Client.mjs'),
       {default: ConfirmDialog} = await import('../src/view/ConfirmDialog.mjs');
 
@@ -46,7 +47,7 @@ function fakePanel(config = {}) {
           };
 
     ['load', 'reload', 'setRecord', 'showRecord', 'canEdit', 'canDelete', 'getTitle', 'getDownloadUrl',
-        'createMoreMenu', 'onEdit', 'onDelete', 'deleteRecord'].forEach(name => panel[name] ??= proto[name]);
+        'createMoreMenu', 'rebuildMoreMenu', 'onEdit', 'onDelete', 'deleteRecord'].forEach(name => panel[name] ??= proto[name]);
     return panel
 }
 
@@ -214,5 +215,149 @@ describe('GO.detail.Panel push reload', () => {
         panel.destroy();
         await push('Note');
         assert.equal(gets, 3);
+    });
+});
+
+describe('GO.detail.Panel ⋮ menu rebuilt on open', () => {
+    /**
+     * A stand-in for the ⋮ button: setting `menu` builds a hidden list right away
+     */
+    function fakeMore() {
+        return {
+            menuList: null, menuListReady: null, deleteDisabled: null,
+            set menu(items) {
+                this.menuList       = {hidden: true, items};
+                this.menuListReady  = Promise.resolve();
+                this.deleteDisabled = null
+            },
+            setMenuItemDisabled(id, disabled) {id === 'delete' && (this.deleteDisabled = disabled)}
+        }
+    }
+
+    function deferred() {
+        let resolve;
+        const promise = new Promise(r => resolve = r);
+        return {promise, resolve}
+    }
+
+    const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+
+    it('shows "Loading..." and then the items for the shown record', async () => {
+        const answer = deferred(),
+              asked  = [],
+              panel  = fakePanel({loadMoreMenu: (record, items) => {asked.push({record, items}); return answer.promise}});
+
+        panel.refs.moreButton = fakeMore();
+        panel.setRecord({id: 1, permissionLevel: 10});
+
+        const open = panel.rebuildMoreMenu(),
+              more = panel.refs.moreButton;
+
+        await tick();
+        assert.deepEqual(more.menuList.items.map(i => i.id), ['loading']);
+        assert.equal(more.menuList.hidden, false);
+        assert.equal(asked[0].record.id, 1);
+        assert.deepEqual(asked[0].items.map(i => i.id || 'sep'), ['print', 'sep', 'delete']);
+
+        answer.resolve([...asked[0].items, {id: 'query', text: 'Query'}]);
+        assert.equal(await open, true);
+        assert.deepEqual(more.menuList.items.map(i => i.id || 'sep'), ['print', 'sep', 'delete', 'query']);
+        assert.equal(more.deleteDisabled, true);
+    });
+
+    it('drops the answer for a record that is no longer shown', async () => {
+        const answer = deferred(),
+              panel  = fakePanel({loadMoreMenu: () => answer.promise});
+
+        panel.refs.moreButton = fakeMore();
+        panel.setRecord({id: 1});
+
+        const open = panel.rebuildMoreMenu(),
+              more = panel.refs.moreButton;
+
+        await tick();
+        panel.setRecord({id: 2});
+        // another record closes the loading menu at once
+        assert.equal(more.menuList.hidden, true);
+        answer.resolve([{id: 'old'}]);
+        assert.equal(await open, false);
+        assert.deepEqual(more.menuList.items.map(i => i.id), ['loading']);
+        assert.equal(more.menuList.hidden, true);
+    });
+
+    it('keeps the menu closed when it was closed while loading or the hook failed', async () => {
+        const answer = deferred(),
+              panel  = fakePanel({loadMoreMenu: () => answer.promise});
+
+        panel.refs.moreButton = fakeMore();
+        panel.setRecord({id: 1});
+
+        const open = panel.rebuildMoreMenu();
+
+        await tick();
+        panel.refs.moreButton.menuList.hidden = true;
+        answer.resolve([{id: 'late'}]);
+        assert.equal(await open, false);
+        assert.deepEqual(panel.refs.moreButton.menuList.items.map(i => i.id), ['loading']);
+
+        assert.equal(await fakePanel({record: null}).rebuildMoreMenu(), false);
+    });
+
+    it('the button runs beforeShowMenu() only when its menu opens and stays closed on false', async () => {
+        let calls = 0, toggled = 0, answer = false;
+
+        const button = {
+            menuList      : {hidden: true},
+            beforeShowMenu: () => (calls++, answer),
+            toggleMenu    : Button.prototype.toggleMenu
+        };
+
+        // super.toggleMenu() is neo's: count it instead
+        const neoToggle = Object.getPrototypeOf(Button.prototype).toggleMenu;
+        Object.getPrototypeOf(Button.prototype).toggleMenu = async () => toggled++;
+
+        try {
+            await button.toggleMenu();
+            assert.deepEqual([calls, toggled], [1, 0]);
+
+            answer = true;
+            await button.toggleMenu();
+            assert.deepEqual([calls, toggled], [2, 1]);
+
+            button.menuList.hidden = false;
+            await button.toggleMenu();
+            assert.deepEqual([calls, toggled], [2, 2]);
+
+            // a second click while the hook runs does not start it again
+            let release;
+            button.menuList.hidden = true;
+            answer = new Promise(resolve => release = resolve);
+            const first = button.toggleMenu();
+            await button.toggleMenu();
+            release(true);
+            await first;
+            assert.deepEqual([calls, toggled], [3, 3]);
+        } finally {
+            Object.getPrototypeOf(Button.prototype).toggleMenu = neoToggle
+        }
+    });
+
+    it('closes an open rebuilt menu when another record shows', () => {
+        const panel = fakePanel({loadMoreMenu: (record, items) => items});
+
+        panel.refs.moreButton = fakeMore();
+        panel.setRecord({id: 1});
+        panel.refs.moreButton.menuList = {hidden: false};
+        panel.setRecord({id: 1, name: 'reloaded'});
+        assert.equal(panel.refs.moreButton.menuList.hidden, false);
+        panel.setRecord({id: 2});
+        assert.equal(panel.refs.moreButton.menuList.hidden, true);
+    });
+
+    it('existing detail panels keep a static menu', () => {
+        const panel = Neo.create(Panel, {appName: 'test'});
+
+        assert.equal(panel.getReference('moreButton').beforeShowMenu, null);
+        panel.destroy();
     });
 });

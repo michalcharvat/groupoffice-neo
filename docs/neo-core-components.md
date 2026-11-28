@@ -640,6 +640,14 @@ class NoteDetail extends Panel {
   title `getTitle(record)`), Download PDF only when the subclass overrides `getDownloadUrl(record)`,
   Delete (id `delete`). Edit and Delete follow `canEdit(record)` / `canDelete(record)`
   (permissionLevel ≥ write / delete; override to refuse more, e.g. legacy encrypted notes).
+- ⋮ rebuilt on open: a subclass that overrides `loadMoreMenu(record, items)` (`items` is a fresh
+  `createMoreMenu()`; return the items, also as a Promise, null keeps the menu closed) gets the menu
+  built again each time it opens: a disabled "Loading..." item shows meanwhile, Delete then follows
+  `canDelete()` again, and the answer is dropped when the record changed, the menu was closed or
+  opened again meanwhile; another record closes the open menu; a failing hook shows the error.
+  Known gap: an outside click in the few ms while the final list builds is lost (the menu opens). It rides on `GO.button.Button`'s
+  `beforeShowMenu(button)` (runs before the menu opens; may set a new `menu`; false keeps it closed).
+  Without the override the menu stays the one built once (portcall's query and output actions use it).
 - Body: `createBody()` items go into the `scroller` above the standard cards; `createBottomItems()`
   below it (tasks "Continue task"). `cards` lists the standard cards in their order:
   `customFields` (DetailFieldsets), `comments`, `files`, `links` (LinkCards), `history`; each is a

@@ -25,6 +25,45 @@ class Button extends NeoButton {
     }
 
     /**
+     * Called with the button before its menu opens; it may set a new `menu`. Its Promise holds the menu
+     * until it settles, false keeps the menu closed.
+     * @member {Function|null} beforeShowMenu=null
+     */
+    beforeShowMenu = null
+
+    /**
+     * The pending beforeShowMenu() result, null: none
+     * @member {Promise|null} menuOpening=null
+     * @protected
+     */
+    menuOpening = null
+
+    /**
+     * @summary Runs beforeShowMenu() before the menu opens, then toggles it.
+     * @returns {Promise<void>}
+     */
+    async toggleMenu() {
+        let me = this;
+
+        if (me.beforeShowMenu && me.menuList?.hidden !== false) {
+            // a second click while the hook runs would start it again
+            if (me.menuOpening) {
+                return
+            }
+
+            try {
+                if (await (me.menuOpening = me.beforeShowMenu(me)) === false) {
+                    return
+                }
+            } finally {
+                me.menuOpening = null
+            }
+        }
+
+        return super.toggleMenu()
+    }
+
+    /**
      * Menus are GO.menu.List: items may have an `icon`
      */
     afterSetMenu(value, oldValue) {
