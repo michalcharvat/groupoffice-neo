@@ -31,7 +31,7 @@ export function extensionOf(name) {
 /**
  * URLs of the ej2 script and stylesheet (GOUI Loader.ts getLibraryUrls())
  * @param {Object} settings
- * @returns {{js: String, css: String, version: String}}
+ * @returns {{js: String, css: String, cssDark: (String|undefined), version: String}}
  */
 function libraryUrls(settings) {
     const cdnBase = (settings.cdnUrl || DEFAULT_CDN_URL).replace(/\/?$/, '/'),
@@ -42,7 +42,8 @@ function libraryUrls(settings) {
         return {js: local + 'ej2.min.js', css: local + 'ej2.min.css', version}
     }
 
-    return {js: cdnBase + 'dist/ej2.min.js', css: cdnBase + 'material.css', version}
+    // the local lib/ folder only documents ej2.min.css, so a local install stays light
+    return {js: cdnBase + 'dist/ej2.min.js', css: cdnBase + 'material.css', cssDark: cdnBase + 'material-dark.css', version}
 }
 
 /**
@@ -188,7 +189,7 @@ class EditorWindow extends Dialog {
             const opened = await me.addon.openEditor({
                 id        : me.hostId,
                 type      : me.editorType,
-                urls      : {js: urls.js, css: urls.css},
+                urls      : {js: urls.js, css: urls.css, cssDark: urls.cssDark},
                 // the ej2 library validates its license in the browser
                 licenseKey: settings.licenseKey || '',
                 locale,
