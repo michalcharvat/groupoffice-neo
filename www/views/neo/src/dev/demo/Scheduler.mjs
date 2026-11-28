@@ -16,7 +16,9 @@ const resources = [
     {id: 'c2', parentId: null, name: 'South Lines', bookable: false},
     {id: 'v3', parentId: 'c2', name: 'MV Cetus', bookable: false},
     {id: 'v3-1', parentId: 'v3', name: 'Master'},
-    {id: 'v3-2', parentId: 'v3', name: 'Bosun'}
+    {id: 'v3-2', parentId: 'v3', name: 'Bosun'},
+    // shows as text: GO.grid.TreeColumn escapes the name (a closed <tag> is already stripped by the String field)
+    {id: 'v3-3', parentId: 'v3', name: 'Cadet & trainee <i class="x"'}
 ];
 
 const day = d => `2026-11-${String(d).padStart(2, '0')}T08:00:00Z`;

@@ -299,7 +299,7 @@ the resources and field mappings. First user: amd/crew Crew Planning (`docs/neo-
 |---|---|
 | `resources` | `[{id, parentId, name, bookable, cls, collapsed}]`, a tree by `parentId` (null = top level), in display order with every parent before its children (a child listed first ends up a top-level row); ids are compared as strings, unique across levels (prefix them: `vessel-5`, `rank-5-3`) and never `root` (the TreeStore's own root key). Projected into a `Neo.data.TreeStore`: `isLeaf` is derived from the children, `collapsed` defaults to false |
 | `store` | default `{module: TreeStore, model: GO.scheduler.ResourceModel}` (`name`, `bookable`, `cls`); for more resource fields pass your own `TreeModel` subclass the same way (neo drops undeclared fields) |
-| `resourceColumns` | neo's resource columns; `type: 'tree'` on the first one gives the expand/collapse arrows (`Neo.grid.column.Tree`); default one tree column "Name" on `name` |
+| `resourceColumns` | neo's resource columns; `type: 'tree'` on the first one gives the expand/collapse arrows (`GO.grid.TreeColumn`, see below); default one tree column "Name" on `name` |
 | `events` | a `GO.data.JmapStore` (rebuilt on `load`, `loadMore`, `recordChange`; the scheduler does not load it) or an array of plain objects |
 | `eventFields` | `{startDate, endDate, resourceId, title, cls}`: each a field name of the source record or a function `record => value`; defaults are the same names. A record without `id` or resource, or ending before it starts, is left out. Dates are instants (ISO with offset or Z, Date, ms) and are shown in the user's time zone (`DateUtil.toUserTime()`) |
 | `readOnly` | true: no drag, no resize handles, no EventEditor, no keyboard moves (neo's ArrowLeft / ArrowRight on a focused bar ignore `editable` and `barDraggable`, the wrapper blocks them) and `moveEvent()` returns null. Switching it off again turns drag, resize and the editor on; false at construction leaves neo's `barDraggable`, `resizableBars` and `editable` as passed |
@@ -322,6 +322,15 @@ Events:
 - `rangeChange {start, end}`: the axis grew (`growRange`); wall-time Dates. Load the events of the new window here.
 
 Interaction permissions are the caller's: pass `readOnly: true` when the user may not change the events.
+
+Tree column labels are escaped: neo's `Neo.grid.column.Tree` writes the value into the vdom as HTML, so
+`type: 'tree'` in `GO.scheduler.Scheduler` and `GO.grid.Grid` maps to `GO.grid.TreeColumn` (`src/grid/TreeColumn.mjs`),
+which escapes the value. For trusted HTML the caller built and escaped itself (an avatar), set `htmlValue: true` on the
+column. neo's `String` field type of `GO.scheduler.ResourceModel.name` also deletes anything between `<` and `>`
+(`RecordFactory`): lossy (`x<y>z` shows `xz`) and no sanitizer, but it stays, because a caller's plain (non-tree)
+resource column renders the value as HTML. A grid of your own on
+`Neo.grid.Container` gets neo's unescaped class; use `module: TreeColumn` there. GO's own `GO.tree.Tree` escapes its
+labels already.
 
 Not built yet: drag and resize writing a JMAP patch (with the first user that edits on the scheduler). Dev demo:
 `#dev/core/Scheduler` (bands, zoom buttons, slot click, growing range).

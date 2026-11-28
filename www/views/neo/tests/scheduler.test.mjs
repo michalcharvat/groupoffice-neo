@@ -167,6 +167,22 @@ describe('GO.scheduler.Scheduler', () => {
             store.destroy()
         });
 
+        it('escapes the resource name in the tree column unless htmlValue', () => {
+            const name   = '<img src=x onerror=alert(1)>',
+                  column = scheduler.columns.items.find(c => c.dataField === 'name');
+
+            // a plain object: neo's String field type would strip the tag before the column sees it
+            const record = {id: 'x', name, isLeaf: true};
+
+            assert.equal(column.className, 'GO.grid.TreeColumn');
+            assert.equal(column.applyRecordConfigs({}, record).value, '&lt;img src=x onerror=alert(1)&gt;');
+            column.htmlValue = true;
+            assert.equal(column.applyRecordConfigs({}, record).value, name);
+            column.htmlValue = 'false';
+            assert.equal(column.applyRecordConfigs({}, record).value, '&lt;img src=x onerror=alert(1)&gt;');
+            column.htmlValue = false
+        });
+
         it('turns off drag, resize and the editor when read-only', () => {
             assert.equal(scheduler.barDraggable, false);
             assert.equal(scheduler.resizableBars, false);
