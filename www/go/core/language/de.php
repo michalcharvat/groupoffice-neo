@@ -2354,4 +2354,11 @@ Sollten Sie kein neues Kennwort angefordert haben, können Sie diese Nachricht e
   'Switch to the classic UI' => 'Zur klassischen Oberfläche wechseln',
   'Switch to the new UI' => 'Zur neuen Oberfläche wechseln',
   'Return to page' => 'Zurück in die Seite',
+  'Loading PDF, please wait...' => 'PDF wird geladen, bitte warten...',
+  'PDF - pages' => 'PDF - Seiten',
+  'Zoom in' => 'Vergrößern',
+  'Zoom out' => 'Verkleinern',
+  'PDF - preview of the first {count} pages' => 'PDF - Vorschau der ersten {count} Seiten',
+  'The document could not be loaded.' => 'Das Dokument konnte nicht geladen werden.',
+  'No preview available for this file.' => 'Für diese Datei ist keine Vorschau verfügbar.',
 );

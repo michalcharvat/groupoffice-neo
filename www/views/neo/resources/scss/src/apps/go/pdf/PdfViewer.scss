@@ -1,0 +1,55 @@
+// GO.pdf.PdfViewer: toolbar, the pages the main thread addon src/main/addon/PdfJs.mjs places, an image or a message
+
+.go-pdfviewer {
+    min-height: 0;
+}
+
+.go-pdfviewer-title {
+    overflow     : hidden;
+    text-overflow: ellipsis;
+    white-space  : nowrap;
+    color        : var(--fg-secondary-text);
+}
+
+.go-pdfviewer-zoom {
+    min-width : 4.8rem;
+    text-align: center;
+    color     : var(--fg-secondary-text);
+}
+
+// the pages and the image scroll inside the view
+.go-pdfviewer-pages,
+.go-pdfviewer-image {
+    min-height: 0;
+    overflow  : auto;
+    background: var(--bg-low);
+}
+
+.go-pdfviewer-pages {
+    padding: .8rem;
+}
+
+// a page placeholder; its size is set by the addon, the canvas fills it
+.go-pdf-page {
+    position  : relative;
+    margin    : 0 auto .8rem;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+}
+
+.go-pdf-page canvas {
+    display: block;
+}
+
+// 100 % zoom is the width of the view; the image keeps its aspect ratio
+.go-pdfviewer-image img {
+    display  : block;
+    max-width: none;
+    height   : auto;
+    margin   : 0 auto;
+}
+
+.go-pdfviewer-message {
+    padding: 1.6rem;
+    color  : var(--fg-secondary-text);
+}
