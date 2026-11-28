@@ -494,6 +494,37 @@ onFormWindow: win => win.entityName !== 'Voyage' ? null : {
   closes itself (calendar EventDialog) must honour `closeOnSave` and its own second-call guard before it turns
   `applyButton` on.
 
+## Module settings dialog with lookup lists (2026-11-28)
+
+The classic amd `SettingsDialog` + `SettingsGridTrait` (one tab per Status / Type / Category / Unit grid,
+each with its own small dialog) is three core classes in `src/systemsettings/`, moved from amd/crew:
+
+- `LookupSettingsDialog`: a `GO.view.Dialog` with a left tab bar (`go-settings-cards`, as System
+  settings) and only Close, because every lookup dialog saves right away. Config `lookups`: one
+  definition per tab; a `change` of one list reloads the others (they may show names from it).
+- `LookupListPanel` (an `EntityListPanel`): search box (filter `text`, combined with `jmapFilter`),
+  late answers of an older search dropped, edit / delete shown by the record's `permissionLevel`
+  (write / delete, so `properties` must hold it), `change {entity}` after a save or delete.
+- `LookupDialog` (a `FormWindow`): the definition's `fields()`, no custom fields, `share: true`
+  adds a Permissions tab (`SharePanel`, read-only below manage on an existing record).
+
+A definition is the `LookupListPanel` config plus `itemId` and `tab`:
+`entity`, `properties`, `columns`, `dialogTitle`, `fields: () => [...]`, `prepare: async list => rows`
+(looked up names), `defaults` (values of a new record), `share`, `jmapSort` (default by name). A tab
+that needs more gives `panel: <LookupListPanel subclass>` with its own config, and the subclass can
+return its own dialog from `createDialog(config)` (crew `RankListPanel` / `RankDialog`: drag and drop
+order, more fields).
+
+    const [{default: LookupSettingsDialog}, {lookups}] = await Promise.all([
+        import('../../../../../../../views/neo/src/systemsettings/LookupSettingsDialog.mjs'),
+        import('./lookups.mjs')
+    ]);
+    Neo.create(LookupSettingsDialog, {appName, windowId, title: t('Settings'), lookups: lookups()});
+
+- A long text column gets `cls: ['go-lookup-ellipsis']` so the row buttons stay in view.
+- The helpers `lookupFilter()`, `mayEditLookup()`, `mayDeleteLookup()` are exported by `LookupListPanel.mjs`.
+- Example: amd/crew `views/neo/view/lookups.mjs` (11 tabs). Tests: `tests/lookupSettings.test.mjs`.
+
 ## Entity actions in GO.grid.Grid (2026-11-27)
 
 Edit / delete / row menu of a JMAP entity list belong to the core grid, opt-in with
