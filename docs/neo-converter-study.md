@@ -30,9 +30,10 @@ was changed for real.
 |---|---|
 | `rules.mjs` | The rule table: xtype / `go.*` class → neo module and import, config key renames, keys dropped on purpose, base class → handler, TODO kinds |
 | `convert.mjs` | `node scripts/neo-converter/convert.mjs <module dir> [--out <dir>] [--package amd]`. Parses each classic file (scripts.txt order), converts it by the rules and writes `view/<Name>.mjs` (`Module.js` → `Index.mjs`). Anything without a rule becomes a `// TODO(neo-converter) [kind] reason` block with the original code |
-| `measure.mjs` | `node scripts/neo-converter/measure.mjs ~/Projects/groupoffice26-neo-amd [--json]`. Converts ports and links and compares every config entry with the hand port (mapping from each module's PORTING.md) |
+| `measure.mjs` | `node scripts/neo-converter/measure.mjs ~/Projects/groupoffice26-neo-amd [--set a\|b\|all] [--json]`. Converts ports and links (set b: crew, pms, dms) and compares every config entry with the hand port (mapping from each module's PORTING.md) |
 | `delta.mjs` | `node scripts/neo-converter/delta.mjs <module dir> <classic file> [<rev before> [<rev after>]]` (without `<rev after>`: the working tree). What a classic change means for the neo file, config by config |
 | `convert.test.mjs`, `port-check.test.mjs` | `node --test scripts/neo-converter/` (dialog, TODO, grid, detail, measure, delta, robustness; delta over two revs and in `neo-port-check.sh`) |
+| `step2.test.mjs` | The rules of hardening step 2, one test each (see "Hardening step 2") |
 
 Rules it has:
 
@@ -329,3 +330,153 @@ those get a factory scan, not a rule.
   shared.
 - The TODO kinds come from regular expressions over the original code. A block counts under the first kind it
   matches.
+
+## Hardening step 2 (2026-11-28)
+
+The first row of the effort table: harden the six handled bases, measured before and after on (a) the prototype's
+modules (ports, links) and (b) held-out hand ports the rules were not tuned on (crew, pms, dms). Done in one day of
+the three-day timebox. It stopped there because the gains flattened: the last three rules moved set (a) by nothing,
+and the TODO reasons left at the top of the corpus are imperative code (see "What is left").
+
+### How it was measured
+
+- `node scripts/neo-converter/measure.mjs <amd checkout> --set a|b|all [--json [--summary]]`. Set (a) keeps the
+  PORTING.md mapping of the study. Set (b) is mapped by name only (`autoMapping()`): `X.js` → `X.mjs` /
+  `view/X.mjs`, a combo or chips also → `fields.mjs`, a grid or detail also → `model/<X>.mjs`, `Module.js` →
+  `Index.mjs`, `MainPanel.js` → `view/*Main.mjs`, `SettingsDialog.js` → `view/lookups.mjs`. A classic file
+  without such a file is not measured; a grid or detail whose only match is its model (crew `MemberStatusGrid`,
+  pms `JobGrid` and `JobReportGrid`, dms `DocumentGrid`, ported into main views) is not measured either. The
+  mapping and the measure were committed before the first rule
+  (e1522236d), so the rules could not shape them.
+- New in the measure: a `ListToolbar` config is an identity (`toolbar`), the per-kind summary, and the share of
+  the hand-port entries (hit / every config entry of the mapped hand files; a hand file mapped from classic files
+  of two kinds counts once in the total, but in each kind's "of hand", so the kinds' denominators overlap: 855
+  for 667 unique entries on (a), 2977 for 2825 on (b)). The study's ports and links numbers rise slightly (426 → 440 entries)
+  because of the new identity.
+- "Hit" is same + notation. "TODO %" is TODO classic lines / classic lines. "Different" is both sides having
+  the key with another value.
+- The rules were chosen by frequency over all amd and sf modules without crew, pms and dms (`TODO` lines per
+  reason), checked against set (a) classic files and the core neo API. One look at a crew hand port
+  (`MemberCertificateGrid.mjs`, `entityList.mjs`) went into the ListToolbar shape, so the grid toolbar results of
+  set (b) are not fully independent; the `reference` rule below was checked against set (a) before it was kept. Both sets ran against amd `neo` at d74063d82.
+
+### Rules added
+
+| Rule | What it does |
+|---|---|
+| Grid `initComponent` | `Ext.applyIf` like `Ext.apply`; `var tbar = […]`, `var selModel = …`, `var actions = this.initRowActions()` are read where the config uses them; `this.editDialogClass = X` is the edit dialog. A local nobody reads stays a TODO |
+| Grid `tbar` → `ListToolbar` | The grid becomes a container: core `ListToolbar` over a `Grid` (`reference: 'grid'`, `setGrid()` in `onConstructed()`). `tbsearch` filters → `searchFilters` (`'text'` → the Query filter, names → string filters, `modified`/`created(at)` → date ones); no tbsearch → `searchFilters: null`; items before `'->'` → `startItems` (`tbtitle` → `TableTitle`); Add (`ic-add`) → `endItems` + `onAdd()` with its handler as TODO, its other keys (`hidden`, `disabled`) TODOs; the ⋮ menu → `moreItems`, an item whose handler is only `go.util.exportToFile(…, 'csv')` → core `exp` + `exportFormats` |
+| `sm` / `selModel` → `multiSelect` | `CheckboxSelectionModel` and `RowSelectionModel` without `singleSelect` → `multiSelect: true`; the checkbox column goes. A model with listeners or a computed `singleSelect`, and `multiSelectToolbarEnabled: false`, stay TODOs |
+| Row menu → `entityActions` | `initRowActions()` (RowActions with ⋮) + `showMoreMenu()` with a plain Edit (opens a dialog) and Delete (`destroy`) → `entityActions: {dialog: () => import('./X.mjs')}` and `Grid.rowMenuColumn()`; other menu items → `rowMenuItems` with a TODO each. A `showMoreMenu()` with code around the menu, or an Edit / Delete with a condition of its own (end status, module rights, another delete call), stays a TODO: core's entity actions check only `permissionLevel` |
+| `viewConfig` | `forceFit: true` → `forceFit`; `scrollOffset`, `autoFill` dropped |
+| Combos | A plain combo gets `clearable: false` (classic has no clear trigger; `rules.mjs` `PLAIN_COMBO_CLEARABLE`), a Reset combo keeps neo's default; a use of a Reset combo with a plain sibling over the same entity and the same `allowBlank` calls the sibling with `clearable: true`; the store in `initComponent` (`Ext.apply(this, {store})`, `this.store = …`) is read; `baseParams.filter` → `jmapFilter`, other `baseParams` (`viewType`) → `queryArgs`, one literal `filters` entry → `jmapFilter`; a second `jmapFilter`, and `queryArgs` on chips (AutocompleteChips has none), stay TODOs; `autoLoad`, `remoteSort` dropped; `go.permissionLevels.write` → `LEVEL_WRITE` of core `src/Acl.mjs` |
+| Registry of other modules' factories | `scanRegistry()` scans the modules next to the converted one; `new go.modules.amd.ports.PortCombo(…)` (or its xtype) → `portCombo(…)` imported from that module's `views/neo/fields.mjs` (or `view/fields.mjs`). A module without such a file yet (fleet) leaves a TODO at the use. The factory is assumed under its converter name in that file |
+| Dialog items | `new Ext.form.TextField({…})` and the other field classes read as their xtype (`rules.mjs` `CLASS_XTYPES`); `gonumberfield`, `datetimefield`, `colorfield`, `displayfield`; `selectfield` options → `SelectField`; `decimals` → `stepSize`; `checked` → `value`; an item with a name and no xtype → `TextField` (Ext's defaultType); a container without layout only groups (its items join the parent), a `column` / `hbox` layout → hbox container, `columnWidth` → `flex`; `defaults` other than sizes and a computed layout stay TODOs |
+| `initFormItems` | `var x = <item>` / `me.x = <item>` / `this.x = <item>` are read where the returned array (or `return items`) uses them; `addPanel(new go.permissions.SharePanel())` → `addSharePanel()` with a TODO (core's is an empty extension point; the dialog writes the card, as links `CategoryDialog.mjs`) and `addPanel({title, items})` → `addCard()` in `onConstructed()`, its fields in `properties`; `me.x = …` items like `this.x = …`; a local assigned twice stays code |
+| `reference` | `this.x = <field>` gets the field's `name` as reference, else x without a widget suffix (`timezoneField` → `timezone`), as both hand port sets name them |
+| Detail templates | `{[…]}` is rewritten on its AST: `values.a.b` → `record.a?.b`, `htmlEncode()` anywhere goes (LinesCard escapes), an outer `nl2br()` and `{x:nl2br}` → `{html}` with `<br>`, `go.util.Format.dateTime()` → `formatUserDateTime()`; a replaced call keeps its precedence (parentheses). An expression with markup in a string, an object (it could be a trusted `{html}`) or a bare variable stays a TODO (the prototype stripped the tags and wrote broken text) |
+
+Tests: `scripts/neo-converter/step2.test.mjs`, one per rule (10) and two for the review fixes; the converter tests
+also parse the output as an ES module (the mapping test only calls `autoMapping()`). `node --test
+scripts/neo-converter/` runs 20. The output of all 2504 classic files of the amd and sf neo branches
+parses; the 79 files the converter cannot read are vendored libraries, as before.
+
+### Results
+
+Set (a), ports + links (32 files, 2958 classic lines):
+
+| Kind | Files | TODO before | TODO after | Hit before | Hit after | Of hand before | Of hand after | Different before → after |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| dialog | 6 | 22 % | 22 % | 150 | 150 | 77 % | 77 % | 13 → 14 |
+| combo + chips | 9 | 9 % | 3 % | 49 | 52 | 64 % | 68 % | 2 → 2 |
+| detail | 2 | 45 % | 44 % | 9 | 9 | 31 % | 31 % | 3 → 3 |
+| grid | 7 | 52 % | 23 % | 75 | 108 | 22 % | 31 % | 32 → 35 |
+| **total** (with register, no rule) | 32 | **62 %** | **53 %** | **293** | **329** | **44 %** | **49 %** | **50 → 54** |
+
+Set (b), crew + pms + dms, held out (117 files, 19464 classic lines):
+
+| Kind | Files | TODO before | TODO after | Hit before | Hit after | Of hand before | Of hand after | Different before → after |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| dialog | 14 | 79 % | 62 % | 250 | 499 | 19 % | 38 % | 31 → 45 |
+| combo + chips | 64 | 54 % | 50 % | 167 | 168 | 43 % | 43 % | 5 → 6 |
+| detail | 7 | 74 % | 75 % | 12 | 12 | 11 % | 11 % | 5 → 5 |
+| grid | 9 | 71 % | 44 % | 106 | 156 | 21 % | 31 % | 20 → 39 |
+| **total** (with register, no rule) | 117 | **80 %** | **73 %** | **549** | **849** | **19 %** | **30 %** | **62 → 96** |
+
+Whole hand port (every config entry the measure recognises in every neo file of the module): ports 43 → 47 %,
+links 44 → 52 %, crew 17 → 27 %, pms 16 → 30 %, dms 19 → 22 %. These are the numbers after the Codex review
+fixes (below), which turned a few silent conversions back into TODOs.
+
+**Overfitting check:** set (b) gained at least as much as set (a). Hits rose by 12 % on (a) (293 → 329) and by
+55 % on (b) (549 → 849); the share of the hand port rose by 5 points on (a) and 11 points on (b); TODO lines fell
+by 9 points on (a) and 7 points on (b). The held-out set is not a clean one (the ListToolbar shape, see above),
+so read this as "no sign of overfitting", not as proof. The dialog rules came from the corpus, and set (a)'s dialogs had little
+left for them (77 % before), so they show only on (b). "Different" grew with the output but not as a share of it:
+50 of 458 written entries (10.9 %) → 54 of 533 (10.1 %) on (a), 62 of 1271 (4.9 %) → 96 of 2019 (4.8 %) on (b).
+
+What the new "different" entries are, on both sets:
+
+- Column widths and readable header texts the hand ports chose (as in the study).
+- `datecolumn` → `dateTimeRenderer`, where the hand ports show a date only (`dateRenderer`); core neo has no
+  user date formatter yet (`src/Format.mjs` has `formatUserDateTime` only), so the rule cannot pick one.
+- On a grid config the hand port embedded in a container, the converter's `store` and `columns` values are
+  compared as one code text each and always differ. Their entries are compared again inside `store:` and `col:`
+  (measure noise that the study's PortGrid had too).
+- `entityActions.dialog` as a dynamic import vs the hand ports' imported class: the same, written another way.
+- Dialog `wrapperStyle` and `cls` (the study's sizes; the hand ports use shorter class names such as
+  `go-crew-contract-dialog`).
+
+`clearable: false` on plain combos is 21 "extra" entries on (b): the hand ports leave their factories clearable.
+That is a choice between the classic look and the hand ports' look; `PLAIN_COMBO_CLEARABLE = null` gives the hand
+ports' one.
+
+### What is left
+
+The top TODO reasons over the corpus (without set b) after step 2, in classic lines: grid `initComponent`
+statements 5338 (was 8879), detail items without a template 4184 (grids and panels inside details), detail
+`initComponent` 3903, `showMoreMenu()` with checks of its own 2379 (was 4956), column renderers 2307,
+`initButtons` 2190, row menu items for `rowMenuItems` 1689, dialog `initComponent` 1552, dialog `listeners` 1331,
+detail `onLoad` 1289, combo `initComponent` 1036 (`tpl` building, listeners). Almost all of it runs, wires events
+or talks to the server. In set (b) the listeners / events kind fell from 4972 to 4004 lines and "no rule" from
+2902 to 2605; server calls (3180) and method logic stayed.
+
+Not done from the row, on purpose:
+
+- **Relation columns as a TODO renderer stub.** The column's renderer is a TODO already; a stub would not take a
+  classic line off, and which id property and which name the column reads is not in the classic code.
+- **Detail grid cells.** The hand ports moved their details to core `cellsHtml()` cells (`['s6 pad', label,
+  value]`) on the day of this step. The converter still writes `LinesCard` lines, which the measure no longer
+  pairs with the hand ports (detail hits stayed at 9 and 12). Writing cells is the next detail rule; the measure
+  needs a cell identity first.
+- **A core user date formatter** would let `datecolumn` and `go.util.Format.date()` convert.
+
+### Codex review
+
+A read-only Codex review (gpt-6.2-astra) of the whole step went over the rules. Fixed: object values and bare
+variables in `{[…]}` (an `{html: values.x}` would have reached LinesCard's trusted HTML), operator precedence in
+the template rewrite, a row menu with permission checks or its own delete call that was replaced by core's entity
+actions, the `addSharePanel()` call without a card, card fields missing in `properties`, factory imports from a
+module without a neo `fields.mjs`, a Reset sibling with another `allowBlank`, a crash on `Ext.apply(this,
+config)`, two `jmapFilter` keys, `queryArgs` on chips, unquoted keys such as `'x-mode'`, a computed `singleSelect`,
+`multiSelectToolbarEnabled: false`, grid and dialog locals that were marked read before their use was converted,
+locals assigned twice, container `defaults`, `columnWidth` on factory calls, Add button `hidden` / `disabled`,
+export items with code of their own, references of names with dashes, `null` select options. The template, row
+menu, Reset sibling, `Ext.apply(this, config)`, quoted key, share card and card `properties` fixes have tests.
+
+Left, with the reason:
+
+- Two factories with the same short name from two modules in one file import the same name (no case in the
+  corpus).
+- A classic file in a subfolder (`backoffice/…`) gets the import depth of `view/` (the prototype's `header()`
+  has a fixed depth; outPath keeps the folder). It shows as a broken import when the file is used.
+- A tbtitle after `'->'` goes to `startItems`: ListToolbar puts the search between start and end items, so
+  there is no "right of the search, left of Add" slot.
+
+### Verdict
+
+Step 2 took the declarative part of grids and dialogs that the study counted under "no rule": grid TODO lines fell
+from 52 to 23 % (a) and 71 to 44 % (b), dialog TODO lines on the held-out set from 79 to 62 %, and the held-out
+share of the hand port from 19 to 30 %. The estimate of "55-60 % of a hand port's recognisable config entries"
+holds for ports and links only in part (47-52 %); for modules with heavier logic it is about 30 %. What is left
+is imperative, so more rules of this kind pay off little: the next steps are the skeleton tier (main panels,
+settings) and the `go:port` integration from the effort table.
