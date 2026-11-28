@@ -47,6 +47,7 @@ Status: **neo** = neo.mjs 13.4 ships it (14 since 2026-11-24), usable as is (may
 | DataSourceForm (load/save an entity) | – | GO.neo (`GO.form.DataSourceForm`); `save` event `{data, isNew, created}`, `created` = what Foo/set returned for a new entity (API key token) |
 | DateField, DateTimeField, DateRangeField, DurationField | form/field/Date (native input + picker) | GO.neo (`GO.form.field.*`; DateRangeField: custom range/from/until in a dialog instead of picker submenus) |
 | HtmlField (rich text) | – | GO.neo (`HtmlField`, main-thread addon; `HtmlFieldMentionPlugin`: "@name" suggestions at the caret, owned by the addon, provider in the worker) |
+| CodeField (sf/codemirror `sfcodemirroreditor`) | – | GO.neo (`form/field/CodeField.mjs` + core main-thread addon `main/addon/CodeMirror.mjs`: CodeMirror 5 loaded from sf/codemirror's `views/extjs3/codemirror/`, modes on demand by name / extension / MIME; `mode` ('json' validates with the parse message), `editorHeight` (neo owns `height`), `readOnly`, `required`; text equal to the editor's text of the loaded value keeps the loaded value (no dirty form); dark theme `material-darker` while `body.dark`; a monospace textarea when the library does not load; demo `#dev/form/CodeField`) |
 | MarkdownField | – | GO.neo (`MarkdownField`: textarea + main-thread addon `MarkdownEditor`, toolbar, preview, image paste / drop / upload; `src/Markdown.mjs` renders with `marked` + `Format.sanitizeHtml()`; no EasyMDE/CodeMirror) |
 | ChipsField, AutocompleteChips, AutocompleteField | form/field/Chip (basic) | ChipsField: GO.neo (`GO.form.field.ChipsField`, async textInputToValue/chipRenderer); AutocompleteChips: GO.neo (`GO.form.field.AutocompleteChips`, entity ids, ▾ menu; tasks categories); AutocompleteField: GO.neo (`GO.form.field.AutocompleteField`, JMAP entity or `fetch(text)`, `valueProperty`, `valueToText`); AutocompleteChips `properties` = fetched properties |
 | ArrayField, ContainerField, MapField, ListField | – | ArrayField, ContainerField: GO.neo (`src/form/nestedFields.mjs`); MapField: GO.neo (`GO.form.field.MapField`, object keyed by id, `keyFieldName` / `valueFieldName`); ListField: GO.neo (`GO.form.field.ListField`, `renderValue` HTML, records of a `store`) |
@@ -743,3 +744,9 @@ name: `Neo.Main.importAddon({name: 'WS/../../../../../go/modules/<pkg>/<module>/
 listens for custom DOM events the addon sends (`DomEvents.sendMessageToApp`, e.g. `syncfusionSave`
 on the dialog) and does the JMAP calls itself; Blobs and Files come back from addon remotes by
 structured clone. Details and gotchas: `go/modules/community/syncfusion/views/neo/README.md`.
+
+A library another module vendors and several modules use belongs in a core addon that loads it
+from that module's folder (`GO.main.addon.CodeMirror` loads sf/codemirror's copy) and fails soft
+when the module is missing. A field whose holder is box content rendered by `renderControl()`
+(`GO.form.field.Field`) must `await me.promiseUpdate()` before the addon looks up the holder: on
+`mounted` the box content can still be on its way to the DOM.
