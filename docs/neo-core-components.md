@@ -448,6 +448,18 @@ onFormWindow: win => win.entityName !== 'Voyage' ? null : {
   (`acl`) are still compared both ways. A module needs no `setOriginalValue()` workaround for row arrays.
 - `AutocompleteChips` `recordDetails` is optional (before 2026-11-28 a field without it never opened its menu).
 
+## FormWindow Apply button (2026-11-28)
+
+- `applyButton: true` in a `FormWindow` subclass config puts Apply (reference `applyButton`) before Save,
+  like the Apply of classic `go.form.Dialog`. Default off.
+- Apply calls `win.apply()`: `submit()` with `closeOnSave` off for that save. `save` fires as usual; a new
+  entity becomes `form.currentId`, so the next Apply or Save updates it (enable cards that need an id on `save`).
+- While a save runs Save and Apply are both disabled; a second `apply()`/`submit()` returns `false`. A module
+  that disables Save itself (read-only entity) calls `setSaveDisabled(true)`, so Apply goes grey too.
+- A subclass that overrides `submit()` with its own steps before `super.submit()` (NoteDialog encryption) or
+  closes itself (calendar EventDialog) must honour `closeOnSave` and its own second-call guard before it turns
+  `applyButton` on.
+
 ## Entity actions in GO.grid.Grid (2026-11-27)
 
 Edit / delete / row menu of a JMAP entity list belong to the core grid, opt-in with
