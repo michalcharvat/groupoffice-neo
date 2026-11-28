@@ -22,6 +22,10 @@
 // 3. node_modules without the build tools, neo.mjs, Font Awesome, pdf.js and CodeMirror trimmed to what the
 //    page loads (neo.mjs/src, Font Awesome css and webfonts, pdf.js build and data folders, CodeMirror lib,
 //    addon, mode and theme).
+//
+// views/neo/lib (vendored, already minified libraries the main thread loads as classic scripts: SheetJS and mammoth
+// for GO.main.addon.SheetJs and Mammoth) is not touched by this script, build/build.sh or scripts/strip-classic.sh:
+// it ships as is.
 import fs           from 'node:fs';
 import path         from 'node:path';
 import * as Terser  from 'terser';
