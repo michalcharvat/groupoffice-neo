@@ -1,4 +1,5 @@
 import BaseViewport from '../../../node_modules/neo.mjs/src/container/Viewport.mjs';
+import {listenRouteLinks} from '../../../src/history.mjs';
 import {adopt}      from '../../../src/Popup.mjs';
 import activityWatcher from '../../../src/alerts/ActivityWatcher.mjs';
 import {t} from '../../../src/Translate.mjs';
@@ -37,6 +38,7 @@ class PopupView extends BaseViewport {
 
         // typing in a popped out dialog is activity too (go.ActivityWatcher.registerDocument())
         activityWatcher.register(me.windowId);
+        listenRouteLinks(me.windowId).catch(e => console.warn('route links', e));
 
         // reloaded popup: the component went back to the opener with the old window
         me.entry || me.add({

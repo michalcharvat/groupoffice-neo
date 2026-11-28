@@ -7,7 +7,7 @@ import MainView     from './MainView.mjs';
 import OAuthConsentDialog from '../../../src/view/OAuthConsentDialog.mjs';
 import ModuleRegistry from '../../../src/ModuleRegistry.mjs';
 import {notifyError} from '../../../src/Notify.mjs';
-import {removeQuery, replaceLocation} from '../../../src/history.mjs';
+import {listenRouteLinks, removeQuery, replaceLocation} from '../../../src/history.mjs';
 import {t} from '../../../src/Translate.mjs';
 
 /** "#recover/<hash>-<redirect>" of the password recovery mail (User::sendRecoveryMail()) */
@@ -70,6 +70,7 @@ class Viewport extends BaseViewport {
         const me = this;
 
         me.recoverMatch && me.startRecover(me.recoverMatch);
+        listenRouteLinks(me.windowId).catch(e => console.warn('route links', e));
 
         // a recovery link opened in a tab that already runs GO (only the hash changes)
         me.hashListenerId = HashHistory.on('change', ({hashString, windowId}) => {
