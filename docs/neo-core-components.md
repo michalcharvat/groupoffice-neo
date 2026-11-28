@@ -13,7 +13,7 @@ Status: **neo** = neo.mjs 13.4 ships it (14 since 2026-11-24), usable as is (may
 | GOUI | neo.mjs | Status |
 |---|---|---|
 | Button, SearchButton | button/Base, Split, Menu | GO.neo (`GO.button.Button`, `SearchButton`) |
-| Menu, AbstractMenu | menu/List, button menu | GO.neo (`GO.menu.List`) |
+| Menu, AbstractMenu | menu/List, button menu | GO.neo (`GO.menu.List`; a floating root closes on a mousedown outside it anywhere in the window: neo listens on `app.mainView` only, which dialogs lie outside, so GO adds a `vnodeId: 'document.body'` listener; without it a click that moves no focus left the menu open) |
 | ColorMenu | – | GO.neo (`GO.menu.ColorMenu`: GOUI palette + Auto, `colorSelect` {color} (neo lists already fire `select`), the menu's button takes the colour) |
 | Window | dialog/Base | GO.neo (`GO.view.Dialog`: mask fixes, popout) |
 | Panel, CardContainer, CardMenu | container/Panel, layout card, tab/Container | neo |

@@ -165,6 +165,41 @@ class List extends MenuList {
     }
 
     /**
+     * Body-level mousedown listener of an open floating root menu, see syncOutsidePointerListener()
+     * @member {Object|null} bodyPointerListener=null
+     */
+    bodyPointerListener = null
+
+    /**
+     * @summary neo dismisses a floating menu on a mousedown in the app's main view only; dialogs lie outside it,
+     * so a click on a non-focusable part of a dialog left the menu open. Listens at the body as well.
+     * @param {Boolean} attach
+     * @protected
+     */
+    syncOutsidePointerListener(attach) {
+        super.syncOutsidePointerListener(attach);
+
+        let me = this;
+
+        if (attach && !me.bodyPointerListener) {
+            me.bodyPointerListener = {mousedown: me.onAppMouseDown, scope: me, vnodeId: 'document.body'};
+            me.addDomListeners(me.bodyPointerListener)
+        } else if (!attach && me.bodyPointerListener) {
+            me.removeDomListeners(me.bodyPointerListener);
+            me.bodyPointerListener = null
+        }
+    }
+
+    /**
+     * @summary A mousedown in the main view reaches both listeners: only the first one unmounts.
+     * @param {Object} data
+     * @protected
+     */
+    onAppMouseDown(data) {
+        this.mounted && super.onAppMouseDown(data)
+    }
+
+    /**
      * Shows a floating menu below a DOM element, e.g. a row's "more" icon.
      * The menu destroys itself when it closes.
      * @param {Object} config appName, windowId, target (DOM id), items, optional align
