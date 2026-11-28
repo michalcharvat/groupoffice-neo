@@ -1,4 +1,5 @@
 import FormWindow        from '../view/FormWindow.mjs';
+import HeaderButton      from '../tab/HeaderButton.mjs';
 import PasswordPrompt    from '../view/PasswordPrompt.mjs';
 import client, {USER_PROPERTIES} from '../jmap/Client.mjs';
 import ModuleRegistry    from '../ModuleRegistry.mjs';
@@ -159,7 +160,7 @@ class UserSettingsDialog extends FormWindow {
             return
         }
 
-        panels.forEach(({panel, title, iconCls}) => me.addCard({module: panel, header: {text: title, iconCls}}))
+        panels.forEach(({panel, title, icon, iconCls}) => me.addCard({module: panel, header: {module: HeaderButton, text: title, icon, iconCls}}))
     }
 
     async submit() {
