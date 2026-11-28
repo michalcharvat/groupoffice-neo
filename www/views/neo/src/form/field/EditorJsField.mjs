@@ -295,6 +295,9 @@ class EditorJsField extends Field {
      * @returns {Object|null}
      */
     displayDoc(value) {
+        // a mapping of an earlier value would rewrite the same absolute URL stored in this one
+        this.#imageUrls = new Map();
+
         return rootImageUrls(toEditorJsDoc(value), client.apiUrl, this.#imageUrls)
     }
 

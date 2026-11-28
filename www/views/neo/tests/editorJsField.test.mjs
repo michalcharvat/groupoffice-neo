@@ -199,6 +199,16 @@ describe('GO.form.field.EditorJsField', () => {
         assert.equal(field.isDirty, true)
     });
 
+    it('forgets the image URLs of an earlier value', async () => {
+        const field  = await mounted({value: {blocks: [{type: 'image', data: {file: {url: 'download.php?blob=a'}}}]}}),
+              second = {blocks: [{type: 'image', data: {file: {url: client.apiUrl + 'download.php?blob=a'}}}]};
+
+        field.value = second;
+        await field.flush();
+        addon.doc = {blocks: [...addon.doc.blocks, {type: 'paragraph', data: {text: 'Hi'}}]};
+        assert.equal((await field.flush()).blocks[0].data.file.url, client.apiUrl + 'download.php?blob=a')
+    });
+
     it('takes an edited document, and the loaded value back when edited back', async () => {
         const loaded = doc('Hi'),
               field  = await mounted({value: loaded});
