@@ -117,3 +117,41 @@ export function nextZoom(zoom, direction) {
 
     return [...ZOOM_STEPS].reverse().find(step => step < zoom - 1e-9) ?? zoom
 }
+
+/** A page range takes at most this many pages, as amd/dms util/PageRangeParser.php */
+export const MAX_RANGE_PAGES = 500;
+
+/**
+ * @summary The pages of a printer style range ("3", "2-5", "1,3,5-7"), in the order entered with repeats, as the
+ * server side amd/dms util/PageRangeParser.php reads it.
+ * @param {String} range
+ * @param {Number} numPages pages of the document
+ * @returns {Number[]|null} 1-based pages, null when the range is invalid, empty, out of the document or longer than
+ * MAX_RANGE_PAGES
+ */
+export function parsePageRange(range, numPages) {
+    const pages = [];
+
+    for (const part of String(range ?? '').split(',')) {
+        // the whitespace of PHP's trim() and \s, not JavaScript's (which takes a pasted no-break space)
+        const token = part.replace(/^[ \t\n\r\v\f\0]+|[ \t\n\r\v\f\0]+$/g, ''),
+              match = token.match(/^(\d+)[ \t\n\r\v\f]*-[ \t\n\r\v\f]*(\d+)$/) || token.match(/^(\d+)$/);
+
+        if (!match) {
+            return null
+        }
+
+        const from = parseInt(match[1], 10),
+              to   = parseInt(match[2] ?? match[1], 10);
+
+        if (from < 1 || to < from || to > numPages || pages.length + to - from + 1 > MAX_RANGE_PAGES) {
+            return null
+        }
+
+        for (let page = from; page <= to; page++) {
+            pages.push(page)
+        }
+    }
+
+    return pages.length ? pages : null
+}

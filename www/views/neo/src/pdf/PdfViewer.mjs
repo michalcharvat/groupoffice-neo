@@ -83,7 +83,12 @@ class PdfViewer extends Container {
          * Items added to the toolbar after the zoom buttons, e.g. an "Analyze" button
          * @member {Object[]} toolbarItems=[]
          */
-        toolbarItems: []
+        toolbarItems: [],
+        /**
+         * The pages as a wrapping grid of thumbnails instead of a column
+         * @member {Boolean} thumbnails=false
+         */
+        thumbnails: false
     }
 
     /**
@@ -124,6 +129,8 @@ class PdfViewer extends Container {
         super.construct(config);
 
         let me = this;
+
+        me.thumbnails && me.addCls('go-pdfviewer-thumbs');
 
         me.items = [{
             module: Toolbar,
