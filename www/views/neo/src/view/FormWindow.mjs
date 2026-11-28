@@ -174,7 +174,7 @@ class FormWindow extends Dialog {
                 saveerror: data      => me.onSaveError(data),
                 // Apply keeps the window open: a created entity now shows its titleField
                 save     : data      => (me.updateTitle(), me.onFormSave(data)),
-                invalid  : ()        => me.focusFirstInvalid(),
+                invalid  : ()        => me.onInvalid(),
                 load       : ()          => me.updateTitle(),
                 // a nested field of the same name only triggers a re-read of the form's own field
                 fieldChange: ({component}) => me.titleField && component.name === me.titleField && me.updateTitle()
@@ -688,6 +688,15 @@ class FormWindow extends Dialog {
     }
 
     /**
+     * Client-side validation refused the save: says why (go.form.Dialog's text) and reveals the field
+     * @protected
+     */
+    onInvalid() {
+        this.showError(t('You have errors in your form. The invalid fields are marked.'));
+        return this.focusFirstInvalid()
+    }
+
+    /**
      * Text in the button bar, '' to clear
      * @param {String} text
      */
@@ -715,7 +724,15 @@ class FormWindow extends Dialog {
         }
 
         const index = cmp ? cardContainer.items.indexOf(cmp) : -1;
-        index > -1 && (me.cards.activeIndex = index);
+        if (index > -1 && me.cards.activeIndex !== index) {
+            me.cards.activeIndex = index;
+            // a field in a still hidden card cannot take focus; rejects when the window closes meanwhile
+            await cardContainer.promiseUpdate().catch(() => {})
+        }
+
+        if (me.isDestroyed) {
+            return
+        }
 
         field.focus?.(field.getInputElId?.() || field.id)
     }
