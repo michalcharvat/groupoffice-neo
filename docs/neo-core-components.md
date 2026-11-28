@@ -353,6 +353,13 @@ Events:
 
 Interaction permissions are the caller's: pass `readOnly: true` when the user may not change the events.
 
+Theme: neo's scheduler and timeline sheets carry fixed light colours (`--neo-scheduler-*`, `--neo-timeline-*`), so
+`resources/scss/go/scheduler/Container.scss` and `go/timeline/{Column,TimeAxisHeader,EventEditor}.scss` point them at
+GO tokens and dark mode (`body.dark`) follows: header surface `--bg-low` like a GO grid header, gridlines and
+non-working borders `--fg-divider`, non-working shading `--fg-text` at 5 %, now line `--hue-red`, default bar
+`--c-primary` at 22 % over `--bg-lowest` with `--fg-text`. A caller that sets its own `--neo-timeline-bar-background`
+per record also sets `--neo-timeline-bar-color` (crew `style.css`: fixed pastels with black or white text).
+
 Grid cell values are escaped. neo writes a cell renderer's string into the cell as HTML, and its default renderer
 (a column without `renderer`) returns the raw value; `Neo.grid.column.Tree` does the same with its label. So in
 `GO.grid.Grid` and `GO.scheduler.Scheduler` the plain column (`type: 'column'`, the default) maps to `GO.grid.Column`

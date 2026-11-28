@@ -1,0 +1,11 @@
+// Neo.timeline.EventEditor on GO tokens
+:where(.neo-theme-go) {
+    --neo-timeline-editor-background           : var(--bg-lowest);
+    --neo-timeline-editor-border-color         : var(--fg-line);
+    --neo-timeline-editor-shadow               : var(--dialog-box-shadow, 0 12px 32px rgba(0, 0, 0, .28));
+    --neo-timeline-editor-color                : var(--fg-text);
+    --neo-timeline-editor-font-family          : var(--font-family);
+    --neo-timeline-editor-accent-color         : var(--c-primary);
+    --neo-timeline-editor-accent-contrast-color: white;
+    --neo-timeline-editor-cancel-background    : var(--bg-mid);
+}
