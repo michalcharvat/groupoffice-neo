@@ -5,7 +5,6 @@
   "description": "neo.mjs webclient for Group Office (spike)",
   "type": "module",
   "dependencies": {
-    "@fortawesome/fontawesome-free": "^7.3.1",
     "codemirror": "5.65.21",
     "marked": "^18.2.1",
     "neo.mjs": "14.0.0",
@@ -28,6 +27,7 @@
     "build-themes": "node buildScripts/generateGoTheme.mjs && node node_modules/neo.mjs/buildScripts/build/themes.mjs -n -e dev -t all && npm run build-page-css",
     "build-page-css": "node buildScripts/buildPageCss.mjs",
     "audit-styles": "node buildScripts/auditStyles.mjs",
+    "audit-dark": "node buildScripts/auditDarkMode.mjs",
     "lint-summary": "node buildScripts/lintSummary.mjs"
   }
 }

@@ -1,7 +1,7 @@
 // GO.bookmarks.BookmarkFrame: a bookmark's page inside GO
 .neo-theme-go .go-bookmark-frame {
     .go-bookmark-iframe {
-        background: #fff;
+        background: #fff; // dark-ok: a web page expects a white canvas
         border    : none;
         width     : 100%;
     }

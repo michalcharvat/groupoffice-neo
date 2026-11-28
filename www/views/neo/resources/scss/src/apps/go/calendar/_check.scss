@@ -12,7 +12,7 @@
             background-color: currentColor;
 
             &::before {
-                background-color: #fff;
+                background-color: #fff; // dark-ok: tick on the calendar's own colour
             }
 
             // a light colour (GOUI --tickColor): black tick

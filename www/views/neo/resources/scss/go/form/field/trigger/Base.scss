@@ -103,3 +103,10 @@
         }
     }
 }
+
+// neo's light-only literals: GO tokens (body.dark)
+:where(.neo-theme-go) {
+    --trigger-background-color-hover: var(--bg-hover);
+    --trigger-color                 : var(--fg-secondary-text);
+    --trigger-color-hover           : var(--fg-main);
+}

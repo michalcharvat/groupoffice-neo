@@ -39,6 +39,7 @@ const COMMANDS = {
     italic             : {icon: 'format_italic',          title: 'Italic'},
     underline          : {icon: 'format_underlined',      title: 'Underline'},
     strikeThrough      : {icon: 'format_strikethrough',   title: 'Strikethrough'},
+    // dark-ok: the colour applied to the text, shown on the button
     foreColor          : {icon: 'format_color_text',      title: 'Text color', color: '#d32f2f'},
     backColor          : {icon: 'format_color_fill',      title: 'Background color', color: '#ffeb3b'},
     insertOrderedList  : {icon: 'format_list_numbered',   title: 'Numbered list'},

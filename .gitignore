@@ -13,6 +13,7 @@ vendor
 /www/config.php
 /**/*.css
 /**/*.css.map
+!/www/views/neo/resources/fontawesome/css/all.min.css
 /config.ini
 /www/config.ini
 /www/promodules

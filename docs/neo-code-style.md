@@ -74,3 +74,7 @@ methods of the changed and untracked `views/neo` sources (core and modules) whos
 a method counts as changed when its docblock, signature or body has an added line, a class only
 when its docblock or `class` line does. Base: the merge base with `neo-ui`, or a ref as argument
 (`npm run lint-summary -- HEAD~1`). It exits with 1 when it finds one.
+
+Before calling a UI change done, look at it in light **and** dark mode (My account → Look & feel,
+or `body.dark`), and run `npm run audit-dark` (README, "Dark mode"): colours come from GO tokens,
+not literals.

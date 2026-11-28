@@ -1,7 +1,7 @@
 // Dev module (prototype): menu like the GOUI docs, src/dev/Playground.mjs
 .neo-theme-go {
     .go-dev-menu {
-        border-right: 1px solid var(--go-border-color, rgba(0, 0, 0, .12));
+        border-right: 1px solid var(--fg-line);
         overflow-y: auto;
     }
     .go-dev-menu .neo-list-item {

@@ -1,0 +1,8 @@
+// neo's menu colours are light-only literals: GO tokens give them a dark value (body.dark)
+:where(.neo-theme-go) {
+    --menu-list-background-color        : var(--bg-lowest);
+    --menu-list-border-color            : var(--fg-line);
+    --menu-list-item-icon-color         : var(--fg-secondary-text);
+    --menu-list-item-icon-color-disabled: var(--fg-secondary-text);
+    --menu-list-item-icon-color-selected: var(--fg-main);
+}

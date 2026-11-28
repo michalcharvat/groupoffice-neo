@@ -106,6 +106,13 @@
     --button-secondary-glyph-color-disabled    : inherit;
 }
 
+// a <button> takes the UA's "buttontext" (black) instead of inheriting, and ghost and secondary
+// text "inherits" from it: black in dark mode. Here, not in GO.button.Button's sheet: plain neo
+// buttons need it too. :where() keeps the specificity of a GO class override (header, toolbars)
+:where(.neo-theme-go) .neo-button:is(.neo-button-ghost, .neo-button-secondary) {
+    color: var(--fg-text);
+}
+
 // neo 14 draws a pressed button's hover from its pressed background: keep GO's hover
 .neo-theme-go .neo-button.pressed {
     &.neo-button-ghost {

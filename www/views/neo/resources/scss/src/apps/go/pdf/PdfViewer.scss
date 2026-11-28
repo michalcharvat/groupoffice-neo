@@ -33,7 +33,7 @@
 .go-pdf-page {
     position  : relative;
     margin    : 0 auto .8rem;
-    background: #fff;
+    background: #fff; // dark-ok: PDF pages are paper
     box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
 }
 
