@@ -222,8 +222,9 @@ class Client {
      * Entity/query + Entity/get in one request using a result reference.
      * @returns {Promise<{list: Object[], total: Number, ids: String[]}>}
      */
-    async queryGet(entity, {filter, sort, position=0, limit, properties}={}) {
-        const queryArgs = {filter, sort, position, calculateTotal: true};
+    async queryGet(entity, {filter, sort, position=0, limit, properties, queryArgs: extra}={}) {
+        // extra Entity/query arguments (classic store baseParams, e.g. {viewType: 'combo'})
+        const queryArgs = {...extra, filter, sort, position, calculateTotal: true};
 
         if (limit) {
             queryArgs.limit = limit

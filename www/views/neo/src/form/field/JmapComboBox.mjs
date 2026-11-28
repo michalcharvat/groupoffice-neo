@@ -75,6 +75,11 @@ class JmapComboBox extends ComboBox {
          */
         jmapSort: [],
         /**
+         * Extra Entity/query arguments for the store, e.g. {viewType: 'combo'}
+         * @member {Object|null} queryArgs=null
+         */
+        queryArgs: null,
+        /**
          * Filter that receives the typed text (GOUI ComboBox.filterName)
          * @member {String} filterName='text'
          */
@@ -155,6 +160,7 @@ class JmapComboBox extends ComboBox {
             entity    : me.entity,
             jmapFilter: {...me.jmapFilter},
             jmapSort  : me.jmapSort,
+            queryArgs : me.queryArgs,
             keyProperty: me.valueField,
             // records keep model fields only: the list renders the other properties too (avatars)
             model     : {
