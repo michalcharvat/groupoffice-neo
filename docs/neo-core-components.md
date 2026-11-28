@@ -771,6 +771,14 @@ class NoteDetail extends Panel {
   (`setLines([[label, value|{html}]])`, null hides it) or trusted HTML (`setHtml()`), filled by its
   detail; moved from amd/crew.
 - Tests: `tests/detailPanel.test.mjs`.
+- Classic 12-column grid: detail markup keeps the classic `<p class="s6 pad"><label>Term</label>value</p>`
+  (`s1`–`s12` = 8.33 %–100 % wide, floated, padding `0 dp(16) dp(8)`; `pad` = dp(16) left/right;
+  a cell's own `> label` = classic caption: secondary colour, sp(15), block; an `hr` after a cell is
+  a divider that ends the rows; the element holding the cells gets `display: flow-root`, so a
+  `go-card` inside one html component keeps its height). Shared sheet `go/shared/_detail-grid.scss`, scoped to `.go-detail-scroller` and
+  `.go-detail-card`, so module details with their own scroller (amd/crew) get it too. Floats as in
+  classic (rows of mixed heights line up the same); narrow screens keep the % widths, as classic
+  does. Dev demo `#dev/detailgrid` (`src/dev/demo/DetailGrid.mjs`).
 - On it: community notes `NoteDetail` (NotesMain deep links use `load(id)`), tasks `TaskDetail`.
   Not yet, each a follow-up: addressbook `ContactDetail` (star and own ⋮, address book name
   loaded before rendering, action date field), calendar `EventDetail` (an event occurrence, not a

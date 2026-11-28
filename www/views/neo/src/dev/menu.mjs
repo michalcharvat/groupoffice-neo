@@ -42,6 +42,7 @@ export default [
     {id: 'form/TextField',       text: 'TextField',          level: 2, status: 'done', demo: 'TextField',  neo: 'neo form/field/Text, TextArea', goui: 'form/TextFieldPage.ts'},
 
     {id: 'menu/ColorMenu', text: 'ColorMenu', level: 1, status: 'done', demo: 'ColorMenu', neo: 'GO.menu.ColorMenu', goui: 'goui/script/component/menu/ColorMenu.ts'},
+    {id: 'detailgrid', text: 'Detail grid (s1-s12, pad)', level: 1, status: 'done', demo: 'DetailGrid', neo: 'theme: go/shared/_detail-grid.scss', goui: 'classic Paper _go-style.scss .go-detail-view'},
     {id: 'descriptionlist', text: 'DescriptionList', level: 1, status: 'done', demo: 'DescriptionList', neo: 'GO.component.DescriptionList', goui: 'DescriptionList.ts'},
     {id: 'list',     text: 'List',     level: 1, status: 'done', demo: 'List',  neo: 'GO.list.TextList, CheckList, NavCheckList', goui: 'List.ts'},
     {id: 'panel',    text: 'Panel',    level: 1, status: 'done', demo: 'Panel',  neo: 'neo container/Panel',         goui: 'Panel.ts'},

@@ -1,0 +1,55 @@
+@use "../go";
+
+// Classic 12-column grid of go.detail.Panel templates (Paper _go-style.scss, .go-detail-view):
+// <p class="s6 pad"><label>Term</label>value</p>. Floats like classic, so rows of mixed heights
+// line up the same. Narrow screens keep the % widths.
+.neo-theme-go :is(.go-detail-scroller, .go-detail-card) {
+    .s1, .s2, .s3, .s4, .s5, .s6, .s7, .s8, .s9, .s10, .s11, .s12 {
+        box-sizing: border-box;
+        display   : block;
+        float     : left;
+        margin    : 0;
+        padding   : 0 go.dp(16) go.dp(8) go.dp(16);
+    }
+
+    .s1  {width: 8.333333%;}
+    .s2  {width: 16.666666%;}
+    .s3  {width: 25%;}
+    .s4  {width: 33.333333%;}
+    .s5  {width: 41.666666%;}
+    .s6  {width: 50%;}
+    .s7  {width: 58.333333%;}
+    .s8  {width: 66.666666%;}
+    .s9  {width: 75%;}
+    .s10 {width: 83.333333%;}
+    .s11 {width: 91.666666%;}
+    .s12 {width: 100%;}
+
+    .pad {
+        padding-left : go.dp(16);
+        padding-right: go.dp(16);
+    }
+
+    // the element around the cells contains their floats (also a card inside one html component)
+    :has(> :is(.s1, .s2, .s3, .s4, .s5, .s6, .s7, .s8, .s9, .s10, .s11, .s12)):not(.neo-flex-container) {
+        display: flow-root;
+    }
+
+    // classic hr: a divider line that ends the floated rows (not an hr in user content)
+    :is(.s1, .s2, .s3, .s4, .s5, .s6, .s7, .s8, .s9, .s10, .s11, .s12, .pad) ~ hr {
+        border    : 0;
+        border-top: 1px solid var(--fg-divider);
+        clear     : both;
+        margin    : go.dp(8) 0;
+    }
+
+    // classic %font-caption; only the cell's own label, so labels of neo fields keep their look
+    :is(.s1, .s2, .s3, .s4, .s5, .s6, .s7, .s8, .s9, .s10, .s11, .s12, .pad) > label {
+        color      : var(--fg-secondary-text);
+        display    : block;
+        font-size  : go.sp(15);
+        font-weight: normal;
+        line-height: go.dp(16);
+        width      : 100%;
+    }
+}
