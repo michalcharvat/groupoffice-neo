@@ -311,6 +311,10 @@ Gotchas: a `flex` change of an hbox child after construction is not applied (the
 `style.flex` (tasks board widens the center that way). A neo Model drops undeclared fields, so a list store that
 feeds columns needs the field (`TaskList.groups`).
 
+Colours: neo's board sheets name no colour, only `--neo-board-*` tokens. theme-go is theme-neo-light re-scoped, so
+without an overlay the board keeps neo-light's fixed light palette in GO dark mode. `resources/scss/go/board/Container.scss`
+maps the tokens to GO's `--bg-*` / `--fg-*` / `--hue-*` (also the drag proxy, which renders outside the board).
+
 Not used: neo's `CardEditor` (cards are records of another entity; `GO.board.Card` turns the title edit into
 `cardOpen`), column reordering (`columnsResortable: false`), swimlanes (`laneField`: later).
 
