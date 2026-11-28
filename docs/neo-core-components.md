@@ -614,6 +614,9 @@ Opt-in, from amd/crew `entityList.mjs` `wireList()` and the notes / tasks / addr
   while the store has `scrollLoad` (JmapStore; tasks switches it off for the board). Lists still
   wiring it themselves (history, multi_instance, maildomains, DuplicateDialog, files, email) do no
   harm (`loadMore()` returns while a load runs); drop the line when touching them.
+- A store's `loadMore()` appends inside `store.asContinuation(() => store.add(...))` (neo 14): the `load`
+  event then carries `postChunkLoad: true` and the grid keeps its scroll; a plain `add()` scrolls it to
+  the top (JmapStore, files `FolderStore`, email `MessageStore`).
 - `notifyLoadError: true`: a `loadError` of the grid's store becomes `notifyError(grid, error)`
   (not after the grid is destroyed). Other stores of the view (trees, lists) keep their own listener.
 

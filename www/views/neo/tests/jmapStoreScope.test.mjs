@@ -83,3 +83,33 @@ describe('JmapStore scopeKeys', () => {
         assert.equal(queries.length, 1);
     });
 });
+
+describe('JmapStore loadMore', () => {
+    let store, queryGet;
+
+    beforeEach(() => {
+        queryGet = client.queryGet;
+        client.queryGet = async (entity, {position}) => ({list: [{id: String(position + 1)}], total: 3});
+        store = Neo.create(JmapStore, {
+            entity    : 'Note',
+            autoLoad  : false,
+            scrollLoad: true,
+            pageSize  : 1,
+            model     : {fields: [{name: 'id'}]}
+        });
+    });
+    afterEach(() => {
+        client.queryGet = queryGet;
+        store.destroy()
+    });
+
+    it('appends as a continuation, so a grid keeps its scroll position', async () => {
+        await store.load();
+        const loads = [];
+        store.on('load', data => loads.push(data));
+        await store.loadMore();
+        assert.equal(store.count, 2);
+        assert.equal(loads.length, 1);
+        assert.equal(loads[0].postChunkLoad, true);
+    });
+});
