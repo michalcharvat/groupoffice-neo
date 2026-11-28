@@ -44,8 +44,43 @@ class Syncfusion extends Base {
     loading = {}
 
     /**
+     * ej2 theme stylesheets (page and iframes); their href follows the colour scheme, see watchTheme()
+     * @member {Set<HTMLLinkElement>} themeLinks=new Set()
+     */
+    themeLinks = new Set()
+
+    /**
+     * @member {MutationObserver|null} themeObserver=null
+     */
+    themeObserver = null
+
+    /**
+     * The ej2 theme stylesheet: material-dark.css when the page is dark and the source has one (CDN only)
+     * @param {Object} urls {css, cssDark}
+     * @returns {String}
+     */
+    themeHref(urls) {
+        return document.body.classList.contains('dark') && urls.cssDark ? urls.cssDark : urls.css
+    }
+
+    /**
+     * Points a theme stylesheet at the current colour scheme
+     * @param {HTMLLinkElement} link
+     * @param {Object} urls {css, cssDark}
+     */
+    applyTheme(link, urls) {
+        const href = this.themeHref(urls);
+
+        link.sfUrls = urls;
+        // body class changes that keep the scheme must not reload the stylesheet
+        link.getAttribute('href') !== href && link.setAttribute('href', href);
+        // the iframe's own style rules (.e-de-background) follow the loaded theme, a local install stays light
+        link.ownerDocument !== document && link.ownerDocument.documentElement.classList.toggle('dark', href === urls.cssDark);
+    }
+
+    /**
      * Loads the ej2 bundle into this page (spreadsheets)
-     * @param {Object} urls {js, css}
+     * @param {Object} urls {js, css, cssDark}
      * @param {String} licenseKey
      * @param {String} errorText
      * @returns {Promise<Object>} the page's ej namespace
@@ -58,8 +93,10 @@ class Syncfusion extends Base {
                 const link   = document.createElement('link'),
                       script = document.createElement('script');
 
-                link.rel  = 'stylesheet';
-                link.href = urls.css;
+                link.rel = 'stylesheet';
+                me.applyTheme(link, urls);
+                me.themeLinks.add(link);
+                me.watchTheme();
                 document.head.appendChild(link);
 
                 // a plain script tag: a failed CDN load rejects instead of leaving the caller waiting
@@ -70,6 +107,7 @@ class Syncfusion extends Base {
                 };
                 script.onerror = () => {
                     delete me.loading[urls.js];
+                    me.themeLinks.delete(link);
                     link.remove();
                     script.remove();
                     console.error('Failed to load ' + urls.js);
@@ -95,7 +133,7 @@ class Syncfusion extends Base {
      * An iframe that loads the ej2 bundle
      * @param {HTMLElement} host
      * @param {Object} item
-     * @param {Object} urls {js, css}
+     * @param {Object} urls {js, css, cssDark}
      * @param {String} licenseKey
      * @param {String} errorText
      * @returns {Promise<Object>} the iframe's ej namespace
@@ -128,13 +166,18 @@ class Syncfusion extends Base {
             doc.open();
             doc.write(
                 '<!DOCTYPE html><html><head>' +
-                '<link rel="stylesheet" href="' + attr(urls.css) + '">' +
-                '<style>html, body {margin: 0; padding: 0; height: 100%; overflow: hidden} #sf-editor {height: 100%; width: 100%} .e-de-background {background-color: #eee}</style>' +
+                '<link id="sf-theme" rel="stylesheet" href="' + attr(this.themeHref(urls)) + '">' +
+                '<style>html, body {margin: 0; padding: 0; height: 100%; overflow: hidden} #sf-editor {height: 100%; width: 100%} html:not(.dark) .e-de-background {background-color: #eee}</style>' +
                 '</head><body><div id="sf-editor"></div>' +
                 '<script src="' + attr(urls.js) + '"><\/script>' +
                 '</body></html>'
             );
-            doc.close()
+            doc.close();
+
+            item.themeLink = doc.getElementById('sf-theme');
+            this.applyTheme(item.themeLink, urls);
+            this.themeLinks.add(item.themeLink);
+            this.watchTheme()
         })
     }
 
@@ -182,7 +225,7 @@ class Syncfusion extends Base {
      * @param {Object} data
      * @param {String} data.id          host element id (the worker component)
      * @param {String} data.type        'document' or 'spreadsheet'
-     * @param {Object} data.urls        {js, css} of the ej2 bundle
+     * @param {Object} data.urls        {js, css, cssDark} of the ej2 bundle
      * @param {String} [data.licenseKey]
      * @param {String} data.locale      Syncfusion locale, e.g. 'en-US', 'nl'
      * @param {String} [data.localeUrl] translations of the locale
@@ -408,6 +451,18 @@ class Syncfusion extends Base {
     }
 
     /**
+     * @summary Switches the ej2 theme of all editors of this window when the colour scheme changes.
+     */
+    watchTheme() {
+        let me = this;
+
+        if (!me.themeObserver) {
+            me.themeObserver = new MutationObserver(() => me.themeLinks.forEach(link => me.applyTheme(link, link.sfUrls)));
+            me.themeObserver.observe(document.body, {attributes: true, attributeFilter: ['class']})
+        }
+    }
+
+    /**
      * Marks the editor content as unsaved again (the save of exportFile() failed)
      * @param {Object} data {id}
      */
@@ -443,6 +498,7 @@ class Syncfusion extends Base {
         }
 
         item.cancelLoad?.();
+        this.themeLinks.delete(item.themeLink);
 
         if (item.iframe) {
             item.iframe.onload = null;
