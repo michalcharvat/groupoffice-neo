@@ -1,11 +1,12 @@
 import Button           from '../../button/Button.mjs';
 import ComponentManager from '../../../node_modules/neo.mjs/src/manager/Component.mjs';
 import ContainerField   from './ContainerField.mjs';
+import {dropIndex, enableDragDrop} from '../../component/dragDrop.mjs';
 import {isFormField}    from '../nestedFields.mjs';
 import {t}              from '../../Translate.mjs';
 
 /**
- * GOUI ArrayField: a list of values, one row field per value (e-mail addresses,
+ * @summary GOUI ArrayField: a list of values, one row field per value (e-mail addresses,
  * phone numbers). buildField(value) returns the row's field config, usually a
  * ContainerField with a remove button (ArrayField.removeButton()).
  *
@@ -19,6 +20,14 @@ import {t}              from '../../Translate.mjs';
  *     arrayField.addValue({type: 'work', email: ''})
  *
  * Value: rows' values in order. The form sees the ArrayField only (nestedFields.mjs).
+ *
+ * sortable: true lets the user drag a row by its handle (ArrayField.dragHandle() in the row)
+ * before or after another row of the same ArrayField; the order is the value. An ArrayField
+ * in a row of another sorts its own rows only.
+ *
+ *     {module: ArrayField, name: 'steps', sortable: true, buildField: () => ({
+ *         module: ContainerField, items: [ArrayField.dragHandle(), {module: TextField, name: 'name', flex: 1}]
+ *     })}
  */
 class ArrayField extends ContainerField {
     static config = {
@@ -30,7 +39,12 @@ class ArrayField extends ContainerField {
          * (value) => row field config
          * @member {Function|null} buildField=null
          */
-        buildField: null
+        buildField: null,
+        /**
+         * Rows can be dragged by their handle (ArrayField.dragHandle()) to another place
+         * @member {Boolean} sortable=false
+         */
+        sortable: false
     }
 
     /** value at the last reset (isDirty) */
@@ -55,6 +69,81 @@ class ArrayField extends ContainerField {
             },
             ...config
         }
+    }
+
+    /**
+     * @summary Config of the handle a row of a sortable ArrayField is dragged by.
+     * @param {Object} [config]
+     * @returns {Object}
+     */
+    static dragHandle(config = {}) {
+        return {
+            ntype: 'component',
+            tag  : 'i',
+            cls  : ['go-icon', 'go-arrayfield-handle'],
+            text : 'drag_indicator',
+            flex : 'none',
+            ...config
+        }
+    }
+
+    /**
+     * @summary Makes the rows draggable by their handle when sortable.
+     */
+    onConstructed() {
+        super.onConstructed();
+
+        let me = this;
+
+        if (me.sortable) {
+            // the direct rows only: an ArrayField in a row sorts its own (its own group too)
+            // an attribute selector: an id may hold characters that a #id selector can't
+            const rows = `[id="${me.id}"] > .go-arrayfield-row`;
+
+            enableDragDrop(me, {
+                drag    : rows,
+                drop    : rows,
+                handle  : '.go-arrayfield-handle',
+                group   : me.id,
+                position: 'between',
+                onDrop  : ({source, targetId, position}) => source && me.onRowDrop(source.itemId, targetId, position)
+            }).catch(e => console.error('ArrayField drag and drop', e))
+        }
+    }
+
+    /**
+     * @summary Moves the dragged row before or after the row it was dropped on.
+     * @param {String} sourceId DOM id of the dragged row
+     * @param {String} targetId DOM id of the row it was dropped on
+     * @param {String} position before or after
+     * @protected
+     */
+    onRowDrop(sourceId, targetId, position) {
+        let me   = this,
+            rows = me.getRows(),
+            // a field's DOM root can be its wrapper node
+            find = id => rows.findIndex(row => row.id === id || row.vdom.id === id),
+            from = find(sourceId);
+
+        me.moveRow(from, dropIndex(from, find(targetId), position))
+    }
+
+    /**
+     * @summary Moves a row to the place of another row and fires the change (the field turns
+     * dirty). Indexes count rows only, so other items never make a move that keeps the row order.
+     * @param {Number} fromIndex index in getRows()
+     * @param {Number} toIndex index in getRows(), -1: no move
+     */
+    moveRow(fromIndex, toIndex) {
+        let me   = this,
+            rows = me.getRows();
+
+        if (!rows[fromIndex] || !rows[toIndex] || fromIndex === toIndex) {
+            return
+        }
+
+        me.moveTo(me.items.indexOf(rows[fromIndex]), me.items.indexOf(rows[toIndex]));
+        me.fireChange()
     }
 
     /**
@@ -108,6 +197,7 @@ class ArrayField extends ContainerField {
     }
 
     /**
+     * @summary Adds the field of a row (the drag class too when sortable).
      * @param {*} value
      * @param {Boolean} reset
      * @returns {Neo.component.Base}
@@ -117,6 +207,8 @@ class ArrayField extends ContainerField {
         let me  = this,
             row = me.add({...me.buildField(value), ...(reset ? {} : {value})}, true);
 
+        // the drag selector of a sortable ArrayField
+        me.sortable && row.addWrapperCls('go-arrayfield-row');
         reset && row.reset(value);
 
         return row

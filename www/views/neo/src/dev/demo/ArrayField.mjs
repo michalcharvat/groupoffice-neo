@@ -12,7 +12,8 @@ class ArrayFieldDemo extends FormDemo {
     static config = {
         className: 'GO.dev.demo.ArrayField',
         intro    : '<p>ContainerField: child fields give one object value. ArrayField: one row field per ' +
-                   'array item (buildField). The form sees only the outer field (src/form/nestedFields.mjs).</p>',
+                   'array item (buildField). The form sees only the outer field (src/form/nestedFields.mjs). ' +
+                   'sortable: true: drag a row by its handle; the chapters each sort their own documents.</p>',
         fields   : [{
             module   : TextField,
             name     : 'name',
@@ -31,10 +32,12 @@ class ArrayFieldDemo extends FormDemo {
             name      : 'emailAddresses',
             reference : 'emails',
             style     : {gap: '8px'},
+            sortable  : true,
             buildField: () => ({
                 module: ContainerField,
                 style : {gap: '8px'},
                 items : [
+                    ArrayField.dragHandle(),
                     {module: TextField, name: 'type', labelText: 'Type', labelPosition: 'inline', width: 120},
                     {module: TextField, name: 'email', labelText: 'E-mail', labelPosition: 'inline', flex: 1, inputType: 'email'},
                     ArrayField.removeButton()
@@ -49,11 +52,42 @@ class ArrayFieldDemo extends FormDemo {
             style  : {alignSelf: 'start'},
             // the form (the button's parent) holds the ArrayField
             handler: data => data.component.parent.getReference('emails').addValue({type: 'work', email: ''})
+        }, {
+            module    : ArrayField,
+            name      : 'chapters',
+            sortable  : true,
+            style     : {gap: '8px'},
+            // a sortable ArrayField in each row of another
+            buildField: () => ({
+                module: ContainerField,
+                layout: {ntype: 'vbox', align: 'stretch'},
+                style : {gap: '4px'},
+                items : [{
+                    ntype : 'container',
+                    layout: {ntype: 'hbox', align: 'start'},
+                    style : {gap: '8px'},
+                    items : [ArrayField.dragHandle(), {module: TextField, name: 'title', labelText: 'Chapter', labelPosition: 'inline', flex: 1}]
+                }, {
+                    module    : ArrayField,
+                    name      : 'documents',
+                    sortable  : true,
+                    style     : {gap: '4px', paddingLeft: '32px'},
+                    buildField: () => ({
+                        module: ContainerField,
+                        style : {gap: '8px'},
+                        items : [ArrayField.dragHandle(), {module: TextField, name: 'name', labelText: 'Document', labelPosition: 'inline', flex: 1}]
+                    })
+                }]
+            })
         }],
         sample: {
             name          : 'Jane Doe',
             address       : {street: 'Main street 1', city: 'Utrecht'},
-            emailAddresses: [{type: 'work', email: 'jane@example.com'}, {type: 'home', email: 'jane@home.example'}]
+            emailAddresses: [{type: 'work', email: 'jane@example.com'}, {type: 'home', email: 'jane@home.example'}],
+            chapters      : [
+                {title: 'Introduction', documents: [{name: 'Scope'}, {name: 'Terms'}]},
+                {title: 'Procedures', documents: [{name: 'Mooring'}, {name: 'Bunkering'}, {name: 'Waste'}]}
+            ]
         }
     }
 }

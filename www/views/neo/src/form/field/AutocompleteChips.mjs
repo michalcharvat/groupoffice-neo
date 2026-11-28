@@ -63,10 +63,17 @@ class AutocompleteChips extends ChipsField {
     /** @member {GO.menu.List|null} menu=null */
     menu = null
 
+    /**
+     * @summary Defaults of chipEntity, chipRenderer and textInputToValue from the entity.
+     * @param {Object} config
+     */
     construct(config) {
         super.construct(config);
 
         let me = this;
+
+        // clickable: a chip opens its entity (a picked value other than the id brings its own)
+        me.chipEntity ??= id => id !== null && typeof id !== 'object' ? {entity: me.entity, id} : null;
 
         me.chipRenderer ??= async id => {
             const [record] = await client.get(me.entity, [String(id)], me.properties || ['id', me.displayField]);

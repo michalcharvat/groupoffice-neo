@@ -37,8 +37,15 @@ class ChipsDemo extends FormDemo {
             jmapSort : [{property: 'name', isAscending: true}],
             labelText: 'Note books (AutocompleteChips)',
             hint     : '▾ lists the entities (filtered by the typed text), Enter adds the first match'
+        }, {
+            module   : AutocompleteChips,
+            name     : 'noteIds',
+            entity   : 'Note',
+            clickable: true,
+            labelText: 'Notes (clickable: true)',
+            hint     : 'a click on a chip opens the note, × still removes it'
         }],
-        sample: {tags: ['red', 'green'], userIds: [1], noteBookIds: []}
+        sample: {tags: ['red', 'green'], userIds: [1], noteBookIds: [], noteIds: []}
     }
 }
 

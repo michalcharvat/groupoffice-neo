@@ -28,6 +28,10 @@
  *         }
  *     })
  *
+ * A drag `handle` selector: an item can only be dragged by a descendant matching it, so text in
+ * the item's inputs stays selectable (ArrayField sortable rows). Drop roots nested in each
+ * other: a drag is offered to the nearest root of its group.
+ *
  * Rows of different kinds (field sets and their fields): `accept` maps a drag selector to the
  * drop targets of what it matches; dropInGroups() places a dragged row of a grouped list.
  *
@@ -42,6 +46,7 @@
  * @param {Object} options
  * @param {String} [options.drag]
  * @param {String} [options.drop] selector, or '' to drop on the component only
+ * @param {String} [options.handle] an item is dragged only by a descendant matching it
  * @param {String} [options.group]
  * @param {Boolean} [options.files=false]
  * @param {String} [options.position='on'] on, between (sorting) or both
@@ -54,10 +59,11 @@
  * @param {Function} options.onDrop
  * @returns {Promise<void>}
  */
-export async function enableDragDrop(component, {drag, drop, group, files=false, position, horizontal=false, accept, onHover, onDrop}) {
+export async function enableDragDrop(component, {drag, drop, handle, group, files=false, position, horizontal=false, accept, onHover, onDrop}) {
     const data = {};
 
     drag  && (data.goDrag = drag);
+    handle && (data.goDragHandle = handle);
     // an empty selector still makes the component a drop root
     drop !== undefined && drop !== null && (data.goDrop = drop);
     group && (data.goDropGroup = group);
@@ -75,8 +81,11 @@ export async function enableDragDrop(component, {drag, drop, group, files=false,
     component.vdom.data = {...component.vdom.data, ...data};
     component.update();
 
-    component.addDomListeners({goDrop: event => onDrop(event), scope: component});
-    onHover && component.addDomListeners({goDragHover: event => onHover(event), scope: component});
+    // the events bubble through the components: only the drop root's own (nested drop roots)
+    const own = event => !event.id || event.id === component.id || event.id === component.vdom.id;
+
+    component.addDomListeners({goDrop: event => own(event) && onDrop(event), scope: component});
+    onHover && component.addDomListeners({goDragHover: event => own(event) && onHover(event), scope: component});
 
     await Neo.Main.importAddon({name: 'WS/DragDrop', windowId: component.windowId})
 }
