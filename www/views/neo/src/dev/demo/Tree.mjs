@@ -12,7 +12,8 @@ const DATA = {
 
 /**
  * Dev demo: GOUI Tree — children loaded on expand (a fake provider with a delay),
- * checkboxes, an expanded node, leaves.
+ * checkboxes, an expanded node, leaves, badges, a row menu, "Show more..." paging (Big
+ * folder, 5 per page) and openPath().
  */
 class TreeDemo extends Container {
     static config = {
@@ -25,16 +26,25 @@ class TreeDemo extends Container {
             width       : 320,
             height      : 420,
             defaultIcon : 'folder',
-            nodeProvider: async node => {
+            nodeMenu    : node => node.id !== 'file',
+            nodeProvider: async (node, {position}) => {
                 // loads take a moment, like a server
                 await new Promise(resolve => setTimeout(resolve, 400));
 
                 if (!node) {
                     return [
-                        {id: 'world', text: 'World', icon: 'public', expanded: true},
+                        {id: 'world', text: 'World', icon: 'public', expanded: true, badge: 3},
+                        {id: 'big', text: 'Big folder', badge: 'new'},
                         {id: 'empty', text: 'Empty folder'},
                         {id: 'file', text: 'A leaf', icon: 'description', children: []}
                     ]
+                }
+
+                if (node.id === 'big') {
+                    const nodes = Array.from({length: 5}, (_, i) => position + i + 1).filter(i => i <= 23)
+                        .map(i => ({id: 'big-' + i, text: 'Item ' + i, badge: i % 4, children: []}));
+
+                    return {nodes, hasMore: position + 5 < 23}
                 }
 
                 if (node.id === 'world') {
@@ -52,6 +62,15 @@ class TreeDemo extends Container {
                 ui     : 'secondary',
                 text   : 'reload()',
                 handler: data => data.component.up({className: 'GO.dev.demo.Tree'}).getReference('tree').reload()
+            }, {
+                module : Button,
+                ui     : 'secondary',
+                text   : "openPath(['big', 'big-17'])",
+                handler: async data => {
+                    const demo = data.component.up({className: 'GO.dev.demo.Tree'}),
+                          node = await demo.getReference('tree').openPath(['big', 'big-17']);
+                    demo.log('openPath: ' + (node ? node.text : 'not found'))
+                }
             }, {
                 module : Button,
                 ui     : 'secondary',
@@ -80,7 +99,11 @@ class TreeDemo extends Container {
             expand     : ({node}) => me.log('expand ' + node.text),
             collapse   : ({node}) => me.log('collapse ' + node.text),
             checkChange: ({node, checked}) => me.log(`checkChange ${node.text}: ${checked}`),
-            itemClick  : ({record}) => me.log('itemClick ' + record.text)
+            itemClick  : ({record}) => me.log('itemClick ' + record.text),
+            menu       : ({node, target}) => tree.showMenu([
+                {text: 'Badge +1', handler: () => tree.setBadge(node.id, (Number(node.badge) || 0) + 1)},
+                {text: 'Clear badge', handler: () => tree.setBadge(node.id, 0)}
+            ], target)
         })
     }
 

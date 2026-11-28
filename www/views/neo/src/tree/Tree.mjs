@@ -3,16 +3,34 @@ import Store     from '../../node_modules/neo.mjs/src/data/Store.mjs';
 import {enableDragDrop} from '../component/dragDrop.mjs';
 import {escapeHtml} from '../Format.mjs';
 import {t}       from '../Translate.mjs';
+import MenuList  from '../menu/List.mjs';
+
+// record id prefix of the "Show more..." rows; shortcut: a root node with the id "__more__" (or
+// "__more__" + another node's id) would clash with a paging row, prefix such ids if that ever happens
+const MORE = '__more__';
 
 /**
  * GOUI Tree (goui/script/component/tree): nodes load on demand from a nodeProvider,
  * expand/collapse with the caret, an optional checkbox per node.
  *
- * nodeProvider(node) returns the children of `node` (null = the root nodes), sync or as
- * a Promise. A node: {id, text, icon?, check?, children?, expanded?, cls?}
+ * nodeProvider(node, {position}) returns the children of `node` (null = the root nodes), sync
+ * or as a Promise. A node: {id, text, icon?, check?, children?, expanded?, cls?, badge?}
  * - children: [] = a leaf, an array = known children, undefined = ask the provider on expand
  * - check: true/false shows a checkbox (GOUI TreeRecord.check)
  * - expanded: load and show the children at once
+ * - badge: a count or text at the end of the row (ExtJS "badge red-fill"), hidden at 0;
+ *   setBadge(id, badge) changes it
+ *
+ * Paging (ExtJS FolderTreeLoader position / pageSize): a provider may return
+ * {nodes, hasMore} instead of the array. With hasMore the level ends in a "Show more..."
+ * row that asks the provider for the next page with `position` = the nodes loaded so far.
+ *
+ * openPath(ids) expands down a path of node ids (root first), loading levels and pages on
+ * the way, and selects the last node (e.g. a deep link to a folder).
+ *
+ * Row menu: `nodeMenu: true` (or node => Boolean) shows a ⋮ icon per row; the icon and a
+ * right click fire `menu` {node, target}. The listener builds the items and calls
+ * showMenu(items, target).
  *
  * Expanded nodes are remembered across reload() (GOUI TreeStore.expandedRecordCache);
  * reloadNode(id) loads one node's children again the same way.
@@ -22,8 +40,8 @@ import {t}       from '../Translate.mjs';
  *         return list.map(f => ({id: f.id, text: f.name}))
  *     }}
  *
- * Events: expand / collapse ({node}), checkChange ({node, checked}), select via the list
- * (itemClick {record}; getNode(record.id) gives the node).
+ * Events: expand / collapse ({node}), checkChange ({node, checked}), menu ({node, target}),
+ * select via the list (itemClick {record}; getNode(record.id) gives the node).
  *
  * Drag and drop (GOUI Tree draggable / dropOn / dropBetween): `dragNodes` lets nodes be
  * dragged, `dropOn` / `dropBetween` accept drops on a node or before / after it. A node
@@ -79,6 +97,11 @@ class Tree extends List {
          * @member {String|null} dragGroup=null
          */
         dragGroup: null,
+        /**
+         * A ⋮ icon and a right click on rows fire `menu`: true, or (node) => Boolean
+         * @member {Boolean|Function} nodeMenu=false
+         */
+        nodeMenu: false,
         store: {
             module     : Store,
             keyProperty: 'id',
@@ -106,6 +129,12 @@ class Tree extends List {
     staleIds = new Set()
     /** load counter: a reload drops older answers */
     generation = 0
+    /** children arrays (and roots) the provider has more pages of */
+    moreLists = new WeakSet()
+    /** node or children array → the running load of its children or next page */
+    pending = new Map()
+    /** the last reload() */
+    loadPromise = null
 
     onConstructed() {
         super.onConstructed();
@@ -113,6 +142,13 @@ class Tree extends List {
         let me = this;
 
         me.autoLoad && me.reload().catch(e => console.error('Tree', e));
+
+        if (me.nodeMenu) {
+            // the cls tells the main thread to drop the browser's own context menu here
+            me.cls = [...(me.cls || []), 'go-tree-menu'];
+            Neo.main?.DomEvents?.registerPreventDefaultTargets({name: 'contextmenu', cls: ['go-tree-menu'], windowId: me.windowId});
+            me.addDomListeners({contextmenu: me.onContextMenu, scope: me})
+        }
 
         if (me.dragNodes || me.dropOn || me.dropBetween) {
             const drop = me.dropOn || me.dropBetween;
@@ -248,6 +284,7 @@ class Tree extends List {
         this.nodes.delete(node.id);
         this.parents.delete(node.id);
         this.expandedIds.delete(node.id);
+        this.pending.delete(node);
         Array.isArray(node.children) && node.children.forEach(child => this.unregister(child))
     }
 
@@ -255,7 +292,15 @@ class Tree extends List {
      * Loads the root nodes again (and the expanded nodes' children)
      * @returns {Promise<void>}
      */
-    async reload() {
+    reload() {
+        return this.loadPromise = this.loadRoots()
+    }
+
+    /**
+     * @returns {Promise<void>}
+     * @protected
+     */
+    async loadRoots() {
         let me         = this,
             generation = ++me.generation,
             roots      = await me.provide(null);
@@ -338,17 +383,218 @@ class Tree extends List {
 
     /**
      * @param {Object|null} node
-     * @returns {Promise<Object[]>} the provider's nodes (copies)
+     * @param {Number} [position=0] nodes of this level loaded so far (paging)
+     * @returns {Promise<Object[]>} the provider's nodes (copies), in moreLists when it has more
      * @protected
      */
-    async provide(node) {
-        const copy = children => children.map(child => ({
-            ...child,
-            id: String(child.id),
-            ...(Array.isArray(child.children) ? {children: copy(child.children)} : {})
-        }));
+    async provide(node, position=0) {
+        const copy   = children => children.map(child => ({
+                  ...child,
+                  id: String(child.id),
+                  ...(Array.isArray(child.children) ? {children: copy(child.children)} : {})
+              })),
+              result = await this.nodeProvider?.(node, {position}) || [],
+              list   = copy(Array.isArray(result) ? result : result.nodes || []);
 
-        return copy(await this.nodeProvider?.(node) || [])
+        !Array.isArray(result) && result.hasMore && this.moreLists.add(list);
+
+        return list
+    }
+
+    /**
+     * Loads the next page of a level ("Show more...")
+     * @param {String|Number|null} [id=null] the parent node, null for the root nodes
+     * @returns {Promise<void>}
+     */
+    async loadMore(id=null) {
+        let me     = this,
+            parent = id === null || id === undefined ? null : me.getNode(id),
+            list   = parent ? parent.children : me.roots;
+
+        if ((id !== null && id !== undefined && !parent) || !me.moreLists.has(list)) {
+            return
+        }
+
+        if (me.pending.has(list)) {
+            return me.pending.get(list)
+        }
+
+        const moreId     = me.moreId(parent),
+              generation = me.generation,
+              promise    = (async () => {
+                  let page;
+
+                  me.loadingIds.add(moreId);
+                  me.updateItem(moreId);
+
+                  try {
+                      page = await me.provide(parent, list.length)
+                  } finally {
+                      me.loadingIds.delete(moreId);
+                      me.isDestroyed || me.updateItem(moreId)
+                  }
+
+                  // a reload() or reloadNode() replaced the level meanwhile
+                  if (me.isDestroyed || generation !== me.generation || (parent ? parent.children : me.roots) !== list ||
+                      (parent && me.getNode(parent.id) !== parent)) {
+                      return
+                  }
+
+                  // nodes shown already (the level changed between pages) aren't added twice
+                  const fresh = page.filter(node => !me.nodes.has(node.id));
+
+                  list.push(...fresh);
+                  (!fresh.length || !me.moreLists.has(page)) && me.moreLists.delete(list);
+                  me.register(fresh, parent);
+
+                  try {
+                      await me.populate(fresh, generation)
+                  } finally {
+                      // also when an expanded child failed: the new nodes show, the old "Show more..." goes
+                      !me.isDestroyed && generation === me.generation && me.refresh()
+                  }
+              })();
+
+        me.pending.set(list, promise);
+
+        try {
+            await promise
+        } finally {
+            me.pending.delete(list)
+        }
+    }
+
+    /**
+     * @param {Object|null} parent
+     * @returns {String} record id of the "Show more..." row of a level
+     * @protected
+     */
+    moreId(parent) {
+        return MORE + (parent ? parent.id : '')
+    }
+
+    /**
+     * Expands the nodes of a path and selects the last one, loading lazy levels and further
+     * pages on the way (waits for a running reload())
+     * @param {Array<String|Number>} ids node ids from a root node down
+     * @returns {Promise<Object|null>} the selected node, null when a node isn't found under the
+     *          previous one
+     */
+    async openPath(ids) {
+        let me   = this,
+            node = null,
+            loading;
+
+        // a failed reload leaves the nodes it had: look in those
+        do {
+            loading = me.loadPromise;
+            await loading?.catch(() => {})
+        } while (loading !== me.loadPromise);
+
+        for (let i = 0; i < ids.length; i++) {
+            const id     = String(ids[i]),
+                  parent = node;
+
+            // the node may be on a later page of its level; stop when a page adds nothing
+            // (the level was replaced or removed meanwhile)
+            for (let list = parent ? parent.children : me.roots; !me.getNode(id) && me.moreLists.has(list);) {
+                const before = list.length;
+
+                await me.loadMore(parent ? parent.id : null);
+
+                if (list.length === before) {
+                    break
+                }
+            }
+
+            node = me.getNode(id) || null;
+
+            if (!node || me.getParentNode(id) !== parent || (parent && me.getNode(parent.id) !== parent)) {
+                return null
+            }
+
+            i < ids.length - 1 && await me.expand(node.id)
+        }
+
+        node && me.selectNode(node.id);
+        return node
+    }
+
+    /**
+     * Selects (highlights) a node without firing events
+     * @param {String|Number|null} id
+     */
+    selectNode(id) {
+        let me     = this,
+            record = id !== null && id !== undefined && me.store.get(String(id));
+
+        if (record) {
+            me.selectionModel.select(record)
+        } else {
+            me.selectionModel.deselectAll?.()
+        }
+    }
+
+    /**
+     * Sets node.badge; a subclass with its own badgeOf() field has its own setter (email setUnseen())
+     * @param {String|Number} id
+     * @param {Number|String|null} badge
+     */
+    setBadge(id, badge) {
+        const node = this.getNode(id);
+
+        if (node && node.badge !== badge) {
+            node.badge = badge;
+            this.updateItem(node.id)
+        }
+    }
+
+    /**
+     * @param {Object} node
+     * @returns {Number|String|null|undefined} the badge of a row; subclasses map their own field
+     */
+    badgeOf(node) {
+        return node.badge
+    }
+
+    /**
+     * @param {Object} node
+     * @returns {Boolean} the row shows a ⋮ icon and fires `menu`
+     */
+    hasNodeMenu(node) {
+        const menu = this.nodeMenu;
+
+        return typeof menu === 'function' ? !!menu(node) : !!menu
+    }
+
+    /**
+     * Shows a menu below a DOM element (e.g. the `menu` event's target)
+     * @param {Object[]} items GO.menu.List items
+     * @param {String} target DOM id
+     */
+    showMenu(items, target) {
+        items?.length && MenuList.showAt({appName: this.appName, windowId: this.windowId, target, items})
+    }
+
+    /**
+     * @param {Object[]} path DOM event path
+     * @returns {Object|null} the node of the row
+     */
+    nodeFromPath(path) {
+        const itemNode = path.find(node => node.cls?.includes(this.itemCls)),
+              id       = itemNode && this.nodeIdOf(itemNode.id);
+
+        return id === null || id === undefined ? null : this.getNode(id) || null
+    }
+
+    /**
+     * @param {Object} data contextmenu DOM event
+     * @protected
+     */
+    onContextMenu(data) {
+        const node = this.nodeFromPath(data.path || []);
+
+        node && this.hasNodeMenu(node) && this.fire('menu', {node, target: data.path[0]?.id})
     }
 
     /**
@@ -400,12 +646,19 @@ class Tree extends List {
     refresh() {
         let me   = this,
             rows = [],
-            walk = (children, level) => children.forEach(node => {
-                rows.push({id: node.id, text: String(node.text ?? ''), level, state: me.rowState(node)});
-                me.expandedIds.has(node.id) && Array.isArray(node.children) && walk(node.children, level + 1)
-            });
+            walk = (children, level, parent) => {
+                children.forEach(node => {
+                    rows.push({id: node.id, text: String(node.text ?? ''), level, state: me.rowState(node)});
+                    me.expandedIds.has(node.id) && Array.isArray(node.children) && walk(node.children, level + 1, node)
+                });
 
-        walk(me.roots, 0);
+                if (me.moreLists.has(children)) {
+                    const id = me.moreId(parent);
+                    rows.push({id, text: t('Show more...'), level, state: me.loadingIds.has(id) ? 'loading' : ''})
+                }
+            };
+
+        walk(me.roots, 0, null);
         me.store.data = rows
     }
 
@@ -440,33 +693,57 @@ class Tree extends List {
         let me   = this,
             node = me.getNode(id);
 
+        if (!node || me.expandedIds.has(node.id)) {
+            return
+        }
+
+        // another expand() loads the children: wait for it (openPath())
+        if (me.pending.has(node)) {
+            return me.pending.get(node)
+        }
+
         // a node with known children expands while reloadNode() loads them again
-        if (!node || me.expandedIds.has(node.id) || (me.loadingIds.has(node.id) && node.children === undefined)) {
+        if (me.loadingIds.has(node.id) && node.children === undefined) {
             return
         }
 
         if (node.children === undefined) {
-            const generation = me.generation;
+            const generation = me.generation,
+                  promise    = (async () => {
+                      let children;
 
-            me.loadingIds.add(node.id);
-            me.updateItem(node.id);
+                      me.loadingIds.add(node.id);
+                      me.updateItem(node.id);
+
+                      try {
+                          do {
+                              me.staleIds.delete(node.id);
+                              children = await me.provide(node)
+                          } while (me.staleIds.has(node.id) && !me.isDestroyed)
+                      } finally {
+                          me.loadingIds.delete(node.id);
+                          me.isDestroyed || me.updateItem(node.id)
+                      }
+
+                      // or a reloadNode() of an ancestor replaced the node meanwhile
+                      if (me.isDestroyed || generation !== me.generation || me.getNode(node.id) !== node) {
+                          return false
+                      }
+
+                      node.children = children;
+                      me.register(children, node);
+                      return true
+                  })();
+
+            me.pending.set(node, promise);
 
             try {
-                do {
-                    me.staleIds.delete(node.id);
-                    node.children = await me.provide(node)
-                } while (me.staleIds.has(node.id) && !me.isDestroyed)
+                if (!await promise) {
+                    return
+                }
             } finally {
-                me.loadingIds.delete(node.id);
-                me.updateItem(node.id)
+                me.pending.delete(node)
             }
-
-            // or a reloadNode() of an ancestor replaced the node meanwhile
-            if (me.isDestroyed || generation !== me.generation || me.getNode(node.id) !== node) {
-                return
-            }
-
-            me.register(node.children, node)
         }
 
         me.expandedIds.add(node.id);
@@ -511,19 +788,21 @@ class Tree extends List {
         const record = this.store.get(id),
               node   = this.getNode(id);
 
-        // a changed record field repaints its row
-        record && node && (record.state = this.rowState(node))
+        // a changed record field repaints its row ("Show more..." rows have no node)
+        record && (record.state = node ? this.rowState(node) : (this.loadingIds.has(id) ? 'loading' : ''))
     }
 
     /**
      * @param {Object} node
-     * @returns {String} leaf / expanded / loading / checked state of a row
+     * @returns {String} leaf / expanded / loading / checked / icon / badge state of a row
      * @protected
      */
     rowState(node) {
         let me = this;
 
         return [
+            String(me.badgeOf(node) ?? ''),
+            me.hasNodeMenu(node) ? 'menu' : '',
             Array.isArray(node.children) && !node.children.length ? 'leaf' : '',
             me.expandedIds.has(node.id) ? 'expanded' : '',
             me.loadingIds.has(node.id) ? 'loading' : '',
@@ -544,8 +823,17 @@ class Tree extends List {
               cls  = this.getNode(record.id)?.cls;
 
         item && cls?.forEach(c => !item.cls.includes(c) && item.cls.push(c));
+        item && this.isMoreId(record.id) && item.cls.push('go-tree-more');
 
         return item
+    }
+
+    /**
+     * @param {String} id record id
+     * @returns {Boolean} it is a "Show more..." row
+     */
+    isMoreId(id) {
+        return typeof id === 'string' && id.startsWith(MORE) && !this.nodes.has(id)
     }
 
     createItemContent(record) {
@@ -562,6 +850,16 @@ class Tree extends List {
             content.push({tag: 'span', cls: ['go-tree-indent']})
         }
 
+        if (me.isMoreId(record.id)) {
+            const busy = me.loadingIds.has(record.id);
+
+            content.push(
+                {tag: 'span', cls: ['go-tree-caret', 'go-icon', 'go-tree-leaf', busy ? 'go-tree-loading' : ''].filter(Boolean), text: busy ? 'progress_activity' : ''},
+                {tag: 'span', cls: ['go-tree-label'], text: record.text}
+            );
+            return content
+        }
+
         content.push({
             tag : 'span',
             cls : ['go-tree-caret', 'go-icon', isLeaf ? 'go-tree-leaf' : '', loading ? 'go-tree-loading' : ''].filter(Boolean),
@@ -575,14 +873,22 @@ class Tree extends List {
 
         content.push({tag: 'span', cls: ['go-tree-label'], html: escapeHtml(record.text)});
 
+        const badge = me.badgeOf(node);
+
+        // vdom text: neo escapes it
+        badge !== undefined && badge !== null && badge !== '' && Number(badge) !== 0 &&
+            content.push({tag: 'span', cls: ['go-tree-badge'], text: String(badge)});
+
+        me.hasNodeMenu(node) && content.push({tag: 'i', cls: ['go-icon', 'go-row-menu'], text: 'more_vert', title: t('More options')});
+
         return content
     }
 
     /**
-     * Caret and checkbox clicks don't select the row
+     * Caret, checkbox, row menu and "Show more..." clicks don't select the row
      */
     getInteractiveItemIndex(path) {
-        if (path.some(node => node.cls?.includes('go-tree-caret') || node.cls?.includes('go-check'))) {
+        if (path.some(node => ['go-tree-caret', 'go-check', 'go-row-menu', 'go-tree-more'].some(c => node.cls?.includes(c)))) {
             return undefined
         }
 
@@ -593,8 +899,21 @@ class Tree extends List {
         let me       = this,
             caret    = data.path.find(node => node.cls?.includes('go-tree-caret')),
             check    = data.path.find(node => node.cls?.includes('go-check')),
-            itemNode = (caret || check) && data.path.find(node => node.cls?.includes(me.itemCls)),
+            menuIcon = data.path.find(node => node.cls?.includes('go-row-menu')),
+            itemNode = data.path.find(node => node.cls?.includes(me.itemCls)),
             id       = itemNode && me.nodeIdOf(itemNode.id);
+
+        if (me.isMoreId(id)) {
+            const parentId = id.slice(MORE.length);
+            me.loadMore(parentId === '' ? null : parentId).catch(e => console.error('Tree load more', e));
+            return
+        }
+
+        if (menuIcon) {
+            const node = me.getNode(id);
+            node && me.hasNodeMenu(node) && me.fire('menu', {node, target: menuIcon.id || itemNode.id});
+            return
+        }
 
         if (id !== undefined && id !== null && caret) {
             me.expandedIds.has(String(id)) ? me.collapse(id) : me.expand(id).catch(e => console.error('Tree expand', e));
