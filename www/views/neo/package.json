@@ -28,6 +28,7 @@
     "build-themes": "node buildScripts/generateGoTheme.mjs && node node_modules/neo.mjs/buildScripts/build/themes.mjs -n -e dev -t all && npm run build-page-css",
     "build-page-css": "node buildScripts/buildPageCss.mjs",
     "audit-styles": "node buildScripts/auditStyles.mjs",
+    "audit-dark": "node buildScripts/auditDarkMode.mjs",
     "lint-summary": "node buildScripts/lintSummary.mjs"
   }
 }

@@ -138,6 +138,21 @@ The reference is GO 26's GOUI module UI (e.g. Notes), not the ExtJS Paper theme.
     dialog may use the sheet of another class in its file only when its body creates that class
     (it pops out without the rest). It exits with 1 when it finds one (2 without generated
     CSS). Known exceptions with their reason are in its `allowed` list.
+  - **Dark mode**: every component works in light and dark (`body.dark`). Colours come from GO
+    tokens (`var(--bg-lowest)`, `var(--fg-text)`, `var(--fg-line)`, ..., `goui-theme/_theme.scss`),
+    which have a dark value; a literal (`#fff`, `rgb()`, `white`) only where the colour stays on
+    purpose, marked `// dark-ok: <reason>` (PDF paper, a QR code). A neo class with light-only
+    token defaults (`--neo-board-background: #f3f5f8`) gets an overlay in
+    `resources/scss/go/<same path>.scss` that maps them to GO tokens. Ghost and secondary
+    buttons take `--fg-text` (a `<button>` does not inherit the colour).
+    `npm run audit-dark` (`buildScripts/auditDarkMode.mjs`, after `build-themes`) lists colour
+    literals (risky: an opaque light background or dark text), unmapped neo tokens of the neo
+    classes GO imports, and with `-- --url http://localhost:<port>` it logs in headless
+    (Playwright, `--playwright <dir>` when it is not resolvable), switches to dark and checks the
+    rendered elements of every Dev demo and module view (light backgrounds, dark text on dark)
+    with the CSS rule that sets the colour and a screenshot (`dist/dark-audit/`). Views behind a
+    button go in its `clickPages`; dialogs and menus still need a look by hand. amd/sf neo
+    checkouts: `--modules <dir,dir>`. It exits with 1 when it finds something.
   - Module `views/neo/style.css` files load in the page head, before every neo sheet: a rule
     there needs more classes than the neo rule it overrides.
 - **Icons**: Material Symbols ligatures (`{module: Button, icon: 'add'}`), font in
