@@ -117,7 +117,9 @@ scripts/neo-port-check.sh -C <checkout> A..B     # every such merge on the first
 It works in neo-ui and in the amd/sf neo worktrees (`~/Projects/groupoffice26-neo-{amd,sf}`). Per commit and
 module it prints the classic files and the module's `views/neo/PORTING.md` (the map to the neo files); a module
 without `views/neo` is reported as "no neo views yet". The last line is a summary; exit 1 means commits wait.
-The neo commit that ports one records it with `Ported-from: <full hash>` (or `Port-skipped: <full hash>
+Upstream commits marked `Port-to: neo` (go:commit sets it on classic UI changes of modules with neo views)
+are listed whatever the range, also before their merge ("not merged into neo yet"), until a neo commit records
+them. The neo commit that ports one records it with `Ported-from: <full hash>` (or `Port-skipped: <full hash>
 <reason>`) and drops out of the list. Workflow and session-start summary: go:port, section "Target neo".
 
 ## Checks
