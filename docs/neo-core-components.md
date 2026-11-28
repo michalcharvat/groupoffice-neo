@@ -788,6 +788,26 @@ class NoteDetail extends Panel {
   amd/crew `MemberVoyageDetail` (crew card: `LinesCard` → `GO.detail.LinesCard`, `load()`,
   `getDownloadUrl()`, `deleteRecord()`).
 
+## Route links in component html (2026-11-28)
+
+- A bare `<a href="#crew/amdcrewmember/5">` in a component's html resolves against neo's
+  `<base href="/views/neo/apps/go/">` and loads that folder (403). An App worker DOM listener can't
+  stop it (preventDefault comes too late), so the main thread does: `GO.main.addon.History`
+  listens on the document of every window (`listenRouteLinks()` in `src/history.mjs`, called by
+  `Viewport` and `PopupView`).
+- Write links with `src/link/routeLink.mjs`: `routeLink(route, html)` (html already escaped) and
+  `entityLink(entity, id, text)` (route by `resolveRoute()`, plain escaped text without one) give
+  `<a class="go-route-link" role="link" tabindex="0" data-route="…">`: a click or Enter sets the
+  window's hash. No component listener needed; `.go-route-link` has `cursor: pointer` in the theme.
+- An `a[href^="#"]` is caught too (preventDefault, then the hash; a bare `#` only prevented), so
+  older hash links such as the contact custom field (`customfields/types.mjs`) work as they are.
+  `target="_blank"` opens a new tab at the page's URL. Modifier and middle clicks and links in an
+  editor (contenteditable) are left alone. In a popup window (PopupView) a link sets the popup's hash,
+  which no view handles yet (as the amd copies' `Neo.Main.setRoute`). Tests `tests/routeLink.test.mjs`.
+- amd modules (crew `view/routeLink.mjs`, ports `PortDetail`, pms `ComponentDetail`, portcall
+  `PortCallDialog`) still carry their own copies; they can switch to the core helpers and drop
+  their listeners and `.go-route-link` CSS (same class name).
+
 ## Left to build (2026-11-19)
 
 1. ~~**Notes Markdown + image zoom**~~ — done: `MarkdownField`, `src/Markdown.mjs`, `ImageWindow`.

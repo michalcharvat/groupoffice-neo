@@ -10,6 +10,15 @@ async function addon(windowId) {
 }
 
 /**
+ * Make the route links of a window open (GO.main.addon.History, src/link/routeLink.mjs); once per window
+ * @param {String} windowId
+ * @returns {Promise<void>}
+ */
+export async function listenRouteLinks(windowId) {
+    await addon(windowId)
+}
+
+/**
  * Set the hash of a window without a new history entry
  * @param {String} windowId
  * @param {String} value hash without "#"
