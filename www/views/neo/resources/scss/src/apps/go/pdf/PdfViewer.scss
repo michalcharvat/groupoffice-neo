@@ -53,3 +53,15 @@
     padding: 1.6rem;
     color  : var(--fg-secondary-text);
 }
+
+// .go-pdfviewer-thumbs: the pages as a wrapping grid of thumbnails (GO.pdf.PdfPageExportDialog)
+.go-pdfviewer-thumbs .go-pdfviewer-pages {
+    display      : flex;
+    flex-wrap    : wrap;
+    align-content: flex-start;
+    gap          : .8rem;
+}
+
+.go-pdfviewer-thumbs .go-pdf-page {
+    margin: 0;
+}

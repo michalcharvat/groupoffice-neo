@@ -64,6 +64,7 @@ Status: **neo** = neo.mjs 13.4 ships it (14 since 2026-11-24), usable as is (may
 | Kanban board (GOUI has none; ExtJS business/kanban) | GO.neo (`GO.board.Board`, see "GO.board.Board" below; first user: tasks board view) |
 | Resource scheduler / timeline (vis-timeline in amd/crew) | GO.neo (`GO.scheduler.Scheduler`, see "GO.scheduler.Scheduler" below; first user: crew planning) |
 | PDF / image preview (ExtJS amd/libs `PdfViewPanel`; GOUI has none) | GO.neo (`GO.pdf.PdfViewer`, see "GO.pdf.PdfViewer" below; demo `#dev/core/PdfViewer`; users: crew certificate verification, later dms and invoices) |
+| PDF page export: range, thumbnails, print, download, save, e-mail (ExtJS amd/libs `PdfPageExportDialog`; GOUI has none) | GO.neo (`GO.pdf.PdfPageExportDialog`, see "GO.pdf.PdfPageExportDialog" below; demo `#dev/core/PdfViewer`; users: dms document detail, later invoices) |
 | File preview by extension (ExtJS amd/dms `PdfViewPanel`, `FileViewPanel`, `ImageViewPanel`, `MarkdownViewPanel`, `MediaViewPanel`; GOUI has none) | GO.neo (`GO.preview.FilePreview`, see "GO.preview.FilePreview" below; demo `#dev/core/FilePreview`; users: dms document detail, files `FileDetail`) |
 | auth/Login | GO.neo (`apps/go/view/LoginView.mjs`: forgot credentials, 2FA via `loginPanels`) |
 | Main area (GOUI/ExtJS card per module) | GO.neo `apps/go/view/MainView.mjs`: one card per module. Modules extend it through `mainViewExtension` (extra cards, top-bar items, routes, claimed module views; `docs/neo-small-modules.md`, "Main view extensions"). The module sf/workspaces (sf-mono, off by default) adds workspace tabs next to the module tabs, each a dock (`GO.workspaces.Workspace` over neo's dock; panels side by side, drag from the top bar, maximize, saved per user and screen profile; `docs/neo-workspace.md`) |
@@ -868,6 +869,29 @@ preview.on('load', ({numPages, title}) => …);                 // also 'loadErr
 - A PDF loads once the viewer is in the DOM; a viewer in a hidden card redraws when it is shown again (neo removes
   inactive cards from the DOM). Only the latest source counts: the addon answers an older load `{superseded: true}`,
   and a failed load clears the old pages, shows a message and fires `loadError`.
+
+## GO.pdf.PdfPageExportDialog (2026-11-28)
+
+`src/pdf/PdfPageExportDialog.mjs`, with `parsePageRange()` in `src/pdf/pdfPages.mjs` (`tests/pdfPages.test.mjs`) and
+`printUrl()` in `src/print.mjs` (addon `src/main/addon/Print.mjs`). Moved from amd/libs, whose classic dialog stays.
+
+```js
+import PdfPageExportDialog from '<relative>/views/neo/src/pdf/PdfPageExportDialog.mjs';
+
+Neo.create(PdfPageExportDialog, {appName, windowId, src: viewer.src, numPages,   // numPages from the viewer's 'load'
+    pageExportUrl: (range, inline) => …,   // URL of the selected pages as one PDF; inline for printing
+    saveHandler  : range => …,             // optional: "Save as", the primary action (dms: SavePagesDialog)
+    emailHandler : range => …})            // optional: "Send by email" (dms: preparePagesEmail + Mail.showComposer())
+```
+
+- The range is printer style ("1,3,5-7", the order entered, repeats allowed, at most 500 pages), checked like
+  amd/dms `util/PageRangeParser.php`; empty means all pages and goes to the host as "1-N". The server parses it again.
+- Thumbnails are a `GO.pdf.PdfViewer` with `pages` set to the selection, `pageScale` 1 at zoom 25 %, laid out as a
+  grid by its `thumbnails` config; they follow the field half a second after the last valid change. The dialog loads
+  the PDF again from `src`.
+- Print loads the inline URL into a hidden frame and prints it (`printUrl()`); a browser that refuses (Firefox) gets
+  the PDF in a new tab. The dialog stays open. Download, save and e-mail close it; Enter saves when there is a
+  `saveHandler`, else downloads.
 
 ## GO.preview.FilePreview (2026-11-28)
 
