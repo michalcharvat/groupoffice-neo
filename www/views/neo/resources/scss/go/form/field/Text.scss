@@ -10,6 +10,12 @@
     --textfield-input-background-color: var(--bg-input);
     --textfield-input-background-color-readonly: var(--bg-low);
     --textfield-input-color          : var(--fg-text);
+    // neo's light-only literals: GO tokens (body.dark)
+    --textfield-input-background-color-disabled: var(--bg-input);
+    --textfield-input-color-disabled : var(--fg-text);
+    --textfield-input-color-readonly : var(--fg-text);
+    --textfield-label-color-disabled : var(--fg-secondary-text);
+    --textfield-label-color-readonly : var(--fg-secondary-text);
     --textfield-input-font           : 400 #{go.sp(16)}/#{go.dp(24)} var(--font-family);
     --textfield-input-height         : #{go.dp(46)};
     --textfield-input-padding        : #{go.dp(11)} #{go.dp(14)};

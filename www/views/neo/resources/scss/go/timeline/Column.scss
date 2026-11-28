@@ -1,0 +1,13 @@
+// neo's timeline colours are light-only literals: GO tokens give them a dark value (body.dark)
+:where(.neo-theme-go) {
+    --neo-timeline-gridline-color         : var(--fg-divider);
+    --neo-timeline-bar-background         : var(--bg-main);
+    --neo-timeline-bar-border-color       : var(--fg-main);
+    --neo-timeline-bar-hover-border-color : var(--c-primary);
+    --neo-timeline-bar-progress-background: color-mix(in srgb, var(--c-primary) 20%, transparent);
+    --neo-timeline-bar-color              : var(--fg-text);
+    --neo-timeline-focus-color            : var(--c-primary);
+    --neo-timeline-non-working-bg         : var(--bg-hover);
+    --neo-timeline-non-working-border     : var(--fg-divider);
+    --neo-timeline-now-color              : var(--hue-red);
+}

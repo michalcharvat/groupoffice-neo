@@ -1,0 +1,7 @@
+// neo's light-only literals: GO tokens (body.dark)
+:where(.neo-theme-go) {
+    --switchfield-color-icon-off   : var(--fg-secondary-text);
+    --switchfield-color-on         : var(--fg-main);
+    --switchfield-color-on-disabled: var(--fg-main);
+    --switchfield-color-on-hovered : var(--fg-main);
+}

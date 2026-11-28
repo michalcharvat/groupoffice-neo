@@ -1,0 +1,38 @@
+// neo's board colours are light-only literals (the kanban stayed white in dark mode): GO tokens
+// give them a dark value (body.dark)
+:where(.neo-theme-go) {
+    // also the text colour of the stack count and the card editor's Save button
+    --neo-board-background                : var(--bg-low);
+    --neo-board-color                     : var(--fg-text);
+    --neo-board-font-family               : var(--font-family);
+    --neo-board-accent-color              : var(--c-primary);
+    --neo-board-focus-color               : var(--fg-main);
+    --neo-board-column-background         : var(--bg-mid);
+    --neo-board-column-border-color       : var(--fg-line);
+    --neo-board-column-color              : var(--fg-text);
+    --neo-board-badge-background          : var(--bg-highest);
+    --neo-board-badge-color               : var(--fg-secondary-text);
+    --neo-board-overdue-background        : var(--bg-error);
+    --neo-board-overdue-border-color      : var(--border-error);
+    --neo-board-overdue-color             : var(--fg-error);
+    --neo-board-wip-color                 : var(--c-warning);
+    --neo-board-wip-contrast-color        : var(--bg-lowest);
+    --neo-board-card-background           : var(--bg-lowest);
+    --neo-board-card-border-color         : var(--fg-line);
+    --neo-board-card-hover-border-color   : var(--fg-outline);
+    --neo-board-card-selected-background  : var(--bg-selected);
+    --neo-board-card-selected-border-color: var(--fg-main);
+    --neo-board-card-color                : var(--fg-text);
+    --neo-board-card-muted-color          : var(--fg-secondary-text);
+    --neo-board-card-drag-border-color    : var(--fg-outline);
+    --neo-board-slot-background           : var(--bg-focus);
+    --neo-board-track-color               : var(--bg-high);
+    --neo-board-avatar-background         : var(--bg-main);
+    --neo-board-avatar-color              : var(--fg-text);
+    --neo-board-editor-background         : var(--bg-lowest);
+    --neo-board-editor-border-color       : var(--fg-line);
+    --neo-board-lane-background           : var(--bg-low);
+    --neo-board-lane-header-background    : var(--bg-high);
+    --neo-board-lane-border-color         : var(--fg-line);
+    --neo-board-lane-color                : var(--fg-text);
+}

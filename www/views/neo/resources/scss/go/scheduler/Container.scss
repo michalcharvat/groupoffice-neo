@@ -1,0 +1,7 @@
+// neo's scheduler colours are light-only literals: GO tokens give them a dark value (body.dark)
+:where(.neo-theme-go) {
+    --neo-scheduler-divider-color: var(--fg-divider);
+    --neo-scheduler-bar-emerald-bg: color-mix(in srgb, #059669 20%, var(--bg-lowest));
+    --neo-scheduler-bar-amber-bg  : color-mix(in srgb, #d97706 20%, var(--bg-lowest));
+    --neo-scheduler-bar-violet-bg : color-mix(in srgb, #7c3aed 20%, var(--bg-lowest));
+}

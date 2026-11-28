@@ -154,7 +154,7 @@
         padding         : .8rem 1.6rem;
 
         > .go-icon {
-            color: var(--fg-warning);
+            color: var(--c-warning); // --fg-warning is dark brown in dark mode
         }
     }
 

@@ -14,6 +14,11 @@
             font-family: monospace;
             font-size  : 1.4rem;
         }
+
+        // material-darker (dark mode) draws line numbers at contrast 2.3
+        .cm-s-material-darker .CodeMirror-linenumber {
+            color: var(--fg-secondary-text);
+        }
     }
 
     .go-codefield-textarea {

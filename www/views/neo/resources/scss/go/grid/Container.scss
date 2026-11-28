@@ -4,6 +4,9 @@
     --grid-container-cell-background-color      : var(--bg-lowest);
     --grid-container-cell-background-color-even : var(--bg-lowest);
     --grid-container-color                      : var(--fg-text);
+    // neo's light-only value bands: GO tokens (body.dark)
+    --grid-cell-value-band-1-background-color   : var(--bg-main);
+    --grid-cell-value-band-2-background-color   : var(--bg-lowest);
     --grid-container-font-size                  : #{go.sp(16)};
     --grid-container-header-cell-border-bottom  : 1px solid var(--fg-border);
 }

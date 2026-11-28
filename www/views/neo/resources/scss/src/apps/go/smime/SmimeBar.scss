@@ -18,7 +18,7 @@
     }
 
     &.go-smime-mismatch .go-smime-bar-icon {
-        color: var(--fg-warning);
+        color: var(--c-warning); // --fg-warning is dark brown in dark mode
     }
 
     &.go-smime-invalid .go-smime-bar-icon {

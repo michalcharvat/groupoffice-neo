@@ -7,3 +7,9 @@
     padding   : 0 go.dp(14);
     width     : 100%;
 }
+
+// neo's light-only literals: GO tokens (body.dark)
+:where(.neo-theme-go) {
+    --rangefield-thumb-background: var(--fg-main);
+    --rangefield-track-background: var(--fg-line);
+}

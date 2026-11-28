@@ -1,0 +1,9 @@
+// neo's timeline colours are light-only literals: GO tokens give them a dark value (body.dark)
+:where(.neo-theme-go) {
+    --neo-timeline-editor-background       : var(--bg-lowest);
+    --neo-timeline-editor-border-color     : var(--fg-line);
+    --neo-timeline-editor-color            : var(--fg-text);
+    --neo-timeline-editor-accent-color     : var(--fg-main); // under white text
+    --neo-timeline-editor-cancel-background: var(--bg-mid);
+    --neo-timeline-editor-font-family      : var(--font-family);
+}
