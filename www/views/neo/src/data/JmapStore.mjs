@@ -42,6 +42,12 @@ class JmapStore extends Store {
          */
         jmapSort: [],
         /**
+         * Extra Entity/query arguments next to filter and sort, e.g. {viewType: 'combo'}
+         * (classic go.data.Store baseParams)
+         * @member {Object|null} queryArgs=null
+         */
+        queryArgs: null,
+        /**
          * Properties to fetch with Entity/get, null for all
          * @member {String[]|null} properties=null
          */
@@ -268,7 +274,8 @@ class JmapStore extends Store {
                 sort      : me.getJmapSort(),
                 position,
                 limit     : me.pageSize,
-                properties: me.properties
+                properties: me.properties,
+                queryArgs : me.queryArgs
             });
 
             // a load() (filter, sort, push) replaced the records meanwhile; it owns isLoading
@@ -321,7 +328,8 @@ class JmapStore extends Store {
                 sort      : me.getJmapSort(),
                 position,
                 limit     : pageSize || undefined,
-                properties: me.properties
+                properties: me.properties,
+                queryArgs : me.queryArgs
             });
 
             // destroyed, or a newer load (paging, search, push) was started meanwhile
