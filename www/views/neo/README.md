@@ -201,6 +201,10 @@ text (no rich text editor, labels, attachments), no import/export menu. Dark mod
   (detail panels: their `scroller`) through the `WS/Print` addon: a hidden iframe with the
   page's style sheets and the ancestors' classes, light colours, full height. Buttons, inputs
   and `.go-print-hide` are left out (`.go-print-show` keeps a button, e.g. the task status).
+- **Clipboard**: the App worker has no `navigator.clipboard`. `writeText(windowId, text)` from
+  `src/clipboard.mjs` writes through the `WS/ClipboardWriter` addon (Clipboard API, else a hidden
+  text area and `execCommand('copy')`); call it from a click handler, browsers want a recent gesture.
+  Not named `Clipboard`: `Neo.Main` keys addons by class name and neo has its own (copy-event) one.
 - **No `route` on buttons**: neo renders `route` as `<a href="#x">`, and `<base href>` turns
   it into `views/neo/apps/go/#x` (403). Use `handler: () => Neo.Main.setRoute(...)`.
 - **Selecting by id**: `selectionModel.select()` takes a record; a string is read as

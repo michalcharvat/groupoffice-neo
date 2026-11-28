@@ -720,7 +720,9 @@ class NoteDetail extends Panel {
 
 - Toolbar: `createToolbarItems()` (default `['->']`, items left of Edit), then Edit, add / browse
   link buttons (`hasLinks: false` drops them) and ⋮ from `createMoreMenu()`: Print (the scroller,
-  title `getTitle(record)`), Download PDF only when the subclass overrides `getDownloadUrl(record)`,
+  title `getTitle(record)`), Copy link with `copyLink: true` (GO's URL + `?webclient=neo#` + `getRoute(record)`,
+  default the ModuleRegistry `routes` of `entityName` through `resolveRoute()`, then "Link copied to
+  clipboard"), Download PDF only when the subclass overrides `getDownloadUrl(record)`,
   Delete (id `delete`). Edit and Delete follow `canEdit(record)` / `canDelete(record)`
   (permissionLevel ≥ write / delete; override to refuse more, e.g. legacy encrypted notes).
 - ⋮ rebuilt on open: a subclass that overrides `loadMoreMenu(record, items)` (`items` is a fresh

@@ -525,4 +525,7 @@ If you did not request a new password please delete this mail.',
   'Save as PNG' => 'Save as PNG',
   'Save as JPEG' => 'Save as JPEG',
   'The chart could not be shown: the CanvasJS module is not available.' => 'The chart could not be shown: the CanvasJS module is not available.',
+  'Copy link' => 'Copy link',
+  'Link copied to clipboard' => 'Link copied to clipboard',
+  'Sorry, the text could not be copied to the clipboard' => 'Sorry, the text could not be copied to the clipboard',
 );
