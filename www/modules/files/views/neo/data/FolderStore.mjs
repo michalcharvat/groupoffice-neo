@@ -176,7 +176,7 @@ class FolderStore extends Store {
 
             me.totalCount = total;
             me.isLoading  = false;
-            me.add(results.filter(r => !me.get(r[me.keyProperty])));
+            me.asContinuation(() => me.add(results.filter(r => !me.get(r[me.keyProperty]))));
             me.fire('loadMore', {records: results});
             return results
         } catch (e) {

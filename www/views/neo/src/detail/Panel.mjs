@@ -44,7 +44,7 @@ const CARDS = {
  *         renderRecord(record)   {this.getReference('body').html = …}
  *     }
  *
- * Subclass hooks: createBody(), createToolbarItems(), createMoreMenu(), createBottomItems(),
+ * Subclass hooks: createBody(), createToolbarItems(), createMoreMenu(), loadMoreMenu(), createBottomItems(),
  * renderRecord(record), canEdit(record), canDelete(record), getTitle(record), getDownloadUrl(record).
  * Events: edit {record}, delete {record} (the host confirms and deletes; a detail without a host
  * calls deleteRecord() in onDelete()), deleted {record}.
@@ -168,7 +168,15 @@ class Panel extends Container {
      */
     onConstructed() {
         super.onConstructed();
-        this.getReference('moreButton').menu = this.createMoreMenu()
+
+        let me   = this,
+            more = me.getReference('moreButton');
+
+        more.menu = me.createMoreMenu();
+
+        if (me.loadMoreMenu !== Panel.prototype.loadMoreMenu) {
+            more.beforeShowMenu = () => me.rebuildMoreMenu()
+        }
     }
 
     /**
@@ -212,6 +220,64 @@ class Panel extends Container {
             {separator: true},
             {id: 'delete', text: t('Delete'), icon: 'delete', handler: () => me.onDelete()}
         ]
+    }
+
+    /**
+     * @summary Items of the ⋮ menu for the record, asked for each time the menu opens; overriding it makes
+     * the menu rebuild on open (a "Loading..." item shows meanwhile). Default: the items as they are.
+     * @param {Object} record
+     * @param {Object[]} items createMoreMenu()
+     * @returns {Promise<Object[]>|Object[]}
+     */
+    loadMoreMenu(record, items) {
+        return items
+    }
+
+    /**
+     * @summary Shows "Loading...", then the items of loadMoreMenu(); the answer is dropped when the record
+     * changed, the menu was closed or opened again meanwhile.
+     * @returns {Promise<Boolean>} false: keep the menu closed
+     * @protected
+     */
+    async rebuildMoreMenu() {
+        let me         = this,
+            more       = me.getReference('moreButton'),
+            record     = me.record,
+            generation = me.moreMenuGeneration = (me.moreMenuGeneration || 0) + 1,
+            stale      = () => me.isDestroyed || generation !== me.moreMenuGeneration || me.record !== record,
+            loading, items;
+
+        if (!record) {
+            return false
+        }
+
+        more.menu = [{id: 'loading', text: t('Loading...'), icon: 'hourglass_empty', disabled: true}];
+        await (loading = more.menuListReady);
+
+        if (stale()) {
+            return false
+        }
+
+        more.menuList.hidden = false;
+
+        try {
+            items = await me.loadMoreMenu(record, me.createMoreMenu())
+        } catch (e) {
+            !stale() && notifyError(me, e);
+            items = null
+        }
+
+        // closed by a click or outside: the loading list is still the button's, now hidden
+        if (stale() || !items || more.menuListReady !== loading || more.menuList.hidden) {
+            // the loading list must not stay open
+            !me.isDestroyed && more.menuListReady === loading && (more.menuList.hidden = true);
+            return false
+        }
+
+        more.menu = items;
+        more.setMenuItemDisabled('delete', !me.canDelete(record));
+        await more.menuListReady;
+        return !stale()
     }
 
     /**
@@ -289,6 +355,12 @@ class Panel extends Container {
             id     = record?.id != null ? String(record.id) : null,
             entity = record ? me.entityName : null,
             more   = me.getReference('moreButton');
+
+        // a rebuilt menu holds the items of its record: another record closes it and drops a pending answer
+        if (me.loadMoreMenu !== Panel.prototype.loadMoreMenu && String(me.record?.id ?? '') !== String(id ?? '')) {
+            me.moreMenuGeneration = (me.moreMenuGeneration || 0) + 1;
+            more.menuList && (more.menuList.hidden = true)
+        }
 
         me.record = record;
 

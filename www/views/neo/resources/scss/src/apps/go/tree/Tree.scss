@@ -1,5 +1,5 @@
 // GO.tree.Tree: GOUI .goui-table.tree rows (goui/style/_tree.scss): indent dp(24) per
-// level, caret, icon, checkbox, label; no row lines
+// level, caret, icon, checkbox, label, badge, row menu; no row lines
 .neo-theme-go .go-tree {
     .neo-list-item {
         align-items: center;
@@ -53,6 +53,53 @@
 
     .go-check {
         flex: none;
+    }
+
+    // node.badge (ExtJS "badge red-fill")
+    .go-tree-badge {
+        background-color: var(--c-danger, #c62828);
+        border-radius   : 1.05rem;
+        color           : rgba(255, 255, 255, .87);
+        flex            : none;
+        font-size       : 1.3rem;
+        font-weight     : 600;
+        line-height     : 2.1rem;
+        min-width       : 2.1rem;
+        padding         : 0 .4rem;
+        text-align      : center;
+    }
+
+    // a hit of search() (amd/pms .pms-tree-search-hit)
+    .go-tree-hit .go-tree-label {
+        font-weight: 600;
+    }
+
+    .go-tree-more .go-tree-label {
+        color : var(--c-primary);
+        cursor: pointer;
+    }
+
+    // nodeMenu (GOUI menucolumn button)
+    .go-row-menu {
+        border-radius: 50%;
+        color        : var(--fg-text);
+        cursor       : pointer;
+        flex         : none;
+        font-size    : 2rem;
+        height       : 3.2rem;
+        line-height  : 3.2rem;
+        text-align   : center;
+        visibility   : hidden;
+        width        : 3.2rem;
+
+        &:hover {
+            background-color: var(--bg-hover);
+        }
+    }
+
+    .neo-list-item:hover .go-row-menu,
+    .neo-list-item.neo-selected .go-row-menu {
+        visibility: visible;
     }
 }
 

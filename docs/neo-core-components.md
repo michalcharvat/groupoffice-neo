@@ -21,9 +21,10 @@ Status: **neo** = neo.mjs 13.4 ships it (14 since 2026-11-24), usable as is (may
 | Toolbar, OverlayToolbarButton | toolbar/Base | neo (overlay: missing) |
 | Paginator | toolbar/Paging | neo (Notes uses infinite scroll) |
 | List, ListPicker | list/Base | GO.neo (`TextList`, `CheckList`; empty state with `emptyText` / `emptyIcon`, off by default because a TextList is also the combo drop-down) |
+| NavGrid (ExtJS `go.NavGrid`: west filter list) | – | GO.neo (`GO.list.NavCheckList`: toolbar with select-all box, `heading`, `SearchButton` (JMAP `text` filter), `buttons` (e.g. Add); a `CheckList` (`rowMenu`, own rows via `listConfig: {module}`) on `store` (a JmapStore config, destroyed with the list), "Show more..." while a `scrollLoad` store `hasMore()`; the checked ids outlive searches, paging and reloads: hidden checked rows stay checked and count (the box is half checked), `getCheckedRecords()` gives them as last loaded; after a load checked rows that are gone are dropped (unfiltered and all pages loaded (`count` vs `totalCount`): the store tells, otherwise `Entity/get` of the hidden ids, 50 ms after the load because neo's store fires `load` per mutation too; the answer of an older load is ignored); the box checks all loaded rows, unchecking it clears all checks, and so does a click that would add nothing (half checked over hidden checks of a search without hits); the store needs a model with a String `id` (a CheckList needs item ids); `selectionChange` {ids} on a user change or a drop; `setCheckedIds(ids, silent)` for saved checks or a reset; `autoLoad: false` when the owner loads; Dev demo List; tests `tests/navCheckList.test.mjs`) |
 | Table, TableColumns, RowSelect | grid/Container (buffered) | GO.neo (`GO.grid.Grid`, `selectRow`; row height in px from the measured density: dp(40) one-line = 35px Paper / 29px Compact, `rowLines: 2` (avatar or two lines: users, address book, duplicates, RecipientPicker) dp(56) = 48px / 40px; follows `Preferences.applyTheme()` live); keys: `enterKey` / `deleteKey` (Delete, Ctrl/Cmd+Backspace) events with `{records}` outside inputs; `switchState(stateId)` swaps the column state, e.g. addressbook organizations view; `customFieldsEntity: 'Note'` adds a column per custom field (`customfields/gridColumns.mjs`: renderer per type from `types.mjs` `cellHtml()`, names of user/group/contact fields loaded per page, GOUI state key = databaseName, server sort on `customFields.<databaseName>`, "Hidden in grid" = hidden; the model needs a `customFields` field, neo drops undeclared keys); empty state (GOUI `emptyStateHtml`): `emptyText` (default "No items found") and `emptyIcon` (default `article`) below the header once the store has loaded with no records, `emptyText: null` for none; cells stay on one line (GOUI table): a text-only cell is a block with an ellipsis, a cell with elements stays neo's flex box and is clipped, so a renderer needs no own one-line span (`Grid.scss`) |
 | SelectAllCheckboxField, MultiSelectToolbar | – | GO.neo (`GO.grid.Grid` `multiSelect`, `RowSelectionModel` with `selectAll()`, `MultiSelectToolbar`; Notes deletes several notes) |
-| Tree, TreeStore, TreeColumn | tree/List, tree/Accordion (basic) | GO.neo (`GO.tree.Tree`: lazy `nodeProvider`, checkboxes, drag and drop with `dragNodes` / `dropOn` / `dropBetween` (fires `drop` {dragNode, node, position}, expands a node after 1 s, `moveNode()`; not `draggable`, that is neo List's own DragZone); no extra columns) |
+| Tree, TreeStore, TreeColumn | tree/List, tree/Accordion (basic) | GO.neo (`GO.tree.Tree`: lazy `nodeProvider`, checkboxes, drag and drop with `dragNodes` / `dropOn` / `dropBetween` (fires `drop` {dragNode, node, position}, expands a node after 1 s, `moveNode()`; not `draggable`, that is neo List's own DragZone); `node.badge` (escaped text, hidden at 0, red fill; `setBadge()`, subclasses map their own field in `badgeOf()`, email uses `unseen`); `nodeMenu: true` or `node => Boolean` shows a ⋮ per row, the icon and a right click fire `menu` {node, target}, the host builds the items and calls `showMenu(items, target)` (email `AccountTree`; addressbook and site trees still build their menus themselves); `openPath(ids)` expands down a path (waits for a running `reload()`, loads lazy levels and further pages) and selects the last node; paging: a provider gets `(node, {position})` and may return `{nodes, hasMore}`, the level then ends in a "Show more..." row (`loadMore(parentId)`); `reload()` loads only the first page again; multi-selection: `multiSelect` (selection model `GO.tree.SelectionModel`, the default of every tree): Ctrl / Cmd + click toggles, Shift + click adds (no range, as classic), a plain click selects one, `selectionChange` {nodes}, `getSelectedNodes()`; a drag of a selected node drags all selected (topmost) nodes: the DragDrop addon shows a ghost with up to 5 names and "and N more" (`data-go-drag-ghost`), the selection is locked while dragging (`goDragStart` / `goDragEnd` via `enableDragDrop({onDragStart, onDragEnd})`), `drop` gets `dragNodes` (always set) and is refused into any dragged node's subtree; search with hits in place: `searchProvider(query)` returns hits and ancestors as a flat list (`parentId`, `hit: true`), `search(query)` nests them (listed parents expanded with only the listed children, a hit without listed children stays lazy, a node whose parent isn't listed shows at the top), bold hits (`go-tree-hit`), older answers dropped, `reload()` re-runs it, `reloadNode()` / `moveNode()` re-run it debounced (`scheduleSearch()`, 300 ms) instead of patching, `resetSearch()` / `search('')` restores the expanded nodes of before and reveals the node selected during the search (`openPath(ids, {select: false})`); saved shape (classic tree state): `stateId` keeps `{expandedIds (latest 200), selectedId}` in State (written 500 ms after a change, flushed on destroy, nothing before it was read; saved ids of nodes not loaded now stay, the expanded ids of a search are not saved), after every load of the normal tree (`reload()`, not a search) the saved ids are expanded level by level and the saved node revealed and selected unless the user selected one meanwhile, that selection fires `selectionChange` with `ignoreDetail: true` (classic ignoreDetail: filter by it, don't open the detail); `revealNode(id, {select})` expands down to a node that may not be loaded: `parentProvider(id)` returns its parent id (null at the top, undefined unknown), asked per ancestor not loaded, then `openPath()` (amd/pms component tree, dms folder tree and files); Dev demo Tree; tests `tests/tree.test.mjs`; no extra columns) |
 | DescriptionList | – | GO.neo (`GO.component.DescriptionList`) |
 | Avatar | – | partial (`Format.avatarHtml`, HTML only) |
 | ToolTip | tooltip/Base | neo |
@@ -47,9 +48,11 @@ Status: **neo** = neo.mjs 13.4 ships it (14 since 2026-11-24), usable as is (may
 | DataSourceForm (load/save an entity) | – | GO.neo (`GO.form.DataSourceForm`); `save` event `{data, isNew, created}`, `created` = what Foo/set returned for a new entity (API key token) |
 | DateField, DateTimeField, DateRangeField, DurationField | form/field/Date (native input + picker) | GO.neo (`GO.form.field.*`; DateRangeField: custom range/from/until in a dialog instead of picker submenus) |
 | HtmlField (rich text) | – | GO.neo (`HtmlField`, main-thread addon; `HtmlFieldMentionPlugin`: "@name" suggestions at the caret, owned by the addon, provider in the worker) |
+| CodeField (sf/codemirror `sfcodemirroreditor`) | – | GO.neo (`form/field/CodeField.mjs` + core main-thread addon `main/addon/CodeMirror.mjs`: CodeMirror 5 (`codemirror@5` of `views/neo/package.json`, kept by `buildScripts/release.mjs`), modes on demand by name / extension / MIME; `mode` ('json' validates with the parse message), `editorHeight` (neo owns `height`), `readOnly`, `required`; text equal to the editor's text of the loaded value keeps the loaded value (no dirty form); dark theme `material-darker` while `body.dark`; a monospace textarea when the library does not load; demo `#dev/form/CodeField`) |
+| EditorJsField (sf/editorjs `editorjsfield`) | – | GO.neo (`form/field/EditorJsField.mjs` + core main-thread addon `main/addon/EditorJs.mjs`: Editor.js and its tools from sf/editorjs `views/extjs3/`; value the document `{time, blocks, version}`, null when empty; a document equal to the editor's first save of the loaded value keeps the loaded value (no dirty form), a per-mount token drops late events of an old mount (popout); image uploads as blobs through the field, URL images via `sf/editorjs/Editor/uploadFromUrl`; stored inline HTML cleaned before rendering; Word paste fixes; `setValueFromHtml(html)` converts HTML to blocks as a user change (dms .docx); without `go:sf:editorjs` or when the library does not load the document shows as read-only text and the value stays; pure helpers `form/field/editorJsDoc.mjs` (`editorJsToHtml()` for read-only cards, `editorJsSame()`, `toEditorJsDoc()`); demo `#dev/form/EditorJsField`) |
 | MarkdownField | – | GO.neo (`MarkdownField`: textarea + main-thread addon `MarkdownEditor`, toolbar, preview, image paste / drop / upload; `src/Markdown.mjs` renders with `marked` + `Format.sanitizeHtml()`; no EasyMDE/CodeMirror) |
-| ChipsField, AutocompleteChips, AutocompleteField | form/field/Chip (basic) | ChipsField: GO.neo (`GO.form.field.ChipsField`, async textInputToValue/chipRenderer); AutocompleteChips: GO.neo (`GO.form.field.AutocompleteChips`, entity ids, ▾ menu; tasks categories); AutocompleteField: GO.neo (`GO.form.field.AutocompleteField`, JMAP entity or `fetch(text)`, `valueProperty`, `valueToText`); AutocompleteChips `properties` = fetched properties |
-| ArrayField, ContainerField, MapField, ListField | – | ArrayField, ContainerField: GO.neo (`src/form/nestedFields.mjs`); MapField: GO.neo (`GO.form.field.MapField`, object keyed by id, `keyFieldName` / `valueFieldName`); ListField: GO.neo (`GO.form.field.ListField`, `renderValue` HTML, records of a `store`) |
+| ChipsField, AutocompleteChips, AutocompleteField | form/field/Chip (basic) | ChipsField: GO.neo (`GO.form.field.ChipsField`, async textInputToValue/chipRenderer); AutocompleteChips: GO.neo (`GO.form.field.AutocompleteChips`, entity ids, ▾ menu; tasks categories); AutocompleteField: GO.neo (`GO.form.field.AutocompleteField`, JMAP entity or `fetch(text)`, `valueProperty`, `valueToText`); AutocompleteChips `properties` = fetched properties; `clickable: true` (ChipsField / AutocompleteChips, ExtJS dms `DocumentChipsOverride` `clickable`): a chip click opens its entity through `resolveRoute()` (ModuleRegistry `routes`), the remove button still removes; `chipEntity(value)` → `{entity, id}`, AutocompleteChips gives it from `entity` |
+| ArrayField, ContainerField, MapField, ListField | – | ArrayField, ContainerField: GO.neo (`src/form/nestedFields.mjs`); ArrayField `sortable: true` (ExtJS `go.form.FormGroup` sortable): a row is dragged by its `ArrayField.dragHandle()`, the order is the value (dirty after a move), an ArrayField in a row sorts its own rows; MapField: GO.neo (`GO.form.field.MapField`, object keyed by id, `keyFieldName` / `valueFieldName`); ListField: GO.neo (`GO.form.field.ListField`, `renderValue` HTML, records of a `store`) |
 | CheckboxGroup | – | GO.neo (`GO.form.field.CheckboxGroup`: legend + toggle-button checkboxes, one field per option) |
 | DatePicker / MonthPicker / WeekPicker | component/DateSelector | neo; MonthPicker, WeekPicker: GO.neo (`GO.component.MonthPicker` / `WeekPicker`, ISO weeks, `select` {date}) |
 
@@ -57,11 +60,13 @@ Status: **neo** = neo.mjs 13.4 ships it (14 since 2026-11-24), usable as is (may
 
 | GOUI | Status |
 |---|---|
-| JMAP client, Entities, Modules | GO.neo (`jmap/Client`, `JmapStore`, `ModuleRegistry`; module hooks `onMainView`, `onCreateUserDialog`, `fileHandlers`, see `docs/neo-small-modules.md`; `Badges.mjs`: counts on the module tab and main menu item (GO.mainLayout.setNotification()), registry key `badge: {entities, count}` recounted on push, or `badges.set(name, count)`; a dot on the main menu button while a closed module has one; calendar invitations, tasks due, e-mail unseen; `NotificationCenter` message `muteSound`: the user property that mutes its sound, default `mute_reminder_sound`) |
+| JMAP client, Entities, Modules | GO.neo (`jmap/Client`, `JmapStore` (`scopeKeys`: one of these filter keys must hold a value by PHP `empty()`, else `load()` empties the store, drops a running answer and stops push reloads until the next scoped load, `loadMore()` fetches nothing; for server filters that add no condition when empty, e.g. amd/pms `vessel` / `componentIn`; tests `tests/jmapStoreScope.test.mjs`), `ModuleRegistry`; module hooks `onMainView`, `onCreateUserDialog`, `fileHandlers`, see `docs/neo-small-modules.md`; `Badges.mjs`: counts on the module tab and main menu item (GO.mainLayout.setNotification()), registry key `badge: {entities, count}` recounted on push, or `badges.set(name, count)`; a dot on the main menu button while a closed module has one; calendar invitations, tasks due, e-mail unseen; `NotificationCenter` message `muteSound`: the user property that mutes its sound, default `mute_reminder_sound`) |
 | Upload (`client.upload()`, ExtJS `go.Uploader`) | GO.neo (`jmap/Uploader.mjs`: XHR with progress, queue of `maxConcurrentUpload`, `maxSizeUpload` check, abort; `component/UploadPanel.mjs` shows the uploads of a window bottom right; used by `UploadButton` `autoUpload`, `BlobField`, `AttachmentsField`, `ImageField`, `MarkdownField`, `FilesPanel`, imports; demo `#dev/core/Upload`) |
 | Kanban board (GOUI has none; ExtJS business/kanban) | GO.neo (`GO.board.Board`, see "GO.board.Board" below; first user: tasks board view) |
 | Resource scheduler / timeline (vis-timeline in amd/crew) | GO.neo (`GO.scheduler.Scheduler`, see "GO.scheduler.Scheduler" below; first user: crew planning) |
 | PDF / image preview (ExtJS amd/libs `PdfViewPanel`; GOUI has none) | GO.neo (`GO.pdf.PdfViewer`, see "GO.pdf.PdfViewer" below; demo `#dev/core/PdfViewer`; users: crew certificate verification, later dms and invoices) |
+| PDF page export: range, thumbnails, print, download, save, e-mail (ExtJS amd/libs `PdfPageExportDialog`; GOUI has none) | GO.neo (`GO.pdf.PdfPageExportDialog`, see "GO.pdf.PdfPageExportDialog" below; demo `#dev/core/PdfViewer`; users: dms document detail, later invoices) |
+| File preview by extension (ExtJS amd/dms `PdfViewPanel`, `FileViewPanel`, `ImageViewPanel`, `MarkdownViewPanel`, `MediaViewPanel`, `SheetViewPanel`, `DocViewPanel`; GOUI has none) | GO.neo (`GO.preview.FilePreview`, see "GO.preview.FilePreview" below; demo `#dev/core/FilePreview`; users: dms document detail, files `FileDetail`) |
 | auth/Login | GO.neo (`apps/go/view/LoginView.mjs`: forgot credentials, 2FA via `loginPanels`) |
 | Main area (GOUI/ExtJS card per module) | GO.neo `apps/go/view/MainView.mjs`: one card per module. Modules extend it through `mainViewExtension` (extra cards, top-bar items, routes, claimed module views; `docs/neo-small-modules.md`, "Main view extensions"). The module sf/workspaces (sf-mono, off by default) adds workspace tabs next to the module tabs, each a dock (`GO.workspaces.Workspace` over neo's dock; panels side by side, drag from the top bar, maximize, saved per user and screen profile; `docs/neo-workspace.md`) |
 | MainThreeColumnPanel, TableTitle | GO.neo |
@@ -76,7 +81,7 @@ Status: **neo** = neo.mjs 13.4 ships it (14 since 2026-11-24), usable as is (may
 | customfields/ (FormFieldset, DetailFieldset, Types, admin) | GO.neo (`src/customfields/`) |
 | permissions/SharePanel (ACL) | GO.neo (`permissions/SharePanel.mjs`; `setAclId(aclId, value)` for a legacy ACL without a JMAP entity, e.g. a files folder; `readOnly` without manage permission; the people button of a row opens `groups/GroupMemberDialog.mjs` with all members, ExtJS `go.groups.GroupMemberWindow`) |
 | prompt() (one line of text) | GO.neo (`view/TextPrompt.mjs`: `TextPrompt.ask({title, label, value, select: 'all'\|'name', validator})`, `null` when cancelled) |
-| Drag and drop (native) | GO.neo (`component/dragDrop.mjs` `enableDragDrop(component, {drag, drop, group, files, position, horizontal, onHover, onDrop})` + addon `WS/DragDrop`: rows and tree nodes onto, before or after drop targets of the same group, desktop files; the worker gets a `goDrop` DOM event with `position`, `goDragHover` after a second on a target; a target with class `go-no-drop` refuses drops and isn't highlighted: `TextList`/`CheckList` `noDrop: record => …`, tree nodes `cls: ['go-no-drop']`, e.g. note books, task lists and address books the user can't write to) |
+| Drag and drop (native) | GO.neo (`component/dragDrop.mjs` `enableDragDrop(component, {drag, drop, handle, group, files, position, horizontal, onHover, onDrop})` + addon `WS/DragDrop`: rows and tree nodes onto, before or after drop targets of the same group (nested drop roots: the nearest of the drag's group), `handle`: an item drags only from a descendant matching it, desktop files; the worker gets a `goDrop` DOM event with `position`, `goDragHover` after a second on a target; a target with class `go-no-drop` refuses drops and isn't highlighted: `TextList`/`CheckList` `noDrop: record => …`, tree nodes `cls: ['go-no-drop']`, e.g. note books, task lists and address books the user can't write to) |
 | RecurrenceField, RecurrencePicker | GO.neo (`GO.form.field.RecurrenceField`: presets menu + "Customize" dialog) |
 | Image (blob images, zoom) | GO.neo (`view/ImageWindow.mjs`: `enableImageZoom()` + addon `WS/ImageZoom`, `ImageWindow.show()`; images load by URL with the session cookie, no `getBlobURL()` needed) |
 | HtmlFieldMentionPlugin | GO.neo (`form/field/HtmlFieldMentionPlugin.mjs`, a neo plugin on `HtmlField`; default provider: users, inserts `@username`; `CommentsPanel` uses it, the server alerts mentioned users who can read the item; demo `#dev/form/HtmlField`) |
@@ -85,7 +90,7 @@ Status: **neo** = neo.mjs 13.4 ships it (14 since 2026-11-24), usable as is (may
 | EntitySelectDialog | GO.neo (`view/EntitySelectDialog.mjs`: `EntitySelectDialog.ask({entity, jmapFilter, value})`, checked ids or `null`; start page portlet settings) |
 | Start page (legacy summary module) | GO.neo (`modules/summary/views/neo`: two columns of portlets registered by modules with the `portlets` key; announcements, note, news (RSS), appointments, tasks, birthdays; move/add/remove, layout in state `summary-active-portlets`; manage announcements; no drag and drop, no announcement permissions panel) |
 | EntityTypeTable | missing |
-| chart | missing in GO (neo ships `component/wrapper/AmChart` + `main/addon/AmCharts`, not wired) |
+| chart | GO.neo (`chart/Chart.mjs` `GO.chart.Chart` over `component/wrapper/CanvasJS.mjs` + addon `WS/CanvasJS`, library from sf/canvasjs; see "GO.chart.Chart" below) |
 
 ## ExtJS-only core (not in GOUI yet)
 
@@ -124,6 +129,14 @@ one card (`go-mobile-cards`). `showWestButton()` shows in medium and narrow; `hi
 activates the center there and hides the sidebar (`setWestHidden(true)`) only above 1200px, so
 closing the drawer doesn't leave the wide layout without its sidebar. Selecting a record
 (`activatePanel('east')`) closes the drawer too.
+
+A view whose east panel is empty until a record opens (a planning board, a list without a
+selected row) sets `eastHidden: true`, or calls `setEastHidden(true)` later: the east panel and the
+center splitter are hidden and the center flexes over the free width (`flex: 1 1 0%` on its
+`wrapperStyle`; the neo flex layout only sets `flex` on an item that already has a
+`wrapperStyle`, so an item config `flex` does nothing there). `activatePanel('east')` shows the
+east again and the center gets back its fixed or saved splitter width; hiding the east while it is
+the active phone card shows the center. Dev demo `#dev/layout`, "Module layout".
 
 ## CSS grid in a flex-filled panel (2026-11-25)
 
@@ -485,6 +498,59 @@ Classic `go.form.ComboBoxReset` `createDialog` (e.g. portcall `CrewChangeComboRe
 - `mayCreate = false` hides the "+" (read-only hides it too). The combo does not know the create
   permission: the module sets `mayCreate` from the container (vessel, company) when that changes.
 
+## FormWindow Apply button (2026-11-28)
+
+- `applyButton: true` in a `FormWindow` subclass config puts Apply (reference `applyButton`) before Save,
+  like the Apply of classic `go.form.Dialog`. Default off.
+- Apply calls `win.apply()`: `submit()` with `closeOnSave` off for that save. `save` fires as usual; a new
+  entity becomes `form.currentId`, so the next Apply or Save updates it (enable cards that need an id on `save`).
+- While a save runs Save and Apply are both disabled; a second `apply()`/`submit()` returns `false`. A module
+  that disables Save itself (read-only entity) calls `setSaveDisabled(true)`, so Apply goes grey too.
+- A subclass that overrides `submit()` with its own steps before `super.submit()` (NoteDialog encryption) or
+  closes itself (calendar EventDialog) must honour `closeOnSave` and its own second-call guard before it turns
+  `applyButton` on.
+
+## FormWindow titleField (2026-11-28)
+
+- `titleField: 'name'` in a `FormWindow` subclass config shows "<title>: <value>" once a saved entity is loaded
+  and follows the field while the user types (classic `go.form.Dialog` `titleField`). A new entity keeps the plain
+  title until it is saved (Apply), an empty value shows the plain title. Text, not HTML.
+- Default `null`, unlike classic (`'name'`): calendar Category/View/Calendar dialogs and the addressbook
+  ContactDialog set their own titles, which a default would overwrite. Port the classic `titleField` by setting it.
+- The plain title is `title` at the first update (`plainTitle`); a subclass that changes `title` itself should not
+  also use `titleField`.
+
+## Module settings dialog with lookup lists (2026-11-28)
+
+The classic amd `SettingsDialog` + `SettingsGridTrait` (one tab per Status / Type / Category / Unit grid,
+each with its own small dialog) is three core classes in `src/systemsettings/`, moved from amd/crew:
+
+- `LookupSettingsDialog`: a `GO.view.Dialog` with a left tab bar (`go-settings-cards`, as System
+  settings) and only Close, because every lookup dialog saves right away. Config `lookups`: one
+  definition per tab; a `change` of one list reloads the others (they may show names from it).
+- `LookupListPanel` (an `EntityListPanel`): search box (filter `text`, combined with `jmapFilter`),
+  late answers of an older search dropped, edit / delete shown by the record's `permissionLevel`
+  (write / delete, so `properties` must hold it), `change {entity}` after a save or delete.
+- `LookupDialog` (a `FormWindow`): the definition's `fields()`, no custom fields, `share: true`
+  adds a Permissions tab (`SharePanel`, read-only below manage on an existing record).
+
+A definition is the `LookupListPanel` config plus `itemId` and `tab`:
+`entity`, `properties`, `columns`, `dialogTitle`, `fields: () => [...]`, `prepare: async list => rows`
+(looked up names), `defaults` (values of a new record), `share`, `jmapSort` (default by name). A tab
+that needs more gives `panel: <LookupListPanel subclass>` with its own config, and the subclass can
+return its own dialog from `createDialog(config)` (crew `RankListPanel` / `RankDialog`: drag and drop
+order, more fields).
+
+    const [{default: LookupSettingsDialog}, {lookups}] = await Promise.all([
+        import('../../../../../../../views/neo/src/systemsettings/LookupSettingsDialog.mjs'),
+        import('./lookups.mjs')
+    ]);
+    Neo.create(LookupSettingsDialog, {appName, windowId, title: t('Settings'), lookups: lookups()});
+
+- A long text column gets `cls: ['go-lookup-ellipsis']` so the row buttons stay in view.
+- The helpers `lookupFilter()`, `mayEditLookup()`, `mayDeleteLookup()` are exported by `LookupListPanel.mjs`.
+- Example: amd/crew `views/neo/view/lookups.mjs` (11 tabs). Tests: `tests/lookupSettings.test.mjs`.
+
 ## Entity actions in GO.grid.Grid (2026-11-27)
 
 Edit / delete / row menu of a JMAP entity list belong to the core grid, opt-in with
@@ -562,6 +628,9 @@ Opt-in, from amd/crew `entityList.mjs` `wireList()` and the notes / tasks / addr
   while the store has `scrollLoad` (JmapStore; tasks switches it off for the board). Lists still
   wiring it themselves (history, multi_instance, maildomains, DuplicateDialog, files, email) do no
   harm (`loadMore()` returns while a load runs); drop the line when touching them.
+- A store's `loadMore()` appends inside `store.asContinuation(() => store.add(...))` (neo 14): the `load`
+  event then carries `postChunkLoad: true` and the grid keeps its scroll; a plain `add()` scrolls it to
+  the top (JmapStore, files `FolderStore`, email `MessageStore`).
 - `notifyLoadError: true`: a `loadError` of the grid's store becomes `notifyError(grid, error)`
   (not after the grid is destroyed). Other stores of the view (trees, lists) keep their own listener.
 
@@ -654,6 +723,14 @@ class NoteDetail extends Panel {
   title `getTitle(record)`), Download PDF only when the subclass overrides `getDownloadUrl(record)`,
   Delete (id `delete`). Edit and Delete follow `canEdit(record)` / `canDelete(record)`
   (permissionLevel ≥ write / delete; override to refuse more, e.g. legacy encrypted notes).
+- ⋮ rebuilt on open: a subclass that overrides `loadMoreMenu(record, items)` (`items` is a fresh
+  `createMoreMenu()`; return the items, also as a Promise, null keeps the menu closed) gets the menu
+  built again each time it opens: a disabled "Loading..." item shows meanwhile, Delete then follows
+  `canDelete()` again, and the answer is dropped when the record changed, the menu was closed or
+  opened again meanwhile; another record closes the open menu; a failing hook shows the error.
+  Known gap: an outside click in the few ms while the final list builds is lost (the menu opens). It rides on `GO.button.Button`'s
+  `beforeShowMenu(button)` (runs before the menu opens; may set a new `menu`; false keeps it closed).
+  Without the override the menu stays the one built once (portcall's query and output actions use it).
 - Body: `createBody()` items go into the `scroller` above the standard cards; `createBottomItems()`
   below it (tasks "Continue task"). `cards` lists the standard cards in their order:
   `customFields` (DetailFieldsets), `comments`, `files`, `links` (LinkCards), `history`; each is a
@@ -687,7 +764,7 @@ class NoteDetail extends Panel {
 4. ~~**HtmlField mentions** and **RecipientPicker**~~ — done: `HtmlFieldMentionPlugin` (comments), `RecipientsField` + `RecipientPicker` (used by the e-mail composer).
 5. ~~**Drag and drop**~~ — done: `enableDragDrop()` (files, e-mail, address book, tasks, notes onto note books), sortable lists (`position: 'between'`, `dropIndex()`, module sorting), `GO.tree.Tree` node drag and drop.
 6. ~~Small fields~~ — done: AutocompleteField, MapField, ListField, CheckboxGroup, ColorMenu, Month/WeekPicker (Dev demos).
-7. Chart, EntityTypeTable. ~~Alerts/notifications, reminders, session activity watcher, start page~~ — done: `src/alerts/`, module `alerts` renderers (calendar invitations, tasks), `modules/summary/views/neo` (the files portlet waits for that module; e-mail has `portlet-email`).
+7. ~~Chart~~ (done: `GO.chart.Chart`), EntityTypeTable. ~~Alerts/notifications, reminders, session activity watcher, start page~~ — done: `src/alerts/`, module `alerts` renderers (calendar invitations, tasks), `modules/summary/views/neo` (the files portlet waits for that module; e-mail has `portlet-email`).
 8. ~~**E-mail client**~~ — done: `www/modules/email/views/neo` + sieve, smime, emailfavorites, core `src/Mail.mjs`. Files ↔ e-mail (Email files, Email download link, Save to personal folder) done too; see `docs/neo-email-module.md` → Status.
 9. Gaps found by the Dev demos of the GOUI docs pages (2026-11-24, `src/dev/demo/`):
    - Window: no `alert()` / `error()` dialog like GOUI `Window.alert()` / `Window.error()`
@@ -781,6 +858,13 @@ listens for custom DOM events the addon sends (`DomEvents.sendMessageToApp`, e.g
 on the dialog) and does the JMAP calls itself; Blobs and Files come back from addon remotes by
 structured clone. Details and gotchas: `go/modules/community/syncfusion/views/neo/README.md`.
 
+A library several modules use belongs in neo core as a `views/neo` npm dependency (pinned, kept by
+`buildScripts/release.mjs`), loaded by a core addon that fails soft when it does not load: core runs without
+the optional modules (`GO.main.addon.CodeMirror` loads `codemirror@5` from `views/neo/node_modules`; sf/codemirror's
+copy stays for the classic client). A field whose holder is box content rendered by `renderControl()`
+(`GO.form.field.Field`) must `await me.promiseUpdate()` before the addon looks up the holder: on
+`mounted` the box content can still be on its way to the DOM.
+
 ## GO.pdf.PdfViewer (2026-11-28)
 
 `src/pdf/PdfViewer.mjs` with the main thread addon `src/main/addon/PdfJs.mjs` (`WS/PdfJs`) and the DOM-free
@@ -813,3 +897,100 @@ preview.on('load', ({numPages, title}) => …);                 // also 'loadErr
 - A PDF loads once the viewer is in the DOM; a viewer in a hidden card redraws when it is shown again (neo removes
   inactive cards from the DOM). Only the latest source counts: the addon answers an older load `{superseded: true}`,
   and a failed load clears the old pages, shows a message and fires `loadError`.
+
+## GO.pdf.PdfPageExportDialog (2026-11-28)
+
+`src/pdf/PdfPageExportDialog.mjs`, with `parsePageRange()` in `src/pdf/pdfPages.mjs` (`tests/pdfPages.test.mjs`) and
+`printUrl()` in `src/print.mjs` (addon `src/main/addon/Print.mjs`). Moved from amd/libs, whose classic dialog stays.
+
+```js
+import PdfPageExportDialog from '<relative>/views/neo/src/pdf/PdfPageExportDialog.mjs';
+
+Neo.create(PdfPageExportDialog, {appName, windowId, src: viewer.src, numPages,   // numPages from the viewer's 'load'
+    pageExportUrl: (range, inline) => …,   // URL of the selected pages as one PDF; inline for printing
+    saveHandler  : range => …,             // optional: "Save as", the primary action (dms: SavePagesDialog)
+    emailHandler : range => …})            // optional: "Send by email" (dms: preparePagesEmail + Mail.showComposer())
+```
+
+- The range is printer style ("1,3,5-7", the order entered, repeats allowed, at most 500 pages), checked like
+  amd/dms `util/PageRangeParser.php`; empty means all pages and goes to the host as "1-N". The server parses it again.
+- Thumbnails are a `GO.pdf.PdfViewer` with `pages` set to the selection, `pageScale` 1 at zoom 25 %, laid out as a
+  grid by its `thumbnails` config; they follow the field half a second after the last valid change. The dialog loads
+  the PDF again from `src`.
+- Print loads the inline URL into a hidden frame and prints it (`printUrl()`); a browser that refuses (Firefox) gets
+  the PDF in a new tab. The dialog stays open. Download, save and e-mail close it; Enter saves when there is a
+  `saveHandler`, else downloads.
+
+## GO.preview.FilePreview (2026-11-28)
+
+`src/preview/FilePreview.mjs` with the DOM-free `src/preview/previewKinds.mjs` (kind by extension, the name's
+extension or the MIME type; `registerPreview()`; `tests/filePreview.test.mjs`).
+
+```js
+import FilePreview from '<relative>/views/neo/src/preview/FilePreview.mjs';
+
+{module: FilePreview, reference: 'preview', flex: 1}
+
+preview.setFile({src: client.apiUrl + 'download.php?blob=' + blobId, name: 'Report.pdf'}); // or extension, type
+preview.setFile({src, extension: 'md', htmlUrl});   // Markdown HTML the host renders and trusts, in a frame
+preview.setFile(null);
+```
+
+- The kind comes from `extension`, else the extension of `name`, else `type`; never from `src` (download URLs have
+  none). PDF and image go to `GO.pdf.PdfViewer` (zoom, lazy pages); text is fetched and shown escaped in a `<pre>`
+  (at most `TEXT_LIMIT` characters); Markdown is fetched and rendered by `Markdown.mjs` (sanitised), or with
+  `htmlUrl` the host's page is shown in an `<iframe>` (relative image URLs resolve against that page); audio and
+  video are native players; anything else shows an icon, the name and Download (`download.mjs`).
+- Sheets and docx (`src/preview/officePreviews.mjs`, registered when FilePreview loads): xls / xlsx show the first
+  sheet (only it is parsed) as an escaped table of formatted cell texts, at most `SHEET_ROW_LIMIT` (1,000) rows and
+  `SHEET_COLUMN_LIMIT` (100) columns (a sparse sheet would otherwise give thousands of empty cells), with a note when
+  cut; the first row is the header when all its cells are text by SheetJS cell type (a date or "$5.00" is not); docx is converted by mammoth and sanitised (`Format.sanitizeHtml()`, which keeps base64
+  raster images). The libraries run on the main thread (addons `WS/SheetJs`, `WS/Mammoth`, loaded on first use) from
+  copies vendored in `views/neo/lib/` (SheetJS 0.20.3 from cdn.sheetjs.com, mammoth 1.13.0 `mammoth.browser.min.js`
+  from npm; the classic client keeps its amd/libs copies). Not npm dependencies of views/neo: SheetJS 0.20 is not on
+  the npm registry (npm's `xlsx` 0.18.5 has known CVEs) and mammoth has dependencies, which `release.mjs` refuses.
+  Update a library by replacing its file and the `?v=` in `officePreviews.mjs`.
+- `docxToHtml(url, windowId, signal)` (officePreviews.mjs): sanitised HTML of a docx for importers (dms "Content from
+  docx"); `url` is a same-origin URL or a `blob:` URL of that window. An abort only stops before the addon call: the
+  main thread's fetch and parsing run to the end, FilePreview drops the result.
+- Extension point: `registerPreview(kind, {extensions, types, render})`, `render({url, src, name, extension, type, signal, windowId})`
+  returns HTML that the renderer has sanitised; `signal` aborts when another file is shown. Built-in kinds come first and cannot be replaced.
+- Only the latest file shows: each load takes a token, a fetch for an older file drops its result.
+
+## GO.chart.Chart (2026-11-28)
+
+`src/chart/Chart.mjs` (`GO.chart.Chart`) on top of the generic pair `src/component/wrapper/CanvasJS.mjs`
+(`Neo.component.wrapper.CanvasJS`, App worker) and `src/main/addon/CanvasJS.mjs` (`Neo.main.addon.CanvasJS`,
+main thread), modelled on neo's `AmChart` / `AmCharts`. The pair has no GO code (candidate for an upstream PR);
+`src/main/canvasJsOptions.mjs` turns formatter names into functions (`tests/canvasJsOptions.test.mjs`).
+Demo `#dev/core/Chart`.
+
+```js
+{module: Chart, style: {height: '360px'},
+ chartConfig: {zoomEnabled: true, exportEnabled: true,
+     axisX  : {labelFormatter: 'date'},          // date, dateTime, time, number (Intl, user language + time zone)
+     toolTip: {contentFormatter: {formatter: 'template', template: '{name}: {y:number} °C, {x:dateTime}'}},
+     legend : {itemclick: 'toggleSeries'}},
+ chartData: [{type: 'line', xValueType: 'dateTime', click: 'event', dataPoints}],
+ listeners: {chartEvent: ({name, dataPoint, dataSeriesIndex}) => …, loadError: ({error}) => …}}
+
+chart.chartData = series;                // draws again; a new chartConfig creates the chart again
+chart.setProperty('axisY.maximum', 20);  // one option of the drawn chart
+```
+
+- Options are JSON: functions can't cross the worker. Options CanvasJS calls (`FUNCTION_KEYS`: labelFormatter,
+  contentFormatter, indexLabelFormatter, itemclick, click, mouse*, rangeChanged/-ing) take a formatter name or
+  `{formatter, ...options}`; `'event'` comes back as `chartEvent`. A module needing its own formatter adds it to
+  `formatters` of `canvasJsOptions.mjs` from a main thread addon.
+- CanvasJS loads only from sf/canvasjs (`go/modules/sf/canvasjs/views/canvasjs.min.js`, licensed copy shared with
+  the classic client); no CDN fallback. Without it the chart shows "the CanvasJS module is not available".
+  Bump the `?v=` in `Chart.mjs` with the library.
+- Theme: light2 / dark2 picked and followed by the addon from `body.dark` (Preferences.applyTheme, also "system");
+  background transparent. Culture: translated export menu texts and GO's month / day names.
+- The chart draws again on every size change of its element (ResizeObserver; not while it has no size).
+- The wrapper awaits `promiseUpdate()` before `create`: on `mounted` the chart element was not always in the DOM
+  yet (create found no host on about half of the first loads).
+- `'up.onX'` handlers are looked up on the firing component first: a wrapper method named like a parent's handler
+  (`onChartEvent`, `onLoadError`) is called instead and recursed. Hence `onCanvasJsEvent` / `handleLoadError`.
+- Module addons only work in the dev build (D7); the first real user is amd/buoys.
+

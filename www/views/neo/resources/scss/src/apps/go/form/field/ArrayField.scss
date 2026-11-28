@@ -1,0 +1,11 @@
+// GO.form.field.ArrayField: the handle a sortable row is dragged by
+.neo-theme-go .go-arrayfield-handle {
+    align-self : center;
+    color      : var(--fg-secondary-text);
+    cursor     : grab;
+    user-select: none;
+
+    &:hover {
+        color: var(--fg-text);
+    }
+}

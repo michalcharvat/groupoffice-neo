@@ -16,7 +16,7 @@ import {createLinks}  from '../link/links.mjs';
 import {t}            from '../Translate.mjs';
 
 /**
- * Dialog that creates or edits one JMAP entity (GOUI FormWindow).
+ * @summary Dialog that creates or edits one JMAP entity (GOUI FormWindow).
  *
  *     class NoteDialog extends FormWindow {
  *         static config = {className: 'GO.notes.view.NoteDialog', entityName: 'Note', title: t('Note')}
@@ -30,7 +30,7 @@ import {t}            from '../Translate.mjs';
  *     Neo.create(NoteDialog, {appName, windowId, values: {noteBookId: 3}}); // new
  *
  * Layout: form → cards (tab container, tab bar only with 2+ cards) → generalTab,
- * then a button bar: [link slot] [error text] Cancel Save.
+ * then a button bar: [link slot] [error text] Cancel [Apply] Save.
  *
  * Extension points for later core parts:
  * - addCustomFields(): custom field fieldsets (general tab or own cards)
@@ -43,7 +43,7 @@ import {t}            from '../Translate.mjs';
  *
  * Events:
  * - formReady {currentId}   loaded, or prepared for a new entity
- * - save  {data, isNew, created}  saved (the window closes when closeOnSave)
+ * - save  {data, isNew, created}  saved (the window closes when closeOnSave, not on Apply)
  * - saveerror {error, validationErrors}
  */
 class FormWindow extends Dialog {
@@ -90,6 +90,11 @@ class FormWindow extends Dialog {
          */
         closeOnSave: true,
         /**
+         * Apply button before Save: saves without closing (go.form.Dialog Apply)
+         * @member {Boolean} applyButton=false
+         */
+        applyButton: false,
+        /**
          * Linkable entity: "create links" for a new, "browse links" for an existing entity
          * @member {Boolean} hasLinks=false
          */
@@ -103,7 +108,13 @@ class FormWindow extends Dialog {
          * Extra config of the cards' tab container, e.g. {tabBarPosition: 'left'}
          * @member {Object} cardsConfig={}
          */
-        cardsConfig: {}
+        cardsConfig: {},
+        /**
+         * Field whose value follows the title of a saved entity, "<title>: <value>"
+         * (go.form.Dialog titleField). null: the title stays as it is.
+         * @member {String|null} titleField=null
+         */
+        titleField: null
     }
 
     /**
@@ -130,6 +141,22 @@ class FormWindow extends Dialog {
      */
     pendingLinkTargets = []
 
+    /**
+     * apply() is saving
+     * @member {Boolean} applying=false
+     */
+    applying = false
+
+    /**
+     * The configured title, before titleField added the value (updateTitle())
+     * @member {String|null} plainTitle=null
+     */
+    plainTitle = null
+
+    /**
+     * @summary Builds the form, its cards and the button bar.
+     * @param {Object} config
+     */
     construct(config) {
         super.construct(config);
 
@@ -145,8 +172,12 @@ class FormWindow extends Dialog {
             listeners : {
                 loaderror: ({error}) => me.showError(error.message || String(error)),
                 saveerror: data      => me.onSaveError(data),
-                save     : data      => me.onFormSave(data),
-                invalid  : ()        => me.focusFirstInvalid()
+                // Apply keeps the window open: a created entity now shows its titleField
+                save     : data      => (me.updateTitle(), me.onFormSave(data)),
+                invalid  : ()        => me.focusFirstInvalid(),
+                load       : ()          => me.updateTitle(),
+                // a nested field of the same name only triggers a re-read of the form's own field
+                fieldChange: ({component}) => me.titleField && component.name === me.titleField && me.updateTitle()
             },
             items: [{
                 module             : TabContainer,
@@ -196,7 +227,13 @@ class FormWindow extends Dialog {
                 module : Button,
                 text   : t('Cancel'),
                 handler: () => me.requestClose()
-            }, {
+            }, ...me.applyButton ? [{
+                module   : Button,
+                reference: 'applyButton',
+                disabled : true,
+                text     : t('Apply'),
+                handler  : () => me.apply()
+            }] : [], {
                 // GOUI form window: a filled primary submit button
                 module   : Button,
                 ui       : 'primary',
@@ -365,6 +402,9 @@ class FormWindow extends Dialog {
         cards.getTabStrip().hidden = single
     }
 
+    /**
+     * @summary Loads the entity (or prepares a new one), then enables Save and Apply.
+     */
     async onConstructed() {
         super.onConstructed();
 
@@ -397,7 +437,7 @@ class FormWindow extends Dialog {
 
             if (!me.isDestroyed) {
                 me.formReady = true;
-                me.getReference('saveButton').disabled = false;
+                me.setSaveDisabled(false);
                 me.onReady();
                 me.fire('formReady', {currentId: me.form.currentId})
             }
@@ -410,6 +450,31 @@ class FormWindow extends Dialog {
      */
     onReady() {
         this.updateLinkButtons()
+    }
+
+    /**
+     * Title "<title>: <value of titleField>" for a saved entity, the plain title for a new one
+     * or an empty value. Text, not HTML: the header renders it as text.
+     * @returns {Promise<void>}
+     * @protected
+     */
+    async updateTitle() {
+        let me = this;
+
+        if (!me.titleField) {
+            return
+        }
+
+        me.plainTitle ??= me.title || '';
+
+        const value = (await me.form.getField(me.titleField))?.value;
+
+        if (me.isDestroyed) {
+            return
+        }
+
+        // shortcut: assumes a text field, a combo's object value would need its display text
+        me.title = me.form.currentId && value ? [me.plainTitle, value].filter(Boolean).join(': ') : me.plainTitle
     }
 
     /**
@@ -502,7 +567,7 @@ class FormWindow extends Dialog {
     }
 
     /**
-     * Validates and saves the form
+     * @summary Validates and saves the form; refused while a save runs.
      * @returns {Promise<Object|false>}
      */
     async submit() {
@@ -513,7 +578,7 @@ class FormWindow extends Dialog {
             return false
         }
 
-        button.disabled = true;
+        me.setSaveDisabled(true);
         me.showError('');
         me.isLoading = true;
 
@@ -528,10 +593,50 @@ class FormWindow extends Dialog {
             return result
         } finally {
             if (!me.isDestroyed) {
-                me.isLoading    = false;
-                button.disabled = false
+                me.isLoading = false;
+                me.setSaveDisabled(false)
             }
         }
+    }
+
+    /**
+     * @summary Saves without closing (Apply button). A second click while it saves does nothing;
+     * a new entity becomes the saved one, so the next save updates it.
+     * @returns {Promise<Object|false>}
+     */
+    async apply() {
+        let me = this;
+
+        // a call during a save would change or restore closeOnSave before that save ends
+        if (me.applying || !me.formReady || me.getReference('saveButton').disabled) {
+            return false
+        }
+
+        const closeOnSave = me.closeOnSave;
+
+        me.applying    = true;
+        me.closeOnSave = false;
+
+        try {
+            return await me.submit()
+        } finally {
+            me.applying    = false;
+            me.closeOnSave = closeOnSave
+        }
+    }
+
+    /**
+     * @summary Disables or enables Save and Apply together.
+     * @param {Boolean} disabled
+     * @protected
+     */
+    setSaveDisabled(disabled) {
+        let me = this;
+
+        me.getReference('saveButton').disabled = disabled;
+
+        const apply = me.getReference('applyButton');
+        apply && (apply.disabled = disabled)
     }
 
     /**

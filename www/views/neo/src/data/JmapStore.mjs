@@ -3,11 +3,20 @@ import Store  from '../../node_modules/neo.mjs/src/data/Store.mjs';
 import {setDataAndFireLoad} from './setData.mjs';
 
 /**
- * neo.mjs Store backed by a Group Office JMAP entity.
+ * @summary neo.mjs Store backed by a Group Office JMAP entity.
  *
  * load() runs Entity/query + Entity/get for the current page. When the server
  * pushes a state change for the entity the current page is reloaded, which keeps
  * creations, filter membership, sorting and paging correct without patching.
+ *
+ * `scopeKeys`: filter keys of which one must hold a value (PHP empty(): not 0, '0', '', false,
+ * null, []). Without one load() empties the store, drops the answer of a running load and stops
+ * push reloads until the next scoped load; loadMore() fetches nothing. For server filters that
+ * add no condition for an empty value, where an unscoped query (a header sort, a push reload, a
+ * search before the scope is known) would list every scope's rows (amd/pms: `vessel`,
+ * `componentIn`):
+ *
+ *     Neo.create(JmapStore, {entity: 'AmdPmsJob', scopeKeys: ['componentIn', 'vessel']})
  */
 class JmapStore extends Store {
     static config = {
@@ -53,7 +62,12 @@ class JmapStore extends Store {
          * Not "sortProperties": neo.collection.Base owns that name and resets it on every sort
          * @member {Object|null} serverSortProperties=null
          */
-        serverSortProperties: null
+        serverSortProperties: null,
+        /**
+         * Filter keys of which one must hold a value, else nothing is queried (see the class docs)
+         * @member {String[]|null} scopeKeys=null
+         */
+        scopeKeys: null
     }
 
     construct(config) {
@@ -192,6 +206,38 @@ class JmapStore extends Store {
     }
 
     /**
+     * @summary No `scopeKeys`, or one of them holds a value the server applies.
+     * @returns {Boolean}
+     */
+    hasScope() {
+        const filter = this.jmapFilter || {};
+
+        // as PHP's empty() of the server filters: 0, '0' and [] are no scope either
+        return !this.scopeKeys?.length || this.scopeKeys.some(key => {
+            const value = filter[key];
+
+            return !(Array.isArray(value) ? value.length === 0 : [undefined, null, '', 0, '0', false].includes(value))
+        })
+    }
+
+    /**
+     * @summary Empties the store and drops a running load's answer; no push reloads until the
+     * next load.
+     * @protected
+     */
+    emptyScope() {
+        let me = this;
+
+        me.loadGeneration = (me.loadGeneration || 0) + 1;
+        me.loadToken  = {};
+        me.isLoading  = false;
+        me.totalCount = 0;
+        setDataAndFireLoad(me, []);
+        // after the data: neo's afterSetData() sets isLoaded
+        me.isLoaded   = false
+    }
+
+    /**
      * Whether loadMore() has records to fetch
      * @returns {Boolean}
      */
@@ -200,13 +246,13 @@ class JmapStore extends Store {
     }
 
     /**
-     * scrollLoad: appends the next pageSize records
+     * @summary scrollLoad: appends the next pageSize records (nothing without a scope)
      * @returns {Promise<Object[]|null>} the added records
      */
     async loadMore() {
         let me = this;
 
-        if (!me.hasMore() || me.isLoading) {
+        if (!me.hasMore() || me.isLoading || !me.hasScope()) {
             return null
         }
 
@@ -233,8 +279,8 @@ class JmapStore extends Store {
             me.totalCount = total;
             // before add(): the grid asks for more (scrollEdge) while it renders the new rows
             me.isLoading  = false;
-            // the query may overlap after a change on the server
-            me.add(list.filter(record => !me.get(record.id)));
+            // the query may overlap after a change on the server; a continuation keeps the grid's scroll
+            me.asContinuation(() => me.add(list.filter(record => !me.get(record.id))));
             me.fire('loadMore', {records: list});
             return list
         } catch (e) {
@@ -247,11 +293,17 @@ class JmapStore extends Store {
     }
 
     /**
+     * @summary Loads the current page; without a scope (scopeKeys) empties the store instead.
      * @param {Object} opts
      * @param {Boolean} [opts.keepCount] scrollLoad: reload as many records as are loaded now
      * @returns {Promise<Object[]|null>}
      */
     async load(opts={}) {
+        if (!this.hasScope()) {
+            this.emptyScope();
+            return []
+        }
+
         let me         = this,
             scrollLoad = me.scrollLoad,
             pageSize   = scrollLoad && opts.keepCount ? Math.max(me.pageSize, me.count) : me.pageSize,

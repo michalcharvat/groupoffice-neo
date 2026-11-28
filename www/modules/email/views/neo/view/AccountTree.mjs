@@ -1,10 +1,8 @@
 import Tree          from '../../../../../views/neo/src/tree/Tree.mjs';
-import MenuList      from '../../../../../views/neo/src/menu/List.mjs';
 import ModuleRegistry from '../../../../../views/neo/src/ModuleRegistry.mjs';
 import client        from '../../../../../views/neo/src/jmap/Client.mjs';
 import {LEVEL_CREATE} from '../../../../../views/neo/src/Acl.mjs';
 import * as api      from '../api.mjs';
-import {t}           from '../util.mjs';
 import {isImapAuthError, promptImapPassword} from './account/accountActions.mjs';
 
 /**
@@ -25,14 +23,15 @@ const SPECIAL_ICONS = {inbox: 'inbox', sent: 'send', drafts: 'drafts', trash: 'd
  *
  * Extension point `emailTreeSections` (ModuleRegistry.getConfigs()): see docs/neo-email-module.md.
  *
- * Events: nodeSelect {node} (a row was clicked), menu {node, target} (the row menu icon or a
- * right click), load (Tree)
+ * Events: nodeSelect {node} (a row was clicked), menu {node, target} (Tree `nodeMenu`: the row
+ * menu icon or a right click), load (Tree). The unread count is the Tree badge.
  */
 class AccountTree extends Tree {
     static config = {
         className  : 'GO.email.AccountTree',
         baseCls    : ['go-tree', 'go-email-tree', 'neo-list'],
-        defaultIcon: 'folder'
+        defaultIcon: 'folder',
+        nodeMenu   : true
     }
 
     /**
@@ -67,10 +66,7 @@ class AccountTree extends Tree {
             })
         }
 
-        me.on({expand: me.onExpandChange, collapse: me.onExpandChange, scope: me});
-
-        Neo.main.DomEvents.registerPreventDefaultTargets({name: 'contextmenu', cls: ['go-email-tree'], windowId: me.windowId});
-        me.addDomListeners({contextmenu: me.onContextMenu, scope: me})
+        me.on({expand: me.onExpandChange, collapse: me.onExpandChange, scope: me})
     }
 
     destroy(...args) {
@@ -372,21 +368,6 @@ class AccountTree extends Tree {
     }
 
     /**
-     * Selects (highlights) a node without firing nodeSelect
-     * @param {String|null} id
-     */
-    selectNode(id) {
-        let me     = this,
-            record = id && me.store.get(id);
-
-        if (record) {
-            me.selectionModel.select(record)
-        } else {
-            me.selectionModel.deselectAll?.()
-        }
-    }
-
-    /**
      * Saves which accounts and folders are expanded (ExtJS AccountsTree saveTreeState)
      * @protected
      */
@@ -407,7 +388,18 @@ class AccountTree extends Tree {
     }
 
     rowState(node) {
-        return super.rowState(node) + '|' + (node.unseen || 0) + '|' + (node.cls || []).join(' ')
+        return super.rowState(node) + '|' + (node.cls || []).join(' ')
+    }
+
+    badgeOf(node) {
+        return node.unseen
+    }
+
+    /**
+     * Section nodes have a row menu only when their section has one
+     */
+    hasNodeMenu(node) {
+        return node.entity !== 'section' || !!this.sections.find(s => s.id === node.sectionId)?.rowMenu
     }
 
     createItemContent(record) {
@@ -422,12 +414,6 @@ class AccountTree extends Tree {
 
         if (node.entity === 'account' || node.entity === 'section') {
             label && (label.cls = [...label.cls, 'go-email-tree-heading'])
-        }
-
-        node.unseen > 0 && content.push({tag: 'span', cls: ['go-email-tree-count'], text: String(node.unseen)});
-
-        if (node.entity !== 'section' || me.sections.find(s => s.id === node.sectionId)?.rowMenu) {
-            content.push({tag: 'i', cls: ['go-icon', 'go-row-menu'], text: 'more_vert', title: t('More options')})
         }
 
         return content
@@ -467,56 +453,14 @@ class AccountTree extends Tree {
         return cls
     }
 
-    getInteractiveItemIndex(path) {
-        if (path.some(node => node.cls?.includes('go-row-menu'))) {
-            return undefined
-        }
-
-        return super.getInteractiveItemIndex(path)
-    }
-
-    /**
-     * @param {Object[]} path DOM event path
-     * @returns {Object|null} the node of the row
-     * @protected
-     */
-    nodeFromPath(path) {
-        let me       = this,
-            itemNode = path.find(node => node.cls?.includes(me.itemCls)),
-            id       = itemNode && me.getItemRecordId(itemNode.id);
-
-        return id !== undefined && id !== null ? me.getNode(id) || null : null
-    }
-
     onClick(data) {
         let me    = this,
-            icon  = data.path.find(node => node.cls?.includes('go-row-menu')),
-            caret = data.path.find(node => node.cls?.includes('go-tree-caret')),
+            plain = !data.path.some(node => node.cls?.includes('go-tree-caret') || node.cls?.includes('go-row-menu')),
             node  = me.nodeFromPath(data.path);
-
-        if (icon && node) {
-            me.fire('menu', {node, target: icon.id || data.path[0]?.id});
-            return
-        }
 
         super.onClick(data);
 
-        node && !caret && me.fire('nodeSelect', {node})
-    }
-
-    onContextMenu(data) {
-        const node = this.nodeFromPath(data.path || []);
-
-        node && this.fire('menu', {node, target: data.path[0]?.id})
-    }
-
-    /**
-     * Shows a menu below a DOM element
-     * @param {Object[]} items
-     * @param {String} target DOM id
-     */
-    showMenu(items, target) {
-        items?.length && MenuList.showAt({appName: this.appName, windowId: this.windowId, target, items})
+        plain && node && me.fire('nodeSelect', {node})
     }
 }
 

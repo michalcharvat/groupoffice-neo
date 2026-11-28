@@ -1,8 +1,9 @@
-import Field from './Field.mjs';
-import {t}   from '../../Translate.mjs';
+import Field          from './Field.mjs';
+import {resolveRoute} from '../../link/linkTypes.mjs';
+import {t}            from '../../Translate.mjs';
 
 /**
- * GOUI ChipsField: values as chips with a remove button, typed text becomes a chip
+ * @summary GOUI ChipsField: values as chips with a remove button, typed text becomes a chip
  * on Enter, "," or ";". Backspace in the empty input removes the last chip.
  *
  * Value: an array. textInputToValue(text) turns typed text into a value (may return a
@@ -12,6 +13,10 @@ import {t}   from '../../Translate.mjs';
  *     {module: ChipsField, name: 'tags', labelText: t('Tags')}
  *     {module: ChipsField, name: 'userIds', textInputToValue: async text => findUserId(text),
  *      chipRenderer: async id => (await client.get('User', [id], ['displayName']))[0]?.displayName}
+ *
+ * clickable: true opens the entity of a chip (chipEntity(value) → {entity, id}) in the module
+ * that shows it (ModuleRegistry `routes`, as link chips); the remove button still removes.
+ * AutocompleteChips gives chipEntity from its `entity`.
  */
 class ChipsField extends Field {
     static config = {
@@ -23,6 +28,16 @@ class ChipsField extends Field {
          * @member {Function|null} chipRenderer=null
          */
         chipRenderer: null,
+        /**
+         * (value) => {entity, id} of a chip, null: none
+         * @member {Function|null} chipEntity=null
+         */
+        chipEntity: null,
+        /**
+         * A click on a chip with an entity opens it
+         * @member {Boolean} clickable=false
+         */
+        clickable: false,
         /**
          * Placeholder of the input
          * @member {String} placeholder=''
@@ -117,16 +132,35 @@ class ChipsField extends Field {
         !me.isDestroyed && me.renderControl()
     }
 
+    /**
+     * @summary Hash of the entity a chip shows, when the field is clickable.
+     * @param {*} value
+     * @returns {String|null}
+     * @protected
+     */
+    chipRoute(value) {
+        const entity = this.clickable && this.chipEntity?.(value);
+
+        return entity?.entity && entity.id != null ? resolveRoute(entity.entity, entity.id) : null
+    }
+
+    /**
+     * @summary The chips (clickable ones marked go-chip-link) and the input.
+     * @returns {Object[]} vdom
+     */
     createControl() {
         let me       = this,
             editable = !me.readOnly && !me.disabled;
 
         return [
             ...(me.value || []).map((v, index) => ({
-                cls : ['go-chip'],
+                cls : me.chipRoute(v) ? ['go-chip', 'go-chip-link'] : ['go-chip'],
                 data: {index: String(index)},
                 cn  : [
-                    {tag: 'span', cls: ['go-chip-text'], text: me.chipTexts.get(ChipsField.key(v)) ?? '…'},
+                    // a button opens a clickable chip from the keyboard too
+                    me.chipRoute(v)
+                        ? {tag: 'button', type: 'button', cls: ['go-chip-text'], text: me.chipTexts.get(ChipsField.key(v)) ?? '…'}
+                        : {tag: 'span', cls: ['go-chip-text'], text: me.chipTexts.get(ChipsField.key(v)) ?? '…'},
                     editable && {tag: 'button', type: 'button', cls: ['go-chip-remove'], title: t('Remove'), cn: [{tag: 'i', cls: ['go-icon'], text: 'cancel'}]}
                 ].filter(Boolean)
             })),
@@ -143,12 +177,25 @@ class ChipsField extends Field {
         ]
     }
 
+    /**
+     * @summary Removes a chip by its remove button, opens a clickable chip's entity, focuses
+     * the input elsewhere.
+     * @param {Object} data
+     * @param {Object[]} data.path
+     */
     onBoxClick({path}) {
         let me     = this,
             remove = path.find(node => node.cls?.includes('go-chip-remove')),
-            chip   = remove && path.find(node => node.cls?.includes('go-chip'));
+            chip   = path.find(node => node.cls?.includes('go-chip'));
 
-        if (chip && !me.readOnly && !me.disabled) {
+        if (!remove && chip?.cls.includes('go-chip-link')) {
+            const route = me.chipRoute(me.value?.[Number(chip.data?.index)]);
+
+            route && Neo.Main.setRoute({value: route, windowId: me.windowId});
+            return
+        }
+
+        if (remove && chip && !me.readOnly && !me.disabled) {
             const index = Number(chip.data?.index),
                   value = [...me.value];
 

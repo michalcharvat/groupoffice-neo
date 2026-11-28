@@ -216,8 +216,8 @@ class MessageStore extends Store {
             me.totalCount = Number(response.total) || 0;
             me.isLoading  = false;
             me.storeResponse(response);
-            // new mail moves the pages: skip what is loaded already
-            me.add(records.filter(record => !me.get(record.id)));
+            // new mail moves the pages: skip what is loaded already; a continuation keeps the grid's scroll
+            me.asContinuation(() => me.add(records.filter(record => !me.get(record.id))));
             me.fire('loadMore', {records});
             return records
         } catch (e) {

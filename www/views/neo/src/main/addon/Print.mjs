@@ -18,7 +18,7 @@ class Print extends Base {
         // no library files to load
         preloadFilesDelay: false,
         remote: {
-            app: ['print']
+            app: ['print', 'printUrl']
         }
     }
 
@@ -58,6 +58,46 @@ class Print extends Base {
 
         frame.addEventListener('load', () => this.printFrame(frame, title), {once: true});
         frame.srcdoc = this.buildHtml(el, title);
+        document.body.appendChild(frame);
+
+        return true
+    }
+
+    /**
+     * @summary Prints a document of the same origin, e.g. a PDF shown inline. Browsers that refuse to print a PDF from a frame
+     * (Firefox) get it in a new tab, to print from their viewer.
+     * @param {Object} data
+     * @param {String} data.url absolute URL
+     * @returns {Boolean} false when the URL is not of this origin
+     */
+    printUrl({url}) {
+        const target = new URL(url, location.href);
+
+        // only GO's own documents: no foreign page or javascript: URL in an unsandboxed frame
+        if (target.origin !== location.origin) {
+            return false
+        }
+
+        url = target.href;
+        this.removeFrame();
+
+        const frame = this.frame = document.createElement('iframe');
+
+        frame.setAttribute('aria-hidden', 'true');
+        frame.tabIndex = -1;
+        frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+
+        // the frame stays until the next print: a PDF viewer fires no afterprint
+        frame.addEventListener('load', () => {
+            try {
+                frame.contentWindow.focus();
+                frame.contentWindow.print()
+            } catch (e) {
+                window.open(url, '_blank', 'noopener')
+            }
+        }, {once: true});
+
+        frame.src = url;
         document.body.appendChild(frame);
 
         return true

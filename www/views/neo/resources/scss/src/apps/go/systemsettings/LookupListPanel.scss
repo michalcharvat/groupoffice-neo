@@ -1,0 +1,14 @@
+// GO.systemsettings.LookupListPanel
+.neo-theme-go {
+    // narrow width: the table scrolls sideways so the row buttons stay reachable
+    .go-lookup-list-panel {
+        overflow-x: auto;
+    }
+
+    // a long text column (cls go-lookup-ellipsis) is cut, so the row buttons stay in view
+    .go-lookup-list-panel .go-actiontable td.go-lookup-ellipsis {
+        max-width    : 0;
+        overflow     : hidden;
+        text-overflow: ellipsis;
+    }
+}

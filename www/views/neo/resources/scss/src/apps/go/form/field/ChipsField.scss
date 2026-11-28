@@ -43,6 +43,24 @@
         }
     }
 
+    // clickable: the chip opens its entity
+    .go-chip-link {
+        cursor: pointer;
+
+        button.go-chip-text {
+            background: none;
+            border    : 0;
+            color     : inherit;
+            cursor    : pointer;
+            font      : inherit;
+            padding   : 0;
+        }
+
+        &:hover .go-chip-text {
+            text-decoration: underline;
+        }
+    }
+
     .go-chips-input {
         flex     : 1 1 8rem;
         padding  : .6rem .4rem;

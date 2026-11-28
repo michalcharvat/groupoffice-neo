@@ -2,35 +2,18 @@ import Button         from '../button/Button.mjs';
 import Container      from '../../node_modules/neo.mjs/src/container/Base.mjs';
 import TabContainer   from '../../node_modules/neo.mjs/src/tab/Container.mjs';
 import Toolbar        from '../../node_modules/neo.mjs/src/toolbar/Base.mjs';
-import client         from '../jmap/Client.mjs';
 import ModuleRegistry from '../ModuleRegistry.mjs';
 import ConfirmDialog  from '../view/ConfirmDialog.mjs';
 import Dialog         from '../view/Dialog.mjs';
 import {notifyError}  from '../Notify.mjs';
 import {t}            from '../Translate.mjs';
+import {CORE_CARDS, mayManage} from './cards.mjs';
 
 /**
- * Core cards: [itemId (route "#systemsettings/<itemId>"), title, Font Awesome icon, panel, may the user see it]
- * @returns {Array[]}
- */
-const CORE_CARDS = () => [
-    ['general',        t('General'),         'fa fa-file-lines',   () => import('./GeneralPanel.mjs'),        () => client.isAdmin],
-    ['appearance',     t('Appearance'),      'fa fa-palette',      () => import('./AppearancePanel.mjs'),     () => client.isAdmin],
-    ['notifications',  t('Notifications'),   'fa fa-bell',         () => import('./NotificationsPanel.mjs'),  () => client.isAdmin],
-    ['authentication', t('Authentication'),  'fa fa-lock',         () => import('./AuthenticationPanel.mjs'), () => client.isAdmin],
-    ['users',          t('Users'),           'fa fa-user',         () => import('../users/UsersPanel.mjs'),   () => client.mayChangeUsers],
-    ['groups',         t('Groups'),          'fa fa-users',        () => import('../groups/GroupsPanel.mjs'), () => client.mayChangeGroups],
-    ['customfields',   t('Custom fields'),   'fa fa-database',     () => import('../customfields/admin/CustomFieldsPanel.mjs'), () => client.isAdmin || client.mayChangeCustomFields],
-    ['defaultpermissions', t('Default permissions'), 'fa fa-share-nodes', () => import('../defaultpermissions/DefaultPermissionsPanel.mjs'), () => client.isAdmin],
-    ['modules',        t('Modules'),         'fa fa-puzzle-piece', () => import('./ModulesPanel.mjs'),        () => client.isAdmin],
-    ['tools',          t('Tools'),           'fa fa-screwdriver-wrench', () => import('./ToolsPanel.mjs'),    () => client.isAdmin],
-    ['oauth2',         t('Oauth 2.0'),       'fa fa-key',          () => import('./OauthClientsPanel.mjs'),   () => client.isAdmin],
-    ['cron',           t('Manage system tasks'), 'fa fa-clock',    () => import('./CronPanel.mjs'),           () => client.isAdmin]
-];
-
-/**
- * System settings (go.systemsettings.Dialog), for administrators: the header user menu
- * or "#systemsettings/<itemId>". Cards on the left: the core ones, then the cards
+ * @summary The System settings dialog: core and module settings cards on the left.
+ *
+ * System settings (go.systemsettings.Dialog), for anyone who may see a card (cards.mjs
+ * maySeeSystemSettings()): the header user menu or "#systemsettings/<itemId>". Cards on the left: the core ones, then the cards
  * modules register (ModuleRegistry `systemSettings`, shared with My account):
  *
  *     ModuleRegistry.register({..., systemSettings: {
@@ -148,7 +131,7 @@ class SystemSettingsDialog extends Dialog {
     }
 
     /**
-     * The core cards the user may see, then the modules' cards
+     * @summary Adds the core cards the user may see, then the modules' cards.
      * @protected
      */
     async addCards() {
@@ -157,7 +140,7 @@ class SystemSettingsDialog extends Dialog {
         const core = await Promise.all(CORE_CARDS().filter(card => card[4]()).map(async ([itemId, title, iconCls, load]) =>
                   ({itemId, title, iconCls, panel: (await load()).default})
               )),
-              modules = await ModuleRegistry.loadSettingsPanels('systemSettings', m => me.mayManage(m));
+              modules = await ModuleRegistry.loadSettingsPanels('systemSettings', mayManage);
 
         if (me.isDestroyed) {
             return
@@ -180,15 +163,6 @@ class SystemSettingsDialog extends Dialog {
                 saveerror: ({error}) => me.showError([error.message || String(error), ...cardPanel.unmappedErrors || []].join(' '))
             })
         })
-    }
-
-    /**
-     * A module's cards: administrators, or users with the module's "mayManage" right
-     * @param {Object} module registry entry
-     * @returns {Boolean}
-     */
-    mayManage(module) {
-        return client.isAdmin || !!client.session?.capabilities?.[module.capability]?.mayManage
     }
 
     /**

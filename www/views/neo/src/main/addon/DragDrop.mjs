@@ -11,15 +11,17 @@ const DRAG_SRC_CLS = 'go-drag-src';
 const HOVER_DELAY = 1000;
 
 /**
- * Main thread side of drag and drop (GOUI DragAndDrop / ExtJS DD in the file browser):
+ * @summary Main thread side of drag and drop (GOUI DragAndDrop / ExtJS DD in the file browser):
  * native HTML5 drag and drop, declared on a component's root element by
  * GO.util.dragDrop enableDragDrop() with data attributes:
  *
  * - data-go-drag="<selector>": descendants matching it can be dragged (made draggable on
  *   pointer down), e.g. ".neo-grid-row"
+ * - data-go-drag-handle="<selector>": an item is draggable only from a descendant matching it
  * - data-go-drop="<selector>": descendants matching it are drop targets; elsewhere inside
  *   the root (or with an empty selector) the root itself is the target
- * - data-go-drop-group="<name>": drags are accepted from roots with the same group only
+ * - data-go-drop-group="<name>": drags are accepted from roots with the same group only; with
+ *   drop roots nested in each other, the nearest one of the drag's group takes it
  * - data-go-files="true": files dragged from the desktop can be dropped
  * - data-go-drop-pos="on|between|both": drop on a target (default), between targets
  *   (sorting: before / after, GOUI Sortable dropBetween) or both (the outer quarters of a
@@ -27,6 +29,11 @@ const HOVER_DELAY = 1000;
  * - data-go-drop-horizontal="true": targets are side by side, before / after go by x
  * - data-go-drop-hover="true": resting on a target for a second sends "goDragHover"
  *   {targetId, targetRecordId} (a tree expands the node, GOUI Tree.setupExpandOnDragOver())
+ * - data-go-drag-notify="true": a drag of the root's items sends "goDragStart" {itemId} and,
+ *   when it ends (dropped or not, after goDrop), "goDragEnd" to the root's component (a tree
+ *   locks its selection)
+ * - data-go-drag-ghost='["name", ...]': a drag of a selected item (class "neo-selected") shows
+ *   these lines as the drag image when there are two or more (a drag of several tree nodes)
  * - class "go-no-drop" on a target (or the root): it refuses drops (not highlighted, no drop
  *   on the root instead), e.g. a note book the user can't write to
  * - data-go-drop-accept='[["<drag selector>", "<drop selector>"], ...]': the drop targets
@@ -64,15 +71,29 @@ class DragDrop extends Base {
      */
     position = null
     /**
+     * Item made draggable by a press on its handle (data-go-drag-handle)
+     * @member {HTMLElement|null} armed=null
+     */
+    armed = null
+    /**
      * @member {Number|null} hoverTimer=null
      */
     hoverTimer = null
+    /**
+     * Drag root with data-go-drag-notify of the running drag, until its goDragEnd
+     * @member {HTMLElement|null} notifyRoot=null
+     */
+    notifyRoot = null
     /**
      * Removes the document listeners on destroy
      * @member {AbortController|null} domListeners=null
      */
     domListeners = null
 
+    /**
+     * @summary Listens to the document's pointer and drag events.
+     * @param {Object} config
+     */
     construct(config) {
         super.construct(config);
 
@@ -84,12 +105,16 @@ class DragDrop extends Base {
         document.addEventListener('dragover',    e => me.onDragOver(e), {signal});
         document.addEventListener('dragleave',   e => me.onDragLeave(e), {signal});
         document.addEventListener('drop',        e => me.onDrop(e), {signal});
-        document.addEventListener('dragend',     () => me.reset(), {signal})
+        document.addEventListener('dragend',     () => me.finish(), {signal})
     }
 
+    /**
+     * @summary Removes the document listeners and ends a running drag.
+     * @param {...*} args
+     */
     destroy(...args) {
         this.domListeners?.abort();
-        this.reset();
+        this.finish();
         super.destroy(...args)
     }
 
@@ -105,38 +130,138 @@ class DragDrop extends Base {
     }
 
     /**
-     * Rows are rendered by neo without the draggable attribute: set it just before a drag
-     * can start
+     * @summary Rows are rendered by neo without the draggable attribute: sets it just before
+     * a drag can start; with a handle only on a press on the handle (and takes it off again on
+     * the next press, so the item's inputs stay selectable).
      * @param {PointerEvent} e
      */
     onPointerDown(e) {
-        const drag = e.button === 0 && this.dragItem(e);
+        let me   = this,
+            drag = e.button === 0 && me.dragItem(e);
 
-        drag && !drag.item.draggable && (drag.item.draggable = true)
-    }
-
-    onDragStart(e) {
-        const drag = this.dragItem(e);
+        if (me.armed) {
+            me.armed.draggable = false;
+            me.armed           = null
+        }
 
         if (!drag) {
             return
         }
 
-        this.dragging = drag;
-        drag.item.classList.add(DRAG_SRC_CLS);
-        e.dataTransfer.effectAllowed = 'copyMove';
-        // Firefox starts a drag only with data
-        e.dataTransfer.setData('text/plain', drag.item.textContent.trim().slice(0, 200))
+        const handle = drag.root.dataset.goDragHandle;
+
+        if (handle) {
+            const grip = e.target.closest(handle);
+
+            if (!grip || !drag.item.contains(grip)) {
+                return
+            }
+
+            me.armed = drag.item;
+            drag.item.draggable = true
+        } else {
+            drag.item.draggable || (drag.item.draggable = true)
+        }
     }
 
     /**
+     * @summary Starts the drag of an item; with a handle only of the item armed by it (not
+     * selected text dragged out of an input).
+     * @param {DragEvent} e
+     */
+    onDragStart(e) {
+        const drag = this.dragItem(e);
+
+        if (!drag || (drag.root.dataset.goDragHandle && drag.item !== this.armed)) {
+            return
+        }
+
+        let me = this;
+
+        me.dragging = drag;
+        drag.item.classList.add(DRAG_SRC_CLS);
+        e.dataTransfer.effectAllowed = 'copyMove';
+        // Firefox starts a drag only with data
+        e.dataTransfer.setData('text/plain', drag.item.textContent.trim().slice(0, 200));
+
+        drag.item.classList.contains('neo-selected') && me.setGhost(e, drag.root.dataset.goDragGhost);
+
+        if (drag.root.dataset.goDragNotify === 'true') {
+            me.notifyDragEnd();
+            me.notifyRoot = drag.root;
+            // a row re-rendered during the drag is out of the document: its dragend no longer bubbles
+            drag.item.addEventListener('dragend', () => me.finish(), {once: true});
+            DomEvents.sendMessageToApp({id: drag.root.id, path: me.pathOf(drag.root), type: 'goDragStart', itemId: drag.item.id})
+        }
+    }
+
+    /**
+     * @summary Ends the drag here: clears the drag state and sends goDragEnd; safe to call twice.
+     */
+    finish() {
+        this.reset();
+        this.notifyDragEnd()
+    }
+
+    /**
+     * @summary Sends goDragEnd to the root of the drag that sent goDragStart, once.
+     */
+    notifyDragEnd() {
+        const root = this.notifyRoot;
+
+        this.notifyRoot = null;
+        root && DomEvents.sendMessageToApp({id: root.id, path: this.pathOf(root), type: 'goDragEnd'})
+    }
+
+    /**
+     * @summary The event path of an element, as DomEvents sends it to the app.
+     * @param {HTMLElement} el
+     * @returns {Object[]}
+     */
+    pathOf(el) {
+        return DomEvents.getPathFromElement(el).map(node => DomEvents.getTargetData(node))
+    }
+
+    /**
+     * @summary Shows lines of text as the drag image (data-go-drag-ghost), for two or more.
+     * @param {DragEvent} e
+     * @param {String} [json] JSON array of the lines
+     */
+    setGhost(e, json) {
+        let lines;
+
+        try {
+            lines = JSON.parse(json || '[]')
+        } catch {
+            return
+        }
+
+        if (!Array.isArray(lines) || lines.length < 2) {
+            return
+        }
+
+        const ghost = document.createElement('div');
+
+        ghost.className = 'go-drag-ghost';
+        lines.forEach(text => ghost.appendChild(document.createElement('div')).textContent = String(text));
+        document.body.appendChild(ghost);
+        e.dataTransfer.setDragImage(ghost, -12, -12);
+        // the browser takes its picture now
+        setTimeout(() => ghost.remove())
+    }
+
+    /**
+     * @summary The drop root and target under the pointer: the nearest root of the drag's group.
      * @param {DragEvent} e
      * @returns {{root: HTMLElement, target: HTMLElement, position: String}|null} where a drop
      *          would go
      */
     dropTarget(e) {
         let me    = this,
-            root  = e.target?.closest?.('[data-go-drop], [data-go-files]'),
+            roots = '[data-go-drop], [data-go-files]',
+            root  = e.target?.closest?.(roots),
+            // where the target search starts: above the nested roots skipped
+            from  = e.target,
             files = !me.dragging && [...e.dataTransfer?.types || []].includes('Files');
 
         if (!root) {
@@ -148,9 +273,20 @@ class DragDrop extends Base {
                 return null
             }
         } else {
-            const source = me.dragging?.root;
+            const source = me.dragging?.root,
+                  group  = el => el.dataset.goDropGroup || '';
 
-            if (!source || !('goDrop' in root.dataset) || (source.dataset.goDropGroup || '') !== (root.dataset.goDropGroup || '')) {
+            if (!source) {
+                return null
+            }
+
+            // nested drop roots (an ArrayField in a row of another): the nearest of the drag's group
+            while (root && (!('goDrop' in root.dataset) || group(source) !== group(root))) {
+                from = root.parentElement;
+                root = from?.closest(roots)
+            }
+
+            if (!root) {
                 return null
             }
         }
@@ -169,7 +305,7 @@ class DragDrop extends Base {
             selector = rule[1]
         }
 
-        target = selector && e.target.closest(selector);
+        target = selector && from.closest(selector);
         target = target && root.contains(target) ? target : (accept ? null : root);
 
         if (!target) {
@@ -254,6 +390,10 @@ class DragDrop extends Base {
         }
     }
 
+    /**
+     * @summary Sends goDrop to the drop root's component, then goDragEnd to the drag's root.
+     * @param {DragEvent} e
+     */
     onDrop(e) {
         let me   = this,
             drop = me.dropTarget(e),
@@ -262,6 +402,7 @@ class DragDrop extends Base {
         me.reset();
 
         if (!drop || (drag && drag.item === drop.target)) {
+            me.notifyDragEnd();
             return
         }
 
@@ -277,7 +418,10 @@ class DragDrop extends Base {
             files         : drag ? [] : [...e.dataTransfer.files],
             source        : drag ? {rootId: drag.root.id, itemId: drag.item.id, recordId: drag.item.dataset.recordId ?? null} : null,
             copy          : !!(e.ctrlKey || e.altKey || e.metaKey)
-        })
+        });
+
+        // after goDrop: the drop handler still sees the locked selection
+        me.notifyDragEnd()
     }
 
     /**
