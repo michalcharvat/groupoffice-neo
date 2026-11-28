@@ -15,6 +15,9 @@ export const IMPORTS = {
     BoolCheckBox   : 'src/form/field/BoolCheckBox.mjs',
     DateField      : 'src/form/field/DateField.mjs',
     SelectField    : 'src/form/field/SelectField.mjs',
+    DateTimeField  : 'src/form/field/DateTimeField.mjs',
+    ColorField     : 'src/form/field/ColorField.mjs',
+    DisplayField   : 'node_modules/neo.mjs/src/form/field/Display.mjs',
     JmapComboBox   : 'src/form/field/JmapComboBox.mjs',
     AutocompleteChips: 'src/form/field/AutocompleteChips.mjs',
     ArrayField     : 'src/form/field/ArrayField.mjs',
@@ -23,11 +26,14 @@ export const IMPORTS = {
     TableTitle     : 'src/component/TableTitle.mjs',
     JmapStore      : 'src/data/JmapStore.mjs',
     Grid           : 'src/grid/Grid.mjs',
+    ListToolbar    : 'src/grid/ListToolbar.mjs',
+    Container      : 'node_modules/neo.mjs/src/container/Base.mjs',
     LinesCard      : 'src/detail/LinesCard.mjs',
     Panel          : 'src/detail/Panel.mjs',
     FormWindow     : 'src/view/FormWindow.mjs',
     ModuleRegistry : 'src/ModuleRegistry.mjs',
     // named exports: [file, name]
+    ...Object.fromEntries(['READ', 'CREATE', 'WRITE', 'DELETE', 'MANAGE'].map(l => ['LEVEL_' + l, ['src/Acl.mjs', 'LEVEL_' + l]])),
     fieldset       : ['src/form/fieldset.mjs', 'fieldset'],
     translator     : ['src/Translate.mjs', 'translator'],
     escapeHtml     : ['src/Format.mjs', 'escapeHtml'],
@@ -43,7 +49,28 @@ export const FIELD_XTYPES = {
     hidden     : 'Hidden',
     xcheckbox  : 'BoolCheckBox',
     checkbox   : 'BoolCheckBox',
-    datefield  : 'DateField'
+    datefield  : 'DateField',
+    gonumberfield: 'NumberField',
+    datetimefield: 'DateTimeField',
+    colorfield : 'ColorField',
+    displayfield: 'DisplayField'
+};
+
+/** classic field classes used with `new X({...})` → the xtype they read as */
+export const CLASS_XTYPES = {
+    'Ext.form.TextField'  : 'textfield',
+    'Ext.form.TextArea'   : 'textarea',
+    'Ext.form.NumberField': 'numberfield',
+    'go.form.NumberField' : 'numberfield',
+    'Ext.form.Hidden'     : 'hidden',
+    'Ext.form.Checkbox'   : 'checkbox',
+    'Ext.ux.form.XCheckbox': 'xcheckbox',
+    'Ext.form.DateField'  : 'datefield',
+    'go.form.DateField'   : 'datefield',
+    'Ext.form.DisplayField': 'displayfield',
+    'Ext.form.FieldSet'   : 'fieldset',
+    'Ext.Container'       : 'container',
+    'go.form.SelectField' : 'selectfield'
 };
 
 /**
@@ -89,6 +116,10 @@ export const FIELD_KEYS = {
     // an explicit true stays: it overrides a factory that defaults to required
     allowBlank : v => v === 'false' ? [['required', 'true']] : v === 'true' ? [['required', 'false']] : [],
     allowDecimals: v => v === 'false' ? [['stepSize', '1']] : [],
+    // go.form.NumberField decimals: 0 → stepSize 1, 2 → 0.01
+    decimals: v => /^\d+$/.test(v) ? [['stepSize', String(10 ** -Number(v))]] : [],
+    // a checkbox checked from the start
+    checked : v => v === 'true' ? [['value', 'true']] : [],
     // neo has no flag: a minValue of 0 does it, unless the field has a minValue of its own
     allowNegative: (v, p, siblings) => v === 'false' && !siblings.some(s => s.key?.name === 'minValue') ? [['minValue', '0']] : [],
     // the neo field is as wide as its form; precision follows stepSize; the label sits inline
@@ -157,6 +188,15 @@ export const DETAIL_CARDS = {
 /** detail toolbar items that core GO.detail.Panel builds itself (Edit, links, ⋮ Print, Delete) */
 export const CORE_DETAIL_BUTTONS = ['edit', 'delete', 'print', 'go.detail.addButton', 'linkbrowserbutton',
     'linkbrowsermenuitem', 'filebrowsermenuitem'];
+
+/**
+ * `clearable` of a plain (not Reset) combo factory: false as classic (no clear trigger); null leaves neo's
+ * default (clearable), which the ports and crew hand ports chose for their factories.
+ */
+export const PLAIN_COMBO_CLEARABLE = false;
+
+/** go.permissionLevels.* → the constants of core src/Acl.mjs */
+export const PERMISSION_LEVELS = {read: 'LEVEL_READ', create: 'LEVEL_CREATE', write: 'LEVEL_WRITE', delete: 'LEVEL_DELETE', manage: 'LEVEL_MANAGE'};
 
 /** classic base class → converter handler (convert.mjs) */
 export const BASES = {
