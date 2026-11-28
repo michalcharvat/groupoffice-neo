@@ -43,7 +43,7 @@ export default [
 
     {id: 'menu/ColorMenu', text: 'ColorMenu', level: 1, status: 'done', demo: 'ColorMenu', neo: 'GO.menu.ColorMenu', goui: 'goui/script/component/menu/ColorMenu.ts'},
     {id: 'descriptionlist', text: 'DescriptionList', level: 1, status: 'done', demo: 'DescriptionList', neo: 'GO.component.DescriptionList', goui: 'DescriptionList.ts'},
-    {id: 'list',     text: 'List',     level: 1, status: 'done', demo: 'List',  neo: 'GO.list.TextList, CheckList', goui: 'List.ts'},
+    {id: 'list',     text: 'List',     level: 1, status: 'done', demo: 'List',  neo: 'GO.list.TextList, CheckList, NavCheckList', goui: 'List.ts'},
     {id: 'panel',    text: 'Panel',    level: 1, status: 'done', demo: 'Panel',  neo: 'neo container/Panel',         goui: 'Panel.ts'},
     {id: 'patching', text: 'Patching', level: 1, status: 'done', demo: 'Patching',  neo: 'neo class overwrites (Neo.overwrites)', goui: 'Patching.ts'},
     {id: 'table',    text: 'Table',    level: 1, status: 'done', demo: 'Table',  neo: 'GO.grid.Grid',                goui: 'Table.ts'},

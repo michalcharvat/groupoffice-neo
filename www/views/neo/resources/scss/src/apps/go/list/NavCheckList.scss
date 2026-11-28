@@ -1,0 +1,7 @@
+@use "../../../../go/go";
+
+// classic NavGrid "Show more": a small text button below the rows
+.go-nav-check-list-more {
+    align-self: flex-start;
+    margin    : 0 go.dp(16) go.dp(8);
+}
