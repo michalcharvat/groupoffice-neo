@@ -90,7 +90,7 @@ Status: **neo** = neo.mjs 13.4 ships it (14 since 2026-11-24), usable as is (may
 | EntitySelectDialog | GO.neo (`view/EntitySelectDialog.mjs`: `EntitySelectDialog.ask({entity, jmapFilter, value})`, checked ids or `null`; start page portlet settings) |
 | Start page (legacy summary module) | GO.neo (`modules/summary/views/neo`: two columns of portlets registered by modules with the `portlets` key; announcements, note, news (RSS), appointments, tasks, birthdays; move/add/remove, layout in state `summary-active-portlets`; manage announcements; no drag and drop, no announcement permissions panel) |
 | EntityTypeTable | missing |
-| chart | missing in GO (neo ships `component/wrapper/AmChart` + `main/addon/AmCharts`, not wired) |
+| chart | GO.neo (`chart/Chart.mjs` `GO.chart.Chart` over `component/wrapper/CanvasJS.mjs` + addon `WS/CanvasJS`, library from sf/canvasjs; see "GO.chart.Chart" below) |
 
 ## ExtJS-only core (not in GOUI yet)
 
@@ -747,7 +747,7 @@ class NoteDetail extends Panel {
 4. ~~**HtmlField mentions** and **RecipientPicker**~~ — done: `HtmlFieldMentionPlugin` (comments), `RecipientsField` + `RecipientPicker` (used by the e-mail composer).
 5. ~~**Drag and drop**~~ — done: `enableDragDrop()` (files, e-mail, address book, tasks, notes onto note books), sortable lists (`position: 'between'`, `dropIndex()`, module sorting), `GO.tree.Tree` node drag and drop.
 6. ~~Small fields~~ — done: AutocompleteField, MapField, ListField, CheckboxGroup, ColorMenu, Month/WeekPicker (Dev demos).
-7. Chart, EntityTypeTable. ~~Alerts/notifications, reminders, session activity watcher, start page~~ — done: `src/alerts/`, module `alerts` renderers (calendar invitations, tasks), `modules/summary/views/neo` (the files portlet waits for that module; e-mail has `portlet-email`).
+7. ~~Chart~~ (done: `GO.chart.Chart`), EntityTypeTable. ~~Alerts/notifications, reminders, session activity watcher, start page~~ — done: `src/alerts/`, module `alerts` renderers (calendar invitations, tasks), `modules/summary/views/neo` (the files portlet waits for that module; e-mail has `portlet-email`).
 8. ~~**E-mail client**~~ — done: `www/modules/email/views/neo` + sieve, smime, emailfavorites, core `src/Mail.mjs`. Files ↔ e-mail (Email files, Email download link, Save to personal folder) done too; see `docs/neo-email-module.md` → Status.
 9. Gaps found by the Dev demos of the GOUI docs pages (2026-11-24, `src/dev/demo/`):
    - Window: no `alert()` / `error()` dialog like GOUI `Window.alert()` / `Window.error()`
@@ -939,4 +939,41 @@ preview.setFile(null);
 - Extension point: `registerPreview(kind, {extensions, types, render})`, `render({url, src, name, extension, type, signal, windowId})`
   returns HTML that the renderer has sanitised; `signal` aborts when another file is shown. Built-in kinds come first and cannot be replaced.
 - Only the latest file shows: each load takes a token, a fetch for an older file drops its result.
+
+## GO.chart.Chart (2026-11-28)
+
+`src/chart/Chart.mjs` (`GO.chart.Chart`) on top of the generic pair `src/component/wrapper/CanvasJS.mjs`
+(`Neo.component.wrapper.CanvasJS`, App worker) and `src/main/addon/CanvasJS.mjs` (`Neo.main.addon.CanvasJS`,
+main thread), modelled on neo's `AmChart` / `AmCharts`. The pair has no GO code (candidate for an upstream PR);
+`src/main/canvasJsOptions.mjs` turns formatter names into functions (`tests/canvasJsOptions.test.mjs`).
+Demo `#dev/core/Chart`.
+
+```js
+{module: Chart, style: {height: '360px'},
+ chartConfig: {zoomEnabled: true, exportEnabled: true,
+     axisX  : {labelFormatter: 'date'},          // date, dateTime, time, number (Intl, user language + time zone)
+     toolTip: {contentFormatter: {formatter: 'template', template: '{name}: {y:number} °C, {x:dateTime}'}},
+     legend : {itemclick: 'toggleSeries'}},
+ chartData: [{type: 'line', xValueType: 'dateTime', click: 'event', dataPoints}],
+ listeners: {chartEvent: ({name, dataPoint, dataSeriesIndex}) => …, loadError: ({error}) => …}}
+
+chart.chartData = series;                // draws again; a new chartConfig creates the chart again
+chart.setProperty('axisY.maximum', 20);  // one option of the drawn chart
+```
+
+- Options are JSON: functions can't cross the worker. Options CanvasJS calls (`FUNCTION_KEYS`: labelFormatter,
+  contentFormatter, indexLabelFormatter, itemclick, click, mouse*, rangeChanged/-ing) take a formatter name or
+  `{formatter, ...options}`; `'event'` comes back as `chartEvent`. A module needing its own formatter adds it to
+  `formatters` of `canvasJsOptions.mjs` from a main thread addon.
+- CanvasJS loads only from sf/canvasjs (`go/modules/sf/canvasjs/views/canvasjs.min.js`, licensed copy shared with
+  the classic client); no CDN fallback. Without it the chart shows "the CanvasJS module is not available".
+  Bump the `?v=` in `Chart.mjs` with the library.
+- Theme: light2 / dark2 picked and followed by the addon from `body.dark` (Preferences.applyTheme, also "system");
+  background transparent. Culture: translated export menu texts and GO's month / day names.
+- The chart draws again on every size change of its element (ResizeObserver; not while it has no size).
+- The wrapper awaits `promiseUpdate()` before `create`: on `mounted` the chart element was not always in the DOM
+  yet (create found no host on about half of the first loads).
+- `'up.onX'` handlers are looked up on the firing component first: a wrapper method named like a parent's handler
+  (`onChartEvent`, `onLoadError`) is called instead and recursed. Hence `onCanvasJsEvent` / `handleLoadError`.
+- Module addons only work in the dev build (D7); the first real user is amd/buoys.
 
