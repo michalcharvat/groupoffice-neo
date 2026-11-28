@@ -6,6 +6,7 @@ import {language, t} from '../Translate.mjs';
 import {isDescriptor} from '../../node_modules/neo.mjs/src/core/ConfigSymbols.mjs';
 import ResourceModel from './ResourceModel.mjs';
 import TimelineColumn from './TimelineColumn.mjs';
+import Column from '../grid/Column.mjs';
 import TreeColumn from '../grid/TreeColumn.mjs';
 
 /**
@@ -42,11 +43,12 @@ const dayMinutes = 1440;
  */
 class Scheduler extends NeoScheduler {
     /**
-     * neo's column types; `tree` escapes the resource name (GO.grid.TreeColumn, htmlValue for trusted HTML)
+     * neo's column types; the plain `column` and `tree` escape the value (GO.grid.Column, GO.grid.TreeColumn,
+     * htmlValue for trusted HTML)
      * @member {Object} columnTypes
      * @static
      */
-    static columnTypes = {...NeoScheduler.columnTypes, tree: TreeColumn}
+    static columnTypes = {...NeoScheduler.columnTypes, column: Column, tree: TreeColumn}
 
     /**
      * neo's hour, day and week plus month, quarter and year; day ticks are one day wide (snapMinutes)

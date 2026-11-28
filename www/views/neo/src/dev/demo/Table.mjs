@@ -5,7 +5,8 @@ import Page, {h3, output, p} from './Page.mjs';
 import {escapeHtml} from '../../Format.mjs';
 import {t}       from '../../Translate.mjs';
 
-const GROUPS = ['Alpha', 'Beta', 'Gamma'];
+// the plain Group column (no renderer) shows these as text: GO.grid.Column escapes them
+const GROUPS = ['Alpha', 'R&D', '<b>Gamma</b>'];
 
 /**
  * @param {Number} count
@@ -22,7 +23,8 @@ function demoData(count) {
 }
 
 const MODEL = {keyProperty: 'id', fields: [
-    {name: 'id', type: 'Integer'}, {name: 'name', type: 'String'}, {name: 'group', type: 'String'},
+    // group untyped: neo's String type would strip the tag
+    {name: 'id', type: 'Integer'}, {name: 'name', type: 'String'}, {name: 'group'},
     {name: 'amount', type: 'Number'}, {name: 'createdAt', type: 'String'}
 ]};
 
