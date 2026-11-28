@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {setup} from '../node_modules/neo.mjs/test/playwright/setup.mjs';
 import '../node_modules/neo.mjs/src/Neo.mjs';
 import '../node_modules/neo.mjs/src/core/_export.mjs';
-import {editorJsSame, editorJsToHtml, isEditorJsEmpty, isHtmlEmpty, safeUrl, toEditorJsDoc} from '../src/form/field/editorJsDoc.mjs';
+import {editorJsSame, editorJsToHtml, isEditorJsEmpty, isHtmlEmpty, restoreImageUrls, rootImageUrls, safeUrl, toEditorJsDoc} from '../src/form/field/editorJsDoc.mjs';
 
 setup({appConfig: {name: 'test'}});
 
@@ -48,6 +48,27 @@ describe('editorJsDoc', () => {
         assert.equal(isHtmlEmpty('<p><o:p>&nbsp;</o:p></p><br/> '), true);
         assert.equal(isHtmlEmpty(null), true);
         assert.equal(isHtmlEmpty('<p>x</p>'), false)
+    });
+
+    it('rootImageUrls makes relative image URLs absolute, restoreImageUrls brings them back', () => {
+        const img   = url => ({type: 'image', data: {file: {url}}}),
+              made  = new Map(),
+              doc0  = {blocks: [img('download.php?blob=a'), img('/api/download.php?blob=b'), img('https://x/y.png'), img('data:image/png;base64,AA'), {type: 'paragraph', data: {text: 'download.php'}}]},
+              shown = rootImageUrls(doc0, '/go/api/', made);
+
+        assert.deepEqual(shown.blocks.map(b => b.data.file?.url), ['/go/api/download.php?blob=a', '/api/download.php?blob=b', 'https://x/y.png', 'data:image/png;base64,AA', undefined]);
+        assert.deepEqual(restoreImageUrls(shown, made), doc0);
+        const plain = doc('x');
+        assert.equal(rootImageUrls(plain, '/go/api/'), plain);
+        assert.equal(restoreImageUrls(doc0, new Map()), doc0)
+
+        const legacy = {blocks: [{type: 'image', data: {url: ' download.php?blob=c', file: {id: 7}}}]},
+              made2  = new Map(),
+              shown2 = rootImageUrls(legacy, '/go/api/', made2);
+
+        assert.deepEqual(shown2.blocks[0].data, {url: '/go/api/download.php?blob=c', file: {id: 7}});
+        assert.deepEqual(restoreImageUrls(shown2, made2), legacy);
+        assert.equal(rootImageUrls(shown2, '/go/api/'), shown2)
     });
 
     it('safeUrl allows http(s) and relative URLs only', () => {
@@ -163,6 +184,29 @@ describe('GO.form.field.EditorJsField', () => {
 
         assert.deepEqual(await field.flush(), loaded);
         assert.equal(field.isDirty, false)
+    });
+
+    it('shows relative image URLs absolute and saves them as stored', async () => {
+        const loaded = {blocks: [{type: 'image', data: {file: {url: 'download.php?blob=a'}}}]},
+              field  = await mounted({value: loaded});
+
+        assert.equal(addon.doc.blocks[0].data.file.url, client.apiUrl + 'download.php?blob=a');
+        assert.deepEqual(await field.flush(), loaded);
+        assert.equal(field.isDirty, false);
+
+        addon.doc = {blocks: [...addon.doc.blocks, {type: 'paragraph', data: {text: 'Hi'}}]};
+        assert.equal((await field.flush()).blocks[0].data.file.url, 'download.php?blob=a');
+        assert.equal(field.isDirty, true)
+    });
+
+    it('forgets the image URLs of an earlier value', async () => {
+        const field  = await mounted({value: {blocks: [{type: 'image', data: {file: {url: 'download.php?blob=a'}}}]}}),
+              second = {blocks: [{type: 'image', data: {file: {url: client.apiUrl + 'download.php?blob=a'}}}]};
+
+        field.value = second;
+        await field.flush();
+        addon.doc = {blocks: [...addon.doc.blocks, {type: 'paragraph', data: {text: 'Hi'}}]};
+        assert.equal((await field.flush()).blocks[0].data.file.url, client.apiUrl + 'download.php?blob=a')
     });
 
     it('takes an edited document, and the loaded value back when edited back', async () => {

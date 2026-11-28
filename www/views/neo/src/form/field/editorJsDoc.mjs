@@ -110,6 +110,82 @@ export function safeUrl(url) {
 }
 
 /**
+ * @summary A copy of a document with each image URL passed through fn (image tool file.url,
+ * simple image url); the same document when none changes.
+ * @param {*} doc
+ * @param {Function} fn url → url
+ * @returns {*}
+ */
+export function mapImageUrls(doc, fn) {
+    if (!doc || typeof doc !== 'object' || !Array.isArray(doc.blocks)) {
+        return doc
+    }
+
+    let changed = false;
+
+    const blocks = doc.blocks.map(block => {
+        const data = block?.type === 'image' ? block.data : null;
+
+        if (!data || typeof data !== 'object') {
+            return block
+        }
+
+        const fileUrl = typeof data.file?.url === 'string' ? fn(data.file.url) : data.file?.url,
+              url     = typeof data.url === 'string' ? fn(data.url) : data.url;
+
+        if (fileUrl === data.file?.url && url === data.url) {
+            return block
+        }
+
+        changed = true;
+
+        const copy = {...data};
+
+        fileUrl !== data.file?.url && (copy.file = {...data.file, url: fileUrl});
+        url !== data.url && (copy.url = url);
+
+        return {...block, data: copy}
+    });
+
+    return changed ? {...doc, blocks} : doc
+}
+
+/**
+ * @summary Image URLs relative to the API (classic and server tools store `download.php?blob=`)
+ * made absolute with root, as a page with another base (neo's <base href>) would miss them.
+ * @param {*} doc
+ * @param {String} root the API URL with a trailing slash (client.apiUrl)
+ * @param {Map} [made] gets each absolute URL → its stored form, for restoreImageUrls()
+ * @returns {*}
+ */
+export function rootImageUrls(doc, root, made) {
+    return mapImageUrls(doc, url => {
+        // the browser trims an img src too
+        const trimmed = url.trim();
+
+        // scheme (http:, data:), absolute path or fragment: as stored
+        if (!trimmed || /^[^/?#]*:/.test(trimmed) || /^[/?#]/.test(trimmed)) {
+            return url
+        }
+
+        made?.set(root + trimmed, url);
+
+        return root + trimmed
+    })
+}
+
+/**
+ * @summary The stored form of image URLs rootImageUrls() made absolute, so an untouched document
+ * saves as it was loaded.
+ * @param {*} doc
+ * @param {Map} made absolute URL → stored form
+ * @returns {*}
+ */
+export function restoreImageUrls(doc, made) {
+    return made.size ? mapImageUrls(doc, url => made.get(url) ?? url) : doc
+}
+
+/**
  * @summary The text alignment of a block (alignment tune), as a style attribute.
  * @param {Object} block
  * @returns {String}
