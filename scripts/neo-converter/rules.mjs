@@ -127,6 +127,8 @@ export const FIELD_KEYS = {
     decimalPrecision: () => [],
     labelWidth      : () => [],
     setFocus        : () => [],
+    // a column layout's width share: the hbox container makes it the field's flex
+    columnWidth     : () => [],
     // classic combo plumbing that neo's JmapComboBox does itself
     triggerAction : () => [],
     selectOnFocus : () => [],
