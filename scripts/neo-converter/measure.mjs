@@ -2,9 +2,9 @@
 /**
  * Measures the converter against hand ports (docs/neo-converter-study.md).
  *
- *     node scripts/neo-converter/measure.mjs <amd checkout> [--json]
+ *     node scripts/neo-converter/measure.mjs <amd checkout> [--set a|b|all] [--json [--summary]]
  *
- * For every classic file of ports and links it converts the file and compares each config entry the
+ * For every classic file of a set of modules (--set a: ports, links; b: crew, pms, dms held out; all) it converts the file and compares each config entry the
  * converter wrote (a key of a field, column, store, class config, detail line, registration) with
  * the same entry of the hand port (the neo files PORTING.md maps the classic file to):
  *
@@ -206,6 +206,7 @@ export function extractConfigs(src, globals = {}, file = '') {
         if (map.get('module')?.code === 'JmapStore' && map.has('entity')) return 'store:' + v('entity');
         if (map.has('module') && map.has('name')) return 'field:' + v('name');
         if (map.get('module')?.code === 'Button' && map.has('icon')) return 'button:' + v('icon');
+        if (map.get('module')?.code === 'ListToolbar') return 'toolbar';
         return null
     };
 
@@ -323,62 +324,141 @@ export function compare(converted, hand, consumed = new Set()) {
     return res
 }
 
+// ---------------------------------------------------------------- held-out set
+
+/** set (a): the prototype's modules (MAPPING); set (b): held-out hand ports the rules were not tuned on */
+export const SETS = {a: ['ports', 'links'], b: ['crew', 'pms', 'dms']};
+
+/**
+ * @summary Classic file → hand-ported neo files of a held-out module, by name only (fixed before any
+ * step 2 rule was written, so the rules cannot shape it): Module.js → Index.mjs, MainPanel.js →
+ * view/*Main.mjs, X.js → X.mjs / view/X.mjs, a combo or chips also → the module's fields.mjs, a grid or
+ * detail also → model/<X without Grid/Detail>.mjs, SettingsDialog.js → view/lookups.mjs. A classic
+ * file without such a neo file is not measured (not ported, or ported under another name).
+ * @param {String} neoDir views/neo of the module
+ * @param {String[]} classic classic files below views/extjs3
+ * @returns {Object<String, String[]>}
+ */
+export function autoMapping(neoDir, classic) {
+    const have = f => existsSync(join(neoDir, f)),
+          main = existsSync(join(neoDir, 'view')) ? readdirSync(join(neoDir, 'view')).filter(f => /Main\.mjs$/.test(f)).map(f => 'view/' + f) : [],
+          out  = {};
+
+    for (const file of classic) {
+        const base = file.replace(/\.js$/, '').split('/').pop();
+        let targets;
+        if (file === 'Module.js') targets = ['Index.mjs'];
+        else if (file === 'MainPanel.js') targets = main;
+        else if (file === 'SettingsDialog.js') targets = ['view/lookups.mjs'];
+        else {
+            targets = [base + '.mjs', 'view/' + base + '.mjs'];
+            /(Combo|ComboReset|Chips)$/.test(base) && targets.push('fields.mjs', 'view/fields.mjs');
+            /(Grid|Detail)$/.test(base) && targets.push('model/' + base.replace(/(Grid|Detail)$/, '') + '.mjs')
+        }
+        targets = targets.filter(have);
+        // a combo found only fields.mjs: measured (the factory lives there); anything else needs its own file
+        if (targets.length && (targets.some(t => !/fields\.mjs$|^model\//.test(t)) || /(Combo|ComboReset|Chips)$/.test(base))) out[file] = targets
+    }
+    return out
+}
+
+/** kinds of classic files in the summary; combo and chips together as in the study */
+const KIND = k => ({chips: 'combo', unknown: 'no rule', other: 'no rule', error: 'no rule'})[k] ?? k;
+
+/**
+ * @summary Measures modules: per classic file the comparison, per kind and in total the shares.
+ * @param {String} amd amd checkout
+ * @param {String[]} modules
+ * @returns {{files: Object[], kinds: Object, total: Object, coverage: Object[]}}
+ */
+export function measure(amd, modules) {
+    const files = [], handByKind = {}, coverage = [];
+
+    for (const name of modules) {
+        const neoDir   = join(amd, name, 'views/neo'),
+              results  = convertModule(join(amd, name)),
+              mapping  = MAPPING[name] ?? autoMapping(neoDir, results.map(r => r.file)),
+              consumed = new Set();
+        for (const r of results) {
+            const targets = mapping[r.file];
+            if (!targets) continue;
+            const handFiles = targets.filter(f => existsSync(join(neoDir, f))),
+                  handSrc = handFiles.map(f => readFileSync(join(neoDir, f), 'utf8')),
+                  globals = constants(handSrc),
+                  hand    = handSrc.flatMap((src, i) => extractConfigs(src, globals, `${name}/${handFiles[i]}`));
+            const cmp = compare(extractConfigs(r.code), hand, consumed);
+            const kinds = {};
+            r.todos.forEach(t => kinds[t.kind] = (kinds[t.kind] ?? 0) + t.lines);
+            const kind = KIND(r.kind);
+            handByKind[kind] ??= new Map();
+            hand.forEach(h => handByKind[kind].set(h.pos, h.entries.size));
+            files.push({module: name, file: r.file, kind: r.kind, classicLines: r.classicLines, todoLines: r.todoLines,
+                todoBlocks: r.todos.length, todoKinds: kinds, outLines: r.code.split('\n').filter(l => l.trim()).length,
+                handLines: handSrc.reduce((n, src) => n + src.split('\n').filter(l => l.trim()).length, 0),
+                ...cmp})
+        }
+
+        // the whole hand port: every config entry the measure recognises in every neo file of the module
+        const all   = readdirSync(neoDir, {recursive: true}).filter(f => f.endsWith('.mjs') && !f.startsWith('dev/')),
+              srcs  = all.map(f => readFileSync(join(neoDir, f), 'utf8')),
+              glob  = constants(srcs),
+              total = srcs.flatMap(src => extractConfigs(src, glob)).reduce((n, c) => n + c.entries.size, 0),
+              hit   = files.filter(r => r.module === name).reduce((n, r) => n + r.same + r.notation, 0);
+        coverage.push({module: name, files: all.length, lines: srcs.reduce((n, src) => n + src.split('\n').filter(l => l.trim()).length, 0), total, hit})
+    }
+
+    const sumOf = rows => {
+        const s = k => rows.reduce((n, r) => n + r[k], 0),
+              out = Object.fromEntries(['classicLines', 'todoLines', 'same', 'notation', 'different', 'extra', 'missing', 'unmatched'].map(k => [k, s(k)]));
+        out.files = rows.length;
+        out.written = out.same + out.notation + out.different + out.extra + out.unmatched;
+        return out
+    };
+    const kinds = {};
+    for (const r of files) (kinds[KIND(r.kind)] ??= []).push(r);
+    for (const k in kinds) {
+        kinds[k] = sumOf(kinds[k]);
+        kinds[k].handEntries = [...handByKind[k].values()].reduce((n, v) => n + v, 0)
+    }
+    const total = sumOf(files);
+    // a hand file mapped from classic files of two kinds (PortGrid and MainPanel → PortsMain) counts once
+    total.handEntries = [...new Map(Object.values(handByKind).flatMap(m => [...m])).values()].reduce((n, v) => n + v, 0);
+    return {files, kinds, total, coverage}
+}
+
+const pct = (a, b) => b ? Math.round(100 * a / b) + ' %' : '–';
+
 // ---------------------------------------------------------------- run
 
 if (process.argv[1]?.endsWith('measure.mjs')) {
     const amd  = process.argv[2],
           json = process.argv.includes('--json'),
-          all  = [];
-
-    for (const [name, mapping] of Object.entries(MAPPING)) {
-        const results  = convertModule(join(amd, name)),
-              consumed = new Set();
-        for (const r of results) {
-            const targets = mapping[r.file];
-            if (!targets) continue;
-            const handFiles = targets.filter(f => existsSync(join(amd, name, 'views/neo', f))),
-                  handSrc = handFiles.map(f => readFileSync(join(amd, name, 'views/neo', f), 'utf8')),
-                  globals = constants(handSrc),
-                  hand    = handSrc.flatMap((src, i) => extractConfigs(src, globals, handFiles[i]));
-            const cmp = compare(extractConfigs(r.code), hand, consumed);
-            const kinds = {};
-            r.todos.forEach(t => kinds[t.kind] = (kinds[t.kind] ?? 0) + t.lines);
-            all.push({module: name, file: r.file, kind: r.kind, classicLines: r.classicLines, todoLines: r.todoLines,
-                todoBlocks: r.todos.length, todoKinds: kinds, outLines: r.code.split('\n').filter(l => l.trim()).length,
-                handLines: targets.map(f => join(amd, name, 'views/neo', f)).filter(existsSync)
-                    .reduce((n, f) => n + readFileSync(f, 'utf8').split('\n').filter(l => l.trim()).length, 0),
-                ...cmp})
-        }
-    }
+          set  = process.argv.includes('--set') ? process.argv[process.argv.indexOf('--set') + 1] : 'a',
+          res  = measure(amd, set === 'all' ? [...SETS.a, ...SETS.b] : SETS[set]);
 
     if (json) {
-        console.log(JSON.stringify(all, null, 1));
+        console.log(JSON.stringify(process.argv.includes('--summary') ? {kinds: res.kinds, total: res.total, coverage: res.coverage} : res, null, 1));
     } else {
         const cols = ['same', 'notation', 'different', 'extra', 'missing', 'unmatched'];
-        console.log('module file                     kind      classic todo  ' + cols.map(c => c.padStart(9)).join(''));
-        for (const r of all) {
-            console.log(`${r.module.padEnd(6)} ${r.file.padEnd(25)} ${r.kind.padEnd(9)} ${String(r.classicLines).padStart(7)} ${String(r.todoLines).padStart(4)}  ${cols.map(c => String(r[c]).padStart(9)).join('')}`)
+        console.log('module file                               kind      classic todo  ' + cols.map(c => c.padStart(9)).join(''));
+        for (const r of res.files) {
+            console.log(`${r.module.padEnd(6)} ${r.file.padEnd(35)} ${r.kind.padEnd(9)} ${String(r.classicLines).padStart(7)} ${String(r.todoLines).padStart(4)}  ${cols.map(c => String(r[c]).padStart(9)).join('')}`)
         }
-        const sum = k => all.reduce((n, r) => n + r[k], 0);
-        console.log(`TOTAL ${' '.repeat(36)}${String(sum('classicLines')).padStart(7)} ${String(sum('todoLines')).padStart(4)}  ${cols.map(c => String(sum(c)).padStart(9)).join('')}`)
+        console.log(`TOTAL ${' '.repeat(46)}${String(res.total.classicLines).padStart(7)} ${String(res.total.todoLines).padStart(4)}  ${cols.map(c => String(res.total[c]).padStart(9)).join('')}`);
 
         const kinds = {};
-        all.forEach(r => Object.entries(r.todoKinds).forEach(([k, n]) => kinds[k] = (kinds[k] ?? 0) + n));
+        res.files.forEach(r => Object.entries(r.todoKinds).forEach(([k, n]) => kinds[k] = (kinds[k] ?? 0) + n));
         console.log('\nTODO classic lines by kind (a line can count in two blocks):');
         Object.entries(kinds).sort((a, b) => b[1] - a[1]).forEach(([k, n]) => console.log(`  ${String(n).padStart(5)}  ${k}`));
 
-        // the whole hand port: how many of its config entries the converter wrote the same (up to notation)
-        console.log('\nHand port coverage (the config entries the measure recognises in every neo file of the module):');
-        for (const name of Object.keys(MAPPING)) {
-            const dir   = join(amd, name, 'views/neo'),
-                  files = readdirSync(dir, {recursive: true}).filter(f => f.endsWith('.mjs') && !f.startsWith('dev/')),
-                  srcs  = files.map(f => readFileSync(join(dir, f), 'utf8')),
-                  globals = constants(srcs),
-                  total = srcs.flatMap(src => extractConfigs(src, globals)).reduce((n, c) => n + c.entries.size, 0),
-                  lines = srcs.reduce((n, src) => n + src.split('\n').filter(l => l.trim()).length, 0),
-                  mine  = all.filter(r => r.module === name),
-                  hit   = mine.reduce((n, r) => n + r.same + r.notation, 0);
-            console.log(`  ${name.padEnd(6)} ${files.length} files, ${lines} lines, ${total} config entries; converter same or notation: ${hit} (${Math.round(100 * hit / total)} %)`)
+        console.log('\nBy kind: hit = same + notation; of hand = hit / config entries of the mapped hand files; of written = hit / entries the converter wrote');
+        console.log('kind       files classic  TODO   TODO %   hit  of hand  of written  different');
+        for (const [k, v] of [...Object.entries(res.kinds), ['TOTAL', res.total]]) {
+            const hit = v.same + v.notation;
+            console.log(`${k.padEnd(10)} ${String(v.files).padStart(5)} ${String(v.classicLines).padStart(7)} ${String(v.todoLines).padStart(5)} ${pct(v.todoLines, v.classicLines).padStart(8)} ${String(hit).padStart(5)} ${pct(hit, v.handEntries).padStart(8)} ${pct(hit, v.written).padStart(11)} ${String(v.different).padStart(10)}`)
         }
+
+        console.log('\nHand port coverage (the config entries the measure recognises in every neo file of the module):');
+        for (const c of res.coverage) console.log(`  ${c.module.padEnd(6)} ${c.files} files, ${c.lines} lines, ${c.total} config entries; converter same or notation: ${c.hit} (${pct(c.hit, c.total)})`)
     }
 }
