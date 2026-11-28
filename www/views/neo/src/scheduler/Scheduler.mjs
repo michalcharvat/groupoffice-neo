@@ -6,6 +6,7 @@ import {language, t} from '../Translate.mjs';
 import {isDescriptor} from '../../node_modules/neo.mjs/src/core/ConfigSymbols.mjs';
 import ResourceModel from './ResourceModel.mjs';
 import TimelineColumn from './TimelineColumn.mjs';
+import TreeColumn from '../grid/TreeColumn.mjs';
 
 /**
  * @summary Reads one mapped value of a source record: a field name or a function of the record.
@@ -40,6 +41,13 @@ const dayMinutes = 1440;
  * @extends Neo.scheduler.Container
  */
 class Scheduler extends NeoScheduler {
+    /**
+     * neo's column types; `tree` escapes the resource name (GO.grid.TreeColumn, htmlValue for trusted HTML)
+     * @member {Object} columnTypes
+     * @static
+     */
+    static columnTypes = {...NeoScheduler.columnTypes, tree: TreeColumn}
+
     /**
      * neo's hour, day and week plus month, quarter and year; day ticks are one day wide (snapMinutes)
      * @member {Object} zoomPresets

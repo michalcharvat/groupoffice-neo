@@ -11,6 +11,7 @@ import {notifyError} from '../Notify.mjs';
 import {LEVEL_DELETE, LEVEL_WRITE} from '../Acl.mjs';
 import {destroyEntities} from '../data/destroyEntities.mjs';
 import {selectRow}   from './selectRow.mjs';
+import TreeColumn    from './TreeColumn.mjs';
 import {createColumns as createCustomFieldColumns, loadNames as loadCustomFieldNames} from '../customfields/gridColumns.mjs';
 
 /**
@@ -105,6 +106,13 @@ import {createColumns as createCustomFieldColumns, loadNames as loadCustomFieldN
  * @extends Neo.grid.Container
  */
 class Grid extends GridContainer {
+    /**
+     * neo's column types; `tree` escapes its label (GO.grid.TreeColumn)
+     * @member {Object} columnTypes
+     * @static
+     */
+    static columnTypes = {...GridContainer.columnTypes, tree: TreeColumn}
+
     static config = {
         className: 'GO.grid.Grid',
         baseCls  : ['go-grid', 'neo-grid-container'],
