@@ -79,6 +79,20 @@ class Neo {
 	}
 
 	/**
+	 * Font Awesome stylesheets of the page: the core's Free copy (views/neo/resources/fontawesome)
+	 * unless a module ships views/neo/fontawesome.css, which replaces it (sf/fontawesome: Pro, same
+	 * class names), so the page never loads both
+	 *
+	 * @param string $root url of the GroupOffice root
+	 * @return string[] urls
+	 */
+	private function iconStylesheets(string $root): array
+	{
+		$replacements = array_map(fn($s) => $root . $s, $this->moduleFiles('fontawesome.css'));
+		return $replacements ?: [$root . 'views/neo/resources/fontawesome/css/all.min.css?v=7.3.1'];
+	}
+
+	/**
 	 * Modules of the logged-in user that have a main panel in the classic client
 	 *
 	 * The neo shell offers those without a neo main view in its apps menu; they open in the
@@ -390,7 +404,9 @@ class Neo {
 	<title><?= htmlspecialchars(GO::config()->title) ?></title>
 	<base href="<?= $neo ?>apps/go/">
 	<link rel="icon" href="<?= $root ?>favicon.ico">
-	<link rel="stylesheet" href="<?= $neo ?>node_modules/@fortawesome/fontawesome-free/css/all.min.css">
+<?php foreach ($this->iconStylesheets($root) as $css): ?>
+	<link rel="stylesheet" href="<?= htmlspecialchars($css) ?>">
+<?php endforeach; ?>
 <?php foreach ($this->moduleFiles('style.css') as $css): ?>
 	<link rel="stylesheet" href="<?= $root . $css ?>">
 <?php endforeach; ?>
