@@ -1,5 +1,4 @@
 import Component from '../../../../../../../views/neo/node_modules/neo.mjs/src/component/Base.mjs';
-import {escapeHtml} from '../../../../../../../views/neo/src/Format.mjs';
 import {logoUrl, safeUrl, t} from '../util.mjs';
 
 /**
@@ -56,6 +55,7 @@ class BookmarksView extends Component {
     }
 
     /**
+     * @summary Renders the bookmarks in a section per category.
      * @param {Object[]} bookmarks sorted by category
      * @param {Map<String, String>} categoryNames id → name
      */
@@ -80,15 +80,16 @@ class BookmarksView extends Component {
         me.vdom.cn = sections.length ? sections.map(({categoryId, items}) => ({
             cls: ['go-bookmarks-section'],
             cn : [
-                {tag: 'h3', cls: ['go-bookmarks-category'], text: escapeHtml(categoryNames.get(categoryId) || '')},
+                {tag: 'h3', cls: ['go-bookmarks-category'], text: categoryNames.get(categoryId) || ''},
                 {cls: ['go-bookmarks-items'], cn: items}
             ]
-        })) : [{cls: ['go-empty'], text: escapeHtml(t('No items to display'))}];
+        })) : [{cls: ['go-empty'], text: t('No items to display')}];
 
         me.update()
     }
 
     /**
+     * @summary The vdom of one bookmark: logo, name and description.
      * @param {Object} bookmark
      * @returns {Object} vdom
      * @protected
@@ -111,8 +112,8 @@ class BookmarksView extends Component {
                     ? {tag: 'img', cls: ['go-bookmark-logo'], src: logo, alt: ''}
                     : {tag: 'i', cls: ['go-bookmark-logo', 'go-icon'], text: 'bookmark'},
                 {cls: ['go-bookmark-text'], cn: [
-                    {tag: 'h4', cls: ['go-bookmark-name'], text: escapeHtml(bookmark.name)},
-                    {cls: ['go-bookmark-desc'], text: escapeHtml(bookmark.description || '')}
+                    {tag: 'h4', cls: ['go-bookmark-name'], text: bookmark.name},
+                    {cls: ['go-bookmark-desc'], text: bookmark.description || ''}
                 ]}
             ]
         }

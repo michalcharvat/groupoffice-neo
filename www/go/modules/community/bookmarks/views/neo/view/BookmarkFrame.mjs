@@ -2,7 +2,6 @@ import Container from '../../../../../../../views/neo/node_modules/neo.mjs/src/c
 import Toolbar   from '../../../../../../../views/neo/node_modules/neo.mjs/src/toolbar/Base.mjs';
 import Button    from '../../../../../../../views/neo/src/button/Button.mjs';
 import client    from '../../../../../../../views/neo/src/jmap/Client.mjs';
-import {escapeHtml} from '../../../../../../../views/neo/src/Format.mjs';
 import {notifyError} from '../../../../../../../views/neo/src/Notify.mjs';
 import {safeUrl, t} from '../util.mjs';
 
@@ -90,6 +89,7 @@ class BookmarkFrame extends Container {
     }
 
     /**
+     * @summary Shows the bookmark: its name in the toolbar, its URL in the frame.
      * @param {Object|null} bookmark
      */
     setBookmark(bookmark) {
@@ -99,7 +99,7 @@ class BookmarkFrame extends Container {
             button = me.getReference('openButton');
 
         me.bookmark = bookmark;
-        me.getReference('title').text = escapeHtml(bookmark?.name || '');
+        me.getReference('title').text = bookmark?.name || '';
 
         button.url    = url;
         button.hidden = !url;

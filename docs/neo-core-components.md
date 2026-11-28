@@ -323,14 +323,26 @@ Events:
 
 Interaction permissions are the caller's: pass `readOnly: true` when the user may not change the events.
 
-Tree column labels are escaped: neo's `Neo.grid.column.Tree` writes the value into the vdom as HTML, so
-`type: 'tree'` in `GO.scheduler.Scheduler` and `GO.grid.Grid` maps to `GO.grid.TreeColumn` (`src/grid/TreeColumn.mjs`),
-which escapes the value. For trusted HTML the caller built and escaped itself (an avatar), set `htmlValue: true` on the
-column. neo's `String` field type of `GO.scheduler.ResourceModel.name` also deletes anything between `<` and `>`
-(`RecordFactory`): lossy (`x<y>z` shows `xz`) and no sanitizer, but it stays, because a caller's plain (non-tree)
-resource column renders the value as HTML. A grid of your own on
-`Neo.grid.Container` gets neo's unescaped class; use `module: TreeColumn` there. GO's own `GO.tree.Tree` escapes its
-labels already.
+Grid cell values are escaped. neo writes a cell renderer's string into the cell as HTML, and its default renderer
+(a column without `renderer`) returns the raw value; `Neo.grid.column.Tree` does the same with its label. So in
+`GO.grid.Grid` and `GO.scheduler.Scheduler` the plain column (`type: 'column'`, the default) maps to `GO.grid.Column`
+(`src/grid/Column.mjs`) and `type: 'tree'` to `GO.grid.TreeColumn` (`src/grid/TreeColumn.mjs`); both escape the value.
+For trusted HTML the caller built and escaped itself (an avatar, a badge), set `htmlValue: true` on the column. A column
+with its own `renderer` returns markup and escapes the values itself (`escapeHtml()`); for an entity-encoded legacy
+value (files, e-mail stores) that is `escapeHtml(decodeEntities(value))`, not the raw value. A grid of your own on
+`Neo.grid.Container` gets neo's unescaped classes; use `module: Column` / `module: TreeColumn` there. GO's own
+`GO.tree.Tree` escapes its labels already.
+
+neo's `String` field type (`RecordFactory`, also `GO.scheduler.ResourceModel.name`) deletes anything between `<` and
+`>` from the value: lossy (`x<y>z` shows `xz`, `<b>x</b>` shows `x`) and no sanitizer, so never count on it instead of
+escaping. `GO.menu.List` types its item `text` as `Html` (`GO.menu.Model`, `src/menu/List.mjs`) so an item like
+"Jane <jane@example.org>" keeps the address; it is still rendered as text.
+
+Don't escape what goes into vdom `text` (a vdom node's `text`, a component's `text` config, a `GO.menu.List` item's
+`text`): neo sets it as text and escapes it itself, so `escapeHtml()` there shows `R&amp;D` for "R&D". Escape only
+strings that become HTML: a renderer's return value, vdom `html`, a template string. Module titles
+(`ModuleRegistry`) are HTML (the app launcher renders them so; bookmarks escape their names): as vdom text use
+`htmlToText(title)`.
 
 Not built yet: drag and resize writing a JMAP patch (with the first user that edits on the scheduler). Dev demo:
 `#dev/core/Scheduler` (bands, zoom buttons, slot click, growing range).

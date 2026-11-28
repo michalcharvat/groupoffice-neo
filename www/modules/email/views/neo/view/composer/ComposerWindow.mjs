@@ -9,7 +9,6 @@ import CreateLinkButton from '../../../../../../views/neo/src/link/CreateLinkBut
 import MenuList         from '../../../../../../views/neo/src/menu/List.mjs';
 import ModuleRegistry   from '../../../../../../views/neo/src/ModuleRegistry.mjs';
 import {notify, notifyError} from '../../../../../../views/neo/src/Notify.mjs';
-import {escapeHtml}     from '../../../../../../views/neo/src/Format.mjs';
 import {t as coreT}     from '../../../../../../views/neo/src/Translate.mjs';
 import Container        from '../../../../../../views/neo/node_modules/neo.mjs/src/container/Base.mjs';
 import FormContainer    from '../../../../../../views/neo/node_modules/neo.mjs/src/form/Container.mjs';
@@ -992,7 +991,7 @@ class ComposerWindow extends Dialog {
     }
 
     /**
-     * Templates by group, and the default template choice (ExtJS templatesMenu)
+     * @summary Templates by group, and the default template choice (ExtJS templatesMenu).
      */
     showTemplatesMenu() {
         let me      = this,
@@ -1009,12 +1008,12 @@ class ComposerWindow extends Dialog {
             if (tpl.template_id !== 0 && (tpl.group_name || '') !== group) {
                 group = tpl.group_name || '';
                 items.push({separator: true});
-                group && items.push({text: escapeHtml(unescapeHtml(group)), icon: 'folder', disabled: true})
+                group && items.push({text: unescapeHtml(group), icon: 'folder', disabled: true})
             }
 
             items.push({
-                // menu items render HTML; the name comes HTML encoded
-                text   : escapeHtml(unescapeHtml(tpl.name)),
+                // the name comes HTML encoded; vdom text: neo escapes it
+                text   : unescapeHtml(tpl.name),
                 icon   : radio(String(tpl.template_id) === current),
                 handler: () => me.pickTemplate(tpl.template_id)
             })

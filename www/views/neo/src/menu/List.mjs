@@ -1,4 +1,23 @@
-import MenuList from '../../node_modules/neo.mjs/src/menu/List.mjs';
+import MenuList  from '../../node_modules/neo.mjs/src/menu/List.mjs';
+import MenuModel from '../../node_modules/neo.mjs/src/menu/Model.mjs';
+import MenuStore from '../../node_modules/neo.mjs/src/menu/Store.mjs';
+
+/**
+ * @summary neo's menu model with `text` kept as is: neo's String type deletes `<…>` ("Jane <jane@example.org>" would
+ * show "Jane").
+ * @description `Html` only keeps the string; the item still renders it as a vdom text node, which neo escapes.
+ * neo merges the fields by name, so only `text` is listed.
+ * @class GO.menu.Model
+ * @extends Neo.menu.Model
+ */
+class Model extends MenuModel {
+    static config = {
+        className: 'GO.menu.Model',
+        fields   : [{name: 'text', type: 'Html'}]
+    }
+}
+
+Neo.setupClass(Model);
 
 /**
  * @summary GO menu list with item icons, images, details and badges.
@@ -19,7 +38,8 @@ class List extends MenuList {
     static config = {
         className: 'GO.menu.List',
         cls         : ['go-menu'],
-        displayField: 'text'
+        displayField: 'text',
+        store       : {module: MenuStore, model: Model}
     }
 
     /**

@@ -2,7 +2,6 @@ import Field         from './Field.mjs';
 import client        from '../../jmap/Client.mjs';
 import uploader      from '../../jmap/Uploader.mjs';
 import {notifyError} from '../../Notify.mjs';
-import {escapeHtml}  from '../../Format.mjs';
 import {t}           from '../../Translate.mjs';
 
 /**
@@ -50,6 +49,10 @@ class ImageField extends Field {
         return this.value || null
     }
 
+    /**
+     * @summary The image (or the placeholder icon) with the hidden file input, and the clear button.
+     * @returns {Object[]} vdom
+     */
     createControl() {
         let me     = this,
             locked = me.readOnly || me.disabled;
@@ -61,7 +64,7 @@ class ImageField extends Field {
             cn   : [
                 me.value
                     ? {tag: 'img', alt: '', src: client.baseUrl + 'api/thumb.php?blob=' + encodeURIComponent(me.value) + '&w=240&h=240&zc=1'}
-                    : {tag: 'i', cls: ['go-icon'], text: escapeHtml(me.placeholderIcon)},
+                    : {tag: 'i', cls: ['go-icon'], text: me.placeholderIcon},
                 {tag: 'input', type: 'file', accept: 'image/*', cls: ['go-imagefield-input'], removeDom: locked}
             ]
         }, {
