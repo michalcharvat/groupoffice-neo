@@ -126,6 +126,14 @@ activates the center there and hides the sidebar (`setWestHidden(true)`) only ab
 closing the drawer doesn't leave the wide layout without its sidebar. Selecting a record
 (`activatePanel('east')`) closes the drawer too.
 
+A view whose east panel is empty until a record opens (a planning board, a list without a
+selected row) sets `eastHidden: true`, or calls `setEastHidden(true)` later: the east panel and the
+center splitter are hidden and the center flexes over the free width (`flex: 1 1 0%` on its
+`wrapperStyle`; the neo flex layout only sets `flex` on an item that already has a
+`wrapperStyle`, so an item config `flex` does nothing there). `activatePanel('east')` shows the
+east again and the center gets back its fixed or saved splitter width; hiding the east while it is
+the active phone card shows the center. Dev demo `#dev/layout`, "Module layout".
+
 ## CSS grid in a flex-filled panel (2026-11-25)
 
 A grid that gets its height from the layout (`flex: 1` in a vbox) shares that height among its
