@@ -68,7 +68,7 @@ checked out at the new pointers):
 2. If they differ, copy the file again (keep the header) and write the new commit (`git ls-tree HEAD
    www/views/goui/groupoffice-core www/views/goui/goui`) into the header or `fonts/README.md`. A new or renamed
    token may need a change in neo's SCSS that uses it.
-3. `npm run build-themes` and `npm run audit-styles` in `www/views/neo`, then a browser check of icons and dark mode.
+3. `npm run build-themes`, `npm run audit-styles` and `npm run audit-dark` in `www/views/neo` (a neo update can add light-only token defaults), then a browser check of icons and dark mode.
 
 Don't point neo's SCSS back into `www/views/goui`: the submodules go when the classic client goes
 (`docs/neo-switch.md` section 8).

@@ -9,3 +9,20 @@
     --sem-color-text-primary-default: var(--fg-text);
     --sem-typo-body-lineHeight: #{go.dp(20)};
 }
+
+// Status colours of GO's neo views (var(--c-danger, #c62828) and the like). GO has no such token,
+// so the fallback literal showed in dark mode too: dark gets shades that read as text on --bg-*
+// and still carry white text as a badge background (danger, error)
+body {
+    --c-danger : #c62828;
+    --c-error  : #d32f2f;
+    --c-success: #2e7d32;
+    --c-warning: #b45309; // text on white needs 4.5:1
+}
+
+body.dark {
+    --c-danger : #e53935;
+    --c-error  : #e53935;
+    --c-success: #66bb6a;
+    --c-warning: #ffa726;
+}

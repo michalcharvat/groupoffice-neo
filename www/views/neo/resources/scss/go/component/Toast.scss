@@ -8,3 +8,13 @@
         top: auto;
     }
 }
+
+// neo's toast colours are light-only literals: GO tokens give them a dark value (body.dark)
+:where(.neo-theme-go) {
+    --toast-background-color        : var(--bg-highest);
+    --toast-color                   : var(--fg-text);
+    --toast-danger-background-color : var(--bg-error);
+    --toast-danger-color            : var(--fg-error);
+    --toast-success-background-color: color-mix(in srgb, var(--hue-green) 30%, var(--bg-lowest));
+    --toast-success-color           : var(--fg-text);
+}

@@ -29,7 +29,7 @@
         white-space   : nowrap;
     }
 
-    .go-tasks-status-needs-action { background-color: var(--hue-yellow); color: #000; }
+    .go-tasks-status-needs-action { background-color: var(--hue-yellow); color: #000; } // dark-ok: on the yellow hue in both schemes
     .go-tasks-status-in-progress  { background-color: var(--hue-blue); }
     .go-tasks-status-completed    { background-color: var(--hue-green); }
     .go-tasks-status-failed       { background-color: var(--hue-red); }
@@ -80,6 +80,8 @@
     .go-tasks-blue   { color: var(--hue-blue); }
     .go-tasks-green  { color: var(--hue-green); }
     .go-tasks-purple { color: var(--hue-purple); }
+    // GO's dark purple (#7B1FA2) reads at contrast 2 on the dark panels
+    @at-root .neo-theme-go.dark .go-tasks .go-tasks-purple { color: color-mix(in srgb, var(--hue-purple), white 40%); }
     .go-tasks-red    { color: var(--hue-red); }
 
     .neo-grid-cell .go-icon {

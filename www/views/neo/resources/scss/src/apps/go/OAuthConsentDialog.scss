@@ -12,7 +12,7 @@
     }
 
     .go-oauth-consent-warning {
-        color: var(--fg-warning);
+        color: var(--c-warning); // --fg-warning is dark brown in dark mode
     }
 
     .go-dialog-buttons {

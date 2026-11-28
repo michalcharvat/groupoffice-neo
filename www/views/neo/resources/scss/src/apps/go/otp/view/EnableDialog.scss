@@ -12,7 +12,7 @@
         text-align: center;
 
         img {
-            background-color: #fff;
+            background-color: #fff; // dark-ok: a QR code needs a light quiet zone
             padding         : go.dp(8);
         }
     }

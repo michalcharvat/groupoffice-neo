@@ -21,11 +21,6 @@
 }
 
 .neo-button {
-    // a <button> takes the UA's "buttontext" (black) instead of inheriting: dark mode
-    &.neo-button-ghost {
-        color: var(--fg-text);
-    }
-
     &.no-text {
         // icon only: square dp(11) padding
         padding: 0 go.dp(11);

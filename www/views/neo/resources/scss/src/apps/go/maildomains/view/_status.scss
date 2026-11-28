@@ -3,7 +3,7 @@
 // status colours of the module (util.mjs): list, cards, dialogs, system settings card
 .neo-theme-go {
     .go-md-success {
-        color: #2e7d32;
+        color: var(--c-success);
     }
 
     .go-md-danger {
@@ -11,7 +11,7 @@
     }
 
     .go-md-warning {
-        color: var(--fg-warning);
+        color: var(--c-warning); // --fg-warning is dark brown in dark mode
     }
 
     .go-md-disabled {
@@ -20,9 +20,5 @@
 
     .go-md-status {
         vertical-align: middle;
-    }
-
-    &.dark .go-md-success {
-        color: #81c784;
     }
 }

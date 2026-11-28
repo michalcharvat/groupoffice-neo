@@ -1,0 +1,5 @@
+// neo's light-only literals: GO tokens (body.dark)
+:where(.neo-theme-go) {
+    --combobox-input-hint-color      : var(--fg-secondary-text);
+    --combobox-picker-container-border: 1px solid var(--fg-line);
+}
