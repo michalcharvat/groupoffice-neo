@@ -42,11 +42,21 @@ class Splitter extends NeoSplitter {
         return applied
     }
 
+    /**
+     * @summary Gives the resized sibling its saved size; a splitter hidden meanwhile retries on its next mount.
+     * @returns {Promise<void>}
+     */
     async restoreState() {
         let me      = this,
             state   = await getState(me.stateId, me.windowId),
             axis    = me.direction === 'vertical' ? 'width' : 'height',
             sibling = me.getResizeSibling();
+
+        // hidden while the state loaded (MainThreeColumnPanel.setEastHidden()): restore on the next mount
+        if (me.hidden) {
+            me.stateRestored = false;
+            return
+        }
 
         if (sibling && !me.isDestroyed && state[axis] > 0) {
             sibling.wrapperStyle = {...(sibling.wrapperStyle || {}), flex: 'none', [axis]: `${state[axis] / 10}rem`}

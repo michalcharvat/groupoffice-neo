@@ -5,7 +5,9 @@ import {exportMenuItem} from '../export/exportEntities.mjs';
 import {t} from '../Translate.mjs';
 
 /**
- * GO module layout, the neo version of groupoffice-core's MainThreeColumnPanel (GOUI):
+ * @summary GO module layout: west, center and east panels with splitters.
+ *
+ * The neo version of groupoffice-core's MainThreeColumnPanel (GOUI):
  *
  *     west | splitter | center | splitter | east
  *
@@ -19,6 +21,10 @@ import {t} from '../Translate.mjs';
  *
  * Medium (CSS up to GOUI's $breakpointMedium, 1200px of the module's width): center and east side
  * by side, the west panel is a drawer over them while it is the active panel.
+ *
+ * A view whose east panel is empty until a record opens (e.g. a planning board) sets
+ * `eastHidden: true`: the center takes the free width, activatePanel('east') shows the east again
+ * and setEastHidden(true) hides it once more.
  */
 class MainThreeColumnPanel extends Container {
     static config = {
@@ -29,7 +35,12 @@ class MainThreeColumnPanel extends Container {
          * GOUI idAndRoute, e.g. 'notes'
          * @member {String|null} stateName=null
          */
-        stateName: null
+        stateName: null,
+        /**
+         * Start without the east panel and its splitter, the center flexes, see setEastHidden()
+         * @member {Boolean} eastHidden=false
+         */
+        eastHidden: false
     }
 
     /**
@@ -123,11 +134,13 @@ class MainThreeColumnPanel extends Container {
     }
 
     /**
-     * GOUI activatePanel(): the panel a phone shows
+     * @summary GOUI activatePanel(): the panel a phone shows; 'east' shows a hidden east panel.
      * @param {'west'|'center'|'east'} name
      */
     activatePanel(name) {
         let me = this;
+
+        name === 'east' && me.eastHidden && me.setEastHidden(false);
 
         ['west', 'center', 'east'].forEach(panel => {
             me.panels[panel]?.toggleCls('go-active', panel === name)
@@ -159,6 +172,39 @@ class MainThreeColumnPanel extends Container {
         me.toggleCls('go-west-hidden', hidden)
     }
 
+    /**
+     * @summary Hides or shows the east panel and the center splitter.
+     *
+     * Hidden, the center takes the free width; shown again, it gets back its fixed (saved) width.
+     * @param {Boolean} hidden
+     */
+    setEastHidden(hidden) {
+        let me                     = this,
+            {center, east}         = me.panels,
+            {flex, ...centerStyle} = center.wrapperStyle || {};
+
+        hidden = !!hidden;
+
+        if (hidden === me.eastHidden) {
+            return
+        }
+
+        // flex-basis 0% wins over the center's width, which stays set for when the east comes back
+        hidden && (me.centerFlex = flex);
+
+        me.eastHidden = hidden;
+        east.hidden   = hidden;
+        me.getReference('centerSplitter').hidden = hidden;
+        center.wrapperStyle = {...centerStyle, flex: hidden ? '1 1 0%' : me.centerFlex ?? null};
+
+        // phone: the hidden east can't stay the one card shown
+        hidden && east.cls?.includes('go-active') && me.showCenter()
+    }
+
+    /**
+     * @summary Builds west, splitter, center, splitter and east from the create*() configs.
+     * @protected
+     */
     createItems() {
         let me = this;
 
@@ -170,13 +216,22 @@ class MainThreeColumnPanel extends Container {
             ...(width ? {width: `${width / 10}rem`} : {})
         });
 
+        const center = panel(me.createCenter(), ['go-center', 'go-active'], 500, 300);
+
+        // the flex layout only sets flex on an item that has a wrapperStyle
+        if (me.eastHidden) {
+            me.centerFlex       = center.wrapperStyle?.flex;
+            center.wrapperStyle = {...center.wrapperStyle, flex: '1 1 0%'}
+        }
+
         me._items = [
             {...panel(me.createWest(), 'go-west', 300, 140), reference: 'west'},
             {module: Splitter, reference: 'westSplitter', stateId: me.stateName && `${me.stateName}-west-splitter`},
-            panel(me.createCenter(), ['go-center', 'go-active'], 500, 300),
-            {module: Splitter, stateId: me.stateName && `${me.stateName}-center-splitter`},
-            panel(me.createEast(), 'go-east', 0, 140)
+            center,
+            {module: Splitter, reference: 'centerSplitter', hidden: me.eastHidden, stateId: me.stateName && `${me.stateName}-center-splitter`},
+            {...panel(me.createEast(), 'go-east', 0, 140), hidden: me.eastHidden}
         ];
+
 
         super.createItems()
     }

@@ -1,5 +1,6 @@
 import Button        from '../../button/Button.mjs';
 import Component     from '../../../node_modules/neo.mjs/src/component/Base.mjs';
+import MainThreeColumnPanel from '../../view/MainThreeColumnPanel.mjs';
 import Splitter      from '../../component/Splitter.mjs';
 import Page, {h3, p, pageOf} from './Page.mjs';
 import {print}       from '../../print.mjs';
@@ -18,6 +19,66 @@ function box(text, color, config = {}) {
 }
 
 /**
+ * @summary A module layout whose east starts hidden, like a planning board before a bar opens its detail
+ */
+class DemoThreeColumns extends MainThreeColumnPanel {
+    static config = {
+        className : 'GO.dev.demo.DemoThreeColumns',
+        eastHidden: true
+    }
+
+    /**
+     * @summary The west box.
+     */
+    createWest() {
+        return box(t('West'), 'red')
+    }
+
+    /**
+     * @summary The center with the open and close buttons.
+     */
+    createCenter() {
+        return {
+            ntype : 'container',
+            layout: {ntype: 'vbox', align: 'start'},
+            style : {border: '1px dashed blue', gap: '8px', padding: '8px'},
+            items : [
+                {module: Button, text: t('Open detail'), handler: 'up.onOpenDetail'},
+                {module: Button, text: t('Close detail'), handler: 'up.onCloseDetail'}
+            ]
+        }
+    }
+
+    /**
+     * @summary The east with a close button (a phone shows only this card).
+     */
+    createEast() {
+        return {
+            ntype : 'container',
+            layout: {ntype: 'vbox', align: 'start'},
+            style : {border: '1px dashed green', gap: '8px', padding: '8px'},
+            items : [{module: Component, text: t('East')}, {module: Button, text: t('Close detail'), handler: 'up.onCloseDetail'}]
+        }
+    }
+
+    /**
+     * @summary Shows the east panel, as a row click would.
+     */
+    onOpenDetail() {
+        this.activatePanel('east')
+    }
+
+    /**
+     * @summary Hides the east panel again.
+     */
+    onCloseDetail() {
+        this.setEastHidden(true)
+    }
+}
+
+Neo.setupClass(DemoThreeColumns);
+
+/**
  * Dev demo: GOUI Layout (goui-docs Layout.ts). GOUI builds layouts with CSS classes
  * (hbox, vbox, gap); neo uses layout configs on the container: {ntype: 'hbox'},
  * {ntype: 'vbox'}, {ntype: 'card'}, and flex / width / height on the items.
@@ -28,6 +89,10 @@ class Layout extends Page {
         heading  : t('Layout')
     }
 
+    /**
+     * @summary The demo sections of the page.
+     * @returns {Object[]}
+     */
     pageItems() {
         return [
             p(t("Layouts are layout configs of a container: layout: {ntype: 'hbox'} or {ntype: 'vbox'}, items take a fixed width / height or a flex share. The gap is a style.")),
@@ -84,6 +149,9 @@ class Layout extends Page {
                     box(t('Bottom'), 'green', {height: 80, minHeight: 30})
                 ]
             },
+            h3(t('Module layout')),
+            p(t("GO.view.MainThreeColumnPanel with eastHidden: true: the center takes the free width until activatePanel('east') shows the detail; setEastHidden(true) hides it again and the center flexes once more.")),
+            {module: DemoThreeColumns, height: 240},
             h3(t('Cards')),
             p(t("layout: {ntype: 'card'} shows one item at a time, see the Card container page.")),
             h3(t('Print')),
