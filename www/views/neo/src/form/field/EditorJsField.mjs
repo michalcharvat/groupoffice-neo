@@ -4,7 +4,7 @@ import uploader, {Uploader} from '../../jmap/Uploader.mjs';
 import {notifyError}     from '../../Notify.mjs';
 import {sanitizeHtml}    from '../../Format.mjs';
 import {t, translator}   from '../../Translate.mjs';
-import {editorJsSame, editorJsToHtml, isEditorJsEmpty, isHtmlEmpty, toEditorJsDoc} from './editorJsDoc.mjs';
+import {editorJsSame, editorJsToHtml, isEditorJsEmpty, isHtmlEmpty, restoreImageUrls, rootImageUrls, toEditorJsDoc} from './editorJsDoc.mjs';
 
 // the editor's own texts belong to sf/editorjs, the module that ships the library
 const tEditor = translator('sf', 'editorjs');
@@ -110,6 +110,11 @@ class EditorJsField extends Field {
      * @member {String|null} #pendingHtml=null
      */
     #pendingHtml = null
+    /**
+     * Image URLs shown absolute (rootImageUrls()) → their stored form, restored on the way back
+     * @member {Map} #imageUrls
+     */
+    #imageUrls = new Map()
     /**
      * The editor being created (with a waiting import); flush() waits for it
      * @member {Promise|null} #creating=null
@@ -225,7 +230,7 @@ class EditorJsField extends Field {
     renderFallback() {
         let me = this;
 
-        me.holderNode.html = editorJsToHtml(toEditorJsDoc(me.value), sanitizeHtml) || '';
+        me.holderNode.html = editorJsToHtml(rootImageUrls(toEditorJsDoc(me.value), client.apiUrl), sanitizeHtml) || '';
         me.update()
     }
 
@@ -284,6 +289,16 @@ class EditorJsField extends Field {
     }
 
     /**
+     * @summary A value as the editor shows it: relative image URLs made absolute (neo's <base href>
+     * would resolve them inside the client).
+     * @param {Object|null} value
+     * @returns {Object|null}
+     */
+    displayDoc(value) {
+        return rootImageUrls(toEditorJsDoc(value), client.apiUrl, this.#imageUrls)
+    }
+
+    /**
      * @summary Shows a value in the editor and keeps the editor's save of it as the baseline.
      * @param {Object|null} value
      * @param {String} windowId
@@ -294,7 +309,7 @@ class EditorJsField extends Field {
         me.#baseline = null;
 
         // flush() waits for it: a save while rendering would read a half-shown document
-        me.#pending = me.addon.setValue({id: me.id, value: toEditorJsDoc(value), windowId})
+        me.#pending = me.addon.setValue({id: me.id, value: me.displayDoc(value), windowId})
             .then(baseline => me.setBaseline(baseline, value))
             .catch(() => {})
     }
@@ -308,7 +323,7 @@ class EditorJsField extends Field {
         let me = this;
 
         if (!me.isDestroyed && me.value === value) {
-            me.#baseline      = baseline || null;
+            me.#baseline      = restoreImageUrls(baseline || null, me.#imageUrls);
             me.#baselineValue = value;
 
             // the loaded answer's own: kept when a remount takes an edited value as its baseline
@@ -389,7 +404,7 @@ class EditorJsField extends Field {
                 id      : me.id,
                 baseUrl : client.baseUrl + 'go/modules/sf/editorjs/views/extjs3/',
                 readOnly: sentReadOnly,
-                value   : toEditorJsDoc(sent),
+                value   : me.displayDoc(sent),
                 labels  : {
                     quote      : tEditor('Enter a quote'),
                     quoteAuthor: tEditor("Quote's author")
@@ -450,6 +465,8 @@ class EditorJsField extends Field {
      * @param {Boolean} [fromCurrent=true] the current editor has it already (false: an old editor's last read)
      */
     applyEditorValue(doc, fromCurrent = true) {
+        doc = restoreImageUrls(doc, this.#imageUrls);
+
         let me       = this,
             oldValue = me.value,
             original = me.originalConfig?.value ?? null,
