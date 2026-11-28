@@ -2195,4 +2195,5 @@ Jeśli nie prosiłeś(-aś) o nowe hasło, usuń tę wiadomość.',
   'PDF - preview of the first {count} pages' => 'PDF - podgląd pierwszych {count} stron',
   'The document could not be loaded.' => 'Nie można wczytać dokumentu.',
   'No preview available for this file.' => 'Brak podglądu dla tego pliku.',
+  'The editor could not be loaded' => 'Nie udało się załadować edytora',
 );

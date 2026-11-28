@@ -30,6 +30,7 @@ export default [
     {id: 'form/ChipsField',      text: 'ChipsField',         level: 2, status: 'done', demo: 'Chips', neo: 'GO.form.field.ChipsField', goui: 'form/ChipsFieldPage.ts'},
     {id: 'form/CodeField',       text: 'CodeField',          level: 2, status: 'done', demo: 'CodeField', neo: 'GO.form.field.CodeField, GO.main.addon.CodeMirror', goui: 'classic: sf/codemirror CodeMirrorEditor.js'},
     {id: 'form/ContainerField',  text: 'ContainerField',     level: 2, status: 'done', demo: 'ArrayField', neo: 'GO.form.field.ContainerField', goui: 'form/ContainerFieldPage.ts'},
+    {id: 'form/EditorJsField',   text: 'EditorJsField',      level: 2, status: 'done', demo: 'EditorJsField', neo: 'GO.form.field.EditorJsField, GO.main.addon.EditorJs', goui: 'classic: sf/editorjs EditorField.js'},
     {id: 'form/DateTime',        text: 'Date and time',      level: 2, status: 'done', demo: 'DateTime', neo: 'GO.form.field.DateField, DateTimeField, DateRangeField, DurationField', goui: 'form/DateTimePage.ts'},
     {id: 'form/DisplayField',    text: 'DisplayField',       level: 2, status: 'done', demo: 'DisplayField',  neo: 'neo form/field/Display',  goui: 'form/DisplayFieldPage.ts'},
     {id: 'form/HtmlField',       text: 'HtmlField',          level: 2, status: 'done', demo: 'HtmlField', neo: 'GO.form.field.HtmlField', goui: 'form/HtmlFieldPage.ts'},
