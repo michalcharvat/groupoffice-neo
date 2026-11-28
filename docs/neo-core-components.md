@@ -63,6 +63,7 @@ Status: **neo** = neo.mjs 13.4 ships it (14 since 2026-11-24), usable as is (may
 | Kanban board (GOUI has none; ExtJS business/kanban) | GO.neo (`GO.board.Board`, see "GO.board.Board" below; first user: tasks board view) |
 | Resource scheduler / timeline (vis-timeline in amd/crew) | GO.neo (`GO.scheduler.Scheduler`, see "GO.scheduler.Scheduler" below; first user: crew planning) |
 | PDF / image preview (ExtJS amd/libs `PdfViewPanel`; GOUI has none) | GO.neo (`GO.pdf.PdfViewer`, see "GO.pdf.PdfViewer" below; demo `#dev/core/PdfViewer`; users: crew certificate verification, later dms and invoices) |
+| File preview by extension (ExtJS amd/dms `PdfViewPanel`, `FileViewPanel`, `ImageViewPanel`, `MarkdownViewPanel`, `MediaViewPanel`; GOUI has none) | GO.neo (`GO.preview.FilePreview`, see "GO.preview.FilePreview" below; demo `#dev/core/FilePreview`; users: dms document detail, files `FileDetail`) |
 | auth/Login | GO.neo (`apps/go/view/LoginView.mjs`: forgot credentials, 2FA via `loginPanels`) |
 | Main area (GOUI/ExtJS card per module) | GO.neo `apps/go/view/MainView.mjs`: one card per module. Modules extend it through `mainViewExtension` (extra cards, top-bar items, routes, claimed module views; `docs/neo-small-modules.md`, "Main view extensions"). The module sf/workspaces (sf-mono, off by default) adds workspace tabs next to the module tabs, each a dock (`GO.workspaces.Workspace` over neo's dock; panels side by side, drag from the top bar, maximize, saved per user and screen profile; `docs/neo-workspace.md`) |
 | MainThreeColumnPanel, TableTitle | GO.neo |
@@ -827,3 +828,28 @@ preview.on('load', ({numPages, title}) => …);                 // also 'loadErr
 - A PDF loads once the viewer is in the DOM; a viewer in a hidden card redraws when it is shown again (neo removes
   inactive cards from the DOM). Only the latest source counts: the addon answers an older load `{superseded: true}`,
   and a failed load clears the old pages, shows a message and fires `loadError`.
+
+## GO.preview.FilePreview (2026-11-28)
+
+`src/preview/FilePreview.mjs` with the DOM-free `src/preview/previewKinds.mjs` (kind by extension, the name's
+extension or the MIME type; `registerPreview()`; `tests/filePreview.test.mjs`).
+
+```js
+import FilePreview from '<relative>/views/neo/src/preview/FilePreview.mjs';
+
+{module: FilePreview, reference: 'preview', flex: 1}
+
+preview.setFile({src: client.apiUrl + 'download.php?blob=' + blobId, name: 'Report.pdf'}); // or extension, type
+preview.setFile({src, extension: 'md', htmlUrl});   // Markdown HTML the host renders and trusts, in a frame
+preview.setFile(null);
+```
+
+- The kind comes from `extension`, else the extension of `name`, else `type`; never from `src` (download URLs have
+  none). PDF and image go to `GO.pdf.PdfViewer` (zoom, lazy pages); text is fetched and shown escaped in a `<pre>`
+  (at most `TEXT_LIMIT` characters); Markdown is fetched and rendered by `Markdown.mjs` (sanitised), or with
+  `htmlUrl` the host's page is shown in an `<iframe>` (relative image URLs resolve against that page); audio and
+  video are native players; anything else shows an icon, the name and Download (`download.mjs`).
+- Extension point: `registerPreview(kind, {extensions, types, render})`, `render({url, src, name, extension, type, signal})`
+  returns HTML that the renderer has sanitised; `signal` aborts when another file is shown. Built-in kinds come first and cannot be replaced.
+- Only the latest file shows: each load takes a token, a fetch for an older file drops its result.
+
