@@ -1,5 +1,8 @@
 import Button    from '../../button/Button.mjs';
+import JmapStore from '../../data/JmapStore.mjs';
+import GroupModel from '../../model/Group.mjs';
 import CheckList from '../../list/CheckList.mjs';
+import NavCheckList from '../../list/NavCheckList.mjs';
 import TextList  from '../../list/TextList.mjs';
 import Page, {h3, output, p, pageOf} from './Page.mjs';
 import {escapeHtml} from '../../Format.mjs';
@@ -24,9 +27,14 @@ function randomData() {
 }
 
 /**
- * Dev demo: GOUI List (goui-docs List.ts) with GO.list.TextList (escapes the display
+ * @summary Dev demo of the GO lists.
+ *
+ * GOUI List (goui-docs List.ts) with GO.list.TextList (escapes the display
  * field, group headers with groupField / groupRenderer, empty state) and
- * GO.list.CheckList (checkbox per row, row menu).
+ * GO.list.CheckList (checkbox per row, row menu) and GO.list.NavCheckList
+ * (west filter list: select all, search, checks kept across searches).
+ * @class GO.dev.demo.List
+ * @extends GO.dev.demo.Page
  */
 class List extends Page {
     static config = {
@@ -34,6 +42,10 @@ class List extends Page {
         heading  : t('List')
     }
 
+    /**
+     * @summary The demo lists.
+     * @returns {Object[]}
+     */
     pageItems() {
         const me   = this,
               card = {cls: ['go-card'], style: {margin: 0, maxWidth: '480px'}};
@@ -79,6 +91,26 @@ class List extends Page {
                     {text: t('Delete'), icon: 'delete', handler: () => me.log(`delete ${record.name}`)}
                 ]
             },
+            h3(t('Navigation check list')),
+            p(t('GO.list.NavCheckList: the west filter list of a module (classic go.NavGrid) on JMAP groups, 5 per page. Select all, search, an Add button and a row menu; checks stay while a search hides them.')),
+            {
+                module   : NavCheckList,
+                reference: 'nav',
+                ...card,
+                cls      : ['go-card', 'go-nav-check-list'],
+                heading  : t('Groups'),
+                buttons  : [{module: Button, icon: 'add', cls: ['small'], tooltip: t('Add'), handler: () => me.log('add')}],
+                rowMenu  : record => [{text: t('Edit'), icon: 'edit', handler: () => me.log(`edit ${record.name}`)}],
+                store    : {
+                    module    : JmapStore,
+                    entity    : 'Group',
+                    model     : GroupModel,
+                    pageSize  : 5,
+                    scrollLoad: true,
+                    properties: ['id', 'name'],
+                    jmapSort  : [{property: 'name', isAscending: true}]
+                }
+            },
             h3(t('Empty state')),
             {
                 module      : TextList,
@@ -91,6 +123,9 @@ class List extends Page {
         ]
     }
 
+    /**
+     * @summary Logs the clicks and checks of the lists.
+     */
     onConstructed() {
         super.onConstructed();
 
@@ -98,7 +133,8 @@ class List extends Page {
 
         me.getReference('grouped').on('itemClick', ({record}) => me.log(`itemClick: ${record.name}`));
         const checks = me.getReference('checks');
-        checks.selectionModel.on('selectionChange', () => me.log(`checked ids: ${JSON.stringify(checks.getCheckedIds())}`))
+        checks.selectionModel.on('selectionChange', () => me.log(`checked ids: ${JSON.stringify(checks.getCheckedIds())}`));
+        me.getReference('nav').on('selectionChange', ({ids}) => me.log(`nav selectionChange: ${JSON.stringify(ids)}`))
     }
 }
 
