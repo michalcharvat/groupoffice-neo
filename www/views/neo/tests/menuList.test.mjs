@@ -55,3 +55,14 @@ describe('GO.menu.List outside pointer', () => {
         assert.equal(menu.bodyPointerListener, null)
     });
 });
+
+describe('GO.menu.List item text', () => {
+    it('puts the item text into a vdom text node, which neo escapes: no escapeHtml() by the caller', () => {
+        const menu    = Neo.create(MenuList, {appName: 'test', items: [{text: 'Jane <jane@example.org> R&D'}], selectionModel: {module: SelectionModel}}),
+              content = menu.createItemContent(menu.store.getAt(0), 0);
+
+        assert.equal(content.find(node => node.cls?.includes('neo-content')).text, 'Jane <jane@example.org> R&D');
+        assert.ok(!content.some(node => 'html' in node));
+        menu.destroy()
+    });
+});

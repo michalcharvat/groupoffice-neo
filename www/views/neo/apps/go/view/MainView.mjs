@@ -345,6 +345,9 @@ class MainView extends Container {
      */
     launcherItems = []
 
+    /**
+     * @summary Builds the top bar (logo, module buttons) and the rest of the shell of this window.
+     */
     onConstructed() {
         super.onConstructed();
 
@@ -375,7 +378,8 @@ class MainView extends Container {
             // not route: neo renders it as <a href="#name">, which <base href> turns
             // into views/neo/apps/go/#name. The standalone view, not a workspace panel of the module.
             handler  : () => me.showStandalone(m.name),
-            text     : m.title
+            // module titles are HTML (bookmarks escape their names), vdom text is not
+            text     : htmlToText(m.title)
         }, {
             module   : Button,
             cls      : ['go-module-close'],
@@ -839,7 +843,7 @@ class MainView extends Container {
     }
 
     /**
-     * Header main menu button: the app launcher, or a list (My account → Look & feel)
+     * @summary Header main menu button: the app launcher, or a list (My account → Look & feel).
      * @param {Object} [data] the button's click: detail 0 is a click by the keyboard (Enter, Space)
      */
     async openMainMenu(data) {
@@ -879,11 +883,11 @@ class MainView extends Container {
                 target  : button.id,
                 windowId: me.windowId,
                 items   : [...me.launcherItems.map(item => ({
-                    text   : item.text,
+                    text   : htmlToText(item.text),
                     icon   : item.icon || 'dashboard',
                     handler: item.handler
                 })), ...me.launcherItems.length ? [{separator: true}] : [], ...apps.map(m => ({
-                    text   : m.title,
+                    text   : htmlToText(m.title),
                     icon   : m.icon || 'apps',
                     image  : m.iconUrl || null,
                     badge  : badges.text(m.name) || null,
@@ -914,16 +918,16 @@ class MainView extends Container {
     }
 
     /**
-     * Apps menu items of the modules only the classic client has (docs/neo-switch.md, D3):
-     * below the neo modules, each opens the classic client in a new browser tab
+     * @summary Apps menu items of the modules only the classic client has (docs/neo-switch.md, D3).
+     * @description Below the neo modules, each opens the classic client in a new browser tab
      * @returns {Object[]}
      */
     classicMenuItems() {
         const apps = getClassicApps();
 
         return apps.length ? [{separator: true}, ...apps.map(app => ({
-            // server data: the menu renders text as HTML
-            text   : escapeHtml(app.title),
+            // vdom text: neo escapes it
+            text   : app.title,
             icon   : 'open_in_new',
             handler: () => this.openClassic(app.route)
         }))] : []
@@ -1513,7 +1517,7 @@ class MainView extends Container {
     }
 
     /**
-     * "Move to window N: …" menu items, one per other window of this App worker
+     * @summary "Move to window N: …" menu items, one per other window of this App worker.
      * @param {Function} handler (mainView) the target window's main view
      * @param {Boolean} [disabled=false]
      * @returns {Object[]}
@@ -1522,8 +1526,8 @@ class MainView extends Container {
         const views = getMainViews();
 
         return views.filter(mv => mv !== this).map(mv => ({
-            // the title may be user data (a workspace name): the menu renders text as HTML
-            text    : escapeHtml(fmt(t('Move to window {number}: {title}'), {number: views.indexOf(mv) + 1, title: mv.describe()})),
+            // the title may be user data (a workspace name), vdom text: neo escapes it
+            text    : fmt(t('Move to window {number}: {title}'), {number: views.indexOf(mv) + 1, title: mv.describe()}),
             icon    : 'move_group',
             disabled,
             handler : () => handler(mv)

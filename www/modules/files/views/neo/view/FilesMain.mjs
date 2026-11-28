@@ -250,7 +250,8 @@ class FilesMain extends MainThreeColumnPanel {
                     dataField: 'type',
                     text     : t('Type'),
                     width    : 160,
-                    hidden   : true
+                    hidden   : true,
+                    renderer : ({value}) => escapeHtml(decodeEntities(value))
                 }, {
                     dataField: 'size',
                     text     : t('Size'),

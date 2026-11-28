@@ -1,6 +1,5 @@
 import Field    from './Field.mjs';
 import MenuList from '../../menu/List.mjs';
-import {escapeHtml} from '../../Format.mjs';
 
 /**
  * GOUI SelectField: fixed options in the GO field box. Looks like the neo combo boxes
@@ -108,7 +107,7 @@ class SelectField extends Field {
         }
     }
 
-    /** Opens the options below the field, as wide as the field; the selected one is checked */
+    /** @summary Opens the options below the field, as wide as the field; the selected one is checked. */
     async showMenu() {
         let me = this;
 
@@ -133,8 +132,8 @@ class SelectField extends Field {
             width   : rect?.width || 240,
             items   : me.options.map((o, i) => ({
                 id     : 'option-' + i,
-                // menu items render their text as HTML
-                text   : escapeHtml(o.text),
+                // vdom text: neo escapes it
+                text   : o.text,
                 // a blank icon on the others keeps the texts in line
                 icon   : i === selected ? 'check' : ' ',
                 // the field may have been locked while the menu was open

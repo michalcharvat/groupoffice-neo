@@ -7,7 +7,8 @@ import '../node_modules/neo.mjs/src/core/_export.mjs';
 setup({appConfig: {name: 'test'}});
 
 const {default: Grid}     = await import('../src/grid/Grid.mjs'),
-      {default: MenuList} = await import('../src/menu/List.mjs');
+      {default: MenuList} = await import('../src/menu/List.mjs'),
+      {default: Column}   = await import('../src/grid/Column.mjs');
 const proto = Grid.prototype;
 
 describe('GO.grid.Grid list wiring', () => {
@@ -167,4 +168,21 @@ describe('GO.grid.Grid list wiring', () => {
             MenuList.showAt = show
         }
     })
+});
+
+describe('GO.grid.Column', () => {
+    it('is the plain column type of the grid and escapes the value unless htmlValue', () => {
+        assert.equal(Grid.columnTypes.column, Column);
+
+        const column = Neo.create(Column, {dataField: 'name'}),
+              render = value => column.renderer.call({htmlValue: true}, {column, value});
+
+        assert.equal(render('<b>x</b>'), '&lt;b&gt;x&lt;/b&gt;');
+        assert.equal(render('R&D'), 'R&amp;D');
+        assert.equal(render(5), '5');
+        assert.equal(render(null), null);
+        column.htmlValue = true;
+        assert.equal(render('<b>x</b>'), '<b>x</b>');
+        column.destroy()
+    });
 });
