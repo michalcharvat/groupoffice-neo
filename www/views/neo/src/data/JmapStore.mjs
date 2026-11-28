@@ -279,8 +279,8 @@ class JmapStore extends Store {
             me.totalCount = total;
             // before add(): the grid asks for more (scrollEdge) while it renders the new rows
             me.isLoading  = false;
-            // the query may overlap after a change on the server
-            me.add(list.filter(record => !me.get(record.id)));
+            // the query may overlap after a change on the server; a continuation keeps the grid's scroll
+            me.asContinuation(() => me.add(list.filter(record => !me.get(record.id))));
             me.fire('loadMore', {records: list});
             return list
         } catch (e) {
