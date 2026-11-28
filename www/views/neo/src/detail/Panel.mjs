@@ -2,6 +2,7 @@ import Container from '../../node_modules/neo.mjs/src/container/Base.mjs';
 import Toolbar   from '../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import {LEVEL_DELETE, LEVEL_WRITE} from '../Acl.mjs';
 import Button          from '../button/Button.mjs';
+import {writeText}     from '../clipboard.mjs';
 import DetailFieldsets from '../customfields/DetailFieldsets.mjs';
 import {destroyEntities} from '../data/destroyEntities.mjs';
 import {download}      from '../download.mjs';
@@ -9,7 +10,9 @@ import client          from '../jmap/Client.mjs';
 import AddLinkButton    from '../link/AddLinkButton.mjs';
 import LinkBrowseButton from '../link/LinkBrowseButton.mjs';
 import LinkCards        from '../link/LinkCards.mjs';
-import {notifyError}   from '../Notify.mjs';
+import {resolveRoute}  from '../link/linkTypes.mjs';
+import {notify, notifyError} from '../Notify.mjs';
+import {goUrl}         from '../pdf/PdfViewer.mjs';
 import {print}         from '../print.mjs';
 import {t}             from '../Translate.mjs';
 import CommentsPanel from './CommentsPanel.mjs';
@@ -30,7 +33,7 @@ const CARDS = {
 
 /**
  * @summary Right pane of an entity (GOUI DetailPanel, ExtJS go.detail.Panel): a toolbar with Edit,
- * add / browse links and ⋮ (Print, optional Download PDF, Delete by permissionLevel), a scrolling
+ * add / browse links and ⋮ (Print, optional Copy link and Download PDF, Delete by permissionLevel), a scrolling
  * column with the subclass's body and the standard cards it asks for, and a "Not found" state.
  *
  * The record comes from the host (`setRecord(record)`, e.g. the grid's selected row, which reloads on
@@ -45,7 +48,7 @@ const CARDS = {
  *     }
  *
  * Subclass hooks: createBody(), createToolbarItems(), createMoreMenu(), loadMoreMenu(), createBottomItems(),
- * renderRecord(record), canEdit(record), canDelete(record), getTitle(record), getDownloadUrl(record).
+ * renderRecord(record), canEdit(record), canDelete(record), getTitle(record), getDownloadUrl(record), getRoute(record).
  * Events: edit {record}, delete {record} (the host confirms and deletes; a detail without a host
  * calls deleteRecord() in onDelete()), deleted {record}.
  * References: toolbar, editButton, addLinkButton, linkBrowseButton, moreButton, scroller, notFound,
@@ -82,6 +85,11 @@ class Panel extends Container {
          * @member {Boolean} hasLinks=true
          */
         hasLinks: true,
+        /**
+         * "Copy link" in the ⋮ menu: copies the URL of the record (getRoute()) to the clipboard
+         * @member {Boolean} copyLink=false
+         */
+        copyLink: false,
         /**
          * Entities whose changes make load() load again, null: [entityName]
          * @member {String[]|null} watch=null
@@ -205,8 +213,8 @@ class Panel extends Container {
     }
 
     /**
-     * @summary Items of the ⋮ menu: Print, Download PDF (when getDownloadUrl() gives one) and Delete
-     * (id 'delete', disabled without delete permission). Subclasses add theirs to the result.
+     * @summary Items of the ⋮ menu: Print, Copy link (with copyLink), Download PDF (when getDownloadUrl() gives one)
+     * and Delete (id 'delete', disabled without delete permission). Subclasses add theirs to the result.
      * @returns {Object[]}
      */
     createMoreMenu() {
@@ -214,6 +222,7 @@ class Panel extends Container {
 
         return [
             {id: 'print', text: t('Print'), icon: 'print', handler: () => me.onPrint()},
+            ...me.copyLink ? [{id: 'copyLink', text: t('Copy link'), icon: 'link', handler: () => me.onCopyLink()}] : [],
             ...me.getDownloadUrl === Panel.prototype.getDownloadUrl ? [] : [
                 {id: 'download', text: t('Download PDF'), icon: 'cloud_download', handler: () => me.onDownload()}
             ],
@@ -276,6 +285,7 @@ class Panel extends Container {
 
         more.menu = items;
         more.setMenuItemDisabled('delete', !me.canDelete(record));
+        me.copyLink && more.setMenuItemDisabled('copyLink', !me.getRoute(record));
         await more.menuListReady;
         return !stale()
     }
@@ -368,6 +378,7 @@ class Panel extends Container {
         me.getReference('editButton').disabled = !record || !me.canEdit(record);
         more.disabled = !record;
         more.setMenuItemDisabled('delete', !record || !me.canDelete(record));
+        me.copyLink && more.setMenuItemDisabled('copyLink', !record || !me.getRoute(record));
 
         if (me.hasLinks) {
             me.getReference('addLinkButton').setEntity(entity, id, record);
@@ -474,6 +485,40 @@ class Panel extends Container {
         String(me.record?.id) === String(record.id) && me.setRecord(null);
         me.fire('deleted', {record});
         return true
+    }
+
+    /**
+     * @summary Hash of the record, e.g. "notes/note/5": the route of the module that shows entityName
+     * (ModuleRegistry `routes`), null when no client shows it.
+     * @param {Object} record
+     * @returns {String|null}
+     */
+    getRoute(record) {
+        return resolveRoute(this.entityName, record.id)
+    }
+
+    /**
+     * @summary Copies the URL of the record to the clipboard and says so. The URL asks for neo
+     * (`?webclient=neo`, this page only): the hash is a neo route, the classic client's differ.
+     * @returns {Promise<void>}
+     */
+    async onCopyLink() {
+        let me    = this,
+            route = me.record && me.getRoute(me.record);
+
+        if (!route) {
+            return
+        }
+
+        try {
+            // shortcut: written after a worker round trip, which older Safari refuses (not the native click);
+            // the user then gets the "could not be copied" toast. Upgrade: write in a main thread click listener.
+            await writeText(me.windowId, goUrl('?webclient=neo#' + route))
+                ? notify(me, t('Link copied to clipboard'))
+                : notify(me, t('Sorry, the text could not be copied to the clipboard'))
+        } catch (e) {
+            notifyError(me, e)
+        }
     }
 
     /**

@@ -23,7 +23,7 @@ function fakePanel(config = {}) {
           refs = {
               notFound        : {hidden: true},
               editButton      : {disabled: true},
-              moreButton      : {disabled: true, deleteDisabled: null, setMenuItemDisabled(id, disabled) {this.deleteDisabled = disabled}},
+              moreButton      : {disabled: true, deleteDisabled: null, setMenuItemDisabled(id, disabled) {this[id + 'Disabled'] = disabled}},
               addLinkButton   : card(),
               linkBrowseButton: {target: null, setEntity(entity, entityId) {this.target = entityId ? {entity, entityId} : null}},
               customFields    : card(),
@@ -47,7 +47,7 @@ function fakePanel(config = {}) {
           };
 
     ['load', 'reload', 'setRecord', 'showRecord', 'canEdit', 'canDelete', 'getTitle', 'getDownloadUrl',
-        'createMoreMenu', 'rebuildMoreMenu', 'onEdit', 'onDelete', 'deleteRecord'].forEach(name => panel[name] ??= proto[name]);
+        'createMoreMenu', 'rebuildMoreMenu', 'onEdit', 'onDelete', 'deleteRecord', 'onCopyLink'].forEach(name => panel[name] ??= proto[name]);
     return panel
 }
 
@@ -142,6 +142,44 @@ describe('GO.detail.Panel', () => {
 
         assert.deepEqual(ids(fakePanel()), ['print', 'sep', 'delete']);
         assert.deepEqual(ids(fakePanel({getDownloadUrl: () => 'x.pdf'})), ['print', 'download', 'sep', 'delete']);
+    });
+
+    it('offers Copy link only with copyLink and copies the URL of the record', async () => {
+        const ids    = panel => panel.createMoreMenu().map(item => item.id || 'sep'),
+              main   = Neo.Main,
+              toast  = Neo.toast,
+              writes = [],
+              toasts = [];
+
+        assert.deepEqual(ids(fakePanel({copyLink: true})), ['print', 'copyLink', 'sep', 'delete']);
+
+        Neo.Main  = {importAddon: async () => true};
+        Neo.toast = ({msg}) => toasts.push(msg);
+        Neo.ns('GO.main.addon', true).ClipboardWriter = {writeText: async data => (writes.push(data), true)};
+
+        try {
+            const panel = fakePanel({copyLink: true, windowId: 'w1', getRoute: record => 'notes/note/' + record.id});
+
+            await panel.onCopyLink();
+            assert.equal(writes.length, 0, 'no record, nothing copied');
+
+            panel.setRecord({id: 5, permissionLevel: 10});
+            await panel.onCopyLink();
+            assert.equal(writes.length, 1);
+            assert.equal(writes[0].windowId, 'w1');
+            assert.match(writes[0].text, /^https?:\/\/[^#?]+\?webclient=neo#notes\/note\/5$/);
+            assert.deepEqual(toasts, ['Link copied to clipboard']);
+            assert.equal(panel.refs.moreButton.copyLinkDisabled, false);
+
+            const unroutable = fakePanel({copyLink: true, getRoute: () => null});
+
+            unroutable.setRecord({id: 6, permissionLevel: 10});
+            assert.equal(unroutable.refs.moreButton.copyLinkDisabled, true, 'no route, item disabled');
+        } finally {
+            Neo.Main  = main;
+            Neo.toast = toast;
+            delete Neo.ns('GO.main.addon').ClipboardWriter
+        }
     });
 
     it('fires edit and delete for the host', () => {
