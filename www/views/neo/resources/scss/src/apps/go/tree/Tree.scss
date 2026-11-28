@@ -69,6 +69,11 @@
         text-align      : center;
     }
 
+    // a hit of search() (amd/pms .pms-tree-search-hit)
+    .go-tree-hit .go-tree-label {
+        font-weight: 600;
+    }
+
     .go-tree-more .go-tree-label {
         color : var(--c-primary);
         cursor: pointer;

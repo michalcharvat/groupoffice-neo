@@ -56,10 +56,12 @@
  *        the component itself is no drop target
  * @param {Function} [options.onHover] ({targetId, targetRecordId}) when the pointer rests on
  *        a target for a second during a drag (a tree expands the node)
+ * @param {Function} [options.onDragStart] ({itemId}) when a drag of this component's items starts
+ * @param {Function} [options.onDragEnd] () when that drag ends, dropped or not (after onDrop)
  * @param {Function} options.onDrop
  * @returns {Promise<void>}
  */
-export async function enableDragDrop(component, {drag, drop, handle, group, files=false, position, horizontal=false, accept, onHover, onDrop}) {
+export async function enableDragDrop(component, {drag, drop, handle, group, files=false, position, horizontal=false, accept, onHover, onDragStart, onDragEnd, onDrop}) {
     const data = {};
 
     drag  && (data.goDrag = drag);
@@ -71,6 +73,7 @@ export async function enableDragDrop(component, {drag, drop, handle, group, file
     position && position !== 'on' && (data.goDropPos = position);
     horizontal && (data.goDropHorizontal = 'true');
     onHover && (data.goDropHover = 'true');
+    (onDragStart || onDragEnd) && (data.goDragNotify = 'true');
 
     if (accept) {
         data.goDropAccept = JSON.stringify(Object.entries(accept));
@@ -86,6 +89,8 @@ export async function enableDragDrop(component, {drag, drop, handle, group, file
 
     component.addDomListeners({goDrop: event => own(event) && onDrop(event), scope: component});
     onHover && component.addDomListeners({goDragHover: event => own(event) && onHover(event), scope: component});
+    onDragStart && component.addDomListeners({goDragStart: event => own(event) && onDragStart(event), scope: component});
+    onDragEnd && component.addDomListeners({goDragEnd: event => own(event) && onDragEnd(event), scope: component});
 
     await Neo.Main.importAddon({name: 'WS/DragDrop', windowId: component.windowId})
 }
