@@ -50,8 +50,8 @@ Status: **neo** = neo.mjs 13.4 ships it (14 since 2026-11-24), usable as is (may
 | CodeField (sf/codemirror `sfcodemirroreditor`) | – | GO.neo (`form/field/CodeField.mjs` + core main-thread addon `main/addon/CodeMirror.mjs`: CodeMirror 5 (`codemirror@5` of `views/neo/package.json`, kept by `buildScripts/release.mjs`), modes on demand by name / extension / MIME; `mode` ('json' validates with the parse message), `editorHeight` (neo owns `height`), `readOnly`, `required`; text equal to the editor's text of the loaded value keeps the loaded value (no dirty form); dark theme `material-darker` while `body.dark`; a monospace textarea when the library does not load; demo `#dev/form/CodeField`) |
 | EditorJsField (sf/editorjs `editorjsfield`) | – | GO.neo (`form/field/EditorJsField.mjs` + core main-thread addon `main/addon/EditorJs.mjs`: Editor.js and its tools from sf/editorjs `views/extjs3/`; value the document `{time, blocks, version}`, null when empty; a document equal to the editor's first save of the loaded value keeps the loaded value (no dirty form), a per-mount token drops late events of an old mount (popout); image uploads as blobs through the field, URL images via `sf/editorjs/Editor/uploadFromUrl`; stored inline HTML cleaned before rendering; Word paste fixes; `setValueFromHtml(html)` converts HTML to blocks as a user change (dms .docx); without `go:sf:editorjs` or when the library does not load the document shows as read-only text and the value stays; pure helpers `form/field/editorJsDoc.mjs` (`editorJsToHtml()` for read-only cards, `editorJsSame()`, `toEditorJsDoc()`); demo `#dev/form/EditorJsField`) |
 | MarkdownField | – | GO.neo (`MarkdownField`: textarea + main-thread addon `MarkdownEditor`, toolbar, preview, image paste / drop / upload; `src/Markdown.mjs` renders with `marked` + `Format.sanitizeHtml()`; no EasyMDE/CodeMirror) |
-| ChipsField, AutocompleteChips, AutocompleteField | form/field/Chip (basic) | ChipsField: GO.neo (`GO.form.field.ChipsField`, async textInputToValue/chipRenderer); AutocompleteChips: GO.neo (`GO.form.field.AutocompleteChips`, entity ids, ▾ menu; tasks categories); AutocompleteField: GO.neo (`GO.form.field.AutocompleteField`, JMAP entity or `fetch(text)`, `valueProperty`, `valueToText`); AutocompleteChips `properties` = fetched properties |
-| ArrayField, ContainerField, MapField, ListField | – | ArrayField, ContainerField: GO.neo (`src/form/nestedFields.mjs`); MapField: GO.neo (`GO.form.field.MapField`, object keyed by id, `keyFieldName` / `valueFieldName`); ListField: GO.neo (`GO.form.field.ListField`, `renderValue` HTML, records of a `store`) |
+| ChipsField, AutocompleteChips, AutocompleteField | form/field/Chip (basic) | ChipsField: GO.neo (`GO.form.field.ChipsField`, async textInputToValue/chipRenderer); AutocompleteChips: GO.neo (`GO.form.field.AutocompleteChips`, entity ids, ▾ menu; tasks categories); AutocompleteField: GO.neo (`GO.form.field.AutocompleteField`, JMAP entity or `fetch(text)`, `valueProperty`, `valueToText`); AutocompleteChips `properties` = fetched properties; `clickable: true` (ChipsField / AutocompleteChips, ExtJS dms `DocumentChipsOverride` `clickable`): a chip click opens its entity through `resolveRoute()` (ModuleRegistry `routes`), the remove button still removes; `chipEntity(value)` → `{entity, id}`, AutocompleteChips gives it from `entity` |
+| ArrayField, ContainerField, MapField, ListField | – | ArrayField, ContainerField: GO.neo (`src/form/nestedFields.mjs`); ArrayField `sortable: true` (ExtJS `go.form.FormGroup` sortable): a row is dragged by its `ArrayField.dragHandle()`, the order is the value (dirty after a move), an ArrayField in a row sorts its own rows; MapField: GO.neo (`GO.form.field.MapField`, object keyed by id, `keyFieldName` / `valueFieldName`); ListField: GO.neo (`GO.form.field.ListField`, `renderValue` HTML, records of a `store`) |
 | CheckboxGroup | – | GO.neo (`GO.form.field.CheckboxGroup`: legend + toggle-button checkboxes, one field per option) |
 | DatePicker / MonthPicker / WeekPicker | component/DateSelector | neo; MonthPicker, WeekPicker: GO.neo (`GO.component.MonthPicker` / `WeekPicker`, ISO weeks, `select` {date}) |
 
@@ -64,6 +64,7 @@ Status: **neo** = neo.mjs 13.4 ships it (14 since 2026-11-24), usable as is (may
 | Kanban board (GOUI has none; ExtJS business/kanban) | GO.neo (`GO.board.Board`, see "GO.board.Board" below; first user: tasks board view) |
 | Resource scheduler / timeline (vis-timeline in amd/crew) | GO.neo (`GO.scheduler.Scheduler`, see "GO.scheduler.Scheduler" below; first user: crew planning) |
 | PDF / image preview (ExtJS amd/libs `PdfViewPanel`; GOUI has none) | GO.neo (`GO.pdf.PdfViewer`, see "GO.pdf.PdfViewer" below; demo `#dev/core/PdfViewer`; users: crew certificate verification, later dms and invoices) |
+| File preview by extension (ExtJS amd/dms `PdfViewPanel`, `FileViewPanel`, `ImageViewPanel`, `MarkdownViewPanel`, `MediaViewPanel`; GOUI has none) | GO.neo (`GO.preview.FilePreview`, see "GO.preview.FilePreview" below; demo `#dev/core/FilePreview`; users: dms document detail, files `FileDetail`) |
 | auth/Login | GO.neo (`apps/go/view/LoginView.mjs`: forgot credentials, 2FA via `loginPanels`) |
 | Main area (GOUI/ExtJS card per module) | GO.neo `apps/go/view/MainView.mjs`: one card per module. Modules extend it through `mainViewExtension` (extra cards, top-bar items, routes, claimed module views; `docs/neo-small-modules.md`, "Main view extensions"). The module sf/workspaces (sf-mono, off by default) adds workspace tabs next to the module tabs, each a dock (`GO.workspaces.Workspace` over neo's dock; panels side by side, drag from the top bar, maximize, saved per user and screen profile; `docs/neo-workspace.md`) |
 | MainThreeColumnPanel, TableTitle | GO.neo |
@@ -78,7 +79,7 @@ Status: **neo** = neo.mjs 13.4 ships it (14 since 2026-11-24), usable as is (may
 | customfields/ (FormFieldset, DetailFieldset, Types, admin) | GO.neo (`src/customfields/`) |
 | permissions/SharePanel (ACL) | GO.neo (`permissions/SharePanel.mjs`; `setAclId(aclId, value)` for a legacy ACL without a JMAP entity, e.g. a files folder; `readOnly` without manage permission; the people button of a row opens `groups/GroupMemberDialog.mjs` with all members, ExtJS `go.groups.GroupMemberWindow`) |
 | prompt() (one line of text) | GO.neo (`view/TextPrompt.mjs`: `TextPrompt.ask({title, label, value, select: 'all'\|'name', validator})`, `null` when cancelled) |
-| Drag and drop (native) | GO.neo (`component/dragDrop.mjs` `enableDragDrop(component, {drag, drop, group, files, position, horizontal, onHover, onDrop})` + addon `WS/DragDrop`: rows and tree nodes onto, before or after drop targets of the same group, desktop files; the worker gets a `goDrop` DOM event with `position`, `goDragHover` after a second on a target; a target with class `go-no-drop` refuses drops and isn't highlighted: `TextList`/`CheckList` `noDrop: record => …`, tree nodes `cls: ['go-no-drop']`, e.g. note books, task lists and address books the user can't write to) |
+| Drag and drop (native) | GO.neo (`component/dragDrop.mjs` `enableDragDrop(component, {drag, drop, handle, group, files, position, horizontal, onHover, onDrop})` + addon `WS/DragDrop`: rows and tree nodes onto, before or after drop targets of the same group (nested drop roots: the nearest of the drag's group), `handle`: an item drags only from a descendant matching it, desktop files; the worker gets a `goDrop` DOM event with `position`, `goDragHover` after a second on a target; a target with class `go-no-drop` refuses drops and isn't highlighted: `TextList`/`CheckList` `noDrop: record => …`, tree nodes `cls: ['go-no-drop']`, e.g. note books, task lists and address books the user can't write to) |
 | RecurrenceField, RecurrencePicker | GO.neo (`GO.form.field.RecurrenceField`: presets menu + "Customize" dialog) |
 | Image (blob images, zoom) | GO.neo (`view/ImageWindow.mjs`: `enableImageZoom()` + addon `WS/ImageZoom`, `ImageWindow.show()`; images load by URL with the session cookie, no `getBlobURL()` needed) |
 | HtmlFieldMentionPlugin | GO.neo (`form/field/HtmlFieldMentionPlugin.mjs`, a neo plugin on `HtmlField`; default provider: users, inserts `@username`; `CommentsPanel` uses it, the server alerts mentioned users who can read the item; demo `#dev/form/HtmlField`) |
@@ -828,3 +829,28 @@ preview.on('load', ({numPages, title}) => …);                 // also 'loadErr
 - A PDF loads once the viewer is in the DOM; a viewer in a hidden card redraws when it is shown again (neo removes
   inactive cards from the DOM). Only the latest source counts: the addon answers an older load `{superseded: true}`,
   and a failed load clears the old pages, shows a message and fires `loadError`.
+
+## GO.preview.FilePreview (2026-11-28)
+
+`src/preview/FilePreview.mjs` with the DOM-free `src/preview/previewKinds.mjs` (kind by extension, the name's
+extension or the MIME type; `registerPreview()`; `tests/filePreview.test.mjs`).
+
+```js
+import FilePreview from '<relative>/views/neo/src/preview/FilePreview.mjs';
+
+{module: FilePreview, reference: 'preview', flex: 1}
+
+preview.setFile({src: client.apiUrl + 'download.php?blob=' + blobId, name: 'Report.pdf'}); // or extension, type
+preview.setFile({src, extension: 'md', htmlUrl});   // Markdown HTML the host renders and trusts, in a frame
+preview.setFile(null);
+```
+
+- The kind comes from `extension`, else the extension of `name`, else `type`; never from `src` (download URLs have
+  none). PDF and image go to `GO.pdf.PdfViewer` (zoom, lazy pages); text is fetched and shown escaped in a `<pre>`
+  (at most `TEXT_LIMIT` characters); Markdown is fetched and rendered by `Markdown.mjs` (sanitised), or with
+  `htmlUrl` the host's page is shown in an `<iframe>` (relative image URLs resolve against that page); audio and
+  video are native players; anything else shows an icon, the name and Download (`download.mjs`).
+- Extension point: `registerPreview(kind, {extensions, types, render})`, `render({url, src, name, extension, type, signal})`
+  returns HTML that the renderer has sanitised; `signal` aborts when another file is shown. Built-in kinds come first and cannot be replaced.
+- Only the latest file shows: each load takes a token, a fetch for an older file drops its result.
+

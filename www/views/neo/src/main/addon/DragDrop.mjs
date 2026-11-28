@@ -11,15 +11,17 @@ const DRAG_SRC_CLS = 'go-drag-src';
 const HOVER_DELAY = 1000;
 
 /**
- * Main thread side of drag and drop (GOUI DragAndDrop / ExtJS DD in the file browser):
+ * @summary Main thread side of drag and drop (GOUI DragAndDrop / ExtJS DD in the file browser):
  * native HTML5 drag and drop, declared on a component's root element by
  * GO.util.dragDrop enableDragDrop() with data attributes:
  *
  * - data-go-drag="<selector>": descendants matching it can be dragged (made draggable on
  *   pointer down), e.g. ".neo-grid-row"
+ * - data-go-drag-handle="<selector>": an item is draggable only from a descendant matching it
  * - data-go-drop="<selector>": descendants matching it are drop targets; elsewhere inside
  *   the root (or with an empty selector) the root itself is the target
- * - data-go-drop-group="<name>": drags are accepted from roots with the same group only
+ * - data-go-drop-group="<name>": drags are accepted from roots with the same group only; with
+ *   drop roots nested in each other, the nearest one of the drag's group takes it
  * - data-go-files="true": files dragged from the desktop can be dropped
  * - data-go-drop-pos="on|between|both": drop on a target (default), between targets
  *   (sorting: before / after, GOUI Sortable dropBetween) or both (the outer quarters of a
@@ -64,6 +66,11 @@ class DragDrop extends Base {
      */
     position = null
     /**
+     * Item made draggable by a press on its handle (data-go-drag-handle)
+     * @member {HTMLElement|null} armed=null
+     */
+    armed = null
+    /**
      * @member {Number|null} hoverTimer=null
      */
     hoverTimer = null
@@ -105,20 +112,49 @@ class DragDrop extends Base {
     }
 
     /**
-     * Rows are rendered by neo without the draggable attribute: set it just before a drag
-     * can start
+     * @summary Rows are rendered by neo without the draggable attribute: sets it just before
+     * a drag can start; with a handle only on a press on the handle (and takes it off again on
+     * the next press, so the item's inputs stay selectable).
      * @param {PointerEvent} e
      */
     onPointerDown(e) {
-        const drag = e.button === 0 && this.dragItem(e);
+        let me   = this,
+            drag = e.button === 0 && me.dragItem(e);
 
-        drag && !drag.item.draggable && (drag.item.draggable = true)
+        if (me.armed) {
+            me.armed.draggable = false;
+            me.armed           = null
+        }
+
+        if (!drag) {
+            return
+        }
+
+        const handle = drag.root.dataset.goDragHandle;
+
+        if (handle) {
+            const grip = e.target.closest(handle);
+
+            if (!grip || !drag.item.contains(grip)) {
+                return
+            }
+
+            me.armed = drag.item;
+            drag.item.draggable = true
+        } else {
+            drag.item.draggable || (drag.item.draggable = true)
+        }
     }
 
+    /**
+     * @summary Starts the drag of an item; with a handle only of the item armed by it (not
+     * selected text dragged out of an input).
+     * @param {DragEvent} e
+     */
     onDragStart(e) {
         const drag = this.dragItem(e);
 
-        if (!drag) {
+        if (!drag || (drag.root.dataset.goDragHandle && drag.item !== this.armed)) {
             return
         }
 
@@ -130,13 +166,17 @@ class DragDrop extends Base {
     }
 
     /**
+     * @summary The drop root and target under the pointer: the nearest root of the drag's group.
      * @param {DragEvent} e
      * @returns {{root: HTMLElement, target: HTMLElement, position: String}|null} where a drop
      *          would go
      */
     dropTarget(e) {
         let me    = this,
-            root  = e.target?.closest?.('[data-go-drop], [data-go-files]'),
+            roots = '[data-go-drop], [data-go-files]',
+            root  = e.target?.closest?.(roots),
+            // where the target search starts: above the nested roots skipped
+            from  = e.target,
             files = !me.dragging && [...e.dataTransfer?.types || []].includes('Files');
 
         if (!root) {
@@ -148,9 +188,20 @@ class DragDrop extends Base {
                 return null
             }
         } else {
-            const source = me.dragging?.root;
+            const source = me.dragging?.root,
+                  group  = el => el.dataset.goDropGroup || '';
 
-            if (!source || !('goDrop' in root.dataset) || (source.dataset.goDropGroup || '') !== (root.dataset.goDropGroup || '')) {
+            if (!source) {
+                return null
+            }
+
+            // nested drop roots (an ArrayField in a row of another): the nearest of the drag's group
+            while (root && (!('goDrop' in root.dataset) || group(source) !== group(root))) {
+                from = root.parentElement;
+                root = from?.closest(roots)
+            }
+
+            if (!root) {
                 return null
             }
         }
@@ -169,7 +220,7 @@ class DragDrop extends Base {
             selector = rule[1]
         }
 
-        target = selector && e.target.closest(selector);
+        target = selector && from.closest(selector);
         target = target && root.contains(target) ? target : (accept ? null : root);
 
         if (!target) {

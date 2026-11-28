@@ -1,4 +1,5 @@
 import Container from '../../node_modules/neo.mjs/src/container/Base.mjs';
+import Toolbar   from '../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import Button    from '../button/Button.mjs';
 import {t}       from '../Translate.mjs';
 import {MAX_LISTED_PAGES, PREVIEW_PAGES, ZOOM_STEPS, nextZoom, normalizePages, pagesTitle, previewKind} from './pdfPages.mjs';
@@ -13,7 +14,7 @@ const ADDON = 'WS/PdfJs',
  * @param {String} url
  * @returns {String}
  */
-function goUrl(url) {
+export function goUrl(url) {
     return new URL(url, new URL(Neo.config.goBaseUrl || '/', globalThis.location.href)).href
 }
 
@@ -125,10 +126,10 @@ class PdfViewer extends Container {
         let me = this;
 
         me.items = [{
-            ntype: 'toolbar',
-            cls  : ['go-pdfviewer-tbar'],
-            flex : 'none',
-            items: [{
+            module: Toolbar,
+            cls   : ['go-pdfviewer-tbar'],
+            flex  : 'none',
+            items : [{
                 ntype    : 'component',
                 reference: 'title',
                 cls      : ['go-pdfviewer-title']

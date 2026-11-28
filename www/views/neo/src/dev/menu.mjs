@@ -67,5 +67,6 @@ export default [
     {id: 'core/AppLauncher',  text: 'App launcher',      level: 1, status: 'done', demo: 'AppLauncher', neo: 'GO.view.AppLauncher (header main menu)', goui: 'ExtJS 6.8 MainLayout.js startMenu, Paper _modules.scss #startMenu'},
     {id: 'core/Recipients',   text: 'RecipientPicker',   level: 1, status: 'done', demo: 'Recipients', neo: 'GO.form.field.RecipientsField, GO.view.RecipientPicker', goui: 'goui-docs/script/components/RecipientsField.ts, groupoffice-core/script/components/picker/RecipientPicker.ts'},
     {id: 'core/Scheduler',    text: 'Scheduler',         level: 1, status: 'done', demo: 'Scheduler', neo: 'GO.scheduler.Scheduler (tree resources, read-only)', goui: 'ExtJS amd/crew TimelinePanel (vis-timeline)'},
-    {id: 'core/PdfViewer',    text: 'PDF viewer',        level: 1, status: 'done', demo: 'PdfViewer', neo: 'GO.pdf.PdfViewer, GO.main.addon.PdfJs (pdfjs-dist)', goui: 'ExtJS amd/libs PdfViewPanel'}
+    {id: 'core/PdfViewer',    text: 'PDF viewer',        level: 1, status: 'done', demo: 'PdfViewer', neo: 'GO.pdf.PdfViewer, GO.main.addon.PdfJs (pdfjs-dist)', goui: 'ExtJS amd/libs PdfViewPanel'},
+    {id: 'core/FilePreview',  text: 'File preview',      level: 1, status: 'done', demo: 'FilePreview', neo: 'GO.preview.FilePreview, src/preview/previewKinds.mjs (registerPreview)', goui: 'ExtJS amd/dms PdfViewPanel, FileViewPanel, ImageViewPanel, MarkdownViewPanel, MediaViewPanel'}
 ];

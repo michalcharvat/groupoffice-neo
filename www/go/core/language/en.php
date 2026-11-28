@@ -505,4 +505,7 @@ If you did not request a new password please delete this mail.',
   'The document could not be loaded.' => 'The document could not be loaded.',
   'No preview available for this file.' => 'No preview available for this file.',
   'The editor could not be loaded' => 'The editor could not be loaded',
+  'Download' => 'Download',
+  'Loading, please wait...' => 'Loading, please wait...',
+  'The file could not be loaded.' => 'The file could not be loaded.',
 );
