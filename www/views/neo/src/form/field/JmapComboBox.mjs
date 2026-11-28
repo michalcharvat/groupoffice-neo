@@ -247,6 +247,8 @@ class JmapComboBox extends ComboBox {
 
     /**
      * Changes the extra query filter (e.g. another address book) and queries again when loaded
+     * or loading: the answer of the old filter is dropped and a doFilter() waiting for it
+     * opens nothing (the rows may belong to the old filter, e.g. another vessel)
      * @param {Object} filter conditions to merge, undefined removes one
      * @returns {Promise<void>}
      */
@@ -254,8 +256,13 @@ class JmapComboBox extends ComboBox {
         let me = this;
 
         me.jmapFilter = {...me.jmapFilter, ...filter};
+        // a doFilter() still running opens nothing
+        me.filterGeneration++;
 
-        if (me.store.isLoaded) {
+        if (me.store.isLoaded || me.store.isLoading) {
+            // the rows are the old filter's: an open before the new answer (or after it failed) queries again
+            me.store.isLoaded = false;
+            me.pickerIsMounted && me.hidePicker();
             await me.store.setFilter(filter).catch(() => {})
         } else {
             Object.assign(me.store.jmapFilter, filter)
@@ -356,12 +363,18 @@ class JmapComboBox extends ComboBox {
             generation = ++me.filterGeneration,
             query      = value || undefined;
 
-        if (!store.isLoaded || query !== me.lastQuery) {
+        // loading: the rows are not those of lastQuery yet
+        if (!store.isLoaded || store.isLoading || query !== me.lastQuery) {
             me.lastQuery = query;
 
             try {
-                await store.setFilter({[me.filterName]: query})
+                // null: a newer load (filter, push) replaced this one, the rows may be older
+                if (await store.setFilter({[me.filterName]: query}) === null) {
+                    return
+                }
             } catch (e) {
+                // the rows are not of this text: the next open queries again
+                me.lastQuery = null;
                 console.warn('JmapComboBox query failed', e);
                 return
             }
