@@ -209,9 +209,9 @@ class ModuleRegistry {
             [].concat(m[key]).map((settings, i) => ({
                 module : m,
                 title  : settings.title || m.title,
-                // tab buttons: Material Symbols name (System settings prefers it), Font Awesome
+                // tab buttons: Material Symbols name or Font Awesome; the module's iconCls only when the entry has no icon of its own
                 icon   : settings.icon || null,
-                iconCls: settings.iconCls || m.iconCls || null,
+                iconCls: settings.iconCls || (settings.icon ? null : m.iconCls) || null,
                 itemId : settings.itemId || `${m.package}-${m.name}` + (i ? '-' + i : ''),
                 load   : settings.panel
             }))

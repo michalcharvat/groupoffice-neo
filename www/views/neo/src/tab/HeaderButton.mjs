@@ -19,13 +19,23 @@ class HeaderButton extends NeoHeaderButton {
     }
 
     /**
-     * @summary Shows the Material icon in the glyph node.
+     * @summary Shows the Material icon in the glyph node, unless iconCls is set.
      * @param {String|null} value
      */
     afterSetIcon(value) {
         // the tab's text names it (and its card through aria-labelledby), not the ligature
         this.iconNode['aria-hidden'] = true;
-        setIcon(this, value)
+        setIcon(this)
+    }
+
+    /**
+     * @summary Font Awesome iconCls wins over the Material icon.
+     * @param {String|null} value
+     * @param {String|null} oldValue
+     */
+    afterSetIconCls(value, oldValue) {
+        super.afterSetIconCls(value, oldValue);
+        setIcon(this)
     }
 }
 

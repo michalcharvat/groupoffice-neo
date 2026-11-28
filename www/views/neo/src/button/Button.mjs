@@ -92,34 +92,44 @@ class Button extends NeoButton {
     }
 
     /**
-     * @summary Shows the Material icon in the glyph node.
+     * @summary Shows the Material icon in the glyph node, unless iconCls is set.
      * @param {String|null} value
      */
     afterSetIcon(value) {
-        setIcon(this, value)
+        setIcon(this)
+    }
+
+    /**
+     * @summary Font Awesome iconCls wins over the Material icon.
+     * @param {String|null} value
+     * @param {String|null} oldValue
+     */
+    afterSetIconCls(value, oldValue) {
+        super.afterSetIconCls(value, oldValue);
+        setIcon(this)
     }
 }
 
 /**
- * @summary Shows a Material Symbols ligature in a neo button's glyph node (null: none).
+ * @summary Shows one glyph in a neo button's glyph node: the Font Awesome iconCls when set,
+ * else the Material Symbols ligature `icon`, else none (both at once would overlap).
  *
  * Also used by GO.tab.HeaderButton.
  * @param {Neo.button.Base} button
- * @param {String|null} value
  */
-export function setIcon(button, value) {
-    let {iconNode} = button;
+export function setIcon(button) {
+    let {icon, iconCls, iconNode} = button,
+        material = !!icon && !iconCls;
 
-    NeoArray.toggle(iconNode.cls, 'go-icon', !!value);
+    NeoArray.toggle(iconNode.cls, 'go-icon', material);
 
-    if (value) {
-        iconNode.text = value;
-        iconNode.removeDom = false
+    if (material) {
+        iconNode.text = icon
     } else {
-        delete iconNode.text;
-        iconNode.removeDom = !button.iconCls
+        delete iconNode.text
     }
 
+    iconNode.removeDom = !material && !iconCls;
     button.update()
 }
 

@@ -152,7 +152,7 @@ class SystemSettingsDialog extends Dialog {
             const card = me.cards.add({
                       module: Container,
                       cls   : ['go-settings-card'],
-                      header: {module: HeaderButton, text: title, icon, iconCls: icon ? null : iconCls},
+                      header: {module: HeaderButton, text: title, icon, iconCls},
                       layout: {ntype: 'vbox', align: 'stretch'},
                       items : [{module: panel, flex: 1}]
                   }),
