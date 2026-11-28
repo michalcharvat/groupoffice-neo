@@ -49,6 +49,12 @@
     .go-main-3-col .go-for-small-device {
         display: none !important;
     }
+
+    // a toolbar left with only the phone close button and '->' (an empty div) would keep its
+    // padding (crew east); own rule, so a browser without :has() still hides the button
+    .go-main-3-col .neo-toolbar:has(> .go-for-small-device):not(:has(> :not(.go-for-small-device, div:empty))) {
+        display: none !important;
+    }
 }
 
 // Medium (GOUI .main-3-col .west up to $breakpointMedium, here the module's width: a tablet, a

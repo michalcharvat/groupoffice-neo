@@ -138,6 +138,15 @@ center splitter are hidden and the center flexes over the free width (`flex: 1 1
 east again and the center gets back its fixed or saved splitter width; hiding the east while it is
 the active phone card shows the center. Dev demo `#dev/layout`, "Module layout".
 
+`showCenterButton()` (the phone "close") belongs in the detail panel's own toolbar
+(`detail.getReference('toolbar').insert(0, me.showCenterButton())`, as notes), like the back arrow
+in the classic detail toolbar. A separate east toolbar `['->', showCenterButton()]` (crew) is
+hidden above 576px (a toolbar with only `go-for-small-device` buttons and empty items such as
+`'->'`; before 2026-11-28 its padding put 14px above the detail toolbar), but on a phone it is an
+extra row above the detail toolbar that classic doesn't have. Measured 2026-11-28 (wide, desktop
+density 8.64px): classic detail tbar 55.3px with 34.5px buttons, neo 56.3px (dp(64) + 1px border)
+with 41.5px (dp(48)) buttons, so the toolbar itself matches; at the 10px mobile density 64 vs 65.
+
 ## CSS grid in a flex-filled panel (2026-11-25)
 
 A grid that gets its height from the layout (`flex: 1` in a vbox) shares that height among its
