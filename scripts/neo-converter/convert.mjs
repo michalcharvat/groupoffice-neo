@@ -334,7 +334,7 @@ function convertItem(ctx, node, opts) {
     if (resolved !== node) {
         // this.x = <item>: the reference keeps the name
         const item = convertItem(ctx, resolved, opts), ref = dotted(node)?.replace(/^(me|this)\./, '');
-        node.type === 'MemberExpression' && item?.type === 'obj' && item.entries.splice(1, 0, ['reference', q(ref)]);
+        node.type === 'MemberExpression' && withReference(item, ref);
         return item
     }
     // new Ext.form.TextField({...}) reads like {xtype: 'textfield', ...}
@@ -342,10 +342,10 @@ function convertItem(ctx, node, opts) {
         const cfg = node.arguments[0] ?? {type: 'ObjectExpression', properties: []};
         return convertItem(ctx, {...cfg, properties: [{type: 'Property', key: {type: 'Identifier', name: 'xtype'}, value: {type: 'Literal', value: R.CLASS_XTYPES[dotted(node.callee)]}}, ...cfg.properties]}, opts)
     }
-    if (node.type === 'AssignmentExpression' && dotted(node.left)?.startsWith('this.')) {
+    if (node.type === 'AssignmentExpression' && /^(me|this)\.\w+$/.test(dotted(node.left) ?? '')) {
         // this.unlocode = new ...: the reference keeps the name
         const item = convertItem(ctx, node.right, opts);
-        item?.type === 'obj' && item.entries.splice(1, 0, ['reference', q(node.left.property.name)]);
+        withReference(item, node.left.property.name);
         return item
     }
 
@@ -377,7 +377,10 @@ function convertItem(ctx, node, opts) {
         // a fieldset without a title only groups: neo dialogs list its fields directly
         if (!title) return {type: 'spread', items};
         ctx.use('fieldset');
-        return {type: 'call', callee: 'fieldset', args: [valueCode(ctx, title) ?? ctx.todo(title, 'fieldset title is code'), {type: 'arr', items}]}
+        // a title that is code: null, its TODO the first item (a comment cannot be an argument)
+        const text = valueCode(ctx, title);
+        text === null && items.unshift(ctx.todo(title, 'fieldset title is code'));
+        return {type: 'call', callee: 'fieldset', args: [text ?? 'null', {type: 'arr', items}]}
     }
 
     if (xtype === 'container' || (!xtype && prop(node, 'items')?.type === 'ArrayExpression')) return convertContainer(ctx, node, opts);
@@ -395,6 +398,19 @@ function convertItem(ctx, node, opts) {
     const local = ctx.module.xtypes[xtype] ?? ctx.module.registry?.xtypes[xtype];
     if (local?.factory) return factoryCall(ctx, local, withInline(convertKeys(ctx, props(node), R.FIELD_KEYS, {xtype: true}), opts))
     return ctx.todo(node, xtype ? `xtype "${xtype}" has no rule` : 'form item without xtype')
+}
+
+/**
+ * @summary The reference of `this.x = <item>`, into the item's config or its factory's argument: the
+ * field's name (hiddenName: 'countryId' → 'countryId'), else x without a widget suffix (timezoneField →
+ * timezone, companyServicesGrid → companyServices), as the hand ports name them.
+ */
+function withReference(item, property) {
+    const cfg = item?.type === 'obj' ? item : item?.type === 'call' && item.args[0]?.type === 'obj' ? item.args[0] : null;
+    if (!cfg || cfg.entries.some(e => e[0] === 'reference')) return;
+    const name = cfg.entries.find(e => e[0] === 'name' && typeof e[1] === 'string' && /^'\w+'$/.test(e[1]))?.[1],
+          ref  = name ?? q(property.replace(/(?<=\w)(Field|ComboReset|Combo|Chips|Grid|Panel|TextArea|Fieldset|Checkbox)$/, ''));
+    cfg.entries.splice(item.type === 'obj' ? 1 : 0, 0, ['reference', ref])
 }
 
 /**
@@ -1187,17 +1203,19 @@ function templateLines(ctx, tplNode) {
 
     const add = (row, cond, at) => {
         const label  = /\{\[t\("([^"]+)"\)\]\}/.exec(row)?.[1],
-              value  = row.replace(/\{\[t\("[^"]+"\)\]\}:?/, '').replace(/<[^>]+>/g, '').trim(),
+              // markup goes, but only outside {[...]} expressions (their strings are code)
+              value  = row.replace(/\{\[t\("[^"]+"\)\]\}:?/, '').split(/(\{\[[\s\S]*?\]\})/).map((part, i) => i % 2 ? part : part.replace(/<[^>]+>/g, '')).join('').trim(),
               simple = value.match(/^\{(\w+)(:htmlEncode)?\}$/),
               multi  = /^(?:[^{}[\]]*\{\w+(?::htmlEncode)?\})+[^{}[\]]*$/.test(value);
 
         if (!label) return;
-        // {[expr]} without Ext / this: values.x → record.x, an outer htmlEncode() goes (LinesCard escapes text)
-        const code = value.match(/^\{\[([\s\S]*)\]\}$/)?.[1]?.trim().replace(/^Ext\.util\.Format\.htmlEncode\(([\s\S]*)\)$/, '$1');
-        // a related entity may be missing (values.country.name → record.country?.name)
-        if (code && !cond && !/Ext\.|this\.|go\.|GO\.|\{\[/.test(code)) {
-            return lines.push(`[t(${q(label)}), ${code.replace(/\bvalues\./g, 'record.').replace(/\b(record\.\w+)\.(?=\w)/g, '$1?.')}]`)
-        }
+        // {[expr]}: values.x → record.x and the template idioms of tplExpr()
+        const expr = value.match(/^\{\[([\s\S]*)\]\}$/)?.[1]?.trim(),
+              code = expr && !cond ? tplExpr(ctx, expr) : null;
+        if (code) return lines.push(`[t(${q(label)}), ${code}]`);
+        // {x:nl2br} / {x:htmlEncode:nl2br}: text with line breaks
+        const br = value.match(/^\{(\w+)(?::htmlEncode)?:nl2br\}$/);
+        if (br && !cond) return lines.push(`[t(${q(label)}), ${nl2brValue(ctx, 'record.' + br[1])}]`);
         if (simple && !cond) return lines.push(`[t(${q(label)}), record.${simple[1]} || '-']`);
         if (multi && !cond) return lines.push(`[t(${q(label)}), \`${value.replace(/\{(\w+)(:htmlEncode)?\}/g, "${record.$1 ?? ''}")}\`]`);
         const reason = cond ? `conditional row "${label}" (<tpl if>)` : `row "${label}" is code`;
@@ -1213,6 +1231,83 @@ function templateLines(ctx, tplNode) {
         } else add(m[0], false, m.index)
     }
     return [...lines, ...members]
+}
+
+/** a text with line breaks as a LinesCard value: {html} with <br>, '-' when empty */
+function nl2brValue(ctx, code) {
+    ctx.use('escapeHtml');
+    return `${code} ? {html: escapeHtml(${code}).replace(/\\r?\\n/g, '<br>')} : '-'`
+}
+
+/**
+ * @summary An XTemplate `{[expr]}` as a LinesCard value, or null when it needs code of the classic
+ * template (Ext, this, go.* other than the idioms below):
+ * - `values.a.b` → `record.a?.b` (a related entity may be missing)
+ * - `Ext.util.Format.htmlEncode(x)` / `fm.htmlEncode(x)` → x (LinesCard escapes text)
+ * - an outer `Ext.util.Format.nl2br(x)` → `{html}` with <br> (nl2brValue())
+ * - `go.util.Format.dateTime(x)` → `formatUserDateTime(x)`
+ * - `t('X', 'module', 'package')` → `t('X')`
+ * @param {FileContext} ctx
+ * @param {String} expr
+ * @returns {String|null}
+ */
+function tplExpr(ctx, expr) {
+    let node;
+    try { node = acorn.parseExpressionAt(expr, 0, {ecmaVersion: 'latest'}) } catch { return null }
+    if (node.end !== expr.length && expr.slice(node.end).trim()) return null;
+
+    const ENCODE = ['Ext.util.Format.htmlEncode', 'fm.htmlEncode'], NL2BR = ['Ext.util.Format.nl2br', 'fm.nl2br'];
+    let failed = false;
+    const out = n => {
+        if (failed) return '';
+        if (n.type === 'CallExpression') {
+            const callee = dotted(n.callee);
+            if (ENCODE.includes(callee) && n.arguments.length === 1) return out(n.arguments[0]);
+            if (callee === 'go.util.Format.dateTime' && n.arguments.length === 1) {
+                ctx.use('formatUserDateTime');
+                return `formatUserDateTime(${out(n.arguments[0])})`
+            }
+            if (callee === 't' && n.arguments[0]?.type === 'Literal') return `t(${q(n.arguments[0].value)})`
+        }
+        // a string with markup: the expression builds HTML, LinesCard would show it as text
+        if (n.type === 'Literal' && typeof n.value === 'string' && /<\w/.test(n.value)) {
+            failed = true;
+            return ''
+        }
+        const name = dotted(n);
+        if (name && /^values\./.test(name)) return 'record.' + name.slice(7).replace(/\./g, '?.');
+        if (name === 'values' || (name && /^(Ext|this|go|GO|fm|xindex|xcount|parent)\b/.test(name)) || n.type === 'ThisExpression') {
+            failed = true;
+            return ''
+        }
+        // rebuild the node from its children's code (positions inside expr)
+        let code = '', at = n.start;
+        const kids = [];
+        for (const k in n) {
+            const v = n[k];
+            if (k === 'type' || k === 'start' || k === 'end') continue;
+            if (Array.isArray(v)) v.forEach(c => c && typeof c.type === 'string' && kids.push(c));
+            else if (v && typeof v.type === 'string') kids.push(v)
+        }
+        // a non-computed property key or member name is plain text
+        const own = kids.filter(c => !(n.type === 'MemberExpression' && c === n.property && !n.computed) && !(n.type === 'Property' && c === n.key && !n.computed))
+            .sort((a, b) => a.start - b.start);
+        // a global function the template knew (a bare name): no rule; a method of the data (values.x.join()) is fine
+        if (n.type === 'CallExpression' && n.callee.type === 'Identifier' && !['String', 'Number'].includes(n.callee.name)) {
+            failed = true;
+            return ''
+        }
+        for (const c of own) {
+            code += expr.slice(at, c.start) + out(c);
+            at = c.end
+        }
+        return code + expr.slice(at, n.end)
+    };
+
+    const call = node.type === 'CallExpression' && NL2BR.includes(dotted(node.callee)) && node.arguments.length === 1;
+    const code = out(call ? node.arguments[0] : node);
+    if (failed) return null;
+    return call ? nl2brValue(ctx, code.replace(/\s*\|\|\s*(""|'')$/, '')) : code
 }
 
 /**
