@@ -126,7 +126,9 @@ The reference is GO 26's GOUI module UI (e.g. Notes), not the ExtJS Paper theme.
   - a class that reuses another class's markup and styles: `additionalThemeFiles:
     ['GO.x.Other']` (e.g. the addressbook `ProfilePanel`).
   - Base components give the defaults so modules don't repeat them: `GO.view.Dialog` pads a
-    form placed directly in its body (`go-dialog-body`, `Dialog.scss`), the west panel of
+    form placed directly in its body (`go-dialog-body`, `Dialog.scss`), and a plain content
+    container placed there with cls `go-pad` (`shared/_layout.scss`; outside a dialog body
+    `go-pad` pads only a `go-card`), the west panel of
     `MainThreeColumnPanel` pads its `go-fieldset`s. A dialog or module that wants other
     spacing overrides it in its own sheet.
   - `npm run audit-styles` (`buildScripts/auditStyles.mjs`, after `build-themes`) lists `go-*`

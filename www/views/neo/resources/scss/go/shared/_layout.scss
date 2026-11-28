@@ -62,6 +62,13 @@
         }
     }
 
+    // a plain content container (no form) placed directly in a GO.view.Dialog body gets the
+    // padding Dialog.scss gives a form there; here, not in Dialog.scss, because go-pad is a
+    // helper any class renders (audit-styles)
+    .go-dialog-body > .go-pad {
+        padding: 1.6rem;
+    }
+
     .go-hidden {
         display: none !important;
     }

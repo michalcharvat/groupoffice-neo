@@ -111,8 +111,10 @@ dialog that happens to contain a component is missing wherever that component ap
 it (the history user cell, the domain dialog's user combo, `go-scroll` in dialogs). Rules and the
 check: `www/views/neo/README.md`, "Where a style goes". Run `npm run audit-styles` in
 `www/views/neo` after `build-themes` when adding or moving styles. Base components carry the
-defaults: `GO.view.Dialog` pads a form placed directly in its body, the west panel of
-`MainThreeColumnPanel` pads its fieldsets, the GOUI helpers (`go-card`, `go-pad`, `go-scroll`, …)
+defaults: `GO.view.Dialog` pads a form placed directly in its body (a plain content container
+there, e.g. a list of check boxes, gets the same padding with cls `go-pad`; elsewhere `go-pad` only
+pads a `go-card`), the west panel of `MainThreeColumnPanel` pads its fieldsets, the GOUI helpers
+(`go-card`, `go-pad`, `go-scroll`, …)
 are global in `resources/scss/go/shared/_layout.scss`. Neo's own fields get the GOUI look in their
 theme overlay, for example `resources/scss/go/form/field/CheckBox.scss` draws the GOUI checkbox
 (outlined dp(24) box with a tick, label padded like a field row) instead of the FontAwesome icons.
