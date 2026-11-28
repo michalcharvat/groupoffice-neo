@@ -1,0 +1,69 @@
+// GO.form.field.EditorJsField: Editor.js (GO.main.addon.EditorJs) in a bordered box, as sf/editorjs' classic field;
+// without the editor the document as read-only text (editorJsToHtml(), classes go-ejs-*)
+.neo-theme-go .go-editorjsfield {
+    display       : flex;
+    flex-direction: column;
+    gap           : .4rem;
+
+    .go-editorjsfield-label {
+        color: var(--fg-secondary-text);
+    }
+
+    .go-editorjsfield-holder {
+        background-color: var(--bg-input, transparent);
+        border          : 1px solid var(--fg-line, rgba(128, 128, 128, .4));
+        border-radius   : 8.7px;
+        min-height      : 80px;
+        padding         : 1.6rem 3rem;
+
+        &:focus-within {
+            border-color: var(--c-primary);
+        }
+    }
+
+    &.go-invalid .go-editorjsfield-holder {
+        border-color: var(--c-error, #d32f2f);
+    }
+
+    &.go-editorjsfield-fallback .go-editorjsfield-holder {
+        min-height: 0;
+        padding   : .8rem 1.2rem;
+    }
+
+    .ce-popover__container {
+        background-color: var(--bg-layer);
+    }
+
+    .ce-popover-item__title {
+        color: var(--fg-text);
+    }
+
+    .ce-popover-item:hover {
+        background-color: var(--bg-hover);
+    }
+}
+
+.neo-theme-go .go-ejs {
+    > :first-child {
+        margin-top: 0;
+    }
+
+    img {
+        height   : auto;
+        max-width: 100%;
+    }
+}
+
+.neo-theme-go .go-ejs-table {
+    border-collapse: collapse;
+
+    td, th {
+        border : 1px solid var(--fg-line, rgba(128, 128, 128, .4));
+        padding: .4rem .8rem;
+    }
+}
+
+.neo-theme-go .go-ejs-checklist {
+    list-style  : none;
+    padding-left: 1.6rem;
+}

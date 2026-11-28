@@ -48,6 +48,7 @@ Status: **neo** = neo.mjs 13.4 ships it (14 since 2026-11-24), usable as is (may
 | DateField, DateTimeField, DateRangeField, DurationField | form/field/Date (native input + picker) | GO.neo (`GO.form.field.*`; DateRangeField: custom range/from/until in a dialog instead of picker submenus) |
 | HtmlField (rich text) | – | GO.neo (`HtmlField`, main-thread addon; `HtmlFieldMentionPlugin`: "@name" suggestions at the caret, owned by the addon, provider in the worker) |
 | CodeField (sf/codemirror `sfcodemirroreditor`) | – | GO.neo (`form/field/CodeField.mjs` + core main-thread addon `main/addon/CodeMirror.mjs`: CodeMirror 5 (`codemirror@5` of `views/neo/package.json`, kept by `buildScripts/release.mjs`), modes on demand by name / extension / MIME; `mode` ('json' validates with the parse message), `editorHeight` (neo owns `height`), `readOnly`, `required`; text equal to the editor's text of the loaded value keeps the loaded value (no dirty form); dark theme `material-darker` while `body.dark`; a monospace textarea when the library does not load; demo `#dev/form/CodeField`) |
+| EditorJsField (sf/editorjs `editorjsfield`) | – | GO.neo (`form/field/EditorJsField.mjs` + core main-thread addon `main/addon/EditorJs.mjs`: Editor.js and its tools from sf/editorjs `views/extjs3/`; value the document `{time, blocks, version}`, null when empty; a document equal to the editor's first save of the loaded value keeps the loaded value (no dirty form), a per-mount token drops late events of an old mount (popout); image uploads as blobs through the field, URL images via `sf/editorjs/Editor/uploadFromUrl`; stored inline HTML cleaned before rendering; Word paste fixes; `setValueFromHtml(html)` converts HTML to blocks as a user change (dms .docx); without `go:sf:editorjs` or when the library does not load the document shows as read-only text and the value stays; pure helpers `form/field/editorJsDoc.mjs` (`editorJsToHtml()` for read-only cards, `editorJsSame()`, `toEditorJsDoc()`); demo `#dev/form/EditorJsField`) |
 | MarkdownField | – | GO.neo (`MarkdownField`: textarea + main-thread addon `MarkdownEditor`, toolbar, preview, image paste / drop / upload; `src/Markdown.mjs` renders with `marked` + `Format.sanitizeHtml()`; no EasyMDE/CodeMirror) |
 | ChipsField, AutocompleteChips, AutocompleteField | form/field/Chip (basic) | ChipsField: GO.neo (`GO.form.field.ChipsField`, async textInputToValue/chipRenderer); AutocompleteChips: GO.neo (`GO.form.field.AutocompleteChips`, entity ids, ▾ menu; tasks categories); AutocompleteField: GO.neo (`GO.form.field.AutocompleteField`, JMAP entity or `fetch(text)`, `valueProperty`, `valueToText`); AutocompleteChips `properties` = fetched properties; `clickable: true` (ChipsField / AutocompleteChips, ExtJS dms `DocumentChipsOverride` `clickable`): a chip click opens its entity through `resolveRoute()` (ModuleRegistry `routes`), the remove button still removes; `chipEntity(value)` → `{entity, id}`, AutocompleteChips gives it from `entity` |
 | ArrayField, ContainerField, MapField, ListField | – | ArrayField, ContainerField: GO.neo (`src/form/nestedFields.mjs`); ArrayField `sortable: true` (ExtJS `go.form.FormGroup` sortable): a row is dragged by its `ArrayField.dragHandle()`, the order is the value (dirty after a move), an ArrayField in a row sorts its own rows; MapField: GO.neo (`GO.form.field.MapField`, object keyed by id, `keyFieldName` / `valueFieldName`); ListField: GO.neo (`GO.form.field.ListField`, `renderValue` HTML, records of a `store`) |
@@ -63,6 +64,7 @@ Status: **neo** = neo.mjs 13.4 ships it (14 since 2026-11-24), usable as is (may
 | Kanban board (GOUI has none; ExtJS business/kanban) | GO.neo (`GO.board.Board`, see "GO.board.Board" below; first user: tasks board view) |
 | Resource scheduler / timeline (vis-timeline in amd/crew) | GO.neo (`GO.scheduler.Scheduler`, see "GO.scheduler.Scheduler" below; first user: crew planning) |
 | PDF / image preview (ExtJS amd/libs `PdfViewPanel`; GOUI has none) | GO.neo (`GO.pdf.PdfViewer`, see "GO.pdf.PdfViewer" below; demo `#dev/core/PdfViewer`; users: crew certificate verification, later dms and invoices) |
+| PDF page export: range, thumbnails, print, download, save, e-mail (ExtJS amd/libs `PdfPageExportDialog`; GOUI has none) | GO.neo (`GO.pdf.PdfPageExportDialog`, see "GO.pdf.PdfPageExportDialog" below; demo `#dev/core/PdfViewer`; users: dms document detail, later invoices) |
 | File preview by extension (ExtJS amd/dms `PdfViewPanel`, `FileViewPanel`, `ImageViewPanel`, `MarkdownViewPanel`, `MediaViewPanel`, `SheetViewPanel`, `DocViewPanel`; GOUI has none) | GO.neo (`GO.preview.FilePreview`, see "GO.preview.FilePreview" below; demo `#dev/core/FilePreview`; users: dms document detail, files `FileDetail`) |
 | auth/Login | GO.neo (`apps/go/view/LoginView.mjs`: forgot credentials, 2FA via `loginPanels`) |
 | Main area (GOUI/ExtJS card per module) | GO.neo `apps/go/view/MainView.mjs`: one card per module. Modules extend it through `mainViewExtension` (extra cards, top-bar items, routes, claimed module views; `docs/neo-small-modules.md`, "Main view extensions"). The module sf/workspaces (sf-mono, off by default) adds workspace tabs next to the module tabs, each a dock (`GO.workspaces.Workspace` over neo's dock; panels side by side, drag from the top bar, maximize, saved per user and screen profile; `docs/neo-workspace.md`) |
@@ -126,6 +128,14 @@ one card (`go-mobile-cards`). `showWestButton()` shows in medium and narrow; `hi
 activates the center there and hides the sidebar (`setWestHidden(true)`) only above 1200px, so
 closing the drawer doesn't leave the wide layout without its sidebar. Selecting a record
 (`activatePanel('east')`) closes the drawer too.
+
+A view whose east panel is empty until a record opens (a planning board, a list without a
+selected row) sets `eastHidden: true`, or calls `setEastHidden(true)` later: the east panel and the
+center splitter are hidden and the center flexes over the free width (`flex: 1 1 0%` on its
+`wrapperStyle`; the neo flex layout only sets `flex` on an item that already has a
+`wrapperStyle`, so an item config `flex` does nothing there). `activatePanel('east')` shows the
+east again and the center gets back its fixed or saved splitter width; hiding the east while it is
+the active phone card shows the center. Dev demo `#dev/layout`, "Module layout".
 
 ## CSS grid in a flex-filled panel (2026-11-25)
 
@@ -485,6 +495,37 @@ onFormWindow: win => win.entityName !== 'Voyage' ? null : {
   closes itself (calendar EventDialog) must honour `closeOnSave` and its own second-call guard before it turns
   `applyButton` on.
 
+## Module settings dialog with lookup lists (2026-11-28)
+
+The classic amd `SettingsDialog` + `SettingsGridTrait` (one tab per Status / Type / Category / Unit grid,
+each with its own small dialog) is three core classes in `src/systemsettings/`, moved from amd/crew:
+
+- `LookupSettingsDialog`: a `GO.view.Dialog` with a left tab bar (`go-settings-cards`, as System
+  settings) and only Close, because every lookup dialog saves right away. Config `lookups`: one
+  definition per tab; a `change` of one list reloads the others (they may show names from it).
+- `LookupListPanel` (an `EntityListPanel`): search box (filter `text`, combined with `jmapFilter`),
+  late answers of an older search dropped, edit / delete shown by the record's `permissionLevel`
+  (write / delete, so `properties` must hold it), `change {entity}` after a save or delete.
+- `LookupDialog` (a `FormWindow`): the definition's `fields()`, no custom fields, `share: true`
+  adds a Permissions tab (`SharePanel`, read-only below manage on an existing record).
+
+A definition is the `LookupListPanel` config plus `itemId` and `tab`:
+`entity`, `properties`, `columns`, `dialogTitle`, `fields: () => [...]`, `prepare: async list => rows`
+(looked up names), `defaults` (values of a new record), `share`, `jmapSort` (default by name). A tab
+that needs more gives `panel: <LookupListPanel subclass>` with its own config, and the subclass can
+return its own dialog from `createDialog(config)` (crew `RankListPanel` / `RankDialog`: drag and drop
+order, more fields).
+
+    const [{default: LookupSettingsDialog}, {lookups}] = await Promise.all([
+        import('../../../../../../../views/neo/src/systemsettings/LookupSettingsDialog.mjs'),
+        import('./lookups.mjs')
+    ]);
+    Neo.create(LookupSettingsDialog, {appName, windowId, title: t('Settings'), lookups: lookups()});
+
+- A long text column gets `cls: ['go-lookup-ellipsis']` so the row buttons stay in view.
+- The helpers `lookupFilter()`, `mayEditLookup()`, `mayDeleteLookup()` are exported by `LookupListPanel.mjs`.
+- Example: amd/crew `views/neo/view/lookups.mjs` (11 tabs). Tests: `tests/lookupSettings.test.mjs`.
+
 ## Entity actions in GO.grid.Grid (2026-11-27)
 
 Edit / delete / row menu of a JMAP entity list belong to the core grid, opt-in with
@@ -828,6 +869,29 @@ preview.on('load', ({numPages, title}) => …);                 // also 'loadErr
 - A PDF loads once the viewer is in the DOM; a viewer in a hidden card redraws when it is shown again (neo removes
   inactive cards from the DOM). Only the latest source counts: the addon answers an older load `{superseded: true}`,
   and a failed load clears the old pages, shows a message and fires `loadError`.
+
+## GO.pdf.PdfPageExportDialog (2026-11-28)
+
+`src/pdf/PdfPageExportDialog.mjs`, with `parsePageRange()` in `src/pdf/pdfPages.mjs` (`tests/pdfPages.test.mjs`) and
+`printUrl()` in `src/print.mjs` (addon `src/main/addon/Print.mjs`). Moved from amd/libs, whose classic dialog stays.
+
+```js
+import PdfPageExportDialog from '<relative>/views/neo/src/pdf/PdfPageExportDialog.mjs';
+
+Neo.create(PdfPageExportDialog, {appName, windowId, src: viewer.src, numPages,   // numPages from the viewer's 'load'
+    pageExportUrl: (range, inline) => …,   // URL of the selected pages as one PDF; inline for printing
+    saveHandler  : range => …,             // optional: "Save as", the primary action (dms: SavePagesDialog)
+    emailHandler : range => …})            // optional: "Send by email" (dms: preparePagesEmail + Mail.showComposer())
+```
+
+- The range is printer style ("1,3,5-7", the order entered, repeats allowed, at most 500 pages), checked like
+  amd/dms `util/PageRangeParser.php`; empty means all pages and goes to the host as "1-N". The server parses it again.
+- Thumbnails are a `GO.pdf.PdfViewer` with `pages` set to the selection, `pageScale` 1 at zoom 25 %, laid out as a
+  grid by its `thumbnails` config; they follow the field half a second after the last valid change. The dialog loads
+  the PDF again from `src`.
+- Print loads the inline URL into a hidden frame and prints it (`printUrl()`); a browser that refuses (Firefox) gets
+  the PDF in a new tab. The dialog stays open. Download, save and e-mail close it; Enter saves when there is a
+  `saveHandler`, else downloads.
 
 ## GO.preview.FilePreview (2026-11-28)
 

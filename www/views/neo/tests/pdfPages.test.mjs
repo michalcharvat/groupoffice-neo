@@ -2,7 +2,7 @@
 // src/pdf/pdfPages.mjs: which pages GO.pdf.PdfViewer draws, its title, the preview kind of a source and the zoom steps
 import assert from 'node:assert/strict';
 import {
-    nextZoom, normalizePages, pagesTitle, pagesToDraw, previewKind, ZOOM_STEPS
+    MAX_RANGE_PAGES, nextZoom, normalizePages, pagesTitle, pagesToDraw, parsePageRange, previewKind, ZOOM_STEPS
 } from '../src/pdf/pdfPages.mjs';
 
 const t = key => key;
@@ -53,5 +53,19 @@ describe('pdfPages (PDF viewer)', () => {
         assert.equal(nextZoom(ZOOM_STEPS[0], -1), ZOOM_STEPS[0]);
         assert.equal(nextZoom(1.1, 1), 1.25);
         assert.equal(nextZoom(1.1, -1), 1);
+    });
+
+    it('parsePageRange: printer style ranges in the order entered, like PageRangeParser.php', () => {
+        assert.deepEqual(parsePageRange('3', 10), [3]);
+        assert.deepEqual(parsePageRange(' 5-7 , 1,3 ', 10), [5, 6, 7, 1, 3]);
+        assert.deepEqual(parsePageRange('2 - 3,2', 10), [2, 3, 2]);
+        assert.deepEqual(parsePageRange('1-10', 10).length, 10);
+
+        for (const invalid of ['', ' ', '\u00a01', '1\u00a0-\u00a03', '0', '11', '3-2', '1-11', '1,', 'a', '1;2', '-2', '1.5', '1-2-3']) {
+            assert.equal(parsePageRange(invalid, 10), null, invalid);
+        }
+
+        assert.equal(parsePageRange('1-' + MAX_RANGE_PAGES, 1000).length, MAX_RANGE_PAGES);
+        assert.equal(parsePageRange('1-' + MAX_RANGE_PAGES + ',1', 1000), null);
     });
 });
