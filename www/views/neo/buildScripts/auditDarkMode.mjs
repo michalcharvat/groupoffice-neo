@@ -98,9 +98,11 @@ export function classify(el) {
     }
 
     if (el.hasText && !el.disabled) {
-        const fg = parseColor(el.color), under = parseColor(el.effectiveBg);
+        const under = parseColor(el.effectiveBg), raw = parseColor(el.color),
+              // translucent text renders blended with what is under it
+              fg    = raw && under && [0, 1, 2].map(i => raw[i] * raw[3] + under[i] * (1 - raw[3]));
 
-        if (fg && under && fg[3] > 0.1 && luminance(under) < 0.2 && luminance(fg) < 0.2 && contrast(fg, under) < 3) {
+        if (fg && raw[3] > 0.1 && luminance(under) < 0.2 && luminance(fg) < 0.2 && contrast(fg, under) < 3) {
             return 'dark-text'
         }
     }

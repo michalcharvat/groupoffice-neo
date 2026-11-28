@@ -18,6 +18,8 @@ describe('auditDarkMode', () => {
         assert.equal(classify({bg: 'rgba(255, 255, 255, 0.1)'}), null);
         assert.equal(classify({bg: 'rgba(0, 0, 0, 0)', hasText: true, color: 'rgb(0, 0, 0)', effectiveBg: dark}), 'dark-text');
         assert.equal(classify({bg: 'rgba(0, 0, 0, 0)', hasText: true, color: 'rgba(255, 255, 255, 0.89)', effectiveBg: dark}), null);
+        // translucent white text blends into the dark background
+        assert.equal(classify({bg: 'rgba(0, 0, 0, 0)', hasText: true, color: 'rgba(255, 255, 255, 0.2)', effectiveBg: dark}), 'dark-text');
         assert.equal(classify({bg: 'rgba(0, 0, 0, 0)', hasText: true, color: 'rgb(0, 0, 0)', effectiveBg: dark, disabled: true}), null)
     });
 

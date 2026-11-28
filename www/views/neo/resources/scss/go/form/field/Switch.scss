@@ -1,7 +1,11 @@
-// neo's light-only literals: GO tokens (body.dark)
+// neo's light-only literals: GO tokens (body.dark). The off track mixes text into the surface: about
+// neo's #bdbdbd in light, a mid grey in dark, so the white knob and the off glyph stay visible in both.
 :where(.neo-theme-go) {
-    --switchfield-color-icon-off   : var(--fg-secondary-text);
-    --switchfield-color-on         : var(--fg-main);
-    --switchfield-color-on-disabled: var(--fg-main);
-    --switchfield-color-on-hovered : var(--fg-main);
+    --switchfield-color-icon-off    : var(--fg-text);
+    --switchfield-color-off         : color-mix(in srgb, var(--fg-text) 30%, var(--bg-lowest));
+    --switchfield-color-off-disabled: color-mix(in srgb, var(--fg-text) 30%, var(--bg-lowest));
+    --switchfield-color-off-hovered : color-mix(in srgb, var(--fg-text) 45%, var(--bg-lowest));
+    --switchfield-color-on          : var(--fg-main);
+    --switchfield-color-on-disabled : var(--fg-main);
+    --switchfield-color-on-hovered  : var(--fg-main);
 }
