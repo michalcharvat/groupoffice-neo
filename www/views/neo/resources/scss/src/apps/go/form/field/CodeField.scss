@@ -1,0 +1,25 @@
+// GO.form.field.CodeField: CodeMirror (GO.main.addon.CodeMirror) or a monospace textarea in the field box
+.neo-theme-go .go-codefield {
+    .go-field-box {
+        align-items: stretch;
+        overflow   : hidden;
+        padding    : 0;
+    }
+
+    .go-codefield-editor {
+        flex     : 1 1 auto;
+        min-width: 0;
+
+        .CodeMirror {
+            font-family: monospace;
+            font-size  : 1.4rem;
+        }
+    }
+
+    .go-codefield-textarea {
+        font       : 400 1.4rem/2rem monospace;
+        padding    : .8rem 1.2rem;
+        resize     : vertical;
+        white-space: pre;
+    }
+}

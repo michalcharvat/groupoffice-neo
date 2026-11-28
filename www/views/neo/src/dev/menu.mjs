@@ -28,6 +28,7 @@ export default [
     {id: 'form/CheckboxGroup',   text: 'CheckboxGroup',      level: 2, status: 'done', demo: 'CheckboxGroup', neo: 'GO.form.field.CheckboxGroup', goui: 'goui/script/component/form/CheckboxGroup.ts'},
     {id: 'form/ChecksAndRadios', text: 'Checks and Radios',  level: 2, status: 'done', demo: 'ChecksAndRadios',  neo: 'GO.component.CheckBox, neo Radio', goui: 'form/ChecksAndRadios.ts'},
     {id: 'form/ChipsField',      text: 'ChipsField',         level: 2, status: 'done', demo: 'Chips', neo: 'GO.form.field.ChipsField', goui: 'form/ChipsFieldPage.ts'},
+    {id: 'form/CodeField',       text: 'CodeField',          level: 2, status: 'done', demo: 'CodeField', neo: 'GO.form.field.CodeField, GO.main.addon.CodeMirror', goui: 'classic: sf/codemirror CodeMirrorEditor.js'},
     {id: 'form/ContainerField',  text: 'ContainerField',     level: 2, status: 'done', demo: 'ArrayField', neo: 'GO.form.field.ContainerField', goui: 'form/ContainerFieldPage.ts'},
     {id: 'form/DateTime',        text: 'Date and time',      level: 2, status: 'done', demo: 'DateTime', neo: 'GO.form.field.DateField, DateTimeField, DateRangeField, DurationField', goui: 'form/DateTimePage.ts'},
     {id: 'form/DisplayField',    text: 'DisplayField',       level: 2, status: 'done', demo: 'DisplayField',  neo: 'neo form/field/Display',  goui: 'form/DisplayFieldPage.ts'},
