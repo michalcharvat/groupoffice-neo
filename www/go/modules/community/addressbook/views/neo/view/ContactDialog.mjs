@@ -45,6 +45,9 @@ class ContactDialog extends FormWindow {
      */
     isOrganization = false
 
+    /**
+     * @summary Wires the address book, ICD and organization handling; disables saving of a read-only contact.
+     */
     onConstructed() {
         const result = super.onConstructed(),
               me     = this;
@@ -92,7 +95,7 @@ class ContactDialog extends FormWindow {
             me.isOrganization = !!data.isOrganization;
             me.setOrganization(me.isOrganization);
 
-            me.getReference('saveButton').disabled = !!me.form.currentId && (data.permissionLevel ?? LEVEL_WRITE) < LEVEL_WRITE
+            me.setSaveDisabled(!!me.form.currentId && (data.permissionLevel ?? LEVEL_WRITE) < LEVEL_WRITE)
         });
 
         return result
