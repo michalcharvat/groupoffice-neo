@@ -30,7 +30,7 @@ WWW="$( cd "${1:-$DIR/www}" && pwd )"
 cd "$WWW"
 
 # The neo webclient (default client) has its own lock file and node_modules: Neo.php serves
-# views/neo/node_modules/neo.mjs and @fortawesome by path, so it can't be hoisted into the
+# views/neo/node_modules/neo.mjs by path, so it can't be hoisted into the
 # www workspace. The theme build needs the dev dependencies (sass, postcss), not the GOUI
 # submodules; build/build.sh turns the result into its release form (views/neo/buildScripts/release.mjs).
 echo "Building neo webclient"

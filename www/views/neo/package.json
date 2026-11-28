@@ -5,7 +5,6 @@
   "description": "neo.mjs webclient for Group Office (spike)",
   "type": "module",
   "dependencies": {
-    "@fortawesome/fontawesome-free": "^7.3.1",
     "codemirror": "5.65.21",
     "marked": "^18.2.1",
     "neo.mjs": "14.0.0",

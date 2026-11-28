@@ -311,6 +311,10 @@ Gotchas: a `flex` change of an hbox child after construction is not applied (the
 `style.flex` (tasks board widens the center that way). A neo Model drops undeclared fields, so a list store that
 feeds columns needs the field (`TaskList.groups`).
 
+Colours: neo's board sheets name no colour, only `--neo-board-*` tokens. theme-go is theme-neo-light re-scoped, so
+without an overlay the board keeps neo-light's fixed light palette in GO dark mode. `resources/scss/go/board/Container.scss`
+maps the tokens to GO's `--bg-*` / `--fg-*` / `--hue-*` (also the drag proxy, which renders outside the board).
+
 Not used: neo's `CardEditor` (cards are records of another entity; `GO.board.Card` turns the title edit into
 `cardOpen`), column reordering (`columnsResortable: false`), swimlanes (`laneField`: later).
 
@@ -348,6 +352,13 @@ Events:
 - `rangeChange {start, end}`: the axis grew (`growRange`); wall-time Dates. Load the events of the new window here.
 
 Interaction permissions are the caller's: pass `readOnly: true` when the user may not change the events.
+
+Theme: neo's scheduler and timeline sheets carry fixed light colours (`--neo-scheduler-*`, `--neo-timeline-*`), so
+`resources/scss/go/scheduler/Container.scss` and `go/timeline/{Column,TimeAxisHeader,EventEditor}.scss` point them at
+GO tokens and dark mode (`body.dark`) follows: header surface `--bg-low` like a GO grid header, gridlines and
+non-working borders `--fg-divider`, non-working shading `--fg-text` at 5 %, now line `--hue-red`, default bar
+`--c-primary` at 22 % over `--bg-lowest` with `--fg-text`. A caller that sets its own `--neo-timeline-bar-background`
+per record also sets `--neo-timeline-bar-color` (crew `style.css`: fixed pastels with black or white text).
 
 Grid cell values are escaped. neo writes a cell renderer's string into the cell as HTML, and its default renderer
 (a column without `renderer`) returns the raw value; `Neo.grid.column.Tree` does the same with its label. So in
@@ -771,6 +782,14 @@ class NoteDetail extends Panel {
   (`setLines([[label, value|{html}]])`, null hides it) or trusted HTML (`setHtml()`), filled by its
   detail; moved from amd/crew.
 - Tests: `tests/detailPanel.test.mjs`.
+- Classic 12-column grid: detail markup keeps the classic `<p class="s6 pad"><label>Term</label>value</p>`
+  (`s1`–`s12` = 8.33 %–100 % wide, floated, padding `0 dp(16) dp(8)`; `pad` = dp(16) left/right;
+  a cell's own `> label` = classic caption: secondary colour, sp(15), block; an `hr` after a cell is
+  a divider that ends the rows; the element holding the cells gets `display: flow-root`, so a
+  `go-card` inside one html component keeps its height). Shared sheet `go/shared/_detail-grid.scss`, scoped to `.go-detail-scroller` and
+  `.go-detail-card`, so module details with their own scroller (amd/crew) get it too. Floats as in
+  classic (rows of mixed heights line up the same); narrow screens keep the % widths, as classic
+  does. Dev demo `#dev/detailgrid` (`src/dev/demo/DetailGrid.mjs`).
 - On it: community notes `NoteDetail` (NotesMain deep links use `load(id)`), tasks `TaskDetail`.
   Not yet, each a follow-up: addressbook `ContactDetail` (star and own ⋮, address book name
   loaded before rendering, action date field), calendar `EventDetail` (an event occurrence, not a
@@ -779,6 +798,26 @@ class NoteDetail extends Panel {
   no links), files `FileDetail` (legacy File/Folder through the files controller, not JMAP),
   amd/crew `MemberVoyageDetail` (crew card: `LinesCard` → `GO.detail.LinesCard`, `load()`,
   `getDownloadUrl()`, `deleteRecord()`).
+
+## Route links in component html (2026-11-28)
+
+- A bare `<a href="#crew/amdcrewmember/5">` in a component's html resolves against neo's
+  `<base href="/views/neo/apps/go/">` and loads that folder (403). An App worker DOM listener can't
+  stop it (preventDefault comes too late), so the main thread does: `GO.main.addon.History`
+  listens on the document of every window (`listenRouteLinks()` in `src/history.mjs`, called by
+  `Viewport` and `PopupView`).
+- Write links with `src/link/routeLink.mjs`: `routeLink(route, html)` (html already escaped) and
+  `entityLink(entity, id, text)` (route by `resolveRoute()`, plain escaped text without one) give
+  `<a class="go-route-link" role="link" tabindex="0" data-route="…">`: a click or Enter sets the
+  window's hash. No component listener needed; `.go-route-link` has `cursor: pointer` in the theme.
+- An `a[href^="#"]` is caught too (preventDefault, then the hash; a bare `#` only prevented), so
+  older hash links such as the contact custom field (`customfields/types.mjs`) work as they are.
+  `target="_blank"` opens a new tab at the page's URL. Modifier and middle clicks and links in an
+  editor (contenteditable) are left alone. In a popup window (PopupView) a link sets the popup's hash,
+  which no view handles yet (as the amd copies' `Neo.Main.setRoute`). Tests `tests/routeLink.test.mjs`.
+- amd modules (crew `view/routeLink.mjs`, ports `PortDetail`, pms `ComponentDetail`, portcall
+  `PortCallDialog`) still carry their own copies; they can switch to the core helpers and drop
+  their listeners and `.go-route-link` CSS (same class name).
 
 ## Left to build (2026-11-19)
 

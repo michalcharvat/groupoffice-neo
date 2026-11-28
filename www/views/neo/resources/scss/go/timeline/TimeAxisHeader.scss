@@ -1,10 +1,12 @@
-// neo's timeline colours are light-only literals: GO tokens give them a dark value (body.dark)
+// Neo.timeline.TimeAxisHeader on GO tokens: the surface of a GO grid header (grid/header/Button.scss)
 :where(.neo-theme-go) {
     --neo-timeline-header-background : var(--bg-low);
     --neo-timeline-header-color      : var(--fg-text);
     --neo-timeline-header-muted-color: var(--fg-secondary-text);
     --neo-timeline-border-color      : var(--fg-line);
     --neo-timeline-tick-border-color : var(--fg-divider);
-    --neo-timeline-non-working-bg    : var(--bg-hover);
+    // also declared by timeline/Column.scss: each sheet loads with its own class
+    --neo-timeline-non-working-bg    : color-mix(in srgb, var(--fg-text) 5%, transparent);
     --neo-timeline-non-working-border: var(--fg-divider);
+    --neo-timeline-now-color         : color-mix(in srgb, var(--hue-red) 70%, var(--fg-text)); // the today label needs text contrast
 }

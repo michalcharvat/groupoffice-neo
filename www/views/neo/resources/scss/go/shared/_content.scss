@@ -67,3 +67,8 @@
 :where(.neo-theme-go a:not(.neo-button)) {
     color: var(--fg-main);
 }
+
+// src/link/routeLink.mjs: no href (see there), so no pointer of its own
+.go-route-link {
+    cursor: pointer;
+}

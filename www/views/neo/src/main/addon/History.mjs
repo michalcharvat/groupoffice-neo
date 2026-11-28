@@ -13,6 +13,10 @@ import Base from '../../../node_modules/neo.mjs/src/main/addon/Base.mjs';
  * - replaceLocation(): leave the page without a history entry (OAuth authorize after login)
  * - removeQuery(): drop parameters of the page's query, e.g. a mailto: link's ?r=&f= once its
  *   composer is open, so a reload doesn't run it again
+ * - route links: a click (or Enter) on `a.go-route-link[data-route]` (src/link/routeLink.mjs) or on
+ *   an `a[href^="#"]` sets the hash of this window. A bare "#..." href resolves against
+ *   <base href> (go/core/webclient/Neo.php) and would load views/neo/apps/go/ (403); only the main
+ *   thread can stop that, an App worker DOM listener comes too late for preventDefault().
  *
  * Loaded per window: await Neo.Main.importAddon({name: 'WS/History', windowId})
  */
@@ -31,6 +35,15 @@ class History extends Base {
      * @member {Map} windows
      */
     windows = new Map()
+
+    construct(config) {
+        super.construct(config);
+
+        const open = this.onRouteLink.bind(this);
+
+        document.addEventListener('click', open);
+        document.addEventListener('keydown', open)
+    }
 
     /**
      * Only this page holds the handle: the App worker can't tell a closed window from a reloaded one
@@ -97,6 +110,41 @@ class History extends Base {
         }
 
         return true
+    }
+
+    /**
+     * Opens a route link of this window, see the class comment
+     * @param {MouseEvent|KeyboardEvent} event
+     */
+    onRouteLink(event) {
+        // shortcut: ctrl/shift/middle click doesn't open a new tab, add it when someone needs it
+        if (event.defaultPrevented || event.button || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
+            return
+        }
+
+        const link = event.target.closest?.('a.go-route-link[data-route], a[href^="#"]');
+
+        // in an editor the browser follows no link either; Enter on an href fires a click of its own
+        if (!link || link.isContentEditable || (event.type === 'keydown' && (event.key !== 'Enter' || link.hasAttribute('href')))) {
+            return
+        }
+
+        const route = link.dataset.route ?? link.getAttribute('href').substring(1);
+
+        link.hasAttribute('href') && event.preventDefault();
+
+        if (!route) {
+            return
+        }
+
+        // e.g. sanitized user html: a new tab at this page's URL, not at <base href>
+        if (link.target === '_blank') {
+            this.openTab({url: location.pathname + location.search + '#' + route});
+            return
+        }
+
+        // as Neo.Main.setRoute(): location.hash is relative to the page, not to <base href>
+        location.hash = route
     }
 
     /**

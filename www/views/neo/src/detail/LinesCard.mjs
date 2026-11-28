@@ -10,6 +10,7 @@ import Card            from './Card.mjs';
  *     card.setLines([[t('Vessel'), 'Baltic Star'], [t('Member'), {html: '<a …>…</a>'}]])
  *     card.setLines(null)   // hides it
  *     card.setHtml('<table>…</table>')   // trusted HTML instead (escape the data)
+ *     card.setHtml(cellsHtml([['s6 pad', t('Vessel'), name]]))   // classic grid cells (detail/cells.mjs)
  * @class GO.detail.LinesCard
  * @extends GO.detail.Card
  */
