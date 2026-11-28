@@ -5,6 +5,7 @@ import {escapeHtml} from '../Format.mjs';
 import {fmt, t}  from '../Translate.mjs';
 import MenuList  from '../menu/List.mjs';
 import SelectionModel from './SelectionModel.mjs';
+import {getState, setState} from '../State.mjs';
 
 // record id prefix of the "Show more..." rows; shortcut: a root node with the id "__more__" (or
 // "__more__" + another node's id) would clash with a paging row, prefix such ids if that ever happens
@@ -13,6 +14,10 @@ const MORE = '__more__';
 const GHOST_NAMES = 5;
 /** ms between a change while searching and the search running again */
 const SEARCH_DELAY = 300;
+/** expanded ids kept in the State of a `stateId` tree, the most recent ones */
+const MAX_SAVED_EXPANDED = 200;
+/** ms between a change and the State write of a `stateId` tree */
+const SAVE_DELAY = 500;
 
 /**
  * @summary GOUI Tree (goui/script/component/tree): nodes load on demand from a nodeProvider,
@@ -85,6 +90,23 @@ const SEARCH_DELAY = 300;
  *         const {list} = await client.queryGet('Folder', {filter: {treeSearch: query}});
  *         return list.map(f => ({id: f.id, parentId: f.parentId, text: f.name, hit: f.isHit}))
  *     }}
+ *
+ * Saved shape (`stateId`, classic tree state): the expanded node ids (the latest 200) and the
+ * selected node id go to State (localStorage, written 500 ms after a change). After every load
+ * of the normal tree (reload(), not a search) the saved ids are expanded level by level, then
+ * the saved node is revealed (revealNode()) and selected, unless the user selected one
+ * meanwhile. That selection fires `selectionChange` with `ignoreDetail: true` (classic
+ * ignoreDetail): the module filters by it but does not open its detail. Saved ids of nodes
+ * not loaded now (another vessel, a collapsed parent) are kept.
+ *
+ * revealNode(id) opens the path to a node that may not be loaded yet: `parentProvider(id)`
+ * returns the parent id of a node (null at the top, undefined when unknown or not readable),
+ * sync or a Promise, asked for each ancestor that isn't loaded.
+ *
+ *     {module: Tree, stateId: 'pms-tree', parentProvider: async id => {
+ *         const [component] = await client.get('AmdPmsComponent', [id], ['parentId']);
+ *         return component ? component.parentId : undefined
+ *     }}
  * @class GO.tree.Tree
  * @extends Neo.list.Base
  */
@@ -146,6 +168,17 @@ class Tree extends List {
          * @member {Function|null} searchProvider=null
          */
         searchProvider: null,
+        /**
+         * State key of the expanded and selected nodes (see the class docs), null: not saved
+         * @member {String|null} stateId=null
+         */
+        stateId: null,
+        /**
+         * (id) => parent id | null (top level) | undefined (unknown), sync or a Promise; lets
+         * revealNode() find nodes that aren't loaded
+         * @member {Function|null} parentProvider=null
+         */
+        parentProvider: null,
         selectionModel: {module: SelectionModel},
         store: {
             module     : Store,
@@ -190,6 +223,14 @@ class Tree extends List {
     savedExpanded = null
     /** scheduleSearch() timer */
     searchTimer = null
+    /** stateId: {expandedIds, selectedId} as saved, null until read */
+    savedState = null
+    /** stateId: the pending State write */
+    saveTimer = null
+    /** the saved node is being selected: selectionChange gets ignoreDetail */
+    restoringSelection = false
+    /** restoreState() calls running (overlapping reloads): saveState() waits for their end */
+    restoringState = 0
 
     /**
      * @summary Loads the root nodes (autoLoad) and sets up the row menu and drag and drop.
@@ -231,7 +272,16 @@ class Tree extends List {
      * @param {...*} args
      */
     destroy(...args) {
-        clearTimeout(this.searchTimer);
+        let me = this;
+
+        clearTimeout(me.searchTimer);
+
+        // the last change must not be lost with the tree
+        if (me.saveTimer) {
+            clearTimeout(me.saveTimer);
+            me.writeState(me.savedState)
+        }
+
         super.destroy(...args)
     }
 
@@ -246,7 +296,8 @@ class Tree extends List {
         let me = this;
 
         me.dragNodes && me.multiSelect && me.updateDragGhost();
-        me.fire('selectionChange', {nodes: me.getSelectedNodes()})
+        me.saveState();
+        me.fire('selectionChange', {nodes: me.getSelectedNodes(), ignoreDetail: me.restoringSelection})
     }
 
     /**
@@ -452,7 +503,223 @@ class Tree extends List {
     reload() {
         let me = this;
 
-        return me.loadPromise = me.searchQuery === null ? me.loadRoots() : me.loadSearch()
+        if (me.searchQuery !== null) {
+            return me.loadPromise = me.loadSearch()
+        }
+
+        me.loadPromise = me.loadRoots();
+
+        // outside loadPromise: restoreState() opens paths, and openPath() waits for loadPromise
+        const generation = me.generation;
+
+        return me.stateId ? me.loadPromise.then(() => me.restoreState(generation)) : me.loadPromise
+    }
+
+    /**
+     * @summary The saved shape, cleaned (ids as strings, at most 200).
+     * @param {Object} state as read from State
+     * @returns {{expandedIds: String[], selectedId: String|null}}
+     */
+    static cleanState(state) {
+        const isId = id => id !== null && id !== undefined && id !== '',
+              ids  = Array.isArray(state?.expandedIds) ? state.expandedIds : [];
+
+        return {
+            expandedIds: [...new Set(ids.filter(isId).map(String))].slice(-MAX_SAVED_EXPANDED),
+            selectedId : isId(state?.selectedId) ? String(state.selectedId) : null
+        }
+    }
+
+    /**
+     * @summary Reads the State of `stateId` ({} when nothing is stored).
+     * @returns {Promise<Object>}
+     * @protected
+     */
+    readState() {
+        return getState(this.stateId, this.windowId)
+    }
+
+    /**
+     * @summary Writes the State of `stateId`.
+     * @param {Object} state
+     * @returns {Promise<void>}
+     * @protected
+     */
+    writeState(state) {
+        this.saveTimer = null;
+        return setState(this.stateId, state, this.windowId)
+    }
+
+    /**
+     * @summary Replays the saved shape after a load of the normal tree: expands the saved ids
+     * level by level, then reveals and selects the saved node (selectionChange with
+     * ignoreDetail) unless a node is selected already. Stops when a newer load or a search
+     * started.
+     * @param {Number} generation the load it belongs to
+     * @returns {Promise<void>}
+     * @protected
+     */
+    async restoreState(generation) {
+        let me    = this,
+            stale = () => me.isDestroyed || generation !== me.generation || me.searchQuery !== null;
+
+        if (stale()) {
+            return
+        }
+
+        if (!me.savedState) {
+            const state = await me.readState();
+
+            if (me.isDestroyed) {
+                return
+            }
+
+            me.savedState ??= Tree.cleanState(state)
+        }
+
+        me.restoringState++;
+
+        try {
+            await me.replayState(stale)
+        } finally {
+            if (!me.isDestroyed) {
+                me.restoringState--;
+                // what changed meanwhile (the user's expands and clicks) is saved now
+                me.saveState()
+            }
+        }
+    }
+
+    /**
+     * @summary restoreState() without the guard: expands the saved ids, then reveals and
+     * selects the saved node.
+     * @param {Function} stale () => Boolean: a newer load, a search or destroy took over
+     * @returns {Promise<void>}
+     * @protected
+     */
+    async replayState(stale) {
+        let me = this;
+
+        // an expand loads the next level; a saved id nothing loads stops the loop
+        for (let level = 0, progress = true; progress && level < 20 && !stale(); level++) {
+            const ids = me.savedState.expandedIds.filter(id => me.getNode(id) && !me.expandedIds.has(id));
+
+            progress = ids.length > 0;
+            await Promise.all(ids.map(id => me.expand(id).catch(() => {})))
+        }
+
+        if (stale() || me.savedState.selectedId === null || me.getSelectedNodes().length) {
+            return
+        }
+
+        const node = await me.revealNode(me.savedState.selectedId, {select: false});
+
+        if (!node || stale() || me.getSelectedNodes().length) {
+            return
+        }
+
+        me.restoringSelection = true;
+
+        try {
+            me.selectNode(node.id)
+        } finally {
+            me.restoringSelection = false
+        }
+    }
+
+    /**
+     * @summary Takes the expanded and selected nodes into the saved shape and writes it after
+     * 500 ms; nothing without `stateId` or before the saved shape was read. While a search is
+     * shown only the selection is taken (its expanded nodes are the search's). A cleared
+     * selection keeps the saved id (a reload clears it too).
+     */
+    saveState() {
+        let me    = this,
+            saved = me.savedState;
+
+        if (!me.stateId || !saved || me.restoringState) {
+            return
+        }
+
+        if (me.searchQuery === null) {
+            // saved ids of nodes not loaded now stay, the loaded ones follow the tree
+            const kept = saved.expandedIds.filter(id => !me.getNode(id) && !me.expandedIds.has(id));
+
+            saved.expandedIds = [...kept, ...me.expandedIds].slice(-MAX_SAVED_EXPANDED)
+        }
+
+        const selected = me.getSelectedNodes().pop();
+
+        selected && (saved.selectedId = selected.id);
+
+        clearTimeout(me.saveTimer);
+        me.saveTimer = setTimeout(() => me.isDestroyed || me.writeState(saved), SAVE_DELAY)
+    }
+
+    /**
+     * @summary Expands down to a node and optionally selects it, also when it isn't loaded yet:
+     * the ancestors that aren't loaded come from `parentProvider` (waits for a running reload()).
+     * Gives up when a reload() or search() replaced the nodes meanwhile.
+     * @param {String|Number} id
+     * @param {Object} [options]
+     * @param {Boolean} [options.select=true]
+     * @returns {Promise<Object|null>} the node, null when it isn't in this tree
+     */
+    async revealNode(id, {select=true}={}) {
+        let me   = this,
+            path = [];
+
+        await me.whenLoaded();
+
+        const generation = me.generation;
+
+        // broken data (a cycle, an endless chain) must not loop
+        for (let current = String(id); !path.includes(current) && path.length < 100;) {
+            const node = me.getNode(current);
+
+            if (node) {
+                return me.openPath([...me.pathOf(node), ...path], {select})
+            }
+
+            path.unshift(current);
+
+            if (!me.parentProvider) {
+                return null
+            }
+
+            let parent;
+
+            try {
+                parent = await me.parentProvider(current)
+            } catch (e) {
+                return null
+            }
+
+            if (me.isDestroyed || parent === undefined || generation !== me.generation) {
+                return null
+            }
+
+            if (parent === null || parent === '') {
+                return me.openPath(path, {select})
+            }
+
+            current = String(parent)
+        }
+
+        return null
+    }
+
+    /**
+     * @summary Waits until no reload() is running (a failed one counts as done).
+     * @returns {Promise<void>}
+     */
+    async whenLoaded() {
+        let loading;
+
+        do {
+            loading = this.loadPromise;
+            await loading?.catch(() => {})
+        } while (loading !== this.loadPromise)
     }
 
     /**
@@ -797,14 +1064,10 @@ class Tree extends List {
      */
     async openPath(ids, {select=true}={}) {
         let me   = this,
-            node = null,
-            loading;
+            node = null;
 
         // a failed reload leaves the nodes it had: look in those
-        do {
-            loading = me.loadPromise;
-            await loading?.catch(() => {})
-        } while (loading !== me.loadPromise);
+        await me.whenLoaded();
 
         for (let i = 0; i < ids.length; i++) {
             const id     = String(ids[i]),
@@ -1009,6 +1272,7 @@ class Tree extends List {
     }
 
     /**
+     * @summary Expands a node, loading its children first when they aren't known.
      * @param {String|Number} id
      * @returns {Promise<void>}
      */
@@ -1071,10 +1335,12 @@ class Tree extends List {
 
         me.expandedIds.add(node.id);
         me.refresh();
+        me.saveState();
         me.fire('expand', {node})
     }
 
     /**
+     * @summary Collapses a node.
      * @param {String|Number} id
      */
     collapse(id) {
@@ -1083,6 +1349,7 @@ class Tree extends List {
 
         if (node && me.expandedIds.delete(node.id)) {
             me.refresh();
+            me.saveState();
             me.fire('collapse', {node})
         }
     }

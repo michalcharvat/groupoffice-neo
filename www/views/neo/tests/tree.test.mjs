@@ -362,4 +362,128 @@ describe('GO.tree.Tree', () => {
             assert.deepEqual(tree.getSelectedNodes().map(node => node.id), ['q']);
         });
     });
+
+    describe('stateId', () => {
+        // r > p > q (lazy), r > s; parents for revealNode()
+        const parents  = {r: null, p: 'r', q: 'p', s: 'r', x: 'gone'},
+              provider = async node => {
+                  await new Promise(resolve => setTimeout(resolve, 2));
+                  if (!node) return [{id: 'r', text: 'R'}];
+                  if (node.id === 'r') return [{id: 'p', text: 'P'}, {id: 's', text: 'S', children: []}];
+                  if (node.id === 'p') return [{id: 'q', text: 'Q', children: []}];
+                  return []
+              },
+              stateTree = (stored, config = {}) => {
+                  const t = create(provider, {
+                      stateId       : 'test-tree',
+                      selectionModel: {module: TreeSelectionModel},
+                      parentProvider: id => parents[id],
+                      ...config
+                  });
+
+                  t.written   = [];
+                  t.readState = async () => stored;
+                  t.writeState = state => {t.saveTimer = null; t.written.push(structuredClone(state))};
+                  return t
+              };
+
+        it('cleanState() keeps the latest 200 ids as strings and drops empty ones', () => {
+            const ids = Array.from({length: 250}, (_, i) => i);
+
+            assert.deepEqual(Tree.cleanState({expandedIds: [1, '', null, '2', 1], selectedId: 5}), {expandedIds: ['1', '2'], selectedId: '5'});
+            assert.equal(Tree.cleanState({expandedIds: ids}).expandedIds.length, 200);
+            assert.equal(Tree.cleanState({expandedIds: ids}).expandedIds[0], '50');
+            assert.deepEqual(Tree.cleanState(null), {expandedIds: [], selectedId: null});
+        });
+
+        it('after a load expands the saved ids level by level and selects the saved node with ignoreDetail', async () => {
+            tree = stateTree({expandedIds: ['r', 'p'], selectedId: 'q'});
+
+            const changes = [];
+            tree.on('selectionChange', ({nodes, ignoreDetail}) => changes.push([nodes.map(n => n.id), ignoreDetail]));
+
+            await tree.reload();
+
+            assert.deepEqual(ids(tree), ['r', 'p', 'q', 's']);
+            assert.deepEqual(changes.at(-1), [['q'], true]);
+
+            // a click afterwards is a normal selection
+            tree.selectionModel.onListClick({currentTarget: tree.id + '__s'});
+            assert.deepEqual(changes.at(-1), [['s'], false]);
+        });
+
+        it('reveals a saved node whose parents are not expanded through parentProvider', async () => {
+            tree = stateTree({expandedIds: [], selectedId: 'q'});
+            await tree.reload();
+
+            assert.deepEqual(ids(tree), ['r', 'p', 'q', 's']);
+            assert.deepEqual(tree.getSelectedNodes().map(n => n.id), ['q']);
+        });
+
+        it('does not select the saved node when it is not in the tree or the user selected one meanwhile', async () => {
+            tree = stateTree({expandedIds: [], selectedId: 'x'});
+            await tree.reload();
+            assert.deepEqual(tree.getSelectedNodes(), []);
+            assert.equal(await tree.revealNode('x'), null);
+            tree.destroy();
+
+            tree = stateTree({expandedIds: ['r'], selectedId: 'q'});
+            tree.on('load', () => tree.selectNode('r'));
+            await tree.reload();
+            assert.deepEqual(tree.getSelectedNodes().map(n => n.id), ['r']);
+        });
+
+        it('saves expanded and selected ids debounced, keeping saved ids of nodes not loaded', async () => {
+            tree = stateTree({expandedIds: ['other-vessel', 'r'], selectedId: null});
+            await tree.reload();
+            await new Promise(resolve => setTimeout(resolve, 600));
+            tree.written.length = 0;
+
+            await tree.expand('p');
+            tree.collapse('r');
+            tree.selectionModel.onListClick({currentTarget: tree.id + '__r'});
+            assert.equal(tree.written.length, 0);
+
+            await new Promise(resolve => setTimeout(resolve, 600));
+            assert.deepEqual(tree.written, [{expandedIds: ['other-vessel', 'p'], selectedId: 'r'}]);
+        });
+
+        it('keeps a saved child expansion while its parent is restored, and a click before the read is saved', async () => {
+            let release;
+            tree = stateTree({expandedIds: ['r', 'p'], selectedId: null});
+            const read = tree.readState;
+            tree.readState = () => new Promise(resolve => release = () => resolve(read()));
+
+            const loading = tree.reload();
+            await new Promise(resolve => setTimeout(resolve, 10));
+            tree.selectNode('r');
+            release();
+            await loading;
+            await new Promise(resolve => setTimeout(resolve, 600));
+
+            assert.deepEqual(tree.written.at(-1), {expandedIds: ['r', 'p'], selectedId: 'r'});
+        });
+
+        it('a destroy during the restore does not reject reload()', async () => {
+            tree = stateTree({expandedIds: ['r', 'p'], selectedId: 'q'});
+            const loading = tree.reload();
+            tree.on('expand', () => tree.destroy());
+            await loading;
+            tree = null;
+        });
+
+        it('writes a pending change on destroy and nothing before the state was read', async () => {
+            tree = stateTree({expandedIds: [], selectedId: null});
+            tree.saveState();
+            assert.equal(tree.saveTimer, null);
+
+            await tree.reload();
+            await tree.expand('r');
+
+            const written = tree.written;
+            tree.destroy();
+            tree = null;
+            assert.deepEqual(written, [{expandedIds: ['r'], selectedId: null}]);
+        });
+    });
 });

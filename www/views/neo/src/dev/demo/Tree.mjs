@@ -26,7 +26,8 @@ const ALL = [
  * @summary Dev demo of GO.tree.Tree: children loaded on expand (a fake provider with a delay),
  * checkboxes, an expanded node, leaves, badges, a row menu, "Show more..." paging (Big
  * folder, 5 per page), openPath(), multi-selection (Ctrl / Cmd, Shift), a drag of several
- * nodes and the search with hits in place.
+ * nodes, the search with hits in place and the saved shape (stateId: expand, select, reload the
+ * page; revealNode() through parentProvider).
  * @class GO.dev.demo.Tree
  * @extends Neo.container.Base
  */
@@ -53,6 +54,8 @@ class TreeDemo extends Container {
                 multiSelect : true,
                 dragNodes   : true,
                 dropOn      : true,
+                stateId     : 'dev-demo-tree',
+                parentProvider: id => ALL.find(node => node.id === id)?.parentId,
                 // the hits and their ancestors, flat (as a server's treeSearch filter)
                 searchProvider: async query => {
                     await new Promise(resolve => setTimeout(resolve, 300));
@@ -118,6 +121,15 @@ class TreeDemo extends Container {
             }, {
                 module : Button,
                 ui     : 'secondary',
+                text   : "revealNode('asia-Japan')",
+                handler: async data => {
+                    const demo = data.component.up({className: 'GO.dev.demo.Tree'}),
+                          node = await demo.getReference('tree').revealNode('asia-Japan');
+                    demo.log('revealNode: ' + (node ? node.text : 'not found'))
+                }
+            }, {
+                module : Button,
+                ui     : 'secondary',
                 text   : 'getChecked()',
                 handler: data => {
                     const demo = data.component.up({className: 'GO.dev.demo.Tree'});
@@ -147,7 +159,7 @@ class TreeDemo extends Container {
             collapse   : ({node}) => me.log('collapse ' + node.text),
             checkChange: ({node, checked}) => me.log(`checkChange ${node.text}: ${checked}`),
             itemClick  : ({record}) => me.log('itemClick ' + record.text),
-            selectionChange: ({nodes}) => me.log('selectionChange: ' + nodes.map(n => n.text).join(', ')),
+            selectionChange: ({nodes, ignoreDetail}) => me.log('selectionChange: ' + nodes.map(n => n.text).join(', ') + (ignoreDetail ? ' (restored, ignoreDetail)' : '')),
             search     : ({query}) => me.log('search: ' + query),
             drop       : ({dragNodes, node, position}) => {
                 me.log(`drop ${dragNodes.map(n => n.text).join(', ')} ${position} ${node ? node.text : 'root'}`);
