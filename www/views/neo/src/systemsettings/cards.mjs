@@ -5,22 +5,23 @@ import {t}            from '../Translate.mjs';
 /**
  * @summary The core System settings cards.
  *
- * Core cards: [itemId (route "#systemsettings/<itemId>"), title, Font Awesome icon, panel, may the user see it]
+ * Core cards: [itemId (route "#systemsettings/<itemId>"), title, Material Symbols icon (classic ic-* glyph), panel,
+ * may the user see it]
  * @returns {Array[]}
  */
 export const CORE_CARDS = () => [
-    ['general',        t('General'),         'fa fa-file-lines',   () => import('./GeneralPanel.mjs'),        () => client.isAdmin],
-    ['appearance',     t('Appearance'),      'fa fa-palette',      () => import('./AppearancePanel.mjs'),     () => client.isAdmin],
-    ['notifications',  t('Notifications'),   'fa fa-bell',         () => import('./NotificationsPanel.mjs'),  () => client.isAdmin],
-    ['authentication', t('Authentication'),  'fa fa-lock',         () => import('./AuthenticationPanel.mjs'), () => client.isAdmin],
-    ['users',          t('Users'),           'fa fa-user',         () => import('../users/UsersPanel.mjs'),   () => client.mayChangeUsers],
-    ['groups',         t('Groups'),          'fa fa-users',        () => import('../groups/GroupsPanel.mjs'), () => client.mayChangeGroups],
-    ['customfields',   t('Custom fields'),   'fa fa-database',     () => import('../customfields/admin/CustomFieldsPanel.mjs'), () => client.isAdmin || client.mayChangeCustomFields],
-    ['defaultpermissions', t('Default permissions'), 'fa fa-share-nodes', () => import('../defaultpermissions/DefaultPermissionsPanel.mjs'), () => client.isAdmin],
-    ['modules',        t('Modules'),         'fa fa-puzzle-piece', () => import('./ModulesPanel.mjs'),        () => client.isAdmin],
-    ['tools',          t('Tools'),           'fa fa-screwdriver-wrench', () => import('./ToolsPanel.mjs'),    () => client.isAdmin],
-    ['oauth2',         t('Oauth 2.0'),       'fa fa-key',          () => import('./OauthClientsPanel.mjs'),   () => client.isAdmin],
-    ['cron',           t('Manage system tasks'), 'fa fa-clock',    () => import('./CronPanel.mjs'),           () => client.isAdmin]
+    ['general',        t('General'),         'description',       () => import('./GeneralPanel.mjs'),        () => client.isAdmin],
+    ['appearance',     t('Appearance'),      'palette',           () => import('./AppearancePanel.mjs'),     () => client.isAdmin],
+    ['notifications',  t('Notifications'),   'notifications',     () => import('./NotificationsPanel.mjs'),  () => client.isAdmin],
+    ['authentication', t('Authentication'),  'lock',              () => import('./AuthenticationPanel.mjs'), () => client.isAdmin],
+    ['users',          t('Users'),           'account_box',       () => import('../users/UsersPanel.mjs'),   () => client.mayChangeUsers],
+    ['groups',         t('Groups'),          'group',             () => import('../groups/GroupsPanel.mjs'), () => client.mayChangeGroups],
+    ['customfields',   t('Custom fields'),   'storage',           () => import('../customfields/admin/CustomFieldsPanel.mjs'), () => client.isAdmin || client.mayChangeCustomFields],
+    ['defaultpermissions', t('Default permissions'), 'share', () => import('../defaultpermissions/DefaultPermissionsPanel.mjs'), () => client.isAdmin],
+    ['modules',        t('Modules'),         'extension', () => import('./ModulesPanel.mjs'),        () => client.isAdmin],
+    ['tools',          t('Tools'),           'build', () => import('./ToolsPanel.mjs'),    () => client.isAdmin],
+    ['oauth2',         t('Oauth 2.0'),       'vpn_key',           () => import('./OauthClientsPanel.mjs'),   () => client.isAdmin],
+    ['cron',           t('Manage system tasks'), 'schedule',    () => import('./CronPanel.mjs'),           () => client.isAdmin]
 ];
 
 /**

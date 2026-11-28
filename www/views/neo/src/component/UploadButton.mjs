@@ -3,6 +3,8 @@ import uploader from '../jmap/Uploader.mjs';
 import {t} from '../Translate.mjs';
 
 /**
+ * @summary A button that opens the browser's file chooser.
+ *
  * A button that opens the browser's file chooser: a <label> around a hidden
  * <input type="file">. neo's DOM events carry the chosen File objects into the
  * App worker; the component fires `files` with them. With `autoUpload` it uploads them
@@ -10,6 +12,7 @@ import {t} from '../Translate.mjs';
  *
  *     {module: UploadButton, buttonText: 'Upload', accept: '.json', listeners: {files: ({files}) => ...}}
  *     {module: UploadButton, autoUpload: true, listeners: {upload: ({blobs}) => ...}}
+ *     {module: UploadButton, icon: 'upload'} // the glyph of the classic button, none by default (classic core is text only)
  */
 class UploadButton extends Component {
     static config = {
@@ -34,8 +37,14 @@ class UploadButton extends Component {
          * @member {String} buttonText_='Upload'
          */
         buttonText_: t('Upload'),
+        /**
+         * Material Symbols ligature before the text, e.g. 'upload'
+         * @member {String|null} icon_=null
+         */
+        icon_: null,
         _vdom: {tag: 'label', cn: [
             {tag: 'input', type: 'file', multiple: true, cls: ['go-upload-input'], tabIndex: -1},
+            {tag: 'span', cls: ['neo-button-glyph', 'go-icon'], text: '', removeDom: true, 'aria-hidden': true},
             {tag: 'span', cls: ['neo-button-text'], text: ''}
         ]}
     }
@@ -67,8 +76,21 @@ class UploadButton extends Component {
         this.update()
     }
 
+    /**
+     * @summary Shows the label text.
+     * @param {String} value
+     */
     afterSetButtonText(value) {
-        this.vdom.cn[1].text = value;
+        this.vdom.cn[2].text = value;
+        this.update()
+    }
+
+    /**
+     * @summary Shows the Material icon before the text, or none.
+     * @param {String|null} value
+     */
+    afterSetIcon(value) {
+        Object.assign(this.vdom.cn[1], {text: value || '', removeDom: !value});
         this.update()
     }
 

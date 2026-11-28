@@ -21,15 +21,18 @@ import {t} from '../Translate.mjs';
  */
 
 /**
- * Menu text and icon per extension, in menu order
+ * @summary Menu text and icon per extension, in menu order.
+ *
+ * classic: filetype-* SVG images (Paper img/filetype), no Material names: the nearest symbol;
+ * vcf.svg is contact_mail, xlsx and csv share xls.svg
  * @returns {Object} extension → {text, icon}
  */
 export function exportFormats() {
     return {
-        vcf : {text: t('vCard (Virtual Contact File)'), icon: 'contact_page'},
+        vcf : {text: t('vCard (Virtual Contact File)'), icon: 'contact_mail'},
         ics : {text: t('vCalendar'),                    icon: 'calendar_today'},
         xlsx: {text: t('Microsoft Excel'),              icon: 'table_view'},
-        csv : {text: t('Comma Separated Values'),       icon: 'csv'},
+        csv : {text: t('Comma Separated Values'),       icon: 'table_view'},
         html: {text: t('Web page') + ' (HTML)',         icon: 'html'},
         json: {text: t('JSON'),                         icon: 'data_object'}
     }
