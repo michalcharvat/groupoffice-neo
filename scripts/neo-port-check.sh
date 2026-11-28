@@ -6,19 +6,20 @@
 #   scripts/neo-port-check.sh [-C DIR] [--upstream REF] [--quiet] [A..B]
 #
 # Without a range: the commits of the last upstream merge on the first-parent line of HEAD. With A..B: the
-# commits of every upstream merge on the first-parent line in A..B. Also listed: upstream commits with the
-# trailer `Port-to: neo`. Left out: commits a neo commit after A records as `Ported-from: <full hash>` or
-# `Port-skipped: <full hash> <reason>`.
+# commits of every upstream merge on the first-parent line in A..B. Also listed, whatever the range: every
+# upstream commit with the trailer `Port-to: neo` (set by go:commit), merged into neo or not yet, until a neo
+# commit records it. Left out: commits a neo commit (one not on upstream) records as `Ported-from: <full hash>`
+# or `Port-skipped: <full hash> <reason>`.
 # Output: per commit and module the hash, subject, classic files and the module's views/neo/PORTING.md (the
 # map to the neo files); a module without views/neo is reported as "no neo views yet". Last line is a summary.
-# Exit: 0 nothing to port, 1 commits to port in modules with neo views, 2 error.
+# Exit: 0 nothing to port, 1 commits to port (in modules with neo views, or marked Port-to: neo), 2 error.
 set -euo pipefail
 
 dir=. upstream= quiet= range=
 while [ $# -gt 0 ]; do
 	case "$1" in
-		-C) dir=$2; shift 2 ;;
-		--upstream) upstream=$2; shift 2 ;;
+		-C|--upstream) [ $# -ge 2 ] || { echo "$1 needs a value" >&2; exit 2; }
+			if [ "$1" = -C ]; then dir=$2; else upstream=$2; fi; shift 2 ;;
 		--quiet) quiet=1; shift ;;
 		-h|--help) sed -n '2,15p' "$0"; exit 0 ;;
 		*..*) range=$1; shift ;;
@@ -40,56 +41,60 @@ fi
 
 g rev-parse -q --verify "$upstream^{commit}" >/dev/null || { echo "unknown upstream ref: $upstream" >&2; exit 2; }
 
-# 0 when merge $1 brought upstream commits, 1 when not; any other git status is an error
-is_upstream_merge() {
-	local rc=0
-	g merge-base --is-ancestor "$1^2" "$upstream" || rc=$?
-	[ "$rc" -le 1 ] || exit 2
-	return "$rc"
+# the merges on the first-parent line of rev range $1 whose second parent is on upstream (they brought upstream
+# commits), newest first; one rev-list of upstream instead of a merge-base per merge (neo-ui has hundreds)
+upstream_merges() {
+	{ g rev-list "$upstream" && g rev-list --first-parent --merges --parents "$1"; } \
+		| awk 'NF == 1 { up[$1] = 1; next } NF >= 3 && ($3 in up) { print $1 }'
 }
 
+nomerge=
 if [ -z "$range" ]; then
-	last=
-	for m in $(g rev-list --first-parent --merges HEAD); do
-		if is_upstream_merge "$m"; then last=$m; break; fi
-	done
-	[ -n "$last" ] || { echo "neo-port-check: no merge of $upstream into $(g branch --show-current) found"; exit 0; }
-	range="$last^1..$last"
+	all=$(upstream_merges HEAD) || exit 2
+	last=${all%%$'\n'*}
+	# no merge yet: only the commits marked Port-to: neo are listed
+	if [ -n "$last" ]; then range="$last^1..$last"; else nomerge=1 range="no merge of $upstream yet"; fi
 fi
-from=${range%%..*}
-to=${range#*..}
-to=${to:-HEAD}
-for ref in "$from" "$to"; do
-	g rev-parse -q --verify "$ref^{commit}" >/dev/null || { echo "unknown revision: $ref" >&2; exit 2; }
-done
-
 merges=
-fp=$(g rev-list --first-parent --merges "$from..$to") || exit 2
-for m in $fp; do
-	is_upstream_merge "$m" && merges="$merges $m"
-done
+if [ -z "$nomerge" ]; then
+	from=${range%%..*}
+	to=${range#*..}
+	to=${to:-HEAD}
+	for ref in "$from" "$to"; do
+		g rev-parse -q --verify "$ref^{commit}" >/dev/null || { echo "unknown revision: $ref" >&2; exit 2; }
+	done
+	merges=$(upstream_merges "$from..$to") || exit 2
+fi
 
-# full hashes a neo commit (not an upstream one) already ported or skipped
-done_list=$(g log --format='%(trailers:key=Ported-from,valueonly)%n%(trailers:key=Port-skipped,valueonly)' "$from..HEAD" --not "$upstream" \
+# full hashes a neo commit (not an upstream one) already ported or skipped, anywhere in the neo history
+done_list=$(g log --format='%(trailers:key=Ported-from,valueonly)%n%(trailers:key=Port-skipped,valueonly)' HEAD --not "$upstream" \
 	| awk 'length($1) == 40 { print $1 }')
+grep_neo=(-i -E --grep='^Port-to:.*neo')
+# commits marked Port-to: neo that neo has not merged yet
+unmerged=$(g rev-list "${grep_neo[@]}" "$upstream" --not HEAD) || exit 2
 
-# one record per commit: \x1e full hash \x1f short hash \x1f subject \x1f Port-to values, then its files
-log=
+# one record per commit: \x1e full hash \x1f short hash \x1f subject \x1f Port-to values \x1f source, then its
+# files. Source t: an upstream commit marked Port-to: neo (all of upstream, first), m: brought by a merge.
+fmt='%x1e%H%x1f%h%x1f%s%x1f%(trailers:key=Port-to,valueonly,separator=%x2c)%x1f'
+log=$(g log --reverse --diff-merges=first-parent --abbrev=9 --name-only --no-renames "${grep_neo[@]}" --format="${fmt}t" "$upstream") || exit 2
 for m in $merges; do
-	log="$log$(g log --no-merges --reverse --abbrev=9 --name-only --no-renames \
-		--format='%x1e%H%x1f%h%x1f%s%x1f%(trailers:key=Port-to,valueonly,separator=%x2c)' "$m^1..$m^2")"
+	log="$log$(g log --no-merges --reverse --abbrev=9 --name-only --no-renames --format="${fmt}m" "$m^1..$m^2")" || exit 2
 done
 
-report=$(printf '%s' "$log" | DONE="$done_list" TOP="$top" awk -v RS='\036' -F'\n' -v q="'" '
+report=$(printf '%s' "$log" | DONE="$done_list" UNMERGED="$unmerged" TOP="$top" awk -v RS='\036' -F'\n' -v q="'" '
 BEGIN {
 	n = split(ENVIRON["DONE"], d, "\n"); for (i = 1; i <= n; i++) done[d[i]] = 1
+	n = split(ENVIRON["UNMERGED"], d, "\n"); for (i = 1; i <= n; i++) unmerged[d[i]] = 1
 	pending = 0; noviews = 0
 }
 # one single-quoted shell word: module names come from commits, the shell must not expand them
 function sq(p) { gsub(q, q "\\" q q, p); return q p q }
 NF > 0 && $1 != "" {
 	split($1, h, "\037")
-	if (h[1] in done) next
+	if (h[1] in done || h[1] in seen) next
+	marked = tolower(h[4]) ~ /(^|, *)neo( *,|$)/
+	if (h[5] == "t" && !marked) next  # the grep matched a line that is no Port-to: neo trailer
+	seen[h[1]] = 1
 	delete files; delete mods; nmods = 0
 	for (i = 2; i <= NF; i++) {
 		if (!match($i, /(^|\/)views\/(extjs3|Extjs3|goui)\//)) continue
@@ -98,20 +103,25 @@ NF > 0 && $1 != "" {
 		files[mod] = files[mod] "    " $i "\n"
 	}
 	if (nmods == 0) {
-		if (tolower(h[4]) !~ /(^|, *)neo( *,|$)/) next
+		if (!marked) next
 		order[++nmods] = "-"; files["-"] = "    (no classic view files; marked Port-to: neo)\n"
 	}
+	counted = 0
 	for (k = 1; k <= nmods; k++) {
 		mod = order[k]
 		# core: www/views/Extjs3, www/views/goui and www/go/core/views/extjs3 all map to www/views/neo
 		neo = (mod == "www" || mod == "www/go/core") ? "www/views/neo" : mod "/views/neo"
-		if (mod == "-") { note = "see the commit"; pending++ }
+		if (mod == "-") { note = "see the commit"; counted = 1 }
 		else if (system("test -d " sq(ENVIRON["TOP"] "/" neo)) == 0) {
 			note = (system("test -f " sq(ENVIRON["TOP"] "/" neo "/PORTING.md")) == 0) ? "map: " neo "/PORTING.md" : "neo views: " neo " (no PORTING.md)"
-			pending++
+			counted = 1
 		} else { note = "no neo views yet"; noviews++ }
+		if (marked) note = note ", Port-to: neo"
+		if (h[1] in unmerged) note = note ", not merged into neo yet"
 		printf "%s %s  %s  [%s]\n%s", h[2], mod, h[3], note, files[mod]
 	}
+	# one per commit; a commit marked Port-to: neo waits even when none of its modules has neo views yet
+	if (counted || marked) pending++
 }
 END { printf "%d %d\n", pending, noviews }')
 counts=$(printf '%s\n' "$report" | tail -n 1)
