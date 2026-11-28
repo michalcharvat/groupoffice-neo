@@ -5,12 +5,14 @@ import {setup} from '../node_modules/neo.mjs/test/playwright/setup.mjs';
 import '../node_modules/neo.mjs/src/Neo.mjs';
 import '../node_modules/neo.mjs/src/core/_export.mjs';
 import {extensionOf, previewKindOf, registerPreview} from '../src/preview/previewKinds.mjs';
+import {sanitizeHtml} from '../src/Format.mjs';
 
 setup({appConfig: {name: 'test'}});
 // goUrl() resolves against the page; node has no location
 globalThis.location ??= {href: 'http://localhost/views/neo/'};
 
 const {default: FilePreview} = await import('../src/preview/FilePreview.mjs');
+const {docxToHtml, sheetRowsToHtml} = await import('../src/preview/officePreviews.mjs');
 
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 
@@ -38,9 +40,9 @@ describe('previewKinds (file preview)', () => {
     });
 
     it('registered kinds come after the built-in ones', () => {
-        registerPreview('testsheet', {extensions: ['XLSX'], types: ['application/x-test-sheet'], render: async () => '<p>sheet</p>'});
+        registerPreview('testsheet', {extensions: ['TESTX'], types: ['application/x-test-sheet'], render: async () => '<p>sheet</p>'});
 
-        assert.equal(previewKindOf({name: 'a.xlsx'}), 'testsheet');
+        assert.equal(previewKindOf({name: 'a.testx'}), 'testsheet');
         assert.equal(previewKindOf({type: 'application/x-test-sheet'}), 'testsheet');
         registerPreview('testpdf', {types: ['application/pdf', 'text/csv'], render: async () => ''});
         assert.equal(previewKindOf({type: 'application/pdf'}), 'pdf');
@@ -149,5 +151,67 @@ describe('GO.preview.FilePreview', () => {
         await tick();
 
         assert.equal(preview.getReference('content').html, '<p>r.testdoc</p>');
+    });
+});
+
+describe('sheet and docx previews (officePreviews.mjs)', () => {
+    it('registers sheet and docx with FilePreview', () => {
+        assert.equal(previewKindOf({name: 'Report.XLSX'}), 'sheet');
+        assert.equal(previewKindOf({extension: 'xls'}), 'sheet');
+        assert.equal(previewKindOf({type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}), 'sheet');
+        assert.equal(previewKindOf({name: 'letter.docx'}), 'docx');
+        assert.equal(previewKindOf({name: 'old.doc'}), null);
+    });
+
+    it('escapes the cells, pads short rows, header when the addon says so', () => {
+        const html = sheetRowsToHtml({rows: [['Name', 'Qty'], ['<b>x</b>', '5'], ['only']], header: true});
+
+        assert.equal(html, '<table class="go-filepreview-sheet"><thead><tr><th>Name</th><th>Qty</th></tr></thead>' +
+            '<tbody><tr><td>&lt;b&gt;x&lt;/b&gt;</td><td>5</td></tr><tr><td>only</td><td></td></tr></tbody></table>');
+    });
+
+    it('no header without the flag or with one row; notes cut rows and columns; empty sheet', () => {
+        assert.ok(!sheetRowsToHtml({rows: [['a', 'b'], ['1', '2']]}).includes('<thead>'));
+        assert.ok(!sheetRowsToHtml({rows: [['a', 'b']], header: true}).includes('<thead>'));
+        assert.match(sheetRowsToHtml({rows: [['1'], ['2']], truncated: true}), /Only the first 2 rows are shown\./);
+        assert.match(sheetRowsToHtml({rows: [['1', '2']], columnsCut: true}), /Only the first 2 columns are shown\./);
+        assert.match(sheetRowsToHtml({rows: []}), /go-empty/);
+    });
+
+    it('docxToHtml sanitises what the Mammoth addon returns and calls it in the window', async () => {
+        const calls      = [],
+              importAddon = Neo.Main.importAddon;
+
+        Neo.Main.importAddon = async args => calls.push(['import', args]);
+        Neo.ns('GO.main.addon', true).Mammoth = {
+            convertToHtml: async args => {
+                calls.push(['convert', args]);
+                return '<p onclick="x()">Hi<script>alert(1)</script><img src="javascript:alert(1)"></p>'
+            }
+        };
+
+        try {
+            assert.equal(await docxToHtml('api/download.php?blob=1', 'w1'), '<p>Hi</p>');
+            assert.deepEqual(calls[0], ['import', {name: 'WS/Mammoth', windowId: 'w1'}]);
+            assert.equal(calls[1][1].windowId, 'w1');
+            assert.equal(calls[1][1].url, 'http://localhost/api/download.php?blob=1');
+
+            const controller = new AbortController();
+            controller.abort();
+            await assert.rejects(docxToHtml('a.docx', 'w1', controller.signal));
+            assert.equal(calls.filter(([kind]) => kind === 'convert').length, 1);
+        } finally {
+            Neo.Main.importAddon = importAddon;
+            delete GO.main.addon.Mammoth
+        }
+    });
+
+    it('sanitizeHtml keeps base64 raster images of a docx, drops other data URLs', () => {
+        const png = 'data:image/png;base64,iVBORw0KGgo=';
+
+        assert.equal(sanitizeHtml(`<p><img src="${png}" alt="a"></p>`), `<p><img src="${png}" alt="a"></p>`);
+        assert.equal(sanitizeHtml('<img src="data:image/svg+xml;base64,PHN2Zz4=">'), '');
+        assert.equal(sanitizeHtml('<img src="data:text/html;base64,PHN2Zz4=">'), '');
+        assert.equal(sanitizeHtml('<img src="data:image/png;base64,x&quot;onerror=alert(1)">'), '');
     });
 });

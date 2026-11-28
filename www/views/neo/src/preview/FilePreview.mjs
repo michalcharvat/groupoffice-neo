@@ -6,11 +6,12 @@ import {escapeHtml}   from '../Format.mjs';
 import {markdownToHtml} from '../Markdown.mjs';
 import {t}            from '../Translate.mjs';
 import {TEXT_LIMIT, previewKindOf, registeredPreview} from './previewKinds.mjs';
+import './officePreviews.mjs';
 
 /**
  * Preview of one file by its extension or MIME type: PDF and image in GO.pdf.PdfViewer, text (escaped, monospace),
- * Markdown, audio and video (native players), kinds added with registerPreview() (previewKinds.mjs), otherwise an
- * icon with the name and a Download button. Demo: Dev module, "File preview".
+ * Markdown, audio and video (native players), sheets and docx (officePreviews.mjs), kinds added with registerPreview()
+ * (previewKinds.mjs), otherwise an icon with the name and a Download button. Demo: Dev module, "File preview".
  *
  * Markdown is fetched from `src` and rendered by Markdown.mjs (sanitised). With `htmlUrl` a page the host renders
  * and trusts (e.g. with its protected images) is shown in a frame instead.
@@ -22,7 +23,7 @@ import {TEXT_LIMIT, previewKindOf, registeredPreview} from './previewKinds.mjs';
  *
  * Sources are same-origin URLs (relative to GO's root); fetch, pdf.js and the players send the session cookie.
  * Only the latest file shows: a fetch for an older one drops its result.
- * @summary Preview of a file: PDF, image, text, Markdown, audio, video or a Download fallback.
+ * @summary Preview of a file: PDF, image, text, Markdown, audio, video, sheet, docx or a Download fallback.
  * @class GO.preview.FilePreview
  * @extends Neo.container.Base
  */
@@ -276,7 +277,7 @@ class FilePreview extends Container {
 
                 html = kind === 'text' ? `<pre>${escapeHtml(text)}</pre>` : markdownToHtml(text)
             } else {
-                html = await registeredPreview(kind).render({url, src, name: me.name, extension: me.extension, type: me.type, signal: controller.signal})
+                html = await registeredPreview(kind).render({url, src, name: me.name, extension: me.extension, type: me.type, signal: controller.signal, windowId: me.windowId})
             }
         } catch (e) {
             console.warn('FilePreview', e);

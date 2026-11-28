@@ -63,7 +63,7 @@ Status: **neo** = neo.mjs 13.4 ships it (14 since 2026-11-24), usable as is (may
 | Kanban board (GOUI has none; ExtJS business/kanban) | GO.neo (`GO.board.Board`, see "GO.board.Board" below; first user: tasks board view) |
 | Resource scheduler / timeline (vis-timeline in amd/crew) | GO.neo (`GO.scheduler.Scheduler`, see "GO.scheduler.Scheduler" below; first user: crew planning) |
 | PDF / image preview (ExtJS amd/libs `PdfViewPanel`; GOUI has none) | GO.neo (`GO.pdf.PdfViewer`, see "GO.pdf.PdfViewer" below; demo `#dev/core/PdfViewer`; users: crew certificate verification, later dms and invoices) |
-| File preview by extension (ExtJS amd/dms `PdfViewPanel`, `FileViewPanel`, `ImageViewPanel`, `MarkdownViewPanel`, `MediaViewPanel`; GOUI has none) | GO.neo (`GO.preview.FilePreview`, see "GO.preview.FilePreview" below; demo `#dev/core/FilePreview`; users: dms document detail, files `FileDetail`) |
+| File preview by extension (ExtJS amd/dms `PdfViewPanel`, `FileViewPanel`, `ImageViewPanel`, `MarkdownViewPanel`, `MediaViewPanel`, `SheetViewPanel`, `DocViewPanel`; GOUI has none) | GO.neo (`GO.preview.FilePreview`, see "GO.preview.FilePreview" below; demo `#dev/core/FilePreview`; users: dms document detail, files `FileDetail`) |
 | auth/Login | GO.neo (`apps/go/view/LoginView.mjs`: forgot credentials, 2FA via `loginPanels`) |
 | Main area (GOUI/ExtJS card per module) | GO.neo `apps/go/view/MainView.mjs`: one card per module. Modules extend it through `mainViewExtension` (extra cards, top-bar items, routes, claimed module views; `docs/neo-small-modules.md`, "Main view extensions"). The module sf/workspaces (sf-mono, off by default) adds workspace tabs next to the module tabs, each a dock (`GO.workspaces.Workspace` over neo's dock; panels side by side, drag from the top bar, maximize, saved per user and screen profile; `docs/neo-workspace.md`) |
 | MainThreeColumnPanel, TableTitle | GO.neo |
@@ -849,7 +849,19 @@ preview.setFile(null);
   (at most `TEXT_LIMIT` characters); Markdown is fetched and rendered by `Markdown.mjs` (sanitised), or with
   `htmlUrl` the host's page is shown in an `<iframe>` (relative image URLs resolve against that page); audio and
   video are native players; anything else shows an icon, the name and Download (`download.mjs`).
-- Extension point: `registerPreview(kind, {extensions, types, render})`, `render({url, src, name, extension, type, signal})`
+- Sheets and docx (`src/preview/officePreviews.mjs`, registered when FilePreview loads): xls / xlsx show the first
+  sheet (only it is parsed) as an escaped table of formatted cell texts, at most `SHEET_ROW_LIMIT` (1,000) rows and
+  `SHEET_COLUMN_LIMIT` (100) columns (a sparse sheet would otherwise give thousands of empty cells), with a note when
+  cut; the first row is the header when all its cells are text by SheetJS cell type (a date or "$5.00" is not); docx is converted by mammoth and sanitised (`Format.sanitizeHtml()`, which keeps base64
+  raster images). The libraries run on the main thread (addons `WS/SheetJs`, `WS/Mammoth`, loaded on first use) from
+  copies vendored in `views/neo/lib/` (SheetJS 0.20.3 from cdn.sheetjs.com, mammoth 1.13.0 `mammoth.browser.min.js`
+  from npm; the classic client keeps its amd/libs copies). Not npm dependencies of views/neo: SheetJS 0.20 is not on
+  the npm registry (npm's `xlsx` 0.18.5 has known CVEs) and mammoth has dependencies, which `release.mjs` refuses.
+  Update a library by replacing its file and the `?v=` in `officePreviews.mjs`.
+- `docxToHtml(url, windowId, signal)` (officePreviews.mjs): sanitised HTML of a docx for importers (dms "Content from
+  docx"); `url` is a same-origin URL or a `blob:` URL of that window. An abort only stops before the addon call: the
+  main thread's fetch and parsing run to the end, FilePreview drops the result.
+- Extension point: `registerPreview(kind, {extensions, types, render})`, `render({url, src, name, extension, type, signal, windowId})`
   returns HTML that the renderer has sanitised; `signal` aborts when another file is shown. Built-in kinds come first and cannot be replaced.
 - Only the latest file shows: each load takes a token, a fetch for an older file drops its result.
 

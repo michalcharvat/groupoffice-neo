@@ -172,6 +172,8 @@ Board card ids are in section 7.
   planned from the sf side instead.
 - **D5b library source**: core must not load mammoth and SheetJS from amd/libs. The card checks whether
   `www/node_modules` has them in a release build, or vendors one copy in core. Classic keeps the amd/libs copies.
+  Decided: vendored in `www/views/neo/lib/` (a neo-only release drops `www/node_modules`; see
+  `docs/neo-core-components.md` "GO.preview.FilePreview").
 
 ## 6. Additions for go:neo-port
 

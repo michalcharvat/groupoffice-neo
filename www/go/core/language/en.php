@@ -507,4 +507,7 @@ If you did not request a new password please delete this mail.',
   'Download' => 'Download',
   'Loading, please wait...' => 'Loading, please wait...',
   'The file could not be loaded.' => 'The file could not be loaded.',
+  'This sheet is empty.' => 'This sheet is empty.',
+  'Only the first {count} rows are shown.' => 'Only the first {count} rows are shown.',
+  'Only the first {count} columns are shown.' => 'Only the first {count} columns are shown.',
 );

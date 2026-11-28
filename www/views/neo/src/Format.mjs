@@ -257,14 +257,16 @@ const SAFE_TAGS = new Set(['a', 'b', 'blockquote', 'br', 'code', 'div', 'em', 'h
                            'sub', 'sup', 'table', 'tbody', 'td', 'th', 'thead', 'tr', 'u', 'ul']),
       VOID_TAGS = new Set(['br', 'hr', 'img']),
       // relative URLs (GO's api/download.php?blob=...), http(s) and mailto only
-      SAFE_URL  = /^(https?:|mailto:|[^:]*$)/i;
+      SAFE_URL  = /^(https?:|mailto:|[^:]*$)/i,
+      // inline raster images (mammoth's docx images); no SVG
+      SAFE_IMG  = /^data:image\/(png|jpeg|gif|webp|bmp);base64,[a-z0-9+/=]*$/i;
 
 /**
  * Allowlist HTML sanitiser for HTML from other users (comments), defence in depth on
  * top of the server's XSS check. Runs in the worker (no DOM): the output is rebuilt
  * from tokens, so nothing of the input passes unescaped. Keeps formatting tags, drops
- * every attribute except a[href] and img[src] with a safe URL (and img[alt]), drops <script>/<style>
- * with their content and escapes everything else.
+ * every attribute except a[href] and img[src] with a safe URL (img also a base64 raster
+ * data URL) and img[alt], drops <script>/<style> with their content and escapes everything else.
  * @param {String} html
  * @returns {String}
  */
@@ -317,7 +319,7 @@ export function sanitizeHtml(html) {
                     : '<a>'
             } else if (name === 'img') {
                 const src = attr(attrs, 'src');
-                src && SAFE_URL.test(src) && (out += `<img src="${escapeHtml(src)}" alt="${escapeHtml(rawAttr(attrs, 'alt') || '')}">`)
+                src && (SAFE_URL.test(src) || SAFE_IMG.test(src)) && (out += `<img src="${escapeHtml(src)}" alt="${escapeHtml(rawAttr(attrs, 'alt') || '')}">`)
             } else {
                 out += `<${name}>`
             }

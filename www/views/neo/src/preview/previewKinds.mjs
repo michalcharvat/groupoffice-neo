@@ -4,11 +4,11 @@
  *
  *     previewKindOf({extension: 'md'})                 // 'markdown'
  *     previewKindOf({type: 'application/pdf'})         // 'pdf'
- *     previewKindOf({name: 'report.XLSX'})             // null, or 'sheet' once registered:
+ *     previewKindOf({name: 'report.XLSX'})             // 'sheet', registered by officePreviews.mjs:
  *
  *     registerPreview('sheet', {
  *         extensions: ['xls', 'xlsx'],
- *         render    : async ({url}) => sanitizedHtmlOfTheFirstSheet
+ *         render    : async ({src, windowId}) => escapedHtmlOfTheFirstSheet
  *     });
  */
 
@@ -34,7 +34,7 @@ const registered = new Map();
  * @param {Object} preview
  * @param {String[]} [preview.extensions=[]] lower case, without the dot
  * @param {String[]} [preview.types=[]] MIME types
- * @param {Function} preview.render async ({url, src, name, extension, type, signal}) => HTML; the renderer sanitises it
+ * @param {Function} preview.render async ({url, src, name, extension, type, signal, windowId}) => HTML; the renderer sanitises it
  * and passes signal to its fetch (aborted when another file is shown),
  * FilePreview inserts it as is
  */
