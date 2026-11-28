@@ -165,8 +165,8 @@ the sources. It needs Node 20.12+ (`Dirent.parentPath`); the locked neo.mjs and 
    keeps only the folders GO loads (`theme-go`, `src`). Both theme maps (`resources/` and
    `dist/development/resources/`) are cut down to match;
 3. keeps only the runtime `dependencies` of `package.json` in `node_modules` (neo.mjs,
-   marked, Font Awesome), and of those only what the page loads: neo.mjs `src`, Font Awesome
-   `css` and `webfonts`. It does this instead of `npm prune --omit=dev`, because npm
+   marked, Font Awesome, pdfjs-dist), and of those only what the page loads: neo.mjs `src`, Font Awesome
+   `css` and `webfonts`, pdfjs-dist `build`, `cmaps`, `iccs`, `standard_fonts`, `wasm`. It does this instead of `npm prune --omit=dev`, because npm
    reinstalls a package whose files changed, and that brings back the full, unminified
    neo.mjs. The script fails when a runtime package gets dependencies of its own.
 

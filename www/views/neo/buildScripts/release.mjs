@@ -19,8 +19,8 @@
 //    minified with Terser, with the options of neo's dist/esm build (exports keep their names);
 // 2. the theme CSS (dist/development) minified with cssnano, without source maps, and only
 //    the themes GO loads (theme-go and the structural src sheets);
-// 3. node_modules without the build tools, neo.mjs and Font Awesome trimmed to what the page
-//    loads (neo.mjs/src, Font Awesome css and webfonts).
+// 3. node_modules without the build tools, neo.mjs, Font Awesome and pdf.js trimmed to what the page
+//    loads (neo.mjs/src, Font Awesome css and webfonts, pdf.js build and data folders).
 import fs           from 'node:fs';
 import path         from 'node:path';
 import * as Terser  from 'terser';
@@ -188,7 +188,9 @@ function trimPackages() {
           // what the page loads of each runtime package; a package not listed here stays whole
           keep    = {
               'neo.mjs'                      : ['src', 'package.json', 'LICENSE'],
-              '@fortawesome/fontawesome-free': ['css', 'webfonts', 'package.json', 'LICENSE.txt']
+              '@fortawesome/fontawesome-free': ['css', 'webfonts', 'package.json', 'LICENSE.txt'],
+              // GO.main.addon.PdfJs: the library, its worker and the data it fetches
+              'pdfjs-dist'                   : ['build', 'cmaps', 'iccs', 'standard_fonts', 'wasm', 'package.json', 'LICENSE']
           };
 
     for (const name of runtime) {

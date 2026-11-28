@@ -61,6 +61,7 @@ Status: **neo** = neo.mjs 13.4 ships it (14 since 2026-11-24), usable as is (may
 | Upload (`client.upload()`, ExtJS `go.Uploader`) | GO.neo (`jmap/Uploader.mjs`: XHR with progress, queue of `maxConcurrentUpload`, `maxSizeUpload` check, abort; `component/UploadPanel.mjs` shows the uploads of a window bottom right; used by `UploadButton` `autoUpload`, `BlobField`, `AttachmentsField`, `ImageField`, `MarkdownField`, `FilesPanel`, imports; demo `#dev/core/Upload`) |
 | Kanban board (GOUI has none; ExtJS business/kanban) | GO.neo (`GO.board.Board`, see "GO.board.Board" below; first user: tasks board view) |
 | Resource scheduler / timeline (vis-timeline in amd/crew) | GO.neo (`GO.scheduler.Scheduler`, see "GO.scheduler.Scheduler" below; first user: crew planning) |
+| PDF / image preview (ExtJS amd/libs `PdfViewPanel`; GOUI has none) | GO.neo (`GO.pdf.PdfViewer`, see "GO.pdf.PdfViewer" below; demo `#dev/core/PdfViewer`; users: crew certificate verification, later dms and invoices) |
 | auth/Login | GO.neo (`apps/go/view/LoginView.mjs`: forgot credentials, 2FA via `loginPanels`) |
 | Main area (GOUI/ExtJS card per module) | GO.neo `apps/go/view/MainView.mjs`: one card per module. Modules extend it through `mainViewExtension` (extra cards, top-bar items, routes, claimed module views; `docs/neo-small-modules.md`, "Main view extensions"). The module sf/workspaces (sf-mono, off by default) adds workspace tabs next to the module tabs, each a dock (`GO.workspaces.Workspace` over neo's dock; panels side by side, drag from the top bar, maximize, saved per user and screen profile; `docs/neo-workspace.md`) |
 | MainThreeColumnPanel, TableTitle | GO.neo |
@@ -743,3 +744,36 @@ name: `Neo.Main.importAddon({name: 'WS/../../../../../go/modules/<pkg>/<module>/
 listens for custom DOM events the addon sends (`DomEvents.sendMessageToApp`, e.g. `syncfusionSave`
 on the dialog) and does the JMAP calls itself; Blobs and Files come back from addon remotes by
 structured clone. Details and gotchas: `go/modules/community/syncfusion/views/neo/README.md`.
+
+## GO.pdf.PdfViewer (2026-11-28)
+
+`src/pdf/PdfViewer.mjs` with the main thread addon `src/main/addon/PdfJs.mjs` (`WS/PdfJs`) and the DOM-free
+`src/pdf/pdfPages.mjs` (page selection, title, zoom steps; `tests/pdfPages.test.mjs`). Moved from amd/libs, whose
+classic `PdfViewPanel` and vendored `views/extjs3/lib/pdfjs` stay for the classic client.
+
+```js
+import PdfViewer from '<relative>/views/neo/src/pdf/PdfViewer.mjs';
+
+{module: PdfViewer, reference: 'preview', flex: 1, toolbarItems: [{module: Button, text: t('Analyze'), handler: 'up.onAnalyze'}]}
+
+preview.setSource(client.apiUrl + 'download.php?blob=' + blobId, 'application/pdf'); // or 'pdf', 'image/png', 'jpg' …; null clears
+preview.pages = [3, 4, 5];                                    // null: the preview again
+preview.on('load', ({numPages, title}) => …);                 // also 'loadError {error}'
+```
+
+- pdf.js is `pdfjs-dist` in `views/neo/package.json` "dependencies" (pinned; `PDFJS_VERSION` in the addon busts the
+  cache, keep it in step). Not the other copies: the root `www/node_modules/pdfjs-dist` (classic `FilePanel.js`)
+  is removed from a neo-only release, `community/pdfeditor/views/pdf.js` belongs to an optional module.
+  `buildScripts/release.mjs` keeps its `build`, `cmaps`, `iccs`, `standard_fonts` and `wasm`.
+- A PDF shows its first `previewPages` (10) pages or the pages of `pages` (at most `maxListedPages`, 200). Every
+  page gets a placeholder of the first page's size; the addon draws a page when it comes within 1500px of the view
+  (IntersectionObserver) and drops its canvas when it leaves. One canvas has at most 16.7 million pixels and 8192
+  per side (`MAX_CANVAS_PIXELS`, `MAX_CANVAS_SIDE`): on a high density screen at a high zoom it renders below device
+  resolution instead of failing blank.
+- Zoom buttons 25 % … 400 % (`ZOOM_STEPS`), the relative scroll position is kept; `pageScale` (1.5) is the pdf.js
+  scale at 100 %. An image (`image/*` or an extension) is an `<img>` at zoom × view width.
+- The source is a same-origin URL (relative ones are resolved against GO's root, not neo's `<base href>`); pdf.js and
+  `<img>` send the session cookie.
+- A PDF loads once the viewer is in the DOM; a viewer in a hidden card redraws when it is shown again (neo removes
+  inactive cards from the DOM). Only the latest source counts: the addon answers an older load `{superseded: true}`,
+  and a failed load clears the old pages, shows a message and fires `loadError`.
