@@ -504,4 +504,5 @@ If you did not request a new password please delete this mail.',
   'PDF - preview of the first {count} pages' => 'PDF - preview of the first {count} pages',
   'The document could not be loaded.' => 'The document could not be loaded.',
   'No preview available for this file.' => 'No preview available for this file.',
+  'The editor could not be loaded' => 'The editor could not be loaded',
 );

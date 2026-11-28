@@ -2361,4 +2361,5 @@ Sollten Sie kein neues Kennwort angefordert haben, können Sie diese Nachricht e
   'PDF - preview of the first {count} pages' => 'PDF - Vorschau der ersten {count} Seiten',
   'The document could not be loaded.' => 'Das Dokument konnte nicht geladen werden.',
   'No preview available for this file.' => 'Für diese Datei ist keine Vorschau verfügbar.',
+  'The editor could not be loaded' => 'Der Editor konnte nicht geladen werden',
 );
