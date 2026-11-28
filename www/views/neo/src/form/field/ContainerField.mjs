@@ -211,6 +211,15 @@ class ContainerField extends FormContainer {
         return false
     }
 
+    /**
+     * @summary Waits for the child fields that finish their value late (editors, uploads): the
+     * form flushes only the fields it sees, and that is this one, not its children.
+     * @returns {Promise<void>}
+     */
+    async flush() {
+        await Promise.all(this.getChildFields().filter(field => typeof field.flush === 'function').map(field => field.flush()))
+    }
+
     isValid() {
         return this.getChildFields().every(field => field.isValid())
     }

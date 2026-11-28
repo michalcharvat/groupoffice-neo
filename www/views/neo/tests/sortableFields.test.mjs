@@ -164,3 +164,34 @@ describe('ChipsField clickable', () => {
         assert.equal(chips({clickable: true}).chipEntity({id: 5}), null, 'an object value brings its own chipEntity');
     });
 });
+
+describe('ContainerField / ArrayField flush', () => {
+    it('forwards flush() to the fields of its rows, nested ones too', async () => {
+        const flushed = [],
+              late    = name => ({module: TextField, name, flush: async () => { flushed.push(name) }}),
+              field   = Neo.create(ArrayField, {
+                  appName   : 'test',
+                  name      : 'steps',
+                  buildField: () => ({module: ContainerField, items: [late('text'), {
+                      module: ContainerField, name: 'inner', items: [late('inner')]
+                  }]})
+              });
+
+        let release;
+        const gate = new Promise(resolve => release = resolve);
+
+        field.reset([{text: 'a', inner: {}}, {text: 'b', inner: {}}]);
+        // the nested leaf of the last row finishes late: the outer flush() waits for it
+        field.getRows()[1].getChildFields()[1].getChildFields()[0].flush = async () => { await gate; flushed.push('late') };
+
+        let done = false;
+        const flushing = field.flush().then(() => done = true);
+
+        await new Promise(resolve => setTimeout(resolve, 10));
+        assert.equal(done, false);
+        release();
+        await flushing;
+
+        assert.deepEqual(flushed.sort(), ['inner', 'late', 'text', 'text']);
+    });
+});
