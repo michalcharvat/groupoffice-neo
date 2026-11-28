@@ -276,7 +276,7 @@ custom editor) and lowered for code that becomes a shared component.
 |---|---|---|
 | Main panel: west filters / tree, center grid, east detail | nearly every module with "main" | `MainThreeColumnPanel`, `GO.grid.Grid`, `detail/Card`, `FilterPanel`, `GO.tree.Tree` |
 | Entity dialog (`go.form.Dialog`), custom fields, links, files in the detail | all | `FormWindow` (`hasLinks`, custom fields), `LinkCards`, `FilesPanel`, `CommentsPanel`, `HistoryPanel` |
-| Lookup lists (Status / Type / Category / Unit / Rank grid + dialog pairs; amd "SettingsDialog" with `SettingsGridTrait`) | ~40 lookup grids in amd and sf | `src/systemsettings/EntityListPanel.mjs` for one entity per card; see "missing" for several lists in one module dialog |
+| Lookup lists (Status / Type / Category / Unit / Rank grid + dialog pairs; amd "SettingsDialog" with `SettingsGridTrait`) | ~40 lookup grids in amd and sf | `src/systemsettings/EntityListPanel.mjs` for one entity per card; several lists in one module dialog: `LookupSettingsDialog` (docs/neo-core-components.md) |
 | System settings and My account panels | 82 modules | `systemSettings` / `userSettings` registry keys, `systemsettings/fields.mjs` |
 | Start page portlets | amd (amd, amdmaps, buoys, crew, diary, dms, invoices, pms, portcall, tasks), nuw/nusperlingdashboard | `portlets` registry key (`modules/summary/views/neo`) |
 | Link "new item" and detail cards for links | 40 modules register entities with links | `linkWindows`, `linkDetailCards` |
@@ -304,7 +304,7 @@ custom editor) and lowered for code that becomes a shared component.
 | Timeline | vis-timeline: amd crew, diary | addon over vis-timeline | S |
 | Signature pad | amd formbuilder, pms | small addon (canvas) | S |
 | Real-time channel (sf/rtm, Pusher protocol) | sf chat, webrtc, aiassistant; amd links, sync | client in the App worker or an addon; neo already has SSE push for JMAP state | S–M |
-| Module settings dialog with several lookup lists | amd `SettingsDialog` + `SettingsGridTrait` in ~15 modules | `EntityListPanel` cards inside one `GO.view.Dialog` with a card menu; the same panel in System settings | S |
+| Module settings dialog with several lookup lists | amd `SettingsDialog` + `SettingsGridTrait` in ~15 modules | done 2026-11-28: `systemsettings/LookupSettingsDialog` + `LookupListPanel` + `LookupDialog` (docs/neo-core-components.md) | S |
 | Editable grid | see cell editing above | wire neo `CellEditing` into `GO.grid.Grid` with GO fields and JMAP save | M |
 | Tree state (expanded nodes kept across reloads) | amd/libs `TreeStateTrait` (component tree, folder trees) | option on `GO.tree.Tree` | S |
 | Wizard (card steps with back / next) | sf czechdatabox, generator; business studio | small `GO.view.WizardDialog` | S |

@@ -1,0 +1,7 @@
+// GO.systemsettings.LookupSettingsDialog: the lists scroll inside their card (as System settings)
+.neo-theme-go {
+    .go-lookup-settings-dialog .go-settings-card {
+        min-height: 0;
+        overflow  : hidden;
+    }
+}
