@@ -9,7 +9,15 @@
         display   : block;
         float     : left;
         margin    : 0;
+        // classic .go-dl dd: a long URL or number wraps instead of overflowing the cell
+        overflow-wrap: anywhere;
         padding   : 0 go.dp(16) go.dp(8) go.dp(16);
+    }
+
+    // a LinesCard of cells: the cells' own pad is the inset (classic), not body side padding too; tables keep it
+    .go-detail-card-body:has(> .go-detail-lines-html > :is(.s1, .s2, .s3, .s4, .s5, .s6, .s7, .s8, .s9, .s10, .s11, .s12)) {
+        padding-left : 0;
+        padding-right: 0;
     }
 
     .s1  {width: 8.333333%;}
