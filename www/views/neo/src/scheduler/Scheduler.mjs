@@ -1,6 +1,6 @@
 import NeoScheduler  from '../../node_modules/neo.mjs/src/scheduler/Container.mjs';
 import TreeStore     from '../../node_modules/neo.mjs/src/data/TreeStore.mjs';
-import {toUserTime} from '../DateUtil.mjs';
+import {resolveTimeZone, toUserTime} from '../DateUtil.mjs';
 import {setDataAndFireLoad} from '../data/setData.mjs';
 import {language, t} from '../Translate.mjs';
 import {isDescriptor} from '../../node_modules/neo.mjs/src/core/ConfigSymbols.mjs';
@@ -37,7 +37,7 @@ const dayMinutes = 1440;
  * @description Generic: the caller passes the resources and how its records map to events
  * (docs/neo-core-components.md, "GO.scheduler.Scheduler"). The resources are projected into a neo TreeStore, the
  * events into a `Neo.timeline.store.Events`, because neo's lookup reads the literal fields `resourceId`, `startDate`
- * and `endDate`. Dates show in the user's time zone.
+ * and `endDate`. Dates show in the user's time zone, or in `timeZone` when set.
  * @class GO.scheduler.Scheduler
  * @extends Neo.scheduler.Container
  */
@@ -115,7 +115,14 @@ class Scheduler extends NeoScheduler {
          * @member {String|null} zoom_=null
          * @reactive
          */
-        zoom_: null
+        zoom_: null,
+        /**
+         * IANA zone of the bars, bands, axis and slotClick dates, e.g. one vessel's day in its own zone; null: the
+         * user's. The axis range is a wall time in this zone; convert a date back with fromUserTime(date, timeZone).
+         * @member {String|null} timeZone_=null
+         * @reactive
+         */
+        timeZone_: null
     }
 
     /**
@@ -137,9 +144,10 @@ class Scheduler extends NeoScheduler {
      * @summary Normalises source records into neo event data: {id, resourceId, startDate, endDate, title, cls}.
      * @param {Object[]} records source records (neo records or plain objects)
      * @param {Object} fields mapping, see eventFields
-     * @returns {Object[]} events with an id, a resource and a valid range; dates as the user's wall time
+     * @param {String|null} [timeZone] IANA name; null: the user's
+     * @returns {Object[]} events with an id, a resource and a valid range; dates as the wall time in timeZone
      */
-    static normalizeEvents(records, fields={}) {
+    static normalizeEvents(records, fields={}, timeZone=null) {
         const map = {startDate: 'startDate', endDate: 'endDate', resourceId: 'resourceId', title: 'title', cls: 'cls', ...fields},
               events = [];
 
@@ -147,8 +155,8 @@ class Scheduler extends NeoScheduler {
             const resourceId = read(record, map.resourceId),
                   start      = read(record, map.startDate),
                   end        = read(record, map.endDate),
-                  startDate  = toUserTime(start),
-                  endDate    = toUserTime(end);
+                  startDate  = toUserTime(start, timeZone),
+                  endDate    = toUserTime(end, timeZone);
 
             // the range is checked on the instants: wall times go backwards when the clock is turned back
             if (record.id == null || resourceId == null || !startDate || !endDate || +new Date(end) < +new Date(start)) {
@@ -217,9 +225,10 @@ class Scheduler extends NeoScheduler {
      * @summary Groups the background bands by the row they paint: inherit adds each descendant of the resource.
      * @param {Object[]} backgrounds [{resourceId, startDate, endDate, cls, inherit}], dates as instants
      * @param {Object[]} resources [{id, parentId}]
-     * @returns {Map<String, Object[]>} resource id => [{startDate, endDate, cls: String[]}] in the user's wall time
+     * @param {String|null} [timeZone] IANA name; null: the user's
+     * @returns {Map<String, Object[]>} resource id => [{startDate, endDate, cls: String[]}] in the wall time of timeZone
      */
-    static mapBackgrounds(backgrounds, resources) {
+    static mapBackgrounds(backgrounds, resources, timeZone=null) {
         const children = new Map(),
               rows     = new Map(),
               add      = (id, band) => rows.has(id) ? rows.get(id).push(band) : rows.set(id, [band]);
@@ -230,8 +239,8 @@ class Scheduler extends NeoScheduler {
         });
 
         backgrounds.forEach(bg => {
-            const startDate = toUserTime(bg.startDate),
-                  endDate   = toUserTime(bg.endDate);
+            const startDate = toUserTime(bg.startDate, timeZone),
+                  endDate   = toUserTime(bg.endDate, timeZone);
 
             // the range is checked on the instants: wall times go backwards when the clock is turned back
             if (bg.resourceId == null || !startDate || !endDate || +new Date(bg.endDate) < +new Date(bg.startDate)) {
@@ -352,6 +361,27 @@ class Scheduler extends NeoScheduler {
     }
 
     /**
+     * @summary Checks the zone name: an unknown one falls back to the user's (with a console warning).
+     * @param {String|null} value
+     * @returns {String|null}
+     */
+    beforeSetTimeZone(value) {
+        return resolveTimeZone(value)
+    }
+
+    /**
+     * @summary Shows the bars and bands in the new zone.
+     * @param {String|null} value
+     * @param {String|null} oldValue
+     */
+    afterSetTimeZone(value, oldValue) {
+        if (this.#built) {
+            this.updateBackgrounds();
+            this.rebuildEvents()
+        }
+    }
+
+    /**
      * @summary Applies a zoom preset.
      * @param {String|null} value
      * @param {String|null} oldValue
@@ -430,14 +460,14 @@ class Scheduler extends NeoScheduler {
      * @summary Regroups the background bands by row and repaints the mounted rows.
      */
     updateBackgrounds() {
-        this.#rowBackgrounds = Scheduler.mapBackgrounds(this.backgrounds || [], this.resources || []);
+        this.#rowBackgrounds = Scheduler.mapBackgrounds(this.backgrounds || [], this.resources || [], this.timeZone);
         this.timelineColumn?.refreshMountedRows()
     }
 
     /**
      * @summary The bookable resource and the date under a click on the empty track (not a bar).
      * @param {Object} data click data: path with the nodes' rects, clientX
-     * @returns {{resource: Neo.data.Record, date: Date}|null} date in the user's wall time; null on a bar, a
+     * @returns {{resource: Neo.data.Record, date: Date}|null} date as the wall time in timeZone; null on a bar, a
      * grouping row or without a position
      */
     getSlotTarget(data) {
@@ -601,7 +631,7 @@ class Scheduler extends NeoScheduler {
         }
 
         me.sourceRecords = new Map(records.map(record => [String(record.id), record]));
-        setDataAndFireLoad(me.eventStore, Scheduler.normalizeEvents(records, me.eventFields))
+        setDataAndFireLoad(me.eventStore, Scheduler.normalizeEvents(records, me.eventFields, me.timeZone))
     }
 }
 

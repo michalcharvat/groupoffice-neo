@@ -66,9 +66,10 @@ export function formatDate(date, format) {
  * @param {String|Number|Date|null} value a Date is a wall time already; a number (ms) or a
  *     string with an offset or Z is an instant, shown in the user's time zone; "Y-m-d" and
  *     "Y-m-d H:i:s" without an offset are shown as they are
+ * @param {String|null} [timeZone] IANA name: an instant is shown in that zone instead
  * @returns {Date|null}
  */
-function toDate(value) {
+function toDate(value, timeZone=null) {
     if (!value) {
         return null
     }
@@ -87,22 +88,31 @@ function toDate(value) {
         return isNaN(date) ? null : date
     }
 
-    return toUserTime(value)
+    return toUserTime(value, timeZone)
 }
 
 // formats the wall time from toDate() as UTC: shows its fields as they are
 const dateTime = new Intl.DateTimeFormat(undefined, {dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC'});
 
-export function formatDateTime(value) {
-    const date = toDate(value);
+/**
+ * Medium date and short time in the browser's locale
+ * @param {String|Number|Date|null} value see toDate()
+ * @param {String|null} [timeZone] IANA name: an instant is shown in that zone (e.g. a vessel's), null: the user's
+ * @returns {String}
+ */
+export function formatDateTime(value, timeZone=null) {
+    const date = toDate(value, timeZone);
     return date ? dateTime.format(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), date.getMinutes())) : ''
 }
 
 /**
  * Full date and time in the user's format (GOUI: the cell's title)
+ * @param {String|Number|Date|null} value see toDate()
+ * @param {String|null} [timeZone] IANA name: an instant is shown in that zone, null: the user's
+ * @returns {String}
  */
-export function formatUserDateTime(value) {
-    const date = toDate(value);
+export function formatUserDateTime(value, timeZone=null) {
+    const date = toDate(value, timeZone);
     return date ? formatDate(date, userFormat.dateFormat + ' ' + userFormat.timeFormat) : ''
 }
 

@@ -1,7 +1,7 @@
 import Field from './Field.mjs';
 import {formatDate, userFormat} from '../../Format.mjs';
 import {fmt, t} from '../../Translate.mjs';
-import {parseYmd, toHi, toIsoLocal, toUserTime, toYmd, userNow} from '../../DateUtil.mjs';
+import {parseYmd, resolveTimeZone, toHi, toIsoAt, toIsoLocal, toUserTime, toYmd} from '../../DateUtil.mjs';
 
 const LOCAL = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2})(?::\d{2})?)?$/;
 
@@ -13,8 +13,9 @@ const LOCAL = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2})(?::\d{2})?)?$/;
  * - withTime, no time zone: "2026-10-16T10:30:00" (local, e.g. a calendar event in its own zone)
  * - without time: "2026-10-16"
  *
- * A value with another offset ("…Z") is shown in the user's GO time zone. Switching
- * withTime on adds defaultTime (or the current time).
+ * A value with another offset ("…Z") is shown in the user's GO time zone, or in timeZone
+ * when set (the inputs then edit the wall time there and the value has that zone's
+ * offset at that instant). Switching withTime on adds defaultTime (or the current time).
  *
  *     {module: DateTimeField, name: 'start', labelText: t('Start'), withTime: true, minValue: '2026-01-01'}
  */
@@ -45,7 +46,13 @@ class DateTimeField extends Field {
         /**
          * @member {Boolean} withTimeZone_=true
          */
-        withTimeZone_: true
+        withTimeZone_: true,
+        /**
+         * IANA zone the inputs show and edit, e.g. a vessel's "Asia/Singapore"; null: the
+         * user's. Changing it keeps the instant of the value. An unknown name: the user's.
+         * @member {String|null} timeZone_=null
+         */
+        timeZone_: null
     }
 
     /** Shown in the inputs, also while only one of them is filled */
@@ -87,9 +94,30 @@ class DateTimeField extends Field {
         let me = this;
 
         if (oldValue !== undefined) {
-            !me.timeText && (me.timeText = me.defaultTime || toHi(userNow()));
+            !me.timeText && (me.timeText = me.defaultTime || toHi(me.now()));
             me.value = me.compose()
         }
+    }
+
+    beforeSetTimeZone(value) {
+        return resolveTimeZone(value)
+    }
+
+    afterSetTimeZone(value, oldValue) {
+        if (oldValue !== undefined) {
+            // an instant: the same one in the new zone; a value without an offset keeps its wall time
+            this.value && (this.value = this.normalize(this.value));
+            // min and max of the date input move with the zone, also when the value text stays the same
+            this.renderControl()
+        }
+    }
+
+    /**
+     * @returns {Date} the current wall time in this field's zone
+     * @protected
+     */
+    now() {
+        return toUserTime(Date.now(), this.timeZone)
     }
 
     afterSetWithTimeZone(value, oldValue) {
@@ -122,12 +150,17 @@ class DateTimeField extends Field {
                 date = parseYmd(local[1]);
 
                 if (date && me.withTime) {
-                    const [h, i] = (local[2] || me.timeText || me.defaultTime || toHi(userNow())).split(':');
+                    const [h, i] = (local[2] || me.timeText || me.defaultTime || toHi(me.now())).split(':');
                     date.setHours(Number(h), Number(i))
                 }
             } else {
-                // an offset or Z: the user's time zone
-                date = toUserTime(String(value))
+                // an offset or Z: the wall time in this field's zone; formatted from the instant, which keeps a repeated hour
+                if (me.withTime && me.withTimeZone) {
+                    const ms = Date.parse(String(value));
+                    return isNaN(ms) ? null : toIsoAt(ms, me.timeZone)
+                }
+
+                date = toUserTime(String(value), me.timeZone)
             }
         }
 
@@ -144,7 +177,8 @@ class DateTimeField extends Field {
             return toYmd(date)
         }
 
-        return this.withTimeZone ? toIsoLocal(date) : toIsoLocal(date).substring(0, 19)
+        // without an offset the wall time stays as it is, also in a DST gap of another zone
+        return this.withTimeZone ? toIsoLocal(date, this.timeZone) : `${toYmd(date)}T${toHi(date)}:${String(date.getSeconds()).padStart(2, '0')}`
     }
 
     /**
@@ -161,7 +195,7 @@ class DateTimeField extends Field {
             return parseYmd(value)
         }
 
-        const date = LOCAL.exec(value) ? null : toUserTime(value);
+        const date = LOCAL.exec(value) ? null : toUserTime(value, this.timeZone);
 
         if (date) {
             return date
@@ -187,7 +221,7 @@ class DateTimeField extends Field {
             return null
         }
 
-        return me.normalize(me.withTime ? `${me.dateText}T${me.timeText || me.defaultTime || toHi(userNow())}` : me.dateText)
+        return me.normalize(me.withTime ? `${me.dateText}T${me.timeText || me.defaultTime || toHi(me.now())}` : me.dateText)
     }
 
     createControl() {
@@ -231,7 +265,7 @@ class DateTimeField extends Field {
     }
 
     /**
-     * @returns {Date|null} GOUI getValueAsDateTime()
+     * @returns {Date|null} GOUI getValueAsDateTime(): the wall time in this field's zone
      */
     getValueAsDate() {
         return this.toDate(this.value)

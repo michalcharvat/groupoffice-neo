@@ -6,13 +6,13 @@ import {t}    from '../../Translate.mjs';
 const ADDON = 'WS/CodeMirror';
 
 /**
- * @summary Code editor (CodeMirror 5 of sf/codemirror), the classic `sfcodemirroreditor`. The value
- * is the text.
+ * @summary Code editor (CodeMirror 5, `codemirror` of views/neo/package.json), the classic client's
+ * `sfcodemirroreditor` of sf/codemirror. The value is the text.
  *
  * The editor lives on the main thread (GO.main.addon.CodeMirror) and sends the text after each change
  * (debounced); flush() takes the latest one before a save (FormWindow calls it). Text equal to the
  * editor's own text of the loaded value keeps the loaded value, so an untouched form saves nothing.
- * Without sf/codemirror (its library does not load) the field is a plain monospace textarea.
+ * When the library does not load the field is a plain monospace textarea.
  *
  *     {module: CodeField, name: 'configuration', labelText: t('Configuration'), mode: 'json', editorHeight: 300}
  *
@@ -288,7 +288,7 @@ class CodeField extends Field {
                   sentReadOnly = me.readOnly,
                   created      = await me.addon.createInstance({
                       id      : me.id,
-                      baseUrl : client.baseUrl + 'go/modules/sf/codemirror/views/extjs3/codemirror/',
+                      baseUrl : client.baseUrl + 'views/neo/node_modules/codemirror/',
                       value   : sent ?? '',
                       mode    : me.mode,
                       readOnly: !!sentReadOnly,
@@ -308,7 +308,7 @@ class CodeField extends Field {
         } catch (e) {
             // not for a create of an older mount (popout, mode change): the current editor may work
             if (e !== Neo.isDestroyed && !me.isDestroyed && generation === me.#generation) {
-                // sf/codemirror is not there: a plain textarea
+                // the library did not load: a plain textarea
                 console.warn('CodeField: CodeMirror not available, using a textarea', e);
                 me.fallback = true;
                 me.renderControl()

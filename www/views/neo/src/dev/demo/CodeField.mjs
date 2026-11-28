@@ -5,7 +5,7 @@ import Toolbar   from '../../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import {escapeHtml} from '../../Format.mjs';
 
 /**
- * @summary Dev tab: GO.form.field.CodeField (CodeMirror of sf/codemirror, a textarea without it):
+ * @summary Dev tab: GO.form.field.CodeField (CodeMirror 5, a textarea when it does not load):
  * value, dirty state, JSON validation, read only, mode.
  * @class GO.dev.demo.CodeField
  * @extends Neo.container.Base

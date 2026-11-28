@@ -6,8 +6,10 @@
   "type": "module",
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.3.1",
+    "codemirror": "5.65.21",
     "marked": "^18.2.1",
-    "neo.mjs": "14.0.0"
+    "neo.mjs": "14.0.0",
+    "pdfjs-dist": "6.5.438"
   },
   "devDependencies": {
     "autoprefixer": "^10.6.1",

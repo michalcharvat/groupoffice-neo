@@ -47,7 +47,7 @@ Status: **neo** = neo.mjs 13.4 ships it (14 since 2026-11-24), usable as is (may
 | DataSourceForm (load/save an entity) | – | GO.neo (`GO.form.DataSourceForm`); `save` event `{data, isNew, created}`, `created` = what Foo/set returned for a new entity (API key token) |
 | DateField, DateTimeField, DateRangeField, DurationField | form/field/Date (native input + picker) | GO.neo (`GO.form.field.*`; DateRangeField: custom range/from/until in a dialog instead of picker submenus) |
 | HtmlField (rich text) | – | GO.neo (`HtmlField`, main-thread addon; `HtmlFieldMentionPlugin`: "@name" suggestions at the caret, owned by the addon, provider in the worker) |
-| CodeField (sf/codemirror `sfcodemirroreditor`) | – | GO.neo (`form/field/CodeField.mjs` + core main-thread addon `main/addon/CodeMirror.mjs`: CodeMirror 5 loaded from sf/codemirror's `views/extjs3/codemirror/`, modes on demand by name / extension / MIME; `mode` ('json' validates with the parse message), `editorHeight` (neo owns `height`), `readOnly`, `required`; text equal to the editor's text of the loaded value keeps the loaded value (no dirty form); dark theme `material-darker` while `body.dark`; a monospace textarea when the library does not load; demo `#dev/form/CodeField`) |
+| CodeField (sf/codemirror `sfcodemirroreditor`) | – | GO.neo (`form/field/CodeField.mjs` + core main-thread addon `main/addon/CodeMirror.mjs`: CodeMirror 5 (`codemirror@5` of `views/neo/package.json`, kept by `buildScripts/release.mjs`), modes on demand by name / extension / MIME; `mode` ('json' validates with the parse message), `editorHeight` (neo owns `height`), `readOnly`, `required`; text equal to the editor's text of the loaded value keeps the loaded value (no dirty form); dark theme `material-darker` while `body.dark`; a monospace textarea when the library does not load; demo `#dev/form/CodeField`) |
 | MarkdownField | – | GO.neo (`MarkdownField`: textarea + main-thread addon `MarkdownEditor`, toolbar, preview, image paste / drop / upload; `src/Markdown.mjs` renders with `marked` + `Format.sanitizeHtml()`; no EasyMDE/CodeMirror) |
 | ChipsField, AutocompleteChips, AutocompleteField | form/field/Chip (basic) | ChipsField: GO.neo (`GO.form.field.ChipsField`, async textInputToValue/chipRenderer); AutocompleteChips: GO.neo (`GO.form.field.AutocompleteChips`, entity ids, ▾ menu; tasks categories); AutocompleteField: GO.neo (`GO.form.field.AutocompleteField`, JMAP entity or `fetch(text)`, `valueProperty`, `valueToText`); AutocompleteChips `properties` = fetched properties |
 | ArrayField, ContainerField, MapField, ListField | – | ArrayField, ContainerField: GO.neo (`src/form/nestedFields.mjs`); MapField: GO.neo (`GO.form.field.MapField`, object keyed by id, `keyFieldName` / `valueFieldName`); ListField: GO.neo (`GO.form.field.ListField`, `renderValue` HTML, records of a `store`) |
@@ -62,6 +62,7 @@ Status: **neo** = neo.mjs 13.4 ships it (14 since 2026-11-24), usable as is (may
 | Upload (`client.upload()`, ExtJS `go.Uploader`) | GO.neo (`jmap/Uploader.mjs`: XHR with progress, queue of `maxConcurrentUpload`, `maxSizeUpload` check, abort; `component/UploadPanel.mjs` shows the uploads of a window bottom right; used by `UploadButton` `autoUpload`, `BlobField`, `AttachmentsField`, `ImageField`, `MarkdownField`, `FilesPanel`, imports; demo `#dev/core/Upload`) |
 | Kanban board (GOUI has none; ExtJS business/kanban) | GO.neo (`GO.board.Board`, see "GO.board.Board" below; first user: tasks board view) |
 | Resource scheduler / timeline (vis-timeline in amd/crew) | GO.neo (`GO.scheduler.Scheduler`, see "GO.scheduler.Scheduler" below; first user: crew planning) |
+| PDF / image preview (ExtJS amd/libs `PdfViewPanel`; GOUI has none) | GO.neo (`GO.pdf.PdfViewer`, see "GO.pdf.PdfViewer" below; demo `#dev/core/PdfViewer`; users: crew certificate verification, later dms and invoices) |
 | auth/Login | GO.neo (`apps/go/view/LoginView.mjs`: forgot credentials, 2FA via `loginPanels`) |
 | Main area (GOUI/ExtJS card per module) | GO.neo `apps/go/view/MainView.mjs`: one card per module. Modules extend it through `mainViewExtension` (extra cards, top-bar items, routes, claimed module views; `docs/neo-small-modules.md`, "Main view extensions"). The module sf/workspaces (sf-mono, off by default) adds workspace tabs next to the module tabs, each a dock (`GO.workspaces.Workspace` over neo's dock; panels side by side, drag from the top bar, maximize, saved per user and screen profile; `docs/neo-workspace.md`) |
 | MainThreeColumnPanel, TableTitle | GO.neo |
@@ -306,6 +307,7 @@ the resources and field mappings. First user: amd/crew Crew Planning (`docs/neo-
 | `readOnly` | true: no drag, no resize handles, no EventEditor, no keyboard moves (neo's ArrowLeft / ArrowRight on a focused bar ignore `editable` and `barDraggable`, the wrapper blocks them) and `moveEvent()` returns null. Switching it off again turns drag, resize and the editor on; false at construction leaves neo's `barDraggable`, `resizableBars` and `editable` as passed |
 | `eventRenderer(record, descriptor)` | `{html, cls}` merged into neo's bar node: `html` replaces the label (escape it yourself), `cls` (string or array) is added. A string (also `''`) sets the label text. Don't pass neo's own `barRenderer`: the wrapper sets it to run `eventRenderer` (neo's returned object would replace the whole bar node) |
 | `timeAxis` | neo's `Neo.timeline.TimeAxis` config (`start`, `end`, `tickUnit`, `pxPerMinute` …) in wall time of the user's zone. `start` and `end` are the range; start it on the 1st of a month for month ticks (they are anchored to `start`) |
+| `timeZone` | IANA zone of the bars, bands, axis range and `slotClick` dates instead of the user's (diary: one vessel's day in its own zone); an unknown name falls back to the user's with a console warning. Changing it re-shows the bars. See "Time zones other than the user's" |
 | `backgrounds` | `[{resourceId, startDate, endDate, cls, inherit}]`: bands behind the bars of a row, rendered by `GO.scheduler.TimelineColumn` next to neo's non-working bands. Dates are instants like the events; a band ending before it starts is left out. `inherit: true` paints the row and every descendant (crew: a port call on the vessel row and its rank rows; the company row gets none). `cls` (string or array) is added to `go-scheduler-background` (default colour: primary at 14 %). Bands are at least 2 px wide (a 30-minute crew change line stays visible) and take no pointer events, so a click on a band is a slot click |
 | `zoom` | a preset applied at construction and on change: neo's `hour`, `day`, `week` plus `month` (day ticks, month header), `quarter` (week ticks, month header) and `year` (month ticks, a header per 3 months counted from the axis start month, so calendar quarters only when the range starts in January, April, July or October). `zoomTo(presetOrConfig)` takes the same names or a neo axis config; presets are in `Scheduler.zoomPresets`. Header labels use neo's formatters in the user's GO language (`Translate.language()`, also passed to neo's header, which otherwise keeps `Neo.config.locale`); `timelineColumnConfig: {locale}` overrides it |
 | `growRange` | true: when the view comes within one view width of the axis start or end (on scroll, when the view is measured or resized, and after a zoom), the axis grows by whole months (two view widths, at least one month), the date at the left edge stays in place and `rangeChange` fires. `scrollToDate(date)` first grows the range to contain `date` (plus one month). Default false: the axis keeps `timeAxis.start` / `end` |
@@ -347,6 +349,27 @@ strings that become HTML: a renderer's return value, vdom `html`, a template str
 
 Not built yet: drag and resize writing a JMAP patch (with the first user that edits on the scheduler). Dev demo:
 `#dev/core/Scheduler` (bands, zoom buttons, slot click, growing range).
+
+## Time zones other than the user's (2026-11-28)
+
+The UI works with wall-time Dates of the user's GO zone (`DateUtil.mjs`, top comment). For a record that lives in
+another zone (a vessel, a port call) the helpers take an optional IANA zone; null or an unknown name (console
+warning) is the user's zone:
+
+- `DateUtil`: `toUserTime(instant, timeZone)`, `fromUserTime(wall, timeZone)`, `toIsoLocal(wall, timeZone)` (the
+  zone's offset at that instant, DST-correct via `tzOffset()`), `toIsoAt(instant, timeZone)`, `resolveTimeZone(name)`
+  checks a name. A wall-time Date cannot tell the two occurrences of a repeated DST hour apart (it maps to the first;
+  a skipped hour moves forward), so code that has the instant formats it with `toIsoAt()`: DateTimeField does, and an
+  untouched value in the repeated hour stays as it is.
+- `GO.form.field.DateTimeField` `timeZone`: the inputs show and edit the wall time there, the value is ISO 8601 with
+  that zone's offset (`2026-06-15T16:00:00+08:00`). An untouched value round-trips unchanged (no `userChange`).
+  Setting another zone on a filled field keeps the instant and re-shows it (classic diary `setTimezone()`); a value
+  without an offset (`withTimeZone: false`) keeps its wall time. `getValueAsDate()` and min/max compare in the
+  field's zone.
+- `Format.formatDateTime(value, timeZone)`, `formatUserDateTime(value, timeZone)`: the classic
+  `go.modules.amd.diary.helpers.formatDateTime(value, vesselTimeZone)`, for grid columns and detail cards.
+- `GO.scheduler.Scheduler` `timeZone` (see its table). Not covered: neo's now line of the `TimeAxis` reads the
+  browser clock (also without `timeZone`).
 
 ## neo user settings (2026-11-27)
 
@@ -618,6 +641,14 @@ class NoteDetail extends Panel {
   title `getTitle(record)`), Download PDF only when the subclass overrides `getDownloadUrl(record)`,
   Delete (id `delete`). Edit and Delete follow `canEdit(record)` / `canDelete(record)`
   (permissionLevel ≥ write / delete; override to refuse more, e.g. legacy encrypted notes).
+- ⋮ rebuilt on open: a subclass that overrides `loadMoreMenu(record, items)` (`items` is a fresh
+  `createMoreMenu()`; return the items, also as a Promise, null keeps the menu closed) gets the menu
+  built again each time it opens: a disabled "Loading..." item shows meanwhile, Delete then follows
+  `canDelete()` again, and the answer is dropped when the record changed, the menu was closed or
+  opened again meanwhile; another record closes the open menu; a failing hook shows the error.
+  Known gap: an outside click in the few ms while the final list builds is lost (the menu opens). It rides on `GO.button.Button`'s
+  `beforeShowMenu(button)` (runs before the menu opens; may set a new `menu`; false keeps it closed).
+  Without the override the menu stays the one built once (portcall's query and output actions use it).
 - Body: `createBody()` items go into the `scroller` above the standard cards; `createBottomItems()`
   below it (tasks "Continue task"). `cards` lists the standard cards in their order:
   `customFields` (DetailFieldsets), `comments`, `files`, `links` (LinkCards), `history`; each is a
@@ -745,8 +776,42 @@ listens for custom DOM events the addon sends (`DomEvents.sendMessageToApp`, e.g
 on the dialog) and does the JMAP calls itself; Blobs and Files come back from addon remotes by
 structured clone. Details and gotchas: `go/modules/community/syncfusion/views/neo/README.md`.
 
-A library another module vendors and several modules use belongs in a core addon that loads it
-from that module's folder (`GO.main.addon.CodeMirror` loads sf/codemirror's copy) and fails soft
-when the module is missing. A field whose holder is box content rendered by `renderControl()`
+A library several modules use belongs in neo core as a `views/neo` npm dependency (pinned, kept by
+`buildScripts/release.mjs`), loaded by a core addon that fails soft when it does not load: core runs without
+the optional modules (`GO.main.addon.CodeMirror` loads `codemirror@5` from `views/neo/node_modules`; sf/codemirror's
+copy stays for the classic client). A field whose holder is box content rendered by `renderControl()`
 (`GO.form.field.Field`) must `await me.promiseUpdate()` before the addon looks up the holder: on
 `mounted` the box content can still be on its way to the DOM.
+
+## GO.pdf.PdfViewer (2026-11-28)
+
+`src/pdf/PdfViewer.mjs` with the main thread addon `src/main/addon/PdfJs.mjs` (`WS/PdfJs`) and the DOM-free
+`src/pdf/pdfPages.mjs` (page selection, title, zoom steps; `tests/pdfPages.test.mjs`). Moved from amd/libs, whose
+classic `PdfViewPanel` and vendored `views/extjs3/lib/pdfjs` stay for the classic client.
+
+```js
+import PdfViewer from '<relative>/views/neo/src/pdf/PdfViewer.mjs';
+
+{module: PdfViewer, reference: 'preview', flex: 1, toolbarItems: [{module: Button, text: t('Analyze'), handler: 'up.onAnalyze'}]}
+
+preview.setSource(client.apiUrl + 'download.php?blob=' + blobId, 'application/pdf'); // or 'pdf', 'image/png', 'jpg' …; null clears
+preview.pages = [3, 4, 5];                                    // null: the preview again
+preview.on('load', ({numPages, title}) => …);                 // also 'loadError {error}'
+```
+
+- pdf.js is `pdfjs-dist` in `views/neo/package.json` "dependencies" (pinned; `PDFJS_VERSION` in the addon busts the
+  cache, keep it in step). Not the other copies: the root `www/node_modules/pdfjs-dist` (classic `FilePanel.js`)
+  is removed from a neo-only release, `community/pdfeditor/views/pdf.js` belongs to an optional module.
+  `buildScripts/release.mjs` keeps its `build`, `cmaps`, `iccs`, `standard_fonts` and `wasm`.
+- A PDF shows its first `previewPages` (10) pages or the pages of `pages` (at most `maxListedPages`, 200). Every
+  page gets a placeholder of the first page's size; the addon draws a page when it comes within 1500px of the view
+  (IntersectionObserver) and drops its canvas when it leaves. One canvas has at most 16.7 million pixels and 8192
+  per side (`MAX_CANVAS_PIXELS`, `MAX_CANVAS_SIDE`): on a high density screen at a high zoom it renders below device
+  resolution instead of failing blank.
+- Zoom buttons 25 % … 400 % (`ZOOM_STEPS`), the relative scroll position is kept; `pageScale` (1.5) is the pdf.js
+  scale at 100 %. An image (`image/*` or an extension) is an `<img>` at zoom × view width.
+- The source is a same-origin URL (relative ones are resolved against GO's root, not neo's `<base href>`); pdf.js and
+  `<img>` send the session cookie.
+- A PDF loads once the viewer is in the DOM; a viewer in a hidden card redraws when it is shown again (neo removes
+  inactive cards from the DOM). Only the latest source counts: the addon answers an older load `{superseded: true}`,
+  and a failed load clears the old pages, shows a message and fires `loadError`.

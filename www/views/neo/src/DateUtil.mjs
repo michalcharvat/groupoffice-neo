@@ -8,8 +8,8 @@
  * in their zone. toUserTime() turns an instant from the server into one,
  * fromUserTime() a wall time back into the instant, userNow() is the current wall time.
  * Like GOUI's DateTime this is a JS Date in the browser's zone: a wall time inside the
- * browser's own DST gap moves an hour, and the user's repeated DST hour maps to its
- * first occurrence.
+ * browser's own DST gap moves an hour, and a repeated DST hour of the user's (or a given)
+ * zone maps to its first occurrence.
  */
 
 const pad = n => String(n).padStart(2, '0');
@@ -22,21 +22,38 @@ let userTimeZone = null;
  * @param {String|null} timeZone e.g. "Europe/Amsterdam"; null, empty or unknown: the browser's
  */
 export function setUserTimeZone(timeZone) {
-    userTimeZone = null;
+    const resolved = resolveTimeZone(timeZone);
 
-    if (!timeZone) {
-        return
-    }
-
-    try {
-        const resolved = new Intl.DateTimeFormat('en-US', {timeZone}).resolvedOptions().timeZone;
-
-        // the browser's own zone needs no conversion
-        resolved !== Intl.DateTimeFormat().resolvedOptions().timeZone && (userTimeZone = resolved)
-    } catch (e) {
-        console.warn('Unknown time zone ' + timeZone)
-    }
+    // the browser's own zone needs no conversion
+    userTimeZone = resolved !== Intl.DateTimeFormat().resolvedOptions().timeZone ? resolved : null
 }
+
+const resolvedZones = new Map();
+
+/**
+ * Checks an IANA time zone name
+ * @param {String|null} timeZone e.g. "Asia/Singapore"
+ * @returns {String|null} the canonical name; null for null, empty or unknown (with a console warning)
+ */
+export function resolveTimeZone(timeZone) {
+    if (!timeZone) {
+        return null
+    }
+
+    if (!resolvedZones.has(timeZone)) {
+        try {
+            resolvedZones.set(timeZone, new Intl.DateTimeFormat('en-US', {timeZone}).resolvedOptions().timeZone)
+        } catch (e) {
+            console.warn('Unknown time zone ' + timeZone);
+            resolvedZones.set(timeZone, null)
+        }
+    }
+
+    return resolvedZones.get(timeZone)
+}
+
+/** A zone argument of the helpers below: a valid name, else the user's zone */
+const zoneOf = timeZone => (timeZone && resolveTimeZone(timeZone)) || userTimeZone;
 
 const offsetFormats = {};
 
@@ -62,20 +79,23 @@ export function tzOffset(utcMs, timeZone) {
 /**
  * An instant → the user's wall time
  * @param {Date|Number|String} instant a Date, ms since the epoch or a string with an offset or Z
+ * @param {String|null} [timeZone] IANA name: the wall time in that zone instead of the user's
  * @returns {Date|null} a new Date
  */
-export function toUserTime(instant) {
+export function toUserTime(instant, timeZone=null) {
     const ms = instant instanceof Date ? instant.getTime() : (typeof instant === 'number' ? instant : Date.parse(instant));
 
     if (instant === null || instant === undefined || instant === '' || isNaN(ms)) {
         return null
     }
 
-    if (!userTimeZone) {
+    const zone = zoneOf(timeZone);
+
+    if (!zone) {
         return new Date(ms)
     }
 
-    const wall = new Date(ms + tzOffset(ms, userTimeZone));
+    const wall = new Date(ms + tzOffset(ms, zone));
 
     return new Date(wall.getUTCFullYear(), wall.getUTCMonth(), wall.getUTCDate(), wall.getUTCHours(), wall.getUTCMinutes(), wall.getUTCSeconds(), wall.getUTCMilliseconds())
 }
@@ -83,20 +103,23 @@ export function toUserTime(instant) {
 /**
  * The user's wall time → the instant (inverse of toUserTime())
  * @param {Date} date wall time
+ * @param {String|null} [timeZone] IANA name: a wall time in that zone instead of the user's
  * @returns {Date} a new Date
  */
-export function fromUserTime(date) {
-    if (!userTimeZone) {
+export function fromUserTime(date, timeZone=null) {
+    const zone = zoneOf(timeZone);
+
+    if (!zone) {
         return new Date(date)
     }
 
-    const wall    = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds(), date.getMilliseconds());
-    let   instant = wall - tzOffset(wall, userTimeZone);
+    const day    = 86400000,
+          wall   = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds(), date.getMilliseconds()),
+          // with the offsets of the day before and after: a repeated hour has two matches (the first wins), a skipped one none
+          first  = wall - tzOffset(wall - day, zone),
+          second = wall - tzOffset(wall + day, zone);
 
-    // across a DST change the first guess is an hour off
-    instant = wall - tzOffset(instant, userTimeZone);
-
-    return new Date(instant)
+    return new Date([first, second].find(instant => instant + tzOffset(instant, zone) === wall) ?? first)
 }
 
 /**
@@ -165,19 +188,36 @@ export function addMonths(date, months) {
     return d
 }
 
+const iso = (wall, offset) => {
+    const sign = offset >= 0 ? '+' : '-',
+          abs  = Math.abs(offset);
+
+    return `${toYmd(wall)}T${toHi(wall)}:${pad(wall.getSeconds())}${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`
+};
+
 /**
- * ISO 8601 with the user's offset, PHP's "c" ("2026-10-16T10:30:00+02:00")
- * @param {Date} date wall time
+ * ISO 8601 of an instant in a zone, with that zone's offset at the instant
+ * @param {Date|Number} instant
+ * @param {String|null} [timeZone] IANA name; null: the user's
  * @returns {String}
  */
-export function toIsoLocal(date) {
-    const offset = userTimeZone
-              ? Math.round((Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds()) - Math.floor(fromUserTime(date).getTime() / 1000) * 1000) / 60000)
-              : -date.getTimezoneOffset(),
-          sign   = offset >= 0 ? '+' : '-',
-          abs    = Math.abs(offset);
+export function toIsoAt(instant, timeZone=null) {
+    const zone = zoneOf(timeZone),
+          ms   = +instant;
 
-    return `${toYmd(date)}T${toHi(date)}:${pad(date.getSeconds())}${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`
+    return zone ? iso(toUserTime(ms, zone), Math.round(tzOffset(ms, zone) / 60000)) : toIsoLocal(new Date(ms))
+}
+
+/**
+ * ISO 8601 with the user's offset, PHP's "c" ("2026-10-16T10:30:00+02:00")
+ * @param {Date} date wall time; a skipped hour is moved forward, a repeated one is its first occurrence
+ * @param {String|null} [timeZone] IANA name: a wall time in that zone, with its offset at that instant
+ * @returns {String}
+ */
+export function toIsoLocal(date, timeZone=null) {
+    const zone = zoneOf(timeZone);
+
+    return zone ? toIsoAt(fromUserTime(date, zone), zone) : iso(date, -date.getTimezoneOffset())
 }
 
 /**

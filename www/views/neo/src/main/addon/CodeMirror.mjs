@@ -3,8 +3,8 @@ import DomAccess from '../../../node_modules/neo.mjs/src/main/DomAccess.mjs';
 import DomEvents from '../../../node_modules/neo.mjs/src/main/DomEvents.mjs';
 
 /**
- * Library files of sf/codemirror (CodeMirror 5, views/extjs3/scripts.txt), relative to its
- * views/extjs3/codemirror/, in load order
+ * Files of CodeMirror 5 (`codemirror` of views/neo/package.json, the classic sf/codemirror's
+ * scripts.txt without folding), relative to the package, in load order
  * @type {String[]}
  */
 const SCRIPTS = [
@@ -26,8 +26,8 @@ const SYNC_DELAY = 200;
 
 /**
  * @summary Main thread side of GO.form.field.CodeField: CodeMirror needs the real DOM. The library
- * is sf/codemirror's copy (the classic client's `sfcodemirroreditor`); modes load on demand from its
- * mode/ folder. Loaded per window by the field:
+ * is CodeMirror 5 of views/neo's node_modules (the classic client has its own copy in sf/codemirror);
+ * modes load on demand from its mode/ folder. Loaded per window by the field:
  *
  *     await Neo.Main.importAddon({name: 'WS/CodeMirror', windowId})
  *
@@ -74,7 +74,7 @@ class CodeMirror extends Base {
 
     /**
      * @summary Loads the CodeMirror scripts in order and its styles, once per page.
-     * @param {String} baseUrl sf/codemirror views/extjs3/codemirror/ URL, with a trailing slash
+     * @param {String} baseUrl URL of the codemirror package, with a trailing slash
      * @returns {Promise<void>}
      */
     loadLibrary(baseUrl) {
@@ -136,7 +136,7 @@ class CodeMirror extends Base {
      * @summary Creates the editor in the field's holder (`<id>__editor`).
      * @param {Object} data
      * @param {String} data.id field id
-     * @param {String} data.baseUrl sf/codemirror views/extjs3/codemirror/ URL
+     * @param {String} data.baseUrl URL of the codemirror package
      * @param {String} [data.value='']
      * @param {String} [data.mode='json']
      * @param {Boolean} [data.readOnly=false]
