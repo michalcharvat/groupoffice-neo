@@ -11,6 +11,7 @@ const SAMPLES = [
     {text: 'Image',    file: {src: 'views/neo/resources/images/reminder.png', name: 'reminder.png'}},
     {text: 'Text',     file: {src: 'views/neo/package.json', name: 'package.json'}},
     {text: 'Markdown', file: {src: 'views/neo/README.md', name: 'README.md'}},
+    {text: 'Docx',     file: {src: 'modules/files/demo/Demo%20letter.docx', name: 'Demo letter.docx'}},
     {text: 'Audio',    file: {src: 'views/neo/resources/sounds/dialog-question.mp3', name: 'dialog-question.mp3'}},
     {text: 'No preview', file: {src: 'views/neo/package.json', name: 'archive.zip'}}
 ];
@@ -32,7 +33,7 @@ class FilePreviewDemo extends Page {
      */
     pageItems() {
         return [
-            p('GO.preview.FilePreview picks the preview by extension (or the name\'s, or the MIME type): PDF and image in GO.pdf.PdfViewer, text, Markdown, audio, video, kinds added with registerPreview(), otherwise a Download button.'),
+            p('GO.preview.FilePreview picks the preview by extension (or the name\'s, or the MIME type): PDF and image in GO.pdf.PdfViewer, text, Markdown, audio, video, sheets (xls, xlsx: the first 1,000 rows of the first sheet; upload one) and docx, kinds added with registerPreview(), otherwise a Download button.'),
             {
                 module: Container,
                 layout: {ntype: 'hbox', align: 'center', wrap: 'wrap'},
@@ -66,8 +67,11 @@ preview.setFile({src: client.apiUrl + 'download.php?blob=' + blobId, name: 'Repo
 preview.setFile({src, extension: 'md', htmlUrl});   // Markdown the host renders and trusts, in a frame
 preview.setFile(null);
 
-// src/preview/previewKinds.mjs
-registerPreview('sheet', {extensions: ['xls', 'xlsx'], render: async ({url}) => sanitizedHtml});`)
+// src/preview/previewKinds.mjs: another kind (sheet and docx come from officePreviews.mjs)
+registerPreview('odt', {extensions: ['odt'], render: async ({src, windowId, signal}) => sanitizedHtml});
+
+// src/preview/officePreviews.mjs: sanitised HTML of a docx, e.g. to import it
+const html = await docxToHtml(downloadUrl, windowId);`)
         ]
     }
 

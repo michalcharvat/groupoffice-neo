@@ -1,4 +1,4 @@
-// GO.preview.FilePreview: rendered text, Markdown, players or a frame; PDF and image are GO.pdf.PdfViewer
+// GO.preview.FilePreview: rendered text, Markdown, sheet, docx, players or a frame; PDF and image are GO.pdf.PdfViewer
 
 .go-filepreview {
     min-height: 0;
@@ -47,4 +47,34 @@
 
 .go-filepreview-fallback .go-icon {
     font-size: 4.8rem;
+}
+
+// first sheet of an xls / xlsx (src/preview/officePreviews.mjs)
+.go-filepreview-sheet {
+    border-collapse: collapse;
+
+    th, td {
+        padding    : .4rem .8rem;
+        border     : 1px solid var(--fg-border);
+        text-align : left;
+        white-space: nowrap;
+    }
+
+    th {
+        font-weight: 600;
+    }
+}
+
+// docx converted by mammoth
+.go-filepreview-docx {
+    max-width: 80rem;
+
+    table {
+        border-collapse: collapse;
+    }
+
+    td, th {
+        padding: .4rem .8rem;
+        border : 1px solid var(--fg-border);
+    }
 }
