@@ -184,6 +184,17 @@ class ModuleRegistry {
     }
 
     /**
+     * @summary Is there a module the user has access to that registers settings cards under `key`?
+     * @param {String} key 'userSettings' or 'systemSettings'
+     * @param {Function} [filter] (module) => Boolean, e.g. the user's rights
+     * @returns {Boolean}
+     */
+    hasSettingsPanels(key, filter = () => true) {
+        // an empty array registers no card
+        return this.#accessible().some(m => [].concat(m[key] || []).length && filter(m))
+    }
+
+    /**
      * The settings cards modules register under `key` ('userSettings' or 'systemSettings'),
      * one config or an array of them: {title, iconCls, itemId, panel: () => import(...)}.
      * The panels' code is loaded; a module whose panel fails to load is left out.
