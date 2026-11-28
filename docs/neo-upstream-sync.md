@@ -112,6 +112,7 @@ The merge brings PHP, language files and `updates.php`, but a change in `views/e
 ```bash
 scripts/neo-port-check.sh -C <checkout>          # what the last merge of master (core) / 26.0.x (amd, sf) brought
 scripts/neo-port-check.sh -C <checkout> A..B     # every such merge on the first-parent line in A..B
+scripts/neo-port-check.sh -C <checkout> --delta  # also run each delta: line (see below)
 ```
 
 It works in neo-ui and in the amd/sf neo worktrees (`~/Projects/groupoffice26-neo-{amd,sf}`). Per commit and
@@ -121,6 +122,12 @@ Upstream commits marked `Port-to: neo` (go:commit sets it on classic UI changes 
 are listed whatever the range, also before their merge ("not merged into neo yet"), until a neo commit records
 them. The neo commit that ports one records it with `Ported-from: <full hash>` (or `Port-skipped: <full hash>
 <reason>`) and drops out of the list. Workflow and session-start summary: go:port, section "Target neo".
+
+Under each `views/extjs3` file of a module with neo views (not core, not GOUI, not the vendored `lib/`) a
+`delta:` line gives the `scripts/neo-converter/delta.mjs` command for that commit. It converts the file before
+and after the commit and lists the change config by config, the to-do of the follow-up
+(`docs/neo-converter-study.md`, "A later classic change"). `--delta` runs them; on the whole amd neo history
+(429 files) that takes about 5 minutes, a merge that brought 82 commits about 2.
 
 ## Checks
 
