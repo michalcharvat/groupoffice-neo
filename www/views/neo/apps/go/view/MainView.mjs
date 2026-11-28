@@ -12,6 +12,7 @@ import client         from '../../../src/jmap/Client.mjs';
 import AppLauncher, {getMainMenuMode, moduleIconUrl} from '../../../src/view/AppLauncher.mjs';
 import GlobalSearch   from '../../../src/view/GlobalSearch.mjs';
 import ModuleRegistry from '../../../src/ModuleRegistry.mjs';
+import {maySeeSystemSettings} from '../../../src/systemsettings/cards.mjs';
 import badges         from '../../../src/Badges.mjs';
 import activityWatcher    from '../../../src/alerts/ActivityWatcher.mjs';
 import alerts             from '../../../src/alerts/Alerts.mjs';
@@ -443,7 +444,7 @@ class MainView extends Container {
                 text   : t('My account'),
                 icon   : 'manage_accounts',
                 handler: () => me.openUserSettings()
-            }, ...client.isAdmin || client.mayChangeUsers || client.mayChangeGroups || client.mayChangeCustomFields ? [{
+            }, ...maySeeSystemSettings() ? [{
                 text   : t('System settings'),
                 icon   : 'settings',
                 handler: () => me.openSystemSettings()
@@ -630,15 +631,17 @@ class MainView extends Container {
     }
 
     /**
-     * Header user menu "System settings" (administrators, user and group managers), route "#systemsettings/<card>"
+     * @summary Opens System settings, for users who may see one of its cards.
+     *
+     * Header user menu "System settings" (anyone who may see a card), route "#systemsettings/<card>"
      * @param {String|null} [activeItem] card to show
      * @param {Boolean} [fromRoute] opened by the address: closing leaves it
      */
     async openSystemSettings(activeItem = null, fromRoute = false) {
         let me = this;
 
-        // user and group managers see their cards only (SystemSettingsDialog CORE_CARDS)
-        if (!client.isAdmin && !client.mayChangeUsers && !client.mayChangeGroups && !client.mayChangeCustomFields) {
+        // non-admins see only the cards they may see (cards.mjs)
+        if (!maySeeSystemSettings()) {
             return
         }
 
