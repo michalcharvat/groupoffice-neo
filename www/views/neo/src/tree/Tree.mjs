@@ -2,15 +2,20 @@ import List      from '../../node_modules/neo.mjs/src/list/Base.mjs';
 import Store     from '../../node_modules/neo.mjs/src/data/Store.mjs';
 import {enableDragDrop} from '../component/dragDrop.mjs';
 import {escapeHtml} from '../Format.mjs';
-import {t}       from '../Translate.mjs';
+import {fmt, t}  from '../Translate.mjs';
 import MenuList  from '../menu/List.mjs';
+import SelectionModel from './SelectionModel.mjs';
 
 // record id prefix of the "Show more..." rows; shortcut: a root node with the id "__more__" (or
 // "__more__" + another node's id) would clash with a paging row, prefix such ids if that ever happens
 const MORE = '__more__';
+/** names in the ghost of a drag of several nodes, then "and N more" */
+const GHOST_NAMES = 5;
+/** ms between a change while searching and the search running again */
+const SEARCH_DELAY = 300;
 
 /**
- * GOUI Tree (goui/script/component/tree): nodes load on demand from a nodeProvider,
+ * @summary GOUI Tree (goui/script/component/tree): nodes load on demand from a nodeProvider,
  * expand/collapse with the caret, an optional checkbox per node.
  *
  * nodeProvider(node, {position}) returns the children of `node` (null = the root nodes), sync
@@ -55,6 +60,33 @@ const MORE = '__more__';
  * `dragNode` is the dragged node of this tree, or null for rows of another component of the
  * same `dragGroup` (then `source` is the {rootId, itemId, recordId} of WS/DragDrop). A node
  * can't be dropped into itself or its own subtree.
+ *
+ * Multi-selection (`multiSelect`, GO.tree.SelectionModel): Ctrl / Cmd + click toggles a node,
+ * Shift + click adds one; `selectionChange` {nodes} fires on every change, getSelectedNodes()
+ * gives them. Dragging a selected node drags all selected nodes: the ghost shows up to five
+ * names and "and N more", the selection is locked while dragging, and `drop` gets them all
+ * as `dragNodes` (the topmost ones: a node whose ancestor is selected too goes with it). The
+ * drop is refused when the target lies in the subtree of any of them. `dragNodes` is always
+ * set ([dragNode] for a single drag).
+ *
+ * Search with hits in place (amd/pms component tree search): search(query) asks the
+ * `searchProvider` (query) => node[] | {nodes} (sync or a Promise) for a FLAT list of the hits
+ * and their ancestors, each node with `parentId` and `hit: true` on the hits. The tree nests
+ * them: a node goes under its listed parent, which comes expanded with only the listed
+ * children; a node without a listed child keeps its own `children` (a hit stays lazy and
+ * expands through the nodeProvider); a node whose parent isn't listed (a parent the user may
+ * not read) shows at the top level. Hits are bold (class "go-tree-hit"). An older answer is
+ * dropped. While a search is shown, reload() runs it again, and reloadNode() / moveNode()
+ * (live changes) run it again after 300 ms (scheduleSearch()) instead of patching the
+ * search rows. resetSearch() (or search('')) loads the normal tree with the expanded nodes
+ * of before the search and reveals the node selected during the search.
+ *
+ *     {module: Tree, searchProvider: async query => {
+ *         const {list} = await client.queryGet('Folder', {filter: {treeSearch: query}});
+ *         return list.map(f => ({id: f.id, parentId: f.parentId, text: f.name, hit: f.isHit}))
+ *     }}
+ * @class GO.tree.Tree
+ * @extends Neo.list.Base
  */
 class Tree extends List {
     static config = {
@@ -102,6 +134,19 @@ class Tree extends List {
          * @member {Boolean|Function} nodeMenu=false
          */
         nodeMenu: false,
+        /**
+         * Ctrl / Cmd + click toggles and Shift + click adds nodes to the selection; a drag of a
+         * selected node drags all of them
+         * @member {Boolean} multiSelect=false
+         */
+        multiSelect: false,
+        /**
+         * (query) => node[] | {nodes} | Promise: the hits and their ancestors as a flat list,
+         * each node with `parentId` and `hit` (see search())
+         * @member {Function|null} searchProvider=null
+         */
+        searchProvider: null,
+        selectionModel: {module: SelectionModel},
         store: {
             module     : Store,
             keyProperty: 'id',
@@ -135,7 +180,20 @@ class Tree extends List {
     pending = new Map()
     /** the last reload() */
     loadPromise = null
+    /** nodes of this tree are being dragged: the selection is locked */
+    dragging = false
+    /** the search shown (or loading), null for the normal tree */
+    searchQuery = null
+    /** the search whose rows are shown */
+    shownQuery = null
+    /** expandedIds of before the search, restored by resetSearch() */
+    savedExpanded = null
+    /** scheduleSearch() timer */
+    searchTimer = null
 
+    /**
+     * @summary Loads the root nodes (autoLoad) and sets up the row menu and drag and drop.
+     */
     onConstructed() {
         super.onConstructed();
 
@@ -159,8 +217,87 @@ class Tree extends List {
                 group   : me.dragGroup || me.id,
                 position: me.dropOn && me.dropBetween ? 'both' : (me.dropBetween ? 'between' : 'on'),
                 onHover : drop ? ({targetId}) => me.onDragHover(targetId) : undefined,
+                onDragStart: me.dragNodes ? () => me.dragging = true : undefined,
+                onDragEnd  : me.dragNodes ? () => me.dragging = false : undefined,
                 onDrop  : event => me.onNodeDrop(event)
-            }).catch(e => console.error('Tree drag and drop', e))
+            }).catch(e => console.error('Tree drag and drop', e));
+
+            me.dragNodes && me.multiSelect && me.updateDragGhost()
+        }
+    }
+
+    /**
+     * @summary Destroys the scheduleSearch() timer with the tree.
+     * @param {...*} args
+     */
+    destroy(...args) {
+        clearTimeout(this.searchTimer);
+        super.destroy(...args)
+    }
+
+    /**
+     * @summary Fires `selectionChange` {nodes} after neo's own handling, and updates the drag ghost.
+     * @param {Object} data selectionChange of the selection model
+     * @protected
+     */
+    onSelectionChange(data) {
+        super.onSelectionChange(data);
+
+        let me = this;
+
+        me.dragNodes && me.multiSelect && me.updateDragGhost();
+        me.fire('selectionChange', {nodes: me.getSelectedNodes()})
+    }
+
+    /**
+     * @summary The selected nodes, in the order they were selected; a selected id whose node is
+     * gone (a reload, a search) is left out.
+     * @returns {Object[]}
+     */
+    getSelectedNodes() {
+        let me = this;
+
+        return (me.selectionModel?.getSelection?.() || [])
+            .map(itemId => me.getNode(me.nodeIdOf(itemId)))
+            .filter(Boolean)
+    }
+
+    /**
+     * @summary The nodes a drag of `node` moves: all selected (topmost) nodes when it is one of
+     * them and `multiSelect` is on, else only `node`.
+     * @param {Object} node the dragged node
+     * @returns {Object[]}
+     */
+    dragNodesOf(node) {
+        let me       = this,
+            selected = me.multiSelect ? me.getSelectedNodes() : [];
+
+        if (!selected.includes(node)) {
+            return [node]
+        }
+
+        // a node whose ancestor is dragged as well moves with that ancestor
+        return selected.filter(child => !selected.some(other => other !== child && me.isAncestor(other, child)))
+    }
+
+    /**
+     * @summary Writes the names of the selected nodes for the ghost of a drag (WS/DragDrop
+     * data-go-drag-ghost): up to five, then "and N more"; the addon shows it for a drag of a
+     * selected row when there are two or more.
+     * @protected
+     */
+    updateDragGhost() {
+        let me     = this,
+            nodes  = me.getSelectedNodes(),
+            names  = nodes.slice(0, GHOST_NAMES).map(node => String(node.text ?? ''));
+
+        nodes.length > GHOST_NAMES && names.push(fmt(t('and {count} more'), {count: nodes.length - GHOST_NAMES}));
+
+        const ghost = JSON.stringify(nodes.length > 1 ? names : []);
+
+        if (me.vdom.data?.goDragGhost !== ghost) {
+            me.vdom.data = {...me.vdom.data, goDragGhost: ghost};
+            me.update()
         }
     }
 
@@ -188,6 +325,18 @@ class Tree extends List {
     }
 
     /**
+     * @summary Record id of a row's DOM id via nodeIdOf(): neo's own takes the part after the first
+     * "__", so a click on node "a__b" would select another node.
+     * @param {String} itemId
+     * @returns {String|Number}
+     */
+    getItemRecordId(itemId) {
+        return this.nodeIdOf(itemId) ?? super.getItemRecordId(itemId)
+    }
+
+    /**
+     * @summary Turns a goDrop into the tree's `drop` {dragNode, dragNodes, node, position}, or
+     * drops it when the target is gone, not allowed or in a dragged node's subtree.
      * @param {Object} event goDrop of WS/DragDrop
      * @protected
      */
@@ -197,7 +346,8 @@ class Tree extends List {
             node     = onRoot ? null : me.getNode(me.nodeIdOf(event.targetId)) || null,
             ownDrag  = event.source?.rootId === me.id,
             dragNode = ownDrag ? me.getNode(me.nodeIdOf(event.source.itemId)) || null : null,
-            position = node ? event.position || 'on' : 'on';
+            position = node ? event.position || 'on' : 'on',
+            dragNodes = dragNode ? me.dragNodesOf(dragNode) : [];
 
         // a row that is gone meanwhile (reload) is no drop on the root
         if ((!onRoot && !node) || (ownDrag && !dragNode)) {
@@ -209,11 +359,11 @@ class Tree extends List {
         }
 
         // a node can't go into its own subtree
-        if (dragNode && node && me.isAncestor(dragNode, node)) {
+        if (node && dragNodes.some(dragged => me.isAncestor(dragged, node))) {
             return
         }
 
-        me.fire('drop', {dragNode, node, position, source: event.source, files: event.files, copy: event.copy})
+        me.fire('drop', {dragNode, dragNodes, node, position, source: event.source, files: event.files, copy: event.copy})
     }
 
     /**
@@ -232,7 +382,7 @@ class Tree extends List {
     }
 
     /**
-     * Moves a node in the local tree, e.g. after its move was saved, without asking the
+     * @summary Moves a node in the local tree, e.g. after its move was saved, without asking the
      * nodeProvider again (GOUI TreeStore move)
      *
      * @param {String|Number} id the node to move
@@ -245,6 +395,12 @@ class Tree extends List {
         let me     = this,
             node   = me.getNode(id),
             target = targetId === null || targetId === undefined ? null : me.getNode(targetId);
+
+        // the search rows are no tree to patch: the search runs again
+        if (me.searchQuery !== null) {
+            me.scheduleSearch();
+            return true
+        }
 
         if (!node || (targetId !== null && targetId !== undefined && !target) || (!target && position !== 'on') ||
             (target && me.isAncestor(node, target))) {
@@ -289,14 +445,164 @@ class Tree extends List {
     }
 
     /**
-     * Loads the root nodes again (and the expanded nodes' children)
+     * @summary Loads the root nodes again (and the expanded nodes' children); while a search is
+     * shown, runs the search again.
      * @returns {Promise<void>}
      */
     reload() {
-        return this.loadPromise = this.loadRoots()
+        let me = this;
+
+        return me.loadPromise = me.searchQuery === null ? me.loadRoots() : me.loadSearch()
     }
 
     /**
+     * @summary Shows the hits of the searchProvider in their place (see the class docs); an
+     * empty query is resetSearch().
+     * @param {String} query
+     * @returns {Promise<void>}
+     */
+    search(query) {
+        let me = this;
+
+        query = String(query ?? '').trim();
+
+        if (!query) {
+            return me.resetSearch()
+        }
+
+        // the shape to come back to; a search after a search keeps the first one's
+        me.searchQuery === null && (me.savedExpanded = new Set(me.expandedIds));
+        me.searchQuery = query;
+
+        return me.reload()
+    }
+
+    /**
+     * @summary A search is shown or loading.
+     * @returns {Boolean}
+     */
+    isSearching() {
+        return this.searchQuery !== null
+    }
+
+    /**
+     * @summary Runs the shown search again after 300 ms, once for changes in a row (live updates
+     * while searching); nothing without a search.
+     */
+    scheduleSearch() {
+        let me = this;
+
+        clearTimeout(me.searchTimer);
+        me.searchTimer = me.searchQuery === null ? null : setTimeout(() => {
+            me.searchTimer = null;
+            me.isDestroyed || me.searchQuery === null || me.reload().catch(e => console.error('Tree search', e))
+        }, SEARCH_DELAY)
+    }
+
+    /**
+     * @summary Leaves the search: loads the normal tree with the nodes expanded before the
+     * search, then expands down to the node selected during the search (openPath()) so it shows.
+     * @returns {Promise<void>}
+     */
+    async resetSearch() {
+        let me = this;
+
+        if (me.searchQuery === null) {
+            return
+        }
+
+        const selected = me.getSelectedNodes().pop(),
+              path     = selected ? me.pathOf(selected) : null;
+
+        clearTimeout(me.searchTimer);
+        me.searchTimer   = null;
+        me.searchQuery   = null;
+        me.expandedIds   = me.savedExpanded || new Set();
+        me.savedExpanded = null;
+
+        await me.reload();
+
+        const generation = me.generation;
+
+        // a newer search or reset loaded meanwhile: this path is not theirs
+        path && !me.isDestroyed && me.searchQuery === null && generation === me.generation &&
+            await me.openPath(path, {select: false})
+    }
+
+    /**
+     * @summary The ids from the top-level node down to `node`.
+     * @param {Object} node
+     * @returns {String[]}
+     */
+    pathOf(node) {
+        const ids = [];
+
+        for (let current = node; current; current = this.getParentNode(current.id)) {
+            ids.unshift(current.id)
+        }
+
+        return ids
+    }
+
+    /**
+     * @summary Asks the searchProvider and nests its flat answer (see the class docs); an
+     * answer older than the last reload() or search() is dropped.
+     * @returns {Promise<void>}
+     * @protected
+     */
+    async loadSearch() {
+        let me         = this,
+            generation = ++me.generation,
+            query      = me.searchQuery,
+            result;
+
+        clearTimeout(me.searchTimer);
+        me.searchTimer = null;
+
+        result = await me.searchProvider?.(query) || [];
+
+        if (me.isDestroyed || generation !== me.generation) {
+            return
+        }
+
+        const flat   = (Array.isArray(result) ? result : result.nodes || []).map(node => ({
+                  ...node,
+                  id      : String(node.id),
+                  parentId: node.parentId === null || node.parentId === undefined ? null : String(node.parentId)
+              })),
+              byId   = new Map(flat.map(node => [node.id, node])),
+              listed = new Map(),
+              roots  = [],
+              // the same search again (live changes) keeps the nodes the user expanded in it
+              expanded = new Set(query === me.shownQuery ? me.expandedIds : []);
+
+        flat.forEach(node => {
+            const parent = node.parentId !== null && node.parentId !== node.id ? byId.get(node.parentId) : undefined;
+
+            parent ? (listed.get(parent) || listed.set(parent, []).get(parent)).push(node) : roots.push(node)
+        });
+
+        listed.forEach((children, parent) => {
+            parent.children = children;
+            expanded.add(parent.id)
+        });
+
+        me.roots       = roots;
+        me.expandedIds = expanded;
+        me.nodes.clear();
+        me.parents.clear();
+        me.register(roots, null);
+        await me.populate(roots, generation);
+
+        if (!me.isDestroyed && generation === me.generation) {
+            me.shownQuery = query;
+            me.refresh();
+            me.fire('search', {query, nodes: roots})
+        }
+    }
+
+    /**
+     * @summary Loads the normal tree: the root nodes and the children of the expanded nodes.
      * @returns {Promise<void>}
      * @protected
      */
@@ -309,6 +615,7 @@ class Tree extends List {
             return
         }
 
+        me.shownQuery = null;
         me.roots = roots;
         me.nodes.clear();
         me.parents.clear();
@@ -322,7 +629,7 @@ class Tree extends List {
     }
 
     /**
-     * Loads the children of one node again, and of its expanded descendants (e.g. folders
+     * @summary Loads the children of one node again, and of its expanded descendants (e.g. folders
      * created elsewhere). Descendants that are still there stay expanded.
      * @param {String|Number} id
      * @returns {Promise<void>}
@@ -332,6 +639,12 @@ class Tree extends List {
             node       = me.getNode(id),
             generation = me.generation,
             children;
+
+        // the search rows show only the branches to the hits: the search runs again
+        if (me.searchQuery !== null) {
+            me.scheduleSearch();
+            return
+        }
 
         if (!node || me.loadingIds.has(node.id)) {
             return
@@ -474,13 +787,15 @@ class Tree extends List {
     }
 
     /**
-     * Expands the nodes of a path and selects the last one, loading lazy levels and further
-     * pages on the way (waits for a running reload())
+     * @summary Expands the nodes of a path and selects the last one, loading lazy levels and
+     * further pages on the way (waits for a running reload())
      * @param {Array<String|Number>} ids node ids from a root node down
-     * @returns {Promise<Object|null>} the selected node, null when a node isn't found under the
+     * @param {Object} [options]
+     * @param {Boolean} [options.select=true] false only reveals the last node, the selection stays
+     * @returns {Promise<Object|null>} the last node, null when a node isn't found under the
      *          previous one
      */
-    async openPath(ids) {
+    async openPath(ids, {select=true}={}) {
         let me   = this,
             node = null,
             loading;
@@ -516,12 +831,12 @@ class Tree extends List {
             i < ids.length - 1 && await me.expand(node.id)
         }
 
-        node && me.selectNode(node.id);
+        node && select && me.selectNode(node.id);
         return node
     }
 
     /**
-     * Selects (highlights) a node without firing events
+     * @summary Selects (highlights) only this node, without firing the list's itemClick
      * @param {String|Number|null} id
      */
     selectNode(id) {
@@ -529,7 +844,8 @@ class Tree extends List {
             record = id !== null && id !== undefined && me.store.get(String(id));
 
         if (record) {
-            me.selectionModel.select(record)
+            // a multi-selection model adds to the selection
+            me.selectionModel.selectOnly ? me.selectionModel.selectOnly(record) : me.selectionModel.select(record)
         } else {
             me.selectionModel.deselectAll?.()
         }
@@ -611,13 +927,18 @@ class Tree extends List {
     }
 
     /**
-     * Loads the children of expanded nodes (GOUI TreeStore.populateChildren())
+     * @summary Loads the children of expanded nodes (GOUI TreeStore.populateChildren())
      * @protected
      */
     async populate(children, generation) {
         let me = this;
 
         for (const child of children) {
+            // a newer load took over: don't touch its expanded nodes
+            if (me.isDestroyed || generation !== me.generation) {
+                return
+            }
+
             if (child.expanded || me.expandedIds.has(child.id)) {
                 me.expandedIds.add(child.id);
 
@@ -640,7 +961,7 @@ class Tree extends List {
     }
 
     /**
-     * Rebuilds the visible rows from the node tree
+     * @summary Rebuilds the visible rows from the node tree
      * @protected
      */
     refresh() {
@@ -659,7 +980,9 @@ class Tree extends List {
             };
 
         walk(me.roots, 0, null);
-        me.store.data = rows
+        me.store.data = rows;
+        // selected nodes gone from the tree (a search, a reload) leave the ghost
+        me.dragNodes && me.multiSelect && me.updateDragGhost()
     }
 
     /**
@@ -812,7 +1135,7 @@ class Tree extends List {
     }
 
     /**
-     * neo's createItem() plus the node's cls on the item
+     * @summary neo's createItem() plus the node's cls, and "go-tree-hit" on a search hit
      * @param {Object} record
      * @param {Number} index
      * @param {Number} [poolIndex=index]
@@ -824,6 +1147,7 @@ class Tree extends List {
 
         item && cls?.forEach(c => !item.cls.includes(c) && item.cls.push(c));
         item && this.isMoreId(record.id) && item.cls.push('go-tree-more');
+        item && this.getNode(record.id)?.hit && item.cls.push('go-tree-hit');
 
         return item
     }

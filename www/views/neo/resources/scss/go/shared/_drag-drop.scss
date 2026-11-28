@@ -29,3 +29,25 @@
         }
     }
 }
+
+// drag image of several selected tree nodes (WS/DragDrop data-go-drag-ghost): appended to the
+// body for a moment, off screen; the browser takes its picture
+.go-drag-ghost {
+    background-color: var(--bg-lowest, #fff);
+    border-radius   : .4rem;
+    box-shadow      : 0 .2rem .8rem rgba(0, 0, 0, .3);
+    color           : var(--fg-text, #000);
+    font-size       : 1.3rem;
+    left            : -1000px;
+    line-height     : 2rem;
+    max-width       : 30rem;
+    padding         : .4rem .8rem;
+    position        : fixed;
+    top             : -1000px;
+
+    > div {
+        overflow     : hidden;
+        text-overflow: ellipsis;
+        white-space  : nowrap;
+    }
+}

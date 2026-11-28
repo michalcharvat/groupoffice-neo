@@ -513,4 +513,5 @@ If you did not request a new password please delete this mail.',
   'All pages (e.g. 1,3,5-7)' => 'All pages (e.g. 1,3,5-7)',
   'Invalid page range' => 'Invalid page range',
   'Send by email' => 'Send by email',
+  'and {count} more' => 'and {count} more',
 );
