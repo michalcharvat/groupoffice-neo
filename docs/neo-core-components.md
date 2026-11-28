@@ -306,6 +306,7 @@ the resources and field mappings. First user: amd/crew Crew Planning (`docs/neo-
 | `readOnly` | true: no drag, no resize handles, no EventEditor, no keyboard moves (neo's ArrowLeft / ArrowRight on a focused bar ignore `editable` and `barDraggable`, the wrapper blocks them) and `moveEvent()` returns null. Switching it off again turns drag, resize and the editor on; false at construction leaves neo's `barDraggable`, `resizableBars` and `editable` as passed |
 | `eventRenderer(record, descriptor)` | `{html, cls}` merged into neo's bar node: `html` replaces the label (escape it yourself), `cls` (string or array) is added. A string (also `''`) sets the label text. Don't pass neo's own `barRenderer`: the wrapper sets it to run `eventRenderer` (neo's returned object would replace the whole bar node) |
 | `timeAxis` | neo's `Neo.timeline.TimeAxis` config (`start`, `end`, `tickUnit`, `pxPerMinute` …) in wall time of the user's zone. `start` and `end` are the range; start it on the 1st of a month for month ticks (they are anchored to `start`) |
+| `timeZone` | IANA zone of the bars, bands, axis range and `slotClick` dates instead of the user's (diary: one vessel's day in its own zone); an unknown name falls back to the user's with a console warning. Changing it re-shows the bars. See "Time zones other than the user's" |
 | `backgrounds` | `[{resourceId, startDate, endDate, cls, inherit}]`: bands behind the bars of a row, rendered by `GO.scheduler.TimelineColumn` next to neo's non-working bands. Dates are instants like the events; a band ending before it starts is left out. `inherit: true` paints the row and every descendant (crew: a port call on the vessel row and its rank rows; the company row gets none). `cls` (string or array) is added to `go-scheduler-background` (default colour: primary at 14 %). Bands are at least 2 px wide (a 30-minute crew change line stays visible) and take no pointer events, so a click on a band is a slot click |
 | `zoom` | a preset applied at construction and on change: neo's `hour`, `day`, `week` plus `month` (day ticks, month header), `quarter` (week ticks, month header) and `year` (month ticks, a header per 3 months counted from the axis start month, so calendar quarters only when the range starts in January, April, July or October). `zoomTo(presetOrConfig)` takes the same names or a neo axis config; presets are in `Scheduler.zoomPresets`. Header labels use neo's formatters in the user's GO language (`Translate.language()`, also passed to neo's header, which otherwise keeps `Neo.config.locale`); `timelineColumnConfig: {locale}` overrides it |
 | `growRange` | true: when the view comes within one view width of the axis start or end (on scroll, when the view is measured or resized, and after a zoom), the axis grows by whole months (two view widths, at least one month), the date at the left edge stays in place and `rangeChange` fires. `scrollToDate(date)` first grows the range to contain `date` (plus one month). Default false: the axis keeps `timeAxis.start` / `end` |
@@ -347,6 +348,27 @@ strings that become HTML: a renderer's return value, vdom `html`, a template str
 
 Not built yet: drag and resize writing a JMAP patch (with the first user that edits on the scheduler). Dev demo:
 `#dev/core/Scheduler` (bands, zoom buttons, slot click, growing range).
+
+## Time zones other than the user's (2026-11-28)
+
+The UI works with wall-time Dates of the user's GO zone (`DateUtil.mjs`, top comment). For a record that lives in
+another zone (a vessel, a port call) the helpers take an optional IANA zone; null or an unknown name (console
+warning) is the user's zone:
+
+- `DateUtil`: `toUserTime(instant, timeZone)`, `fromUserTime(wall, timeZone)`, `toIsoLocal(wall, timeZone)` (the
+  zone's offset at that instant, DST-correct via `tzOffset()`), `toIsoAt(instant, timeZone)`, `resolveTimeZone(name)`
+  checks a name. A wall-time Date cannot tell the two occurrences of a repeated DST hour apart (it maps to the first;
+  a skipped hour moves forward), so code that has the instant formats it with `toIsoAt()`: DateTimeField does, and an
+  untouched value in the repeated hour stays as it is.
+- `GO.form.field.DateTimeField` `timeZone`: the inputs show and edit the wall time there, the value is ISO 8601 with
+  that zone's offset (`2026-06-15T16:00:00+08:00`). An untouched value round-trips unchanged (no `userChange`).
+  Setting another zone on a filled field keeps the instant and re-shows it (classic diary `setTimezone()`); a value
+  without an offset (`withTimeZone: false`) keeps its wall time. `getValueAsDate()` and min/max compare in the
+  field's zone.
+- `Format.formatDateTime(value, timeZone)`, `formatUserDateTime(value, timeZone)`: the classic
+  `go.modules.amd.diary.helpers.formatDateTime(value, vesselTimeZone)`, for grid columns and detail cards.
+- `GO.scheduler.Scheduler` `timeZone` (see its table). Not covered: neo's now line of the `TimeAxis` reads the
+  browser clock (also without `timeZone`).
 
 ## neo user settings (2026-11-27)
 
