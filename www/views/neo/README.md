@@ -142,7 +142,7 @@ The reference is GO 26's GOUI module UI (e.g. Notes), not the ExtJS Paper theme.
   - Module `views/neo/style.css` files load in the page head, before every neo sheet: a rule
     there needs more classes than the neo rule it overrides.
 - **Icons**: Material Symbols ligatures (`{module: Button, icon: 'add'}`), font in
-  `resources/fonts` (a copy of GOUI's iconfont). Font Awesome stays for `iconCls`.
+  `resources/fonts` (a copy of GOUI's iconfont). Font Awesome Free 7 (`resources/fontawesome`) stays for `iconCls`.
 - **Splitter state**: same keys as GOUI (`state-<module>-west-splitter`, width in dp), so
   on one origin GOUI and neo share the panel widths.
 - **Phone** (below 577px, GOUI `$breakpointSmall`, CSS only): `MainThreeColumnPanel` shows one

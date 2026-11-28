@@ -114,8 +114,9 @@ whose cookie or config says classic still opens the popup in neo. `src/Popup.mjs
 and "Open in new window" items hide when unsupported instead of failing after 30 s.
 
 **D7. Build and release.** neo is built wherever GOUI is built; it is not added to the
-`www` workspace because `Neo.php` serves `views/neo/node_modules/neo.mjs` and
-`@fortawesome` by path (hoisting would move them).
+`www` workspace because `Neo.php` serves `views/neo/node_modules/neo.mjs` by path (hoisting
+would move it). Font Awesome Free is no npm package of neo since 2026-11-28: a copy lives in
+`views/neo/resources/fontawesome` (its README).
 
 **D8. views/goui.** Nothing of it is removed in this task: the classic fallback (D2/D3)
 still renders the GOUI modules, standalone pages use its core stylesheet. neo's theme build
@@ -124,7 +125,7 @@ no longer reads GOUI (own copies of the tokens and the iconfont since 2026-11-24
 ## 2. Build and release
 
 - `www/views/neo/package.json` + `package-lock.json`: `@fortawesome/fontawesome-free` moves
-  to `dependencies`; add `"build": "npm run build-themes"`.
+  to `dependencies` (removed again 2026-11-28, see D7); add `"build": "npm run build-themes"`.
 - `scripts/install-npm.sh`: "Building neo" after the GOUI shared libs: in `views/neo`
   `npm install` (dev) / `npm ci` (nodev, still with dev dependencies: the theme build needs
   `sass`, `postcss`), then `npm run build`. Doesn't need the GOUI submodules (neo has its own
@@ -165,8 +166,7 @@ the sources. It needs Node 20.12+ (`Dirent.parentPath`); the locked neo.mjs and 
    keeps only the folders GO loads (`theme-go`, `src`). Both theme maps (`resources/` and
    `dist/development/resources/`) are cut down to match;
 3. keeps only the runtime `dependencies` of `package.json` in `node_modules` (neo.mjs,
-   marked, Font Awesome, pdfjs-dist), and of those only what the page loads: neo.mjs `src`, Font Awesome
-   `css` and `webfonts`, pdfjs-dist `build`, `cmaps`, `iccs`, `standard_fonts`, `wasm`. It does this instead of `npm prune --omit=dev`, because npm
+   marked, pdfjs-dist, CodeMirror), and of those only what the page loads: neo.mjs `src`, pdfjs-dist `build`, `cmaps`, `iccs`, `standard_fonts`, `wasm`. It does this instead of `npm prune --omit=dev`, because npm
    reinstalls a package whose files changed, and that brings back the full, unminified
    neo.mjs. The script fails when a runtime package gets dependencies of its own.
 
