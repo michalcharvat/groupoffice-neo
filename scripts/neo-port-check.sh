@@ -3,7 +3,7 @@
 # into a neo branch and that still need a neo port: the merge carries PHP, language and updates.php over, but
 # never views/neo. Works in neo-ui (upstream origin/master) and in the amd/sf neo worktrees (upstream 26.0.x).
 #
-#   scripts/neo-port-check.sh [-C DIR] [--upstream REF] [--quiet] [A..B]
+#   scripts/neo-port-check.sh [-C DIR] [--upstream REF] [--quiet] [--delta] [A..B]
 #
 # Without a range: the commits of the last upstream merge on the first-parent line of HEAD. With A..B: the
 # commits of every upstream merge on the first-parent line in A..B. Also listed, whatever the range: every
@@ -11,23 +11,28 @@
 # commit records it. Left out: commits a neo commit (one not on upstream) records as `Ported-from: <full hash>`
 # or `Port-skipped: <full hash> <reason>`.
 # Output: per commit and module the hash, subject, classic files and the module's views/neo/PORTING.md (the
-# map to the neo files); a module without views/neo is reported as "no neo views yet". Last line is a summary.
+# map to the neo files); a module without views/neo is reported as "no neo views yet". Under each views/extjs3
+# file of a module with neo views a `delta:` line gives the neo-converter/delta.mjs command that lists the change
+# config by config (docs/neo-converter-study.md); --delta also runs it and prints its output below. Last line is
+# a summary.
 # Exit: 0 nothing to port, 1 commits to port (in modules with neo views, or marked Port-to: neo), 2 error.
 set -euo pipefail
 
-dir=. upstream= quiet= range=
+dir=. upstream= quiet= delta= range=
 while [ $# -gt 0 ]; do
 	case "$1" in
 		-C|--upstream) [ $# -ge 2 ] || { echo "$1 needs a value" >&2; exit 2; }
 			if [ "$1" = -C ]; then dir=$2; else upstream=$2; fi; shift 2 ;;
 		--quiet) quiet=1; shift ;;
-		-h|--help) sed -n '2,15p' "$0"; exit 0 ;;
+		--delta) delta=1; shift ;;
+		-h|--help) sed -n '2,18p' "$0"; exit 0 ;;
 		*..*) range=$1; shift ;;
 		*) echo "unknown argument: $1" >&2; exit 2 ;;
 	esac
 done
 
 g() { git -C "$dir" "$@"; }
+here=$(cd "$(dirname "$0")" && pwd)
 top=$(g rev-parse --show-toplevel) || exit 2
 
 if [ -z "$upstream" ]; then
@@ -81,7 +86,7 @@ for m in $merges; do
 	log="$log$(g log --no-merges --reverse --abbrev=9 --name-only --no-renames --format="${fmt}m" "$m^1..$m^2")" || exit 2
 done
 
-report=$(printf '%s' "$log" | DONE="$done_list" UNMERGED="$unmerged" TOP="$top" awk -v RS='\036' -F'\n' -v q="'" '
+report=$(printf '%s' "$log" | DONE="$done_list" UNMERGED="$unmerged" TOP="$top" DELTA="$here/neo-converter/delta.mjs" awk -v RS='\036' -F'\n' -v q="'" '
 BEGIN {
 	n = split(ENVIRON["DONE"], d, "\n"); for (i = 1; i <= n; i++) done[d[i]] = 1
 	n = split(ENVIRON["UNMERGED"], d, "\n"); for (i = 1; i <= n; i++) unmerged[d[i]] = 1
@@ -95,12 +100,19 @@ NF > 0 && $1 != "" {
 	marked = tolower(h[4]) ~ /(^|, *)neo( *,|$)/
 	if (h[5] == "t" && !marked) next  # the grep matched a line that is no Port-to: neo trailer
 	seen[h[1]] = 1
-	delete files; delete mods; nmods = 0
+	delete files; delete mods; delete deltas; nmods = 0
 	for (i = 2; i <= NF; i++) {
 		if (!match($i, /(^|\/)views\/(extjs3|Extjs3|goui)\//)) continue
 		mod = substr($i, 1, RSTART - 1)
 		if (!(mod in mods)) { mods[mod] = 1; order[++nmods] = mod }
 		files[mod] = files[mod] "    " $i "\n"
+		# the converter reads views/extjs3 of a module (not core, not goui, not the vendored libraries in lib/);
+		# the line is kept only with neo views
+		rest = substr($i, RSTART + RLENGTH)
+		if (mod != "" && mod != "www" && mod != "www/go/core" && $i ~ /\/views\/extjs3\/.*\.js$/ && rest !~ /^lib\//)
+			# the shown command, then a record for --delta: \035 cannot start a git path (git quotes control chars)
+			deltas[$i] = "      delta: node " sq(ENVIRON["DELTA"]) " " sq(ENVIRON["TOP"] "/" mod) " " sq(rest) " " h[2] "^ " h[2] "\n" \
+				"\035" ENVIRON["TOP"] "/" mod "\037" rest "\037" h[2] "\n"
 	}
 	if (nmods == 0) {
 		if (!marked) next
@@ -115,6 +127,10 @@ NF > 0 && $1 != "" {
 		else if (system("test -d " sq(ENVIRON["TOP"] "/" neo)) == 0) {
 			note = (system("test -f " sq(ENVIRON["TOP"] "/" neo "/PORTING.md")) == 0) ? "map: " neo "/PORTING.md" : "neo views: " neo " (no PORTING.md)"
 			counted = 1
+			if (length(deltas)) {
+				n = split(files[mod], fl, "\n"); files[mod] = ""
+				for (j = 1; j < n; j++) { f = substr(fl[j], 5); files[mod] = files[mod] fl[j] "\n" (f in deltas ? deltas[f] : "") }
+			}
 		} else { note = "no neo views yet"; noviews++ }
 		if (marked) note = note ", Port-to: neo"
 		if (h[1] in unmerged) note = note ", not merged into neo yet"
@@ -128,6 +144,19 @@ counts=$(printf '%s\n' "$report" | tail -n 1)
 pending=${counts% *} noviews=${counts#* }
 out=$(printf '%s\n' "$report" | sed '$d')
 
-[ -n "$quiet" ] || [ -z "$out" ] || printf '%s\n' "$out"
-echo "neo-port-check: $pending to port, $noviews in modules without neo views ($range, upstream $upstream)"
+failed=0
+if [ -z "$quiet" ] && [ -n "$out" ]; then
+	if [ -z "$delta" ]; then printf '%s\n' "$out" | grep -v $'^\035' || true
+	else
+		# only the \035 records run, as plain arguments: no shown text is executed
+		while IFS= read -r line; do
+			if [ "${line:0:1}" != $'\035' ]; then printf '%s\n' "$line"; continue; fi
+			IFS=$'\037' read -r mdir file rev <<<"${line:1}"
+			node "$here/neo-converter/delta.mjs" "$mdir" "$file" "$rev^" "$rev" 2>&1 | sed 's/^/        /' || failed=$((failed + 1))
+		done <<<"$out"
+	fi
+fi
+summary="neo-port-check: $pending to port, $noviews in modules without neo views"
+[ "$failed" -eq 0 ] || summary="$summary, $failed delta runs failed"
+echo "$summary ($range, upstream $upstream)"
 [ "$pending" -eq 0 ] || exit 1

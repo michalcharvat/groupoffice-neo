@@ -31,8 +31,8 @@ was changed for real.
 | `rules.mjs` | The rule table: xtype / `go.*` class → neo module and import, config key renames, keys dropped on purpose, base class → handler, TODO kinds |
 | `convert.mjs` | `node scripts/neo-converter/convert.mjs <module dir> [--out <dir>] [--package amd]`. Parses each classic file (scripts.txt order), converts it by the rules and writes `view/<Name>.mjs` (`Module.js` → `Index.mjs`). Anything without a rule becomes a `// TODO(neo-converter) [kind] reason` block with the original code |
 | `measure.mjs` | `node scripts/neo-converter/measure.mjs ~/Projects/groupoffice26-neo-amd [--json]`. Converts ports and links and compares every config entry with the hand port (mapping from each module's PORTING.md) |
-| `delta.mjs` | `node scripts/neo-converter/delta.mjs <module dir> <classic file> [rev]`. What a classic change means for the neo file, config by config |
-| `convert.test.mjs` | `node --test scripts/neo-converter/` (8 tests: dialog, TODO, grid, detail, measure, delta, robustness) |
+| `delta.mjs` | `node scripts/neo-converter/delta.mjs <module dir> <classic file> [<rev before> [<rev after>]]` (without `<rev after>`: the working tree). What a classic change means for the neo file, config by config |
+| `convert.test.mjs`, `port-check.test.mjs` | `node --test scripts/neo-converter/` (dialog, TODO, grid, detail, measure, delta, robustness; delta over two revs and in `neo-port-check.sh`) |
 
 Rules it has:
 
@@ -258,8 +258,9 @@ and more rules would take them (see the effort estimate). The figures in this ta
 
 The flow that works:
 
-1. Run `node scripts/neo-converter/delta.mjs <module dir> <classic file> <rev before the change>` on the changed
-   classic file. It converts both versions and lists the difference config by config.
+1. Run `node scripts/neo-converter/delta.mjs <module dir> <classic file> <commit>^ <commit>` on the changed
+   classic file (`scripts/neo-port-check.sh` prints this command per waiting file; with only the first rev the
+   other side is the working tree). It converts both versions and lists the difference config by config.
 2. Carry the listed items into the neo file, in the hand port's notation, and keep its hand-written parts.
 
 Example (simulated: links `LinkDialog.js` gets a `label` text field and a taller note):
