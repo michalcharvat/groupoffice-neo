@@ -498,6 +498,18 @@ Classic `go.form.ComboBoxReset` `createDialog` (e.g. portcall `CrewChangeComboRe
 - `mayCreate = false` hides the "+" (read-only hides it too). The combo does not know the create
   permission: the module sets `mayCreate` from the container (vessel, company) when that changes.
 
+## JmapComboBox.setJmapFilter() during a load (2026-11-28)
+
+Dependent combos (amd/diary: vessel → activity / code) call `setJmapFilter()` when the parent changes.
+When loaded or while a query is still running it queries again with the new filter: `JmapStore.load()`
+drops the older answer (`loadGeneration`), and a `doFilter()` whose load was replaced (`load()` returns
+`null`, also by a push reload) opens no picker. The store counts as not loaded until the new answer, so an
+open with the same text queries again instead of reusing the old filter's rows (also after the new query
+failed); an open picker closes. `doFilter()` also queries again while its own query runs and after one
+failed, instead of offering the rows of the previous text. Not covered: a push for the entity that arrives
+while the new query runs is ignored (as for every first `JmapStore` load: the listener needs `isLoaded`).
+Before, a parent of another vessel could be picked and saved. Tests `tests/jmapComboFilter.test.mjs`.
+
 ## FormWindow Apply button (2026-11-28)
 
 - `applyButton: true` in a `FormWindow` subclass config puts Apply (reference `applyButton`) before Save,
