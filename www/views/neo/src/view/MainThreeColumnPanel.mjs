@@ -65,8 +65,10 @@ class MainThreeColumnPanel extends Container {
     }
 
     /**
+     * @summary The button that closes the sidebar.
+     *
      * GOUI showCenterButton() in the west toolbar: closes the sidebar (phone: shows the center,
-     * CSS turns the icon into "close")
+     * CSS turns the icon into classic ExtJS's "arrow_forward")
      * @returns {Object}
      */
     hideWestButton() {
@@ -106,14 +108,17 @@ class MainThreeColumnPanel extends Container {
     }
 
     /**
-     * GOUI showCenterButton() outside the west panel: a "close" button for the east toolbar,
-     * on a phone only. A static config can use `handler: 'up.showCenter'` instead.
+     * @summary The phone-only back button from the detail to the center.
+     *
+     * GOUI showCenterButton() outside the west panel: a back button for the east toolbar,
+     * on a phone only (classic ExtJS narrow detail: ic-arrow-back). A static config can use
+     * `handler: 'up.showCenter'` instead.
      * @returns {Object}
      */
     showCenterButton() {
         return {
             module : Button,
-            icon   : 'close',
+            icon   : 'arrow_back',
             cls    : ['small', 'go-for-small-device'],
             tooltip: t('Close'),
             handler: () => this.showCenter()

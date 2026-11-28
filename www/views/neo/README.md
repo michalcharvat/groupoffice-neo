@@ -146,7 +146,7 @@ The reference is GO 26's GOUI module UI (e.g. Notes), not the ExtJS Paper theme.
   on one origin GOUI and neo share the panel widths.
 - **Phone** (below 577px, GOUI `$breakpointSmall`, CSS only): `MainThreeColumnPanel` shows one
   panel (`go-active`, set by `activatePanel('west'|'center'|'east')`; GOUI `mobile-cards`), the
-  sidebar buttons become "menu" / "close", `showCenterButton()` goes back from the east panel;
+  sidebar buttons become "menu" / "arrow_forward" (classic ExtJS), `showCenterButton()` (arrow_back) goes back from the east panel;
   the topbar shows only the open module's tab (switch with the apps menu); dialogs fill the screen.
 - **Rebuild** after any SCSS change (`npm run build-themes`, ~4 s); the browser reads
   `dist/`, not the SCSS (nor the generated `resources/css`).

@@ -91,22 +91,36 @@ class Button extends NeoButton {
         record && (record.disabled = disabled)
     }
 
-    afterSetIcon(value, oldValue) {
-        let me         = this,
-            {iconNode} = me;
-
-        NeoArray.toggle(iconNode.cls, 'go-icon', !!value);
-
-        if (value) {
-            iconNode.text = value;
-            iconNode.removeDom = false
-        } else {
-            delete iconNode.text;
-            iconNode.removeDom = !me.iconCls
-        }
-
-        me.update()
+    /**
+     * @summary Shows the Material icon in the glyph node.
+     * @param {String|null} value
+     */
+    afterSetIcon(value) {
+        setIcon(this, value)
     }
+}
+
+/**
+ * @summary Shows a Material Symbols ligature in a neo button's glyph node (null: none).
+ *
+ * Also used by GO.tab.HeaderButton.
+ * @param {Neo.button.Base} button
+ * @param {String|null} value
+ */
+export function setIcon(button, value) {
+    let {iconNode} = button;
+
+    NeoArray.toggle(iconNode.cls, 'go-icon', !!value);
+
+    if (value) {
+        iconNode.text = value;
+        iconNode.removeDom = false
+    } else {
+        delete iconNode.text;
+        iconNode.removeDom = !button.iconCls
+    }
+
+    button.update()
 }
 
 export default Neo.setupClass(Button);

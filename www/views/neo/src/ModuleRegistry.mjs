@@ -195,19 +195,22 @@ class ModuleRegistry {
     }
 
     /**
+     * @summary Loads the settings cards the modules register under `key`.
+     *
      * The settings cards modules register under `key` ('userSettings' or 'systemSettings'),
-     * one config or an array of them: {title, iconCls, itemId, panel: () => import(...)}.
+     * one config or an array of them: {title, icon or iconCls, itemId, panel: () => import(...)}.
      * The panels' code is loaded; a module whose panel fails to load is left out.
      * @param {String} key
      * @param {Function} [filter] (module) => Boolean, e.g. the user's rights
-     * @returns {Promise<Object[]>} {module, title, iconCls, itemId, panel: neo class}
+     * @returns {Promise<Object[]>} {module, title, icon, iconCls, itemId, panel: neo class}
      */
     async loadSettingsPanels(key, filter = () => true) {
         const entries = this.#accessible().filter(m => m[key] && filter(m)).flatMap(m =>
             [].concat(m[key]).map((settings, i) => ({
                 module : m,
                 title  : settings.title || m.title,
-                // Font Awesome (tab buttons)
+                // tab buttons: Material Symbols name (System settings prefers it), Font Awesome
+                icon   : settings.icon || null,
                 iconCls: settings.iconCls || m.iconCls || null,
                 itemId : settings.itemId || `${m.package}-${m.name}` + (i ? '-' + i : ''),
                 load   : settings.panel

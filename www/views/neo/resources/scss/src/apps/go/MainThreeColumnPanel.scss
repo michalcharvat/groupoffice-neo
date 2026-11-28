@@ -60,7 +60,7 @@
 // Medium (GOUI .main-3-col .west up to $breakpointMedium, here the module's width: a tablet, a
 // small window or a half-width workspace panel): center and east stay side by side, the west
 // panel becomes a drawer over them, open while it is the active panel. The menu button
-// (showWestButton()) opens it, "close" (hideWestButton()), selecting a record (activatePanel('east'))
+// (showWestButton()) opens it, "arrow_forward" (hideWestButton()), selecting a record (activatePanel('east'))
 // or activatePanel('center') closes it.
 @container (576px < width <= 1200px) {
     .go-main-3-col.go-mobile-cards {
@@ -110,15 +110,16 @@
             }
         }
 
+        // classic ExtJS narrow: the west panel's ic-arrow-forward goes back to the grid
         .go-hide-west .neo-button-glyph.go-icon::before {
-            content: 'close';
+            content: 'arrow_forward';
         }
     }
 }
 
 // Narrow (GOUI .goui.hbox.mobile-cards below $breakpointSmall, here the module's width: a phone
 // or a narrow workspace panel): only the active panel, full size (the splitter widths are inline
-// styles), "menu" and "close" instead of the panel icons
+// styles), "menu" and "arrow_forward" instead of the panel icons
 @container (max-width: 576px) {
     .go-main-3-col.go-mobile-cards {
         > :not(.go-active) {
@@ -146,8 +147,9 @@
             }
         }
 
+        // classic ExtJS narrow: the west panel's ic-arrow-forward goes back to the grid
         .go-hide-west .neo-button-glyph.go-icon::before {
-            content: 'close';
+            content: 'arrow_forward';
         }
     }
 }

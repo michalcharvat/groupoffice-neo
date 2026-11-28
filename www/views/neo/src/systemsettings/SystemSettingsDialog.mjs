@@ -3,6 +3,7 @@ import Container      from '../../node_modules/neo.mjs/src/container/Base.mjs';
 import TabContainer   from '../../node_modules/neo.mjs/src/tab/Container.mjs';
 import Toolbar        from '../../node_modules/neo.mjs/src/toolbar/Base.mjs';
 import ModuleRegistry from '../ModuleRegistry.mjs';
+import HeaderButton   from '../tab/HeaderButton.mjs';
 import ConfirmDialog  from '../view/ConfirmDialog.mjs';
 import Dialog         from '../view/Dialog.mjs';
 import {notifyError}  from '../Notify.mjs';
@@ -18,7 +19,7 @@ import {CORE_CARDS, mayManage} from './cards.mjs';
  *
  *     ModuleRegistry.register({..., systemSettings: {
  *         title  : t('History'),
- *         iconCls: 'fa fa-clock-rotate-left',
+ *         icon   : 'history',                 // Material Symbols name, or iconCls: 'fa fa-…'
  *         panel  : () => import('./view/SystemSettingsPanel.mjs') // default export: a neo container
  *     }})
  *
@@ -137,8 +138,8 @@ class SystemSettingsDialog extends Dialog {
     async addCards() {
         let me = this;
 
-        const core = await Promise.all(CORE_CARDS().filter(card => card[4]()).map(async ([itemId, title, iconCls, load]) =>
-                  ({itemId, title, iconCls, panel: (await load()).default})
+        const core = await Promise.all(CORE_CARDS().filter(card => card[4]()).map(async ([itemId, title, icon, load]) =>
+                  ({itemId, title, icon, panel: (await load()).default})
               )),
               modules = await ModuleRegistry.loadSettingsPanels('systemSettings', mayManage);
 
@@ -146,12 +147,12 @@ class SystemSettingsDialog extends Dialog {
             return
         }
 
-        [...core, ...modules].forEach(({itemId, title, iconCls, panel}) => {
+        [...core, ...modules].forEach(({itemId, title, icon, iconCls, panel}) => {
             me.itemIds.push(itemId);
             const card = me.cards.add({
                       module: Container,
                       cls   : ['go-settings-card'],
-                      header: {text: title, iconCls},
+                      header: {module: HeaderButton, text: title, icon, iconCls: icon ? null : iconCls},
                       layout: {ntype: 'vbox', align: 'stretch'},
                       items : [{module: panel, flex: 1}]
                   }),
