@@ -1,8 +1,42 @@
 import ComboBox  from '../../../node_modules/neo.mjs/src/form/field/ComboBox.mjs';
+import Trigger   from '../../../node_modules/neo.mjs/src/form/field/trigger/Base.mjs';
 import JmapStore from '../../data/JmapStore.mjs';
 import TextList  from '../../list/TextList.mjs';
 import client    from '../../jmap/Client.mjs';
 import {t}       from '../../Translate.mjs';
+
+/**
+ * The "+" of a JmapComboBox with a createDialog (classic go.form.ComboBoxReset createDialog)
+ */
+class CreateTrigger extends Trigger {
+    static config = {
+        className: 'GO.form.field.JmapComboBoxCreateTrigger',
+        baseCls  : ['neo-field-trigger', 'go-jmapcombo-create'],
+        iconCls  : 'fa fa-plus',
+        type     : 'create',
+        weight   : 30
+    }
+
+    construct(config) {
+        super.construct(config);
+        this.vdom.title = t('Add')
+    }
+
+    /**
+     * Text.afterSetReadOnly(false) shows the triggers again: not this one without create permission
+     * @returns {Boolean}
+     */
+    getHiddenState() {
+        const {field} = this;
+        return !field.createDialog || !field.mayCreate
+    }
+
+    onTriggerClick() {
+        this.field.openCreateDialog()
+    }
+}
+
+Neo.setupClass(CreateTrigger);
 
 /**
  * ComboBox over a JMAP entity, like GOUI's ComboBox with a JmapDataSource.
@@ -16,6 +50,10 @@ import {t}       from '../../Translate.mjs';
  *
  *     {module: JmapComboBox, name: 'noteBookId', entity: 'NoteBook',
  *      jmapFilter: {permissionLevel: 30}, labelText: t('Notebook')}
+ *
+ * - `createDialog` adds a "+" trigger that opens that FormWindow for a new entity
+ *   (with `createValues`) and selects it once saved; closing it unsaved keeps the
+ *   value. `mayCreate = false` hides the "+" (the module knows the create permission).
  */
 class JmapComboBox extends ComboBox {
     static config = {
@@ -71,6 +109,21 @@ class JmapComboBox extends ComboBox {
          * @member {Object|null} store=null
          */
         store: null,
+        /**
+         * FormWindow that creates a new entity: the class or () => import() of its module
+         * @member {Function|null} createDialog=null
+         */
+        createDialog: null,
+        /**
+         * Values of the new entity, or a function(field) returning them
+         * @member {Object|Function|null} createValues=null
+         */
+        createValues: null,
+        /**
+         * Create permission: false hides the "+"
+         * @member {Boolean} mayCreate_=true
+         */
+        mayCreate_: true,
         listConfig: {module: TextList},
         errorTextNoMatch: data => t('No match') + ': ' + data.input,
         width: null
@@ -119,7 +172,64 @@ class JmapComboBox extends ComboBox {
         });
 
         // created here: destroyed here
-        me.ownJmapStore = me.store
+        me.ownJmapStore = me.store;
+
+        if (me.createDialog) {
+            me.triggers = [...me.triggers, CreateTrigger];
+            me.afterSetMayCreate(me.mayCreate)
+        }
+    }
+
+    /**
+     * @param {Boolean} value
+     * @param {Boolean} oldValue
+     * @protected
+     */
+    afterSetMayCreate(value, oldValue) {
+        const trigger = this.getTrigger('create');
+        trigger && (trigger.hidden = this.readOnly || trigger.getHiddenState())
+    }
+
+    /**
+     * Opens createDialog for a new entity and selects it once saved
+     * @returns {Promise<Object|null>} the window, null without createDialog
+     */
+    async openCreateDialog() {
+        let me     = this,
+            dialog = me.createDialog,
+            values = me.createValues;
+
+        if (!dialog || !me.mayCreate || me.readOnly) {
+            return null
+        }
+
+        // a class, or () => import() of its module
+        dialog.isClass || (dialog = (await dialog()).default);
+
+        // destroyed, or the permission went while the module loaded
+        if (me.isDestroyed || !me.mayCreate || me.readOnly) {
+            return null
+        }
+
+        me.pickerIsMounted && me.hidePicker();
+
+        const win = Neo.create(dialog, {
+            appName : me.appName,
+            windowId: me.windowId,
+            values  : {...(typeof values === 'function' ? values(me) : values)}
+        });
+
+        win.on('save', () => {
+            if (me.isDestroyed) {
+                return
+            }
+
+            // the loaded pages miss the new entity: query again on the next open
+            me.lastQuery = null;
+            me.value     = win.form.currentId
+        });
+
+        return win
     }
 
     destroy(...args) {

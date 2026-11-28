@@ -82,7 +82,7 @@ Owner rule (2026-11-27, 2026-11-28): generic list / detail / dialog logic and sh
 | Date field and formatting in a given time zone (rows 7, 11, 19) | portcall `DateTimeField.js` + `helpers.js`, diary has the same | existing 20261128-014554 (from the diary analysis); portcall's extra needs added there as a board note |
 | Apply (save without closing) in `FormWindow` (rows 7, 11) | crew's module `view/applyButton.mjs`; classic `go.form.Dialog` has it everywhere | **A**: `neo-ui: FormWindow Apply button` |
 | Module settings dialog with lookup lists (rows 14, 15) | crew's module `SettingsDialog.mjs` + `LookupListPanel.mjs` + `LookupDialog.mjs` (380 lines, nothing crew-specific but its definitions); the audit lists it as missing in neo | **L**: `neo-ui: lookup settings dialog (from amd/crew)` |
-| `JmapComboBox` "+" that creates the entity in its dialog and selects it (row 18; classic `go.form.ComboBoxReset` `createDialog`) | missing | **P**: `neo-ui: JmapComboBox create button` |
+| `JmapComboBox` "+" that creates the entity in its dialog and selects it (row 18; classic `go.form.ComboBoxReset` `createDialog`) | done (`createDialog`, `createValues`, `mayCreate`; `docs/neo-core-components.md`) | **P**: `neo-ui: JmapComboBox create button` |
 | ⋮ menu whose items load when it opens (row 12, `DynamicMenu`) | `detail/Panel.mjs` `onConstructed()` calls `createMoreMenu()` once | **O**: `neo-ui: detail Panel ⋮ menu rebuilt on open` (an async hook before the menu shows; portcall keeps the query and the output actions) |
 
 ## 4. Cards

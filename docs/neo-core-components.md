@@ -471,6 +471,20 @@ onFormWindow: win => win.entityName !== 'Voyage' ? null : {
   (`acl`) are still compared both ways. A module needs no `setOriginalValue()` workaround for row arrays.
 - `AutocompleteChips` `recordDetails` is optional (before 2026-11-28 a field without it never opened its menu).
 
+## JmapComboBox "+": create the entity and select it (2026-11-28)
+
+Classic `go.form.ComboBoxReset` `createDialog` (e.g. portcall `CrewChangeComboReset`):
+
+    {module: JmapComboBox, name: 'crewChangeId', entity: 'AmdPortCallCrewChange',
+     createDialog: () => import('./CrewChangeDialog.mjs'),   // or the class
+     createValues: field => ({vesselId: vesselCombo.getSubmitValue()})}   // or an object
+
+- The "+" trigger (`getTrigger('create')`) opens the FormWindow with `values`; on `save` the field takes
+  `win.form.currentId` (the text comes from Entity/get) and queries the list again on the next open.
+  Closing unsaved keeps the old value (classic reset the field).
+- `mayCreate = false` hides the "+" (read-only hides it too). The combo does not know the create
+  permission: the module sets `mayCreate` from the container (vessel, company) when that changes.
+
 ## Entity actions in GO.grid.Grid (2026-11-27)
 
 Edit / delete / row menu of a JMAP entity list belong to the core grid, opt-in with
